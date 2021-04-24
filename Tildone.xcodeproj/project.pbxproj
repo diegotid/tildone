@@ -8,21 +8,21 @@
 
 /* Begin PBXBuildFile section */
 		40DC456F263419E300257B33 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40DC456E263419E300257B33 /* AppDelegate.swift */; };
-		40DC4571263419E300257B33 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40DC4570263419E300257B33 /* ContentView.swift */; };
+		40DC4571263419E300257B33 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40DC4570263419E300257B33 /* Note.swift */; };
 		40DC4573263419E700257B33 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 40DC4572263419E700257B33 /* Assets.xcassets */; };
 		40DC4576263419E700257B33 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 40DC4575263419E700257B33 /* Preview Assets.xcassets */; };
 		40DC4579263419E700257B33 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40DC4577263419E700257B33 /* Main.storyboard */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		40DC456B263419E300257B33 /* tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		40DC456B263419E300257B33 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		40DC456E263419E300257B33 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		40DC4570263419E300257B33 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		40DC4570263419E300257B33 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		40DC4572263419E700257B33 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		40DC4575263419E700257B33 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		40DC4578263419E700257B33 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		40DC457A263419E700257B33 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		40DC457B263419E700257B33 /* tildone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = tildone.entitlements; sourceTree = "<group>"; };
+		40DC457B263419E700257B33 /* Tildone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tildone.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,7 +39,7 @@
 		40DC4562263419E300257B33 = {
 			isa = PBXGroup;
 			children = (
-				40DC456D263419E300257B33 /* tildone */,
+				40DC456D263419E300257B33 /* Tildone */,
 				40DC456C263419E300257B33 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,23 +47,21 @@
 		40DC456C263419E300257B33 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				40DC456B263419E300257B33 /* tildone.app */,
+				40DC456B263419E300257B33 /* Tildone.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		40DC456D263419E300257B33 /* tildone */ = {
+		40DC456D263419E300257B33 /* Tildone */ = {
 			isa = PBXGroup;
 			children = (
-				40DC456E263419E300257B33 /* AppDelegate.swift */,
-				40DC4570263419E300257B33 /* ContentView.swift */,
-				40DC4572263419E700257B33 /* Assets.xcassets */,
-				40DC4577263419E700257B33 /* Main.storyboard */,
 				40DC457A263419E700257B33 /* Info.plist */,
-				40DC457B263419E700257B33 /* tildone.entitlements */,
+				40DC457B263419E700257B33 /* Tildone.entitlements */,
+				40DC4572263419E700257B33 /* Assets.xcassets */,
+				40DC45822634801400257B33 /* Source */,
 				40DC4574263419E700257B33 /* Preview Content */,
 			);
-			path = tildone;
+			path = Tildone;
 			sourceTree = "<group>";
 		};
 		40DC4574263419E700257B33 /* Preview Content */ = {
@@ -74,12 +72,22 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		40DC45822634801400257B33 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				40DC4577263419E700257B33 /* Main.storyboard */,
+				40DC456E263419E300257B33 /* AppDelegate.swift */,
+				40DC4570263419E300257B33 /* Note.swift */,
+			);
+			path = Source;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		40DC456A263419E300257B33 /* tildone */ = {
+		40DC456A263419E300257B33 /* Tildone */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 40DC457E263419E700257B33 /* Build configuration list for PBXNativeTarget "tildone" */;
+			buildConfigurationList = 40DC457E263419E700257B33 /* Build configuration list for PBXNativeTarget "Tildone" */;
 			buildPhases = (
 				40DC4567263419E300257B33 /* Sources */,
 				40DC4568263419E300257B33 /* Frameworks */,
@@ -89,9 +97,9 @@
 			);
 			dependencies = (
 			);
-			name = tildone;
+			name = Tildone;
 			productName = tildone;
-			productReference = 40DC456B263419E300257B33 /* tildone.app */;
+			productReference = 40DC456B263419E300257B33 /* Tildone.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -108,7 +116,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 40DC4566263419E300257B33 /* Build configuration list for PBXProject "tildone" */;
+			buildConfigurationList = 40DC4566263419E300257B33 /* Build configuration list for PBXProject "Tildone" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -121,7 +129,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				40DC456A263419E300257B33 /* tildone */,
+				40DC456A263419E300257B33 /* Tildone */,
 			);
 		};
 /* End PBXProject section */
@@ -144,7 +152,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				40DC4571263419E300257B33 /* ContentView.swift in Sources */,
+				40DC4571263419E300257B33 /* Note.swift in Sources */,
 				40DC456F263419E300257B33 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -296,7 +304,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
-				PRODUCT_BUNDLE_IDENTIFIER = es.com.diegorivera.tildone;
+				PRODUCT_BUNDLE_IDENTIFIER = es.com.diegorivera.Tildone;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -320,7 +328,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
-				PRODUCT_BUNDLE_IDENTIFIER = es.com.diegorivera.tildone;
+				PRODUCT_BUNDLE_IDENTIFIER = es.com.diegorivera.Tildone;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -329,7 +337,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		40DC4566263419E300257B33 /* Build configuration list for PBXProject "tildone" */ = {
+		40DC4566263419E300257B33 /* Build configuration list for PBXProject "Tildone" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				40DC457C263419E700257B33 /* Debug */,
@@ -338,7 +346,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		40DC457E263419E700257B33 /* Build configuration list for PBXNativeTarget "tildone" */ = {
+		40DC457E263419E700257B33 /* Build configuration list for PBXNativeTarget "Tildone" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				40DC457F263419E700257B33 /* Debug */,
