@@ -19,7 +19,6 @@ struct Checkbox: View {
                 .fill(Color(.checkboxOffFill))
                 .overlay(Circle().stroke(Color(self.checked ? .checkboxOnFill : .checkboxBorder)))
                 .frame(width: Layout.checkboxSize, height: Layout.checkboxSize, alignment: .center)
-                .padding(5)
                 .onTapGesture(count: 1, perform: {
                     self.checked.toggle()
                 })

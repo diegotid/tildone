@@ -22,6 +22,6 @@ enum Layout {
     static let defaultNoteHeight: CGFloat = 300
     static let minNoteWidth: CGFloat = 100
     static let minNoteHeight: CGFloat = 120
-    static let checkboxSize: CGFloat = 18
-    static let checkboxCheckSize: CGFloat = 12
+    static let checkboxSize: CGFloat = 14
+    static let checkboxCheckSize: CGFloat = 9
 }

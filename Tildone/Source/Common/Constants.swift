@@ -15,4 +15,5 @@ enum Literals {
 enum Copies {
     
     static let newTaskPlaceholder: String = "New task"
+    static let newTopicPlaceholder: String = "New topic"
 }
