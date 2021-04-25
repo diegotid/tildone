@@ -14,6 +14,7 @@
 		40DC4579263419E700257B33 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 40DC4577263419E700257B33 /* Main.storyboard */; };
 		F12E83672634D8140057FC54 /* Styler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12E83662634D8140057FC54 /* Styler.swift */; };
 		F12E836D2634DBE50057FC54 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12E836C2634DBE50057FC54 /* Constants.swift */; };
+		F164438F263619170015A35C /* Tildone.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = F164438D263619170015A35C /* Tildone.xcdatamodeld */; };
 		F190C0B52634E4FC0079049E /* Checkbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F190C0B42634E4FC0079049E /* Checkbox.swift */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +29,7 @@
 		40DC457B263419E700257B33 /* Tildone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tildone.entitlements; sourceTree = "<group>"; };
 		F12E83662634D8140057FC54 /* Styler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Styler.swift; sourceTree = "<group>"; };
 		F12E836C2634DBE50057FC54 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		F164438E263619170015A35C /* Tildone.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Tildone.xcdatamodel; sourceTree = "<group>"; };
 		F190C0B42634E4FC0079049E /* Checkbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Checkbox.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -85,7 +87,8 @@
 				40DC456E263419E300257B33 /* AppDelegate.swift */,
 				F12E836A2634DB960057FC54 /* Common */,
 				F12E83692634DB860057FC54 /* Controls */,
-				F12E836B2634DBAB0057FC54 /* Scenes */,
+				F164438C263618180015A35C /* Models */,
+				F12E836B2634DBAB0057FC54 /* Views */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -107,12 +110,20 @@
 			path = Common;
 			sourceTree = "<group>";
 		};
-		F12E836B2634DBAB0057FC54 /* Scenes */ = {
+		F12E836B2634DBAB0057FC54 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				40DC4570263419E300257B33 /* Note.swift */,
 			);
-			path = Scenes;
+			path = Views;
+			sourceTree = "<group>";
+		};
+		F164438C263618180015A35C /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F164438D263619170015A35C /* Tildone.xcdatamodeld */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -188,6 +199,7 @@
 				F12E83672634D8140057FC54 /* Styler.swift in Sources */,
 				40DC4571263419E300257B33 /* Note.swift in Sources */,
 				40DC456F263419E300257B33 /* AppDelegate.swift in Sources */,
+				F164438F263619170015A35C /* Tildone.xcdatamodeld in Sources */,
 				F12E836D2634DBE50057FC54 /* Constants.swift in Sources */,
 				F190C0B52634E4FC0079049E /* Checkbox.swift in Sources */,
 			);
@@ -392,6 +404,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		F164438D263619170015A35C /* Tildone.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				F164438E263619170015A35C /* Tildone.xcdatamodel */,
+			);
+			currentVersion = F164438E263619170015A35C /* Tildone.xcdatamodel */;
+			path = Tildone.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 40DC4563263419E300257B33 /* Project object */;
 }
