@@ -1,0 +1,18 @@
+//
+//  Constants.swift
+//  Tildone
+//
+//  Created by Diego on 25/4/21.
+//
+
+import Foundation
+
+enum Literals {
+    
+    static let mainWindowName: String = "MainNote"
+}
+
+enum Copies {
+    
+    static let newTaskPlaceholder: String = "New task"
+}
