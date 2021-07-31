@@ -15,7 +15,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         
-        let contentView = Note().environment(\.managedObjectContext, persistentContainer.viewContext)
+        let context = persistentContainer.viewContext
+        let contentView = Note().environment(\.managedObjectContext, context)
         
         let windowLayout = NSRect(x: 0,
                                   y: 0,
