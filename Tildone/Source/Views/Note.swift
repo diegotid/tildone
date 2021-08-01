@@ -16,8 +16,6 @@ struct Note: View {
         sortDescriptors: []
     ) var tasks: FetchedResults<Task>
 
-//    @State private var tasks: [Task] = []
-    
     @State private var editedTask = ""
     @State private var editedTopic = ""
     
@@ -31,6 +29,17 @@ struct Note: View {
         } catch {
             let errorMessage = error as NSError
             fatalError("Error on task creation: \(errorMessage)")
+        }
+    }
+    
+    func handleTaskEdit(task: Task, to statement: String) {
+        
+        task.statement = statement
+        do {
+            try managedObjectContext.save()
+        } catch {
+            let errorMessage = error as NSError
+            fatalError("Error on task edit: \(errorMessage)")
         }
     }
 
@@ -50,7 +59,7 @@ struct Note: View {
                         TextField(Copies.newTaskPlaceholder,
                                   text: Binding<String>(
                                     get: { task.statement! },
-                                    set: { print(" > \($0)") }
+                                    set: { handleTaskEdit(task: task, to: $0) }
                                   ))
                             .textFieldStyle(PlainTextFieldStyle())
                             .foregroundColor(Color(.primaryFontColor))
@@ -65,9 +74,7 @@ struct Note: View {
                                 get: { self.editedTask },
                                 set: { self.editedTask = $0 }
                               )
-                    ) { isEditing in
-                        print("isEditing")
-                    } onCommit: {
+                    ) { _ in } onCommit: {
                         handleTaskCommit()
                     }
                     .textFieldStyle(PlainTextFieldStyle())
