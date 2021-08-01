@@ -13,26 +13,33 @@ struct Note: View {
 
     @FetchRequest(
         entity: Task.entity(),
-        sortDescriptors: []
+        sortDescriptors: [
+            NSSortDescriptor(keyPath: \Task.done, ascending: false),
+            NSSortDescriptor(keyPath: \Task.order, ascending: true)
+        ]
     ) var tasks: FetchedResults<Task>
 
-    @State private var editedTask = ""
-    @State private var editedTopic = ""
-    
-    func handleTaskCommit() {
+    @State private var editedTask: String?
+    @State private var editedTopic: String?
+
+    private func handleTaskCommit() {
+        
+        guard let newStatement = self.editedTask else { return }
         
         let newTask = Task(context: managedObjectContext)
         newTask.done = false
-        newTask.statement = editedTask
+        newTask.statement = newStatement
+        newTask.order = Int16(self.tasks.count + 1)
         do {
             try managedObjectContext.save()
+            self.editedTask = nil
         } catch {
             let errorMessage = error as NSError
             fatalError("Error on task creation: \(errorMessage)")
         }
     }
     
-    func handleTaskEdit(task: Task, to statement: String) {
+    private func handleTaskEdit(_ task: Task, to statement: String) {
         
         task.statement = statement
         do {
@@ -47,19 +54,24 @@ struct Note: View {
         
         ScrollView(.vertical) {
             VStack(spacing: 6) {
-                TextField(Copies.newTopicPlaceholder,text: $editedTopic)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(.primaryFontColor))
-                    .background(Color.clear)
-                    .padding(.top, 15)
+                TextField(Copies.newTopicPlaceholder,
+                          text: Binding<String>(
+                            get: { self.editedTopic ?? "" },
+                            set: { self.editedTopic = $0 }
+                          )
+                )
+                .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Color(.primaryFontColor))
+                .background(Color.clear)
+                .padding(.top, 15)
                 ForEach(tasks) { task in
                     HStack(spacing: 8) {
                         Checkbox()
                         TextField(Copies.newTaskPlaceholder,
                                   text: Binding<String>(
                                     get: { task.statement! },
-                                    set: { handleTaskEdit(task: task, to: $0) }
+                                    set: { handleTaskEdit(task, to: $0) }
                                   ))
                             .textFieldStyle(PlainTextFieldStyle())
                             .foregroundColor(Color(.primaryFontColor))
@@ -71,7 +83,7 @@ struct Note: View {
                     Checkbox()
                     TextField(Copies.newTaskPlaceholder,
                               text: Binding<String>(
-                                get: { self.editedTask },
+                                get: { self.editedTask ?? "" },
                                 set: { self.editedTask = $0 }
                               )
                     ) { _ in } onCommit: {
