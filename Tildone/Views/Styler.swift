@@ -2,7 +2,7 @@
 //  Styler.swift
 //  Tildone
 //
-//  Created by Diego on 25/4/21.
+//  Created by Diego Rivera on 25/4/21.
 //
 
 import SwiftUI
@@ -20,8 +20,8 @@ enum Layout {
     
     static let defaultNoteWidth: CGFloat = 250
     static let defaultNoteHeight: CGFloat = 300
-    static let minNoteWidth: CGFloat = 100
-    static let minNoteHeight: CGFloat = 120
+    static let minNoteWidth: CGFloat = 180
+    static let minNoteHeight: CGFloat = 180
     static let checkboxSize: CGFloat = 14
     static let checkboxCheckSize: CGFloat = 9
 }

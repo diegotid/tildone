@@ -2,7 +2,7 @@
 //  Checkbox.swift
 //  Tildone
 //
-//  Created by Diego on 25/4/21.
+//  Created by Diego Rivera on 25/4/21.
 //
 
 import SwiftUI

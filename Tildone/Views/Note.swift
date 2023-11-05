@@ -2,56 +2,40 @@
 //  Note.swift
 //  Tildone
 //
-//  Created by Diego on 24/4/21.
+//  Created by Diego Rivera on 5/11/23.
 //
 
 import SwiftUI
+import SwiftData
 
 struct Note: View {
-    
-    @Environment(\.managedObjectContext) var managedObjectContext
-
-    @FetchRequest(
-        entity: Task.entity(),
-        sortDescriptors: [
-            NSSortDescriptor(keyPath: \Task.done, ascending: false),
-            NSSortDescriptor(keyPath: \Task.order, ascending: true)
-        ]
-    ) var tasks: FetchedResults<Task>
-
+    @Environment(\.modelContext) private var modelContext
+    @Query private var tasks: [Task]
     @State private var editedTask: String?
     @State private var editedTopic: String?
 
     private func handleTaskCommit() {
-        
         guard let newStatement = self.editedTask else { return }
-        
-        let newTask = Task(context: managedObjectContext)
-        newTask.done = false
-        newTask.statement = newStatement
-        newTask.order = Int16(self.tasks.count + 1)
+        let newTask = Task(order: self.tasks.count + 1, statement: newStatement)
+        modelContext.insert(newTask)
         do {
-            try managedObjectContext.save()
+            try modelContext.save()
             self.editedTask = nil
         } catch {
-            let errorMessage = error as NSError
-            fatalError("Error on task creation: \(errorMessage)")
+            fatalError("Error on task creation: \(error)")
         }
     }
     
     private func handleTaskEdit(_ task: Task, to statement: String) {
-        
         task.statement = statement
         do {
-            try managedObjectContext.save()
+            try modelContext.save()
         } catch {
-            let errorMessage = error as NSError
-            fatalError("Error on task edit: \(errorMessage)")
+            fatalError("Error on task edit: \(error)")
         }
     }
 
     var body: some View {
-        
         ScrollView(.vertical) {
             VStack(spacing: 6) {
                 TextField(Copies.newTopicPlaceholder,
@@ -70,7 +54,7 @@ struct Note: View {
                         Checkbox()
                         TextField(Copies.newTaskPlaceholder,
                                   text: Binding<String>(
-                                    get: { task.statement! },
+                                    get: { task.statement },
                                     set: { handleTaskEdit(task, to: $0) }
                                   ))
                             .textFieldStyle(PlainTextFieldStyle())
@@ -112,8 +96,6 @@ struct Note: View {
     }
 }
 
-struct Note_Previews: PreviewProvider {
-    static var previews: some View {
-        /*@START_MENU_TOKEN@*/Text("Hello, World!")/*@END_MENU_TOKEN@*/
-    }
+#Preview {
+    Note().modelContainer(for: Task.self, inMemory: true)
 }
