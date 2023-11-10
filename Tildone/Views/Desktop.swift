@@ -13,12 +13,12 @@ struct Desktop: View {
     @Query private var lists: [TodoList]
     
     var body: some View {
-        EmptyView()
+        note(for: lists.first)
             .onAppear {
                 if lists.isEmpty {
                     createFirst()
                 }
-                for list in lists {
+                for list in lists.dropFirst() {
                     openWindow(for: list)
                 }
             }
@@ -27,16 +27,20 @@ struct Desktop: View {
 
 private extension Desktop {
     
-    @ViewBuilder func note(for list: TodoList) -> some View {
-        Note(list)
-            .background(Color(nsColor: .noteBackground))
-            .frame(minWidth: Layout.minNoteWidth,
-                   idealWidth: Layout.defaultNoteWidth,
-                   maxWidth: .infinity,
-                   minHeight: Layout.minNoteHeight,
-                   idealHeight: Layout.defaultNoteHeight,
-                   maxHeight: .infinity,
-                   alignment: .center)
+    @ViewBuilder func note(for list: TodoList?) -> some View {
+        if (list == nil) {
+            EmptyView()
+        } else {
+            Note(list!)
+                .background(Color(nsColor: .noteBackground))
+                .frame(minWidth: Layout.minNoteWidth,
+                       idealWidth: Layout.defaultNoteWidth,
+                       maxWidth: .infinity,
+                       minHeight: Layout.minNoteHeight,
+                       idealHeight: Layout.defaultNoteHeight,
+                       maxHeight: .infinity,
+                       alignment: .center)
+        }
     }
     
     func createFirst() {

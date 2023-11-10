@@ -27,6 +27,8 @@ struct TildoneApp: App {
         WindowGroup {
             Desktop()
         }
+        .windowStyle(HiddenTitleBarWindowStyle())
+        .windowResizability(.contentSize)
         .modelContainer(sharedModelContainer)
     }
 }
