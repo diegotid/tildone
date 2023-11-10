@@ -10,13 +10,19 @@ import SwiftData
 
 struct Note: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var tasks: [Task]
+    @State private var list: TodoList
     @State private var editedTask: String?
-    @State private var editedTopic: String?
+    @State private var editedListTitle: String?
+    
+    init(_ list: TodoList) {
+        self.list = list
+    }
 
     private func handleTaskCommit() {
-        guard let newStatement = self.editedTask else { return }
-        let newTask = Task(order: self.tasks.count + 1, statement: newStatement)
+        guard let task = self.editedTask else {
+            return
+        }
+        let newTask = Todo(task, order: self.list.items.count + 1)
         modelContext.insert(newTask)
         do {
             try modelContext.save()
@@ -26,8 +32,8 @@ struct Note: View {
         }
     }
     
-    private func handleTaskEdit(_ task: Task, to statement: String) {
-        task.statement = statement
+    private func handleTaskEdit(_ todo: Todo, to what: String) {
+        todo.what = what
         do {
             try modelContext.save()
         } catch {
@@ -38,10 +44,10 @@ struct Note: View {
     var body: some View {
         ScrollView(.vertical) {
             VStack(spacing: 6) {
-                TextField(Copies.newTopicPlaceholder,
+                TextField(Copies.newListTitlePlaceholder,
                           text: Binding<String>(
-                            get: { self.editedTopic ?? "" },
-                            set: { self.editedTopic = $0 }
+                            get: { self.editedListTitle ?? "" },
+                            set: { self.editedListTitle = $0 }
                           )
                 )
                 .textFieldStyle(PlainTextFieldStyle())
@@ -49,12 +55,12 @@ struct Note: View {
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .padding(.top, 15)
-                ForEach(tasks) { task in
+                ForEach(list.items) { task in
                     HStack(spacing: 8) {
                         Checkbox()
                         TextField(Copies.newTaskPlaceholder,
                                   text: Binding<String>(
-                                    get: { task.statement },
+                                    get: { task.what },
                                     set: { handleTaskEdit(task, to: $0) }
                                   ))
                             .textFieldStyle(PlainTextFieldStyle())
@@ -97,5 +103,5 @@ struct Note: View {
 }
 
 #Preview {
-    Note().modelContainer(for: Task.self, inMemory: true)
+    Note(.preview).modelContainer(for: Todo.self, inMemory: true)
 }

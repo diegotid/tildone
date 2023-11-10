@@ -8,7 +8,6 @@
 import SwiftUI
 
 extension NSColor {
-    
     static let noteBackground = #colorLiteral(red: 1, green: 0.9834647775, blue: 0.7855550647, alpha: 1)
     static let primaryFontColor = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
     static let checkboxBorder = #colorLiteral(red: 0.5011845827, green: 0.4942548871, blue: 0.4001311958, alpha: 0.5)
@@ -17,7 +16,6 @@ extension NSColor {
 }
 
 enum Layout {
-    
     static let defaultNoteWidth: CGFloat = 250
     static let defaultNoteHeight: CGFloat = 300
     static let minNoteWidth: CGFloat = 180

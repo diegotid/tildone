@@ -5,17 +5,17 @@
 //  Created by Diego Rivera on 5/11/23.
 //
 
+import AppKit
 import SwiftUI
 import SwiftData
 
 @main
 struct TildoneApp: App {
-    @State private var window: NSWindow?
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([Task.self, Topic.self])
+        let schema = Schema([Todo.self, TodoList.self])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
@@ -25,21 +25,21 @@ struct TildoneApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Note()
-                .background(Color(nsColor: .noteBackground))
-                .background(WindowAccessor(window: $window)).onChange(of: window) {
-                    window?.level = .floating
-                }
-                .frame(minWidth: Layout.minNoteWidth,
-                       idealWidth: Layout.defaultNoteWidth,
-                       maxWidth: .infinity,
-                       minHeight: Layout.minNoteHeight,
-                       idealHeight: Layout.defaultNoteHeight,
-                       maxHeight: .infinity,
-                       alignment: .center)
+            Desktop()
         }
-        .windowStyle(HiddenTitleBarWindowStyle())
-        .windowResizability(.contentSize)
         .modelContainer(sharedModelContainer)
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let mainWindow = NSApp.windows[0]
+        mainWindow.delegate = self
+    }
+        
+    @objc func windowShouldClose(_ sender: NSWindow) -> Bool {
+        NSApp.hide(nil)
+        
+        return false
     }
 }

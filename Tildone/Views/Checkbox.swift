@@ -8,13 +8,10 @@
 import SwiftUI
 
 struct Checkbox: View {
-    
     @State var checked: Bool = false
     
     var body: some View {
-
         return ZStack {
-            
             Circle()
                 .fill(Color(.checkboxOffFill))
                 .overlay(Circle().stroke(Color(self.checked ? .checkboxOnFill : .checkboxBorder)))

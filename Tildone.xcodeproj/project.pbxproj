@@ -9,17 +9,18 @@
 /* Begin PBXBuildFile section */
 		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
 		F16670492AF711EC000B76A5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670482AF711EC000B76A5 /* Note.swift */; };
-		F166704B2AF711EC000B76A5 /* Task.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166704A2AF711EC000B76A5 /* Task.swift */; };
+		F166704B2AF711EC000B76A5 /* Todo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166704A2AF711EC000B76A5 /* Todo.swift */; };
 		F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F166704C2AF711ED000B76A5 /* Assets.xcassets */; };
 		F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */; };
 		F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166705A2AF711EE000B76A5 /* TildoneTests.swift */; };
 		F16670652AF711EE000B76A5 /* TildoneUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670642AF711EE000B76A5 /* TildoneUITests.swift */; };
 		F16670672AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670662AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift */; };
-		F16670762AF7133F000B76A5 /* Topic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670752AF7133F000B76A5 /* Topic.swift */; };
+		F16670762AF7133F000B76A5 /* TodoList.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670752AF7133F000B76A5 /* TodoList.swift */; };
 		F16670792AF7167D000B76A5 /* Styler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670772AF7167D000B76A5 /* Styler.swift */; };
 		F166707A2AF7167D000B76A5 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670782AF7167D000B76A5 /* Constants.swift */; };
 		F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166707B2AF716F8000B76A5 /* Checkbox.swift */; };
-		F166707E2AF71B92000B76A5 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166707D2AF71B92000B76A5 /* WindowAccessor.swift */; };
+		F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8D92AF850CC002ED6BF /* Mocks.swift */; };
+		F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8DB2AF854D7002ED6BF /* Desktop.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,7 +44,7 @@
 		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F16670462AF711EC000B76A5 /* TildoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneApp.swift; sourceTree = "<group>"; };
 		F16670482AF711EC000B76A5 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
-		F166704A2AF711EC000B76A5 /* Task.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Task.swift; sourceTree = "<group>"; };
+		F166704A2AF711EC000B76A5 /* Todo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Todo.swift; sourceTree = "<group>"; };
 		F166704C2AF711ED000B76A5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F16670512AF711ED000B76A5 /* Tildone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tildone.entitlements; sourceTree = "<group>"; };
@@ -52,11 +53,12 @@
 		F16670602AF711EE000B76A5 /* TildoneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F16670642AF711EE000B76A5 /* TildoneUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneUITests.swift; sourceTree = "<group>"; };
 		F16670662AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		F16670752AF7133F000B76A5 /* Topic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Topic.swift; path = Tildone/Models/Topic.swift; sourceTree = SOURCE_ROOT; };
+		F16670752AF7133F000B76A5 /* TodoList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TodoList.swift; path = Tildone/Models/TodoList.swift; sourceTree = SOURCE_ROOT; };
 		F16670772AF7167D000B76A5 /* Styler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Styler.swift; sourceTree = "<group>"; };
 		F16670782AF7167D000B76A5 /* Constants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		F166707B2AF716F8000B76A5 /* Checkbox.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Checkbox.swift; sourceTree = "<group>"; };
-		F166707D2AF71B92000B76A5 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
+		F180D8D92AF850CC002ED6BF /* Mocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mocks.swift; sourceTree = "<group>"; };
+		F180D8DB2AF854D7002ED6BF /* Desktop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Desktop.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +123,7 @@
 			isa = PBXGroup;
 			children = (
 				F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */,
+				F180D8D92AF850CC002ED6BF /* Mocks.swift */,
 			);
 			path = "Preview Content";
 			sourceTree = "<group>";
@@ -145,8 +148,8 @@
 		F16670732AF7122F000B76A5 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				F166704A2AF711EC000B76A5 /* Task.swift */,
-				F16670752AF7133F000B76A5 /* Topic.swift */,
+				F166704A2AF711EC000B76A5 /* Todo.swift */,
+				F16670752AF7133F000B76A5 /* TodoList.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -158,7 +161,7 @@
 				F166707B2AF716F8000B76A5 /* Checkbox.swift */,
 				F16670782AF7167D000B76A5 /* Constants.swift */,
 				F16670772AF7167D000B76A5 /* Styler.swift */,
-				F166707D2AF71B92000B76A5 /* WindowAccessor.swift */,
+				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -295,9 +298,10 @@
 			files = (
 				F16670492AF711EC000B76A5 /* Note.swift in Sources */,
 				F16670792AF7167D000B76A5 /* Styler.swift in Sources */,
-				F166707E2AF71B92000B76A5 /* WindowAccessor.swift in Sources */,
-				F16670762AF7133F000B76A5 /* Topic.swift in Sources */,
-				F166704B2AF711EC000B76A5 /* Task.swift in Sources */,
+				F16670762AF7133F000B76A5 /* TodoList.swift in Sources */,
+				F166704B2AF711EC000B76A5 /* Todo.swift in Sources */,
+				F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */,
+				F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */,
 				F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */,
 				F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */,
 				F166707A2AF7167D000B76A5 /* Constants.swift in Sources */,

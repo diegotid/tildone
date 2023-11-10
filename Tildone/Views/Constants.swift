@@ -7,13 +7,7 @@
 
 import Foundation
 
-enum Literals {
-    
-    static let mainWindowName: String = "MainNote"
-}
-
 enum Copies {
-    
     static let newTaskPlaceholder: String = "New task"
-    static let newTopicPlaceholder: String = "New topic"
+    static let newListTitlePlaceholder: String = "New topic"
 }
