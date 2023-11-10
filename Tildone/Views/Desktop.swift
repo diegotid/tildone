@@ -11,9 +11,13 @@ import SwiftData
 struct Desktop: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var lists: [TodoList]
+    @State private var window: NSWindow?
     
     var body: some View {
         note(for: lists.first)
+            .background(WindowAccessor(window: $window)).onChange(of: window) {
+                window?.level = .floating
+            }
             .onAppear {
                 if lists.isEmpty {
                     createFirst()

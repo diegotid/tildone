@@ -21,6 +21,7 @@
 		F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166707B2AF716F8000B76A5 /* Checkbox.swift */; };
 		F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8D92AF850CC002ED6BF /* Mocks.swift */; };
 		F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8DB2AF854D7002ED6BF /* Desktop.swift */; };
+		F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 		F166707B2AF716F8000B76A5 /* Checkbox.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Checkbox.swift; sourceTree = "<group>"; };
 		F180D8D92AF850CC002ED6BF /* Mocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mocks.swift; sourceTree = "<group>"; };
 		F180D8DB2AF854D7002ED6BF /* Desktop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Desktop.swift; sourceTree = "<group>"; };
+		F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -157,13 +159,22 @@
 		F16670742AF71273000B76A5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F1EA81F92AFEA81700E58A73 /* Components */,
 				F16670482AF711EC000B76A5 /* Note.swift */,
-				F166707B2AF716F8000B76A5 /* Checkbox.swift */,
-				F16670782AF7167D000B76A5 /* Constants.swift */,
-				F16670772AF7167D000B76A5 /* Styler.swift */,
 				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		F1EA81F92AFEA81700E58A73 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				F16670782AF7167D000B76A5 /* Constants.swift */,
+				F166707B2AF716F8000B76A5 /* Checkbox.swift */,
+				F16670772AF7167D000B76A5 /* Styler.swift */,
+				F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -298,6 +309,7 @@
 			files = (
 				F16670492AF711EC000B76A5 /* Note.swift in Sources */,
 				F16670792AF7167D000B76A5 /* Styler.swift in Sources */,
+				F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */,
 				F16670762AF7133F000B76A5 /* TodoList.swift in Sources */,
 				F166704B2AF711EC000B76A5 /* Todo.swift in Sources */,
 				F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */,
