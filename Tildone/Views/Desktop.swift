@@ -14,7 +14,7 @@ struct Desktop: View {
     @State private var window: NSWindow?
     
     var body: some View {
-        note(for: lists.first)
+        noteWindow(for: lists.first)
             .background(WindowAccessor(window: $window)).onChange(of: window) {
                 window?.level = .floating
             }
@@ -31,7 +31,8 @@ struct Desktop: View {
 
 private extension Desktop {
     
-    @ViewBuilder func note(for list: TodoList?) -> some View {
+    @ViewBuilder
+    func noteWindow(for list: TodoList?) -> some View {
         if (list == nil) {
             EmptyView()
         } else {
@@ -72,7 +73,7 @@ private extension Desktop {
         window.isReleasedWhenClosed = false
         window.makeKeyAndOrderFront(nil)
         window.backgroundColor = .noteBackground
-        window.contentView = NSHostingView(rootView: note(for: list))
+        window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
    }
 }

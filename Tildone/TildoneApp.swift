@@ -39,7 +39,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         mainWindow.delegate = self
     }
         
-    @objc func windowShouldClose(_ sender: NSWindow) -> Bool {
+    @objc
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
         NSApp.hide(nil)
         
         return false
