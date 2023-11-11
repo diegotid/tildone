@@ -11,7 +11,7 @@ import SwiftData
 @Model
 final class TodoList {
     var created: Date
-    var title: String?
+    var topic: String?
     
     @Relationship(inverse:\Todo.list)
     var items: [Todo]

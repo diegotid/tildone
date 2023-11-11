@@ -9,5 +9,5 @@ import Foundation
 
 enum Copies {
     static let newTaskPlaceholder: String = "New task"
-    static let newListTitlePlaceholder: String = "New topic"
+    static let listTopicPlaceholder: String = "Topic"
 }

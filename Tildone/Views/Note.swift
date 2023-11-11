@@ -12,21 +12,26 @@ struct Note: View {
     @Environment(\.modelContext) private var modelContext
     @State private var list: TodoList
     @State private var editedTask: String = ""
-    @State private var editedListTitle: String = ""
+    @State private var editedListTopic: String = ""
+    @FocusState private var isNewTaskFocused: Bool
     
     init(_ list: TodoList) {
         self.list = list
+        self.editedListTopic = list.topic ?? ""
     }
 
     var body: some View {
         ScrollView(.vertical) {
             VStack(spacing: 6) {
-                listTitle()
+                listTopic()
                 ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
                     listItem(task: item)
                 }
                 newListItem()
                 Spacer()
+            }
+            .onAppear {
+                self.isNewTaskFocused = self.list.topic != nil
             }
         }
         .padding(.top, 0)
@@ -67,14 +72,31 @@ extension Note {
         }
     }
     
+    func handleTopicEdit(to topic: String) {
+        self.list.topic = topic
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Error on topic edit: \(error)")
+        }
+    }
+    
     @ViewBuilder
-    func listTitle() -> some View {
-        TextField(Copies.newListTitlePlaceholder, text: $editedListTitle)
-            .textFieldStyle(PlainTextFieldStyle())
-            .font(.system(size: 16, weight: .bold, design: .rounded))
-            .foregroundColor(Color(.primaryFontColor))
-            .background(Color.clear)
-            .padding(.top, 5)
+    func listTopic() -> some View {
+        TextField(Copies.listTopicPlaceholder,
+                  text: Binding<String>(
+                    get: { list.topic ?? "" },
+                    set: { handleTopicEdit(to: $0) }
+                  ))
+        .textFieldStyle(PlainTextFieldStyle())
+        .font(.system(size: 20, weight: .bold, design: .rounded))
+        .foregroundColor(Color(.primaryFontColor))
+        .background(Color.clear)
+        .padding(.top, 5)
+        .focused($isNewTaskFocused, equals: false)
+        .onSubmit {
+            self.isNewTaskFocused = true
+        }
     }
     
     @ViewBuilder
@@ -102,6 +124,7 @@ extension Note {
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
+                .focused($isNewTaskFocused)
             Spacer()
         }.padding(.leading, 2)
     }
