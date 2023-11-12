@@ -36,15 +36,29 @@ private extension Desktop {
         if (list == nil) {
             EmptyView()
         } else {
-            Note(list!)
-                .background(Color(nsColor: .noteBackground))
-                .frame(minWidth: Layout.minNoteWidth,
-                       idealWidth: Layout.defaultNoteWidth,
-                       maxWidth: .infinity,
-                       minHeight: Layout.minNoteHeight,
-                       idealHeight: Layout.defaultNoteHeight,
-                       maxHeight: .infinity,
-                       alignment: .center)
+            ZStack {
+                Note(list!)
+                    .background(Color(nsColor: .noteBackground))
+                    .frame(minWidth: Layout.minNoteWidth,
+                        idealWidth: Layout.defaultNoteWidth,
+                        maxWidth: .infinity,
+                        minHeight: Layout.minNoteHeight,
+                        idealHeight: Layout.defaultNoteHeight,
+                        maxHeight: .infinity,
+                        alignment: .center)
+                VStack {
+                    Rectangle()
+                        .fill(Color(nsColor: .noteBackground))
+                        .frame(width: Layout.defaultNoteWidth, height: 30)
+                        .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
+                    Spacer()
+                    Rectangle()
+                        .fill(Color(nsColor: .noteBackground))
+                        .frame(width: Layout.defaultNoteWidth, height: 20)
+                        .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: -1)
+                }
+                .padding(.top, -30)
+            }
         }
     }
     

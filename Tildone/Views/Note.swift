@@ -21,7 +21,7 @@ struct Note: View {
     }
 
     var body: some View {
-        ScrollView(.vertical) {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 6) {
                 listTopic()
                 ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
