@@ -13,6 +13,7 @@ struct Note: View {
     @State private var list: TodoList
     @State private var editedTask: String = ""
     @State private var editedListTopic: String = ""
+    @State private var isTopScrolledOut: Bool = false
     @FocusState private var isNewTaskFocused: Bool
     
     init(_ list: TodoList) {
@@ -21,31 +22,50 @@ struct Note: View {
     }
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 6) {
-                listTopic()
-                ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
-                    listItem(task: item)
+        ZStack {
+            ScrollViewReader { scroll in
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 6) {
+                        listTopic()
+                        ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
+                            listItem(task: item)
+                        }
+                        newListItem()
+                        Spacer()
+                            .id("bottom")
+                    }
+                    .onAppear {
+                        self.isNewTaskFocused = self.list.topic != nil
+                    }
                 }
-                newListItem()
-                Spacer()
+                .padding(.top, 0)
+                .padding(.trailing, 5)
+                .padding(.leading, 20)
+                .colorScheme(.light)
+                .frame(minWidth: Layout.minNoteWidth,
+                       idealWidth: Layout.defaultNoteWidth,
+                       maxWidth: .infinity,
+                       minHeight: Layout.minNoteHeight,
+                       idealHeight: Layout.defaultNoteHeight,
+                       maxHeight: .infinity,
+                       alignment: .center)
+                .onChange(of: list.items.count) {
+                    withAnimation {
+                        scroll.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
             }
-            .onAppear {
-                self.isNewTaskFocused = self.list.topic != nil
+            if isTopScrolledOut {
+                VStack {
+                    Rectangle()
+                        .fill(Color(nsColor: .noteBackground))
+                        .frame(width: Layout.defaultNoteWidth, height: 30)
+                        .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
+                    Spacer()
+                }
+                .padding(.top, -30)
             }
         }
-        .padding(.top, 0)
-        .padding(.trailing, 5)
-        .padding(.leading, 20)
-        .padding(.bottom, 20)
-        .colorScheme(.light)
-        .frame(minWidth: Layout.minNoteWidth,
-               idealWidth: Layout.defaultNoteWidth,
-               maxWidth: .infinity,
-               minHeight: Layout.minNoteHeight,
-               idealHeight: Layout.defaultNoteHeight,
-               maxHeight: .infinity,
-               alignment: .center)
     }
 }
 
@@ -83,20 +103,27 @@ extension Note {
     
     @ViewBuilder
     func listTopic() -> some View {
-        TextField(Copies.listTopicPlaceholder,
-                  text: Binding<String>(
-                    get: { list.topic ?? "" },
-                    set: { handleTopicEdit(to: $0) }
-                  ))
-        .textFieldStyle(PlainTextFieldStyle())
-        .font(.system(size: 20, weight: .bold, design: .rounded))
-        .foregroundColor(Color(.primaryFontColor))
-        .background(Color.clear)
-        .padding(.top, 5)
-        .focused($isNewTaskFocused, equals: false)
-        .onSubmit {
-            self.isNewTaskFocused = true
+        GeometryReader { geometry in
+            TextField(Copies.listTopicPlaceholder,
+                      text: Binding<String>(
+                        get: { list.topic ?? "" },
+                        set: { handleTopicEdit(to: $0) }
+                      ))
+            .textFieldStyle(PlainTextFieldStyle())
+            .font(.system(size: 20, weight: .bold, design: .rounded))
+            .foregroundColor(Color(.primaryFontColor))
+            .background(Color.clear)
+            .padding(.top, 5)
+            .focused($isNewTaskFocused, equals: false)
+            .onSubmit {
+                self.isNewTaskFocused = true
+            }
+            .onChange(of: geometry.frame(in: .global)) {
+                let frame = geometry.frame(in: .global)
+                self.isTopScrolledOut = frame.minY < 15
+            }
         }
+        .padding(.bottom, 20)
     }
     
     @ViewBuilder
@@ -112,7 +139,8 @@ extension Note {
             .foregroundColor(Color(.primaryFontColor))
             .background(Color.clear)
             Spacer()
-        }.padding(.leading, 2)
+        }
+        .padding(.leading, 2)
     }
     
     @ViewBuilder
@@ -126,7 +154,9 @@ extension Note {
                 .background(Color.clear)
                 .focused($isNewTaskFocused)
             Spacer()
-        }.padding(.leading, 2)
+        }
+        .padding(.leading, 2)
+        .padding(.bottom, 10)
     }
 }
 

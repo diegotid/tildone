@@ -159,14 +159,14 @@
 		F16670742AF71273000B76A5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				F1EA81F92AFEA81700E58A73 /* Components */,
+				F1EA81F92AFEA81700E58A73 /* Common */,
 				F16670482AF711EC000B76A5 /* Note.swift */,
 				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
 		};
-		F1EA81F92AFEA81700E58A73 /* Components */ = {
+		F1EA81F92AFEA81700E58A73 /* Common */ = {
 			isa = PBXGroup;
 			children = (
 				F16670782AF7167D000B76A5 /* Constants.swift */,
@@ -174,7 +174,7 @@
 				F16670772AF7167D000B76A5 /* Styler.swift */,
 				F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */,
 			);
-			path = Components;
+			path = Common;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
