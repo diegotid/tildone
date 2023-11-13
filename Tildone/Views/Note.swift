@@ -56,14 +56,16 @@ struct Note: View {
                 }
             }
             if isTopScrolledOut {
-                VStack {
-                    Rectangle()
-                        .fill(Color(nsColor: .noteBackground))
-                        .frame(width: Layout.defaultNoteWidth, height: 30)
-                        .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
-                    Spacer()
+                withAnimation {
+                    VStack {
+                        Rectangle()
+                            .fill(Color(nsColor: .noteBackground))
+                            .frame(width: .infinity, height: 30)
+                            .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
+                        Spacer()
+                    }
+                    .padding(.top, -30)
                 }
-                .padding(.top, -30)
             }
         }
     }
