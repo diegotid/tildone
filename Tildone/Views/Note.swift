@@ -16,9 +16,12 @@ struct Note: View {
     @State private var isTopScrolledOut: Bool = false
     @FocusState private var isNewTaskFocused: Bool
     
-    init(_ list: TodoList) {
+    var onAddNewNote: () -> Void
+    
+    init(_ list: TodoList, onAdd: @escaping () -> Void) {
         self.list = list
         self.editedListTopic = list.topic ?? ""
+        self.onAddNewNote = onAdd
     }
 
     var body: some View {
@@ -67,6 +70,19 @@ struct Note: View {
                     .padding(.top, -30)
                 }
             }
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: onAddNewNote) {
+                        Image(systemName: "plus")
+                            .foregroundColor(Color(.primaryFontColor))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, 6)
+                }
+                Spacer()
+            }
+            .padding(.top, -20)
         }
     }
 }
@@ -163,5 +179,6 @@ extension Note {
 }
 
 #Preview {
-    Note(.preview).modelContainer(for: Todo.self, inMemory: true)
+    Note(.preview, onAdd: {})
+        .modelContainer(for: [Todo.self, TodoList.self], inMemory: true)
 }

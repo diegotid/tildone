@@ -20,7 +20,7 @@ struct Desktop: View {
             }
             .onAppear {
                 if lists.isEmpty {
-                    createFirst()
+                    createNewNote()
                 }
                 for list in lists.dropFirst() {
                     openWindow(for: list)
@@ -36,7 +36,7 @@ private extension Desktop {
         if (list == nil) {
             EmptyView()
         } else {
-            Note(list!)
+            Note(list!, onAdd: createAndShowNewNote)
                 .background(Color(nsColor: .noteBackground))
                 .frame(minWidth: Layout.minNoteWidth,
                     idealWidth: Layout.defaultNoteWidth,
@@ -48,7 +48,7 @@ private extension Desktop {
         }
     }
     
-    func createFirst() {
+    func createNewNote() {
         let newList = TodoList()
         modelContext.insert(newList)
         do {
@@ -56,6 +56,11 @@ private extension Desktop {
         } catch {
             fatalError("Could not create a first list: \(error)")
         }
+    }
+    
+    func createAndShowNewNote() {
+        createNewNote()
+        openWindow(for: lists.last!)
     }
     
     func openWindow(for list: TodoList) {
