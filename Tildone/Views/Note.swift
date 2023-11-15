@@ -160,14 +160,20 @@ extension Note {
                 .onToggle {
                     handleTaskToggle(task)
                 }
-            TextField(Copies.newTaskPlaceholder,
-                      text: Binding<String>(
-                        get: { task.what },
-                        set: { handleTaskEdit(task, to: $0) }
-                      ))
-            .textFieldStyle(PlainTextFieldStyle())
-            .foregroundColor(Color(.primaryFontColor))
-            .background(Color.clear)
+            if task.done {
+                Text(task.what)
+                    .foregroundColor(Color(.checkboxOnFill))
+                    .strikethrough(color: Color(.checkboxOnFill))
+            } else {
+                TextField(Copies.newTaskPlaceholder,
+                          text: Binding<String>(
+                            get: { task.what },
+                            set: { handleTaskEdit(task, to: $0) }
+                          ))
+                .textFieldStyle(PlainTextFieldStyle())
+                .foregroundColor(Color(.primaryFontColor))
+                .background(Color.clear)
+            }
             Spacer()
         }
         .padding(.leading, 2)
