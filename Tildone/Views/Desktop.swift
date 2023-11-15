@@ -37,6 +37,7 @@ private extension Desktop {
             EmptyView()
         } else {
             Note(list!, onAdd: createAndShowNewNote)
+                .environment(\.modelContext, modelContext)
                 .background(Color(nsColor: .noteBackground))
                 .frame(minWidth: Layout.minNoteWidth,
                     idealWidth: Layout.defaultNoteWidth,
