@@ -12,7 +12,7 @@ extension NSColor {
     static let primaryFontColor = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
     static let checkboxBorder = #colorLiteral(red: 0.5011845827, green: 0.4942548871, blue: 0.4001311958, alpha: 0.5)
     static let checkboxOffFill = #colorLiteral(red: 0.9999960065, green: 1, blue: 1, alpha: 0.5)
-    static let checkboxOnFill = #colorLiteral(red: 0.161424309, green: 0.7836945653, blue: 0.2513989508, alpha: 1)
+    static let checkboxOnFill = #colorLiteral(red: 0.1468426287, green: 0.5495434999, blue: 0.08588988334, alpha: 1)
 }
 
 enum Layout {
@@ -21,5 +21,5 @@ enum Layout {
     static let minNoteWidth: CGFloat = 180
     static let minNoteHeight: CGFloat = 180
     static let checkboxSize: CGFloat = 14
-    static let checkboxCheckSize: CGFloat = 9
+    static let checkboxCheckSize: CGFloat = 8
 }
