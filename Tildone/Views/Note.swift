@@ -110,6 +110,15 @@ extension Note {
         }
     }
     
+    func handleTaskToggle(_ task: Todo) {
+        task.done.toggle()
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Error on task edit: \(error)")
+        }
+    }
+    
     func handleTopicEdit(to topic: String) {
         self.list.topic = topic
         do {
@@ -147,7 +156,10 @@ extension Note {
     @ViewBuilder
     func listItem(task: Todo) -> some View {
         HStack(spacing: 8) {
-            Checkbox()
+            Checkbox(checked: task.done)
+                .onToggle {
+                    handleTaskToggle(task)
+                }
             TextField(Copies.newTaskPlaceholder,
                       text: Binding<String>(
                         get: { task.what },
@@ -164,7 +176,8 @@ extension Note {
     @ViewBuilder
     func newListItem() -> some View {
         HStack(spacing: 8) {
-            Checkbox(disabled: true)
+            Checkbox()
+                .disabled(true)
             TextField(Copies.newTaskPlaceholder, text: $editedTask)
                 .onSubmit(handleTaskCommit)
                 .textFieldStyle(PlainTextFieldStyle())
