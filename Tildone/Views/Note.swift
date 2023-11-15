@@ -164,7 +164,7 @@ extension Note {
     @ViewBuilder
     func newListItem() -> some View {
         HStack(spacing: 8) {
-            Checkbox()
+            Checkbox(disabled: true)
             TextField(Copies.newTaskPlaceholder, text: $editedTask)
                 .onSubmit(handleTaskCommit)
                 .textFieldStyle(PlainTextFieldStyle())
