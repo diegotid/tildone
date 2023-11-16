@@ -33,10 +33,10 @@ private extension Desktop {
     
     @ViewBuilder
     func noteWindow(for list: TodoList?) -> some View {
-        if (list == nil) {
-            EmptyView()
-        } else {
-            Note(list!, onAdd: createAndShowNewNote)
+        if let existingList = list {
+            Note()
+                .todoList(existingList)
+                .onAddNewNote(createAndShowNewNote)
                 .environment(\.modelContext, modelContext)
                 .background(Color(nsColor: .noteBackground))
                 .frame(minWidth: Layout.minNoteWidth,
