@@ -29,7 +29,7 @@ struct TildoneApp: App {
         .modelContainer(sharedModelContainer)
         .commandsRemoved()
         .commands {
-            CommandMenu("List note") {
+            CommandMenu("Note") {
                 Button("New") {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
