@@ -10,7 +10,6 @@ import SwiftData
 
 struct Note: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.controlActiveState) private var controlActiveState
 
     var list: TodoList?
     var onAddNewNote: (() -> Void)?
@@ -184,7 +183,7 @@ extension Note {
                     .lineLimit(1)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(Color(.primaryFontColor))
-                    .padding(.leading, controlActiveState == .inactive ? 12 : 70)
+                    .padding(.leading, 12)
                     .padding(.trailing, 20)
                 Spacer()
             }

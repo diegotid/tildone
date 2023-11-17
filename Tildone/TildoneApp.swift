@@ -11,7 +11,6 @@ import SwiftData
 
 @main
 struct TildoneApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Todo.self, TodoList.self])
@@ -27,22 +26,19 @@ struct TildoneApp: App {
         WindowGroup {
             Desktop()
         }
-        .windowStyle(HiddenTitleBarWindowStyle())
-        .windowResizability(.contentSize)
         .modelContainer(sharedModelContainer)
+        .commandsRemoved()
+        .commands {
+            CommandMenu("List note") {
+                Button("New") {
+                    NotificationCenter.default.post(name: .new, object: nil)
+                }
+                .keyboardShortcut(KeyEquivalent("n"), modifiers: .command)
+            }
+        }
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        let mainWindow = NSApp.windows[0]
-        mainWindow.delegate = self
-    }
-        
-    @objc
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        NSApp.hide(nil)
-        
-        return false
-    }
+extension Notification.Name {
+    static let new = Notification.Name("new")
 }

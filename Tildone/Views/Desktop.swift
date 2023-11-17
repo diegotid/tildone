@@ -14,17 +14,20 @@ struct Desktop: View {
     @State private var window: NSWindow?
     
     var body: some View {
-        noteWindow(for: lists.first)
+        EmptyView()
             .background(WindowAccessor(window: $window)).onChange(of: window) {
-                window?.level = .floating
+                window?.close()
             }
             .onAppear {
                 if lists.isEmpty {
                     createNewNote()
                 }
-                for list in lists.dropFirst() {
+                for list in lists {
                     openWindow(for: list)
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
+                createAndShowNewNote()
             }
     }
 }
@@ -40,12 +43,12 @@ private extension Desktop {
                 .environment(\.modelContext, modelContext)
                 .background(Color(nsColor: .noteBackground))
                 .frame(minWidth: Layout.minNoteWidth,
-                    idealWidth: Layout.defaultNoteWidth,
-                    maxWidth: .infinity,
-                    minHeight: Layout.minNoteHeight,
-                    idealHeight: Layout.defaultNoteHeight,
-                    maxHeight: .infinity,
-                    alignment: .center)
+                       idealWidth: Layout.defaultNoteWidth,
+                       maxWidth: .infinity,
+                       minHeight: Layout.minNoteHeight,
+                       idealHeight: Layout.defaultNoteHeight,
+                       maxHeight: .infinity,
+                       alignment: .center)
         }
     }
     
@@ -70,16 +73,19 @@ private extension Desktop {
                                   width: Layout.defaultNoteWidth,
                                   height: Layout.defaultNoteHeight)
         let window = NSWindow(contentRect: windowLayout,
-                          styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
-                          backing: .buffered,
-                          defer: false)
+                              styleMask: [.titled, .closable, .resizable, .borderless],
+                              backing: .buffered,
+                              defer: false)
         window.level = .floating
         window.makeKeyAndOrderFront(nil)
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.makeKeyAndOrderFront(nil)
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.backgroundColor = .noteBackground
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
-   }
+    }
 }
