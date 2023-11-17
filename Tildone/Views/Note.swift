@@ -55,19 +55,17 @@ struct Note: View {
                     }
                 }
                 if isTopScrolledOut {
-                    withAnimation {
-                        VStack {
-                            ZStack {
-                                Rectangle()
-                                    .fill(Color(nsColor: .noteBackground))
-                                    .frame(width: .infinity, height: 30)
-                                    .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
-                                headerListTopic()
-                            }
-                            Spacer()
+                    VStack {
+                        ZStack {
+                            Rectangle()
+                                .fill(Color(nsColor: .noteBackground))
+                                .frame(width: .infinity, height: 30)
+                                .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+                            headerListTopic()
                         }
-                        .padding(.top, -30)
+                        Spacer()
                     }
+                    .padding(.top, -30)
                 }
                 if let onAdd = onAddNewNote {
                     VStack {
@@ -168,7 +166,9 @@ extension Note {
                 }
                 .onChange(of: geometry.frame(in: .global)) {
                     let frame = geometry.frame(in: .global)
-                    self.isTopScrolledOut = frame.minY < 15
+                    withAnimation(.easeInOut) {
+                        self.isTopScrolledOut = frame.minY < 15
+                    }
                 }
             }
             .padding(.bottom, 20)
@@ -183,8 +183,7 @@ extension Note {
                     .lineLimit(1)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(Color(.primaryFontColor))
-                    .padding(.leading, 12)
-                    .padding(.trailing, 20)
+                    .padding(.horizontal, 21)
                 Spacer()
             }
         }
