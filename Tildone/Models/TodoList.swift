@@ -15,6 +15,10 @@ final class TodoList {
     
     @Relationship(inverse:\Todo.list)
     var items: [Todo]
+    
+    var isEmpty: Bool {
+        items.count == 0
+    }
 
     public init() {
         self.created = Date()

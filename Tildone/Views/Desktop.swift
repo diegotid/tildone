@@ -23,7 +23,11 @@ struct Desktop: View {
                     createNewNote()
                 }
                 for list in lists {
-                    openWindow(for: list)
+                    if list.isEmpty {
+                        delete(list)
+                    } else {
+                        openWindow(for: list)
+                    }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
@@ -62,6 +66,15 @@ private extension Desktop {
         }
     }
     
+    func delete(_ list: TodoList) {
+        modelContext.delete(list)
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Could not delete list: \(error)")
+        }
+    }
+    
     func createAndShowNewNote() {
         createNewNote()
         openWindow(for: lists.last!)
@@ -81,7 +94,7 @@ private extension Desktop {
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.makeKeyAndOrderFront(nil)
-        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.closeButton)?.isHidden = !list.isEmpty
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.backgroundColor = .noteBackground
