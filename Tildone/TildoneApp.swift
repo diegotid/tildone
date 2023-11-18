@@ -27,6 +27,8 @@ struct TildoneApp: App {
             Desktop()
         }
         .modelContainer(sharedModelContainer)
+        .windowStyle(HiddenTitleBarWindowStyle())
+        .windowResizability(.contentSize)
         .commandsRemoved()
         .commands {
             CommandMenu("Note") {

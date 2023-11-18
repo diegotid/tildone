@@ -23,3 +23,16 @@ enum Layout {
     static let checkboxSize: CGFloat = 14
     static let checkboxCheckSize: CGFloat = 8
 }
+
+extension NSWindow {
+    func setNoteStyle() {
+        self.level = .floating
+        self.makeKeyAndOrderFront(nil)
+        self.titlebarAppearsTransparent = true
+        self.isReleasedWhenClosed = false
+        self.makeKeyAndOrderFront(nil)
+        self.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        self.standardWindowButton(.zoomButton)?.isHidden = true
+        self.backgroundColor = .noteBackground
+    }
+}

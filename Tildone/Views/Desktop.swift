@@ -14,15 +14,16 @@ struct Desktop: View {
     @State private var window: NSWindow?
     
     var body: some View {
-        EmptyView()
+        noteWindow(for: lists.first)
             .background(WindowAccessor(window: $window)).onChange(of: window) {
-                window?.close()
+                window?.setNoteStyle()
+                window?.standardWindowButton(.closeButton)?.isHidden = true
             }
             .onAppear {
                 if lists.isEmpty {
                     createNewNote()
                 }
-                for list in lists {
+                for list in lists.dropFirst() {
                     if list.isEmpty {
                         delete(list)
                     } else {
@@ -45,7 +46,6 @@ private extension Desktop {
                 .todoList(existingList)
                 .onAddNewNote(createAndShowNewNote)
                 .environment(\.modelContext, modelContext)
-                .background(Color(nsColor: .noteBackground))
                 .frame(minWidth: Layout.minNoteWidth,
                        idealWidth: Layout.defaultNoteWidth,
                        maxWidth: .infinity,
@@ -89,15 +89,8 @@ private extension Desktop {
                               styleMask: [.titled, .closable, .resizable, .borderless],
                               backing: .buffered,
                               defer: false)
-        window.level = .floating
-        window.makeKeyAndOrderFront(nil)
-        window.titlebarAppearsTransparent = true
-        window.isReleasedWhenClosed = false
-        window.makeKeyAndOrderFront(nil)
+        window.setNoteStyle()
         window.standardWindowButton(.closeButton)?.isHidden = !list.isEmpty
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        window.standardWindowButton(.zoomButton)?.isHidden = true
-        window.backgroundColor = .noteBackground
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
     }
