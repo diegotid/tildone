@@ -183,7 +183,9 @@ extension Note {
                     .lineLimit(1)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(Color(.primaryFontColor))
-                    .padding(.horizontal, 21)
+                    .padding(.top, 2)
+                    .padding(.leading, 21)
+                    .padding(.trailing, 18)
                 Spacer()
             }
         }
