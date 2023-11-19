@@ -28,6 +28,7 @@ struct Note: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 6) {
                             listTopic()
+                                .opacity(isTopScrolledOut ? 0 : 1)
                             ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
                                 listItem(task: item)
                             }
