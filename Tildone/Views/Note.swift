@@ -8,6 +8,8 @@
 import SwiftUI
 import SwiftData
 
+// MARK: Note view
+
 struct Note: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -37,17 +39,7 @@ struct Note: View {
                             self.isNewTaskFocused = self.list!.topic != nil
                         }
                     }
-                    .padding(.top, 0)
-                    .padding(.trailing, 5)
-                    .padding(.leading, 20)
-                    .colorScheme(.light)
-                    .frame(minWidth: Layout.minNoteWidth,
-                           idealWidth: Layout.defaultNoteWidth,
-                           maxWidth: .infinity,
-                           minHeight: Layout.minNoteHeight,
-                           idealHeight: Layout.defaultNoteHeight,
-                           maxHeight: .infinity,
-                           alignment: .center)
+                    .modifier(ScrollFrame())
                     .onChange(of: list.items.count) {
                         withAnimation {
                             scroll.scrollTo("bottom", anchor: .bottom)
@@ -57,10 +49,7 @@ struct Note: View {
                 if isTopScrolledOut {
                     VStack {
                         ZStack {
-                            Rectangle()
-                                .fill(Color(nsColor: .noteBackground))
-                                .frame(width: .infinity, height: 30)
-                                .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+                            noteHeader()
                             headerListTopic()
                         }
                         Spacer()
@@ -87,6 +76,8 @@ struct Note: View {
     }
 }
 
+// MARK: Note parameters
+
 extension Note {
     
     func todoList(_ list: TodoList) -> Self {
@@ -100,6 +91,11 @@ extension Note {
         modified.onAddNewNote = action
         return modified
     }
+}
+
+// MARK: Note event handlers
+
+private extension Note {
     
     func handleTaskCommit() {
         guard let list = self.list else {
@@ -145,6 +141,11 @@ extension Note {
             fatalError("Error on topic edit: \(error)")
         }
     }
+}
+
+// MARK: Note components
+
+private extension Note {
     
     @ViewBuilder
     func listTopic() -> some View {
@@ -233,7 +234,36 @@ extension Note {
         .padding(.leading, 2)
         .padding(.bottom, 10)
     }
+    
+    @ViewBuilder
+    func noteHeader() -> some View {
+        Rectangle()
+            .fill(Color(nsColor: .noteBackground))
+            .frame(width: .infinity, height: 30)
+            .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+    }
 }
+
+// MARK: View modifiers
+
+struct ScrollFrame: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.top, 0)
+            .padding(.trailing, 5)
+            .padding(.leading, 20)
+            .colorScheme(.light)
+            .frame(minWidth: Layout.minNoteWidth,
+                   idealWidth: Layout.defaultNoteWidth,
+                   maxWidth: .infinity,
+                   minHeight: Layout.minNoteHeight,
+                   idealHeight: Layout.defaultNoteHeight,
+                   maxHeight: .infinity,
+                   alignment: .center)
+    }
+}
+
+// MARK: Note preview
 
 #Preview {
     Note()
