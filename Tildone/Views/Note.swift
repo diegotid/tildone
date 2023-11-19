@@ -14,7 +14,7 @@ struct Note: View {
     @Environment(\.modelContext) private var modelContext
 
     var list: TodoList?
-    var onAddNewNote: (() -> Void)?
+    var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
     @State private var editedTask: String = ""
     @State private var editedListTopic: String = ""
@@ -61,7 +61,9 @@ struct Note: View {
                     VStack {
                         HStack {
                             Spacer()
-                            Button(action: onAdd) {
+                            Button {
+                                onAdd(NSEvent.mouseLocation)
+                            } label: {
                                 Image(systemName: "plus")
                                     .foregroundColor(Color(.primaryFontColor))
                             }
@@ -87,7 +89,7 @@ extension Note {
         return modified
     }
     
-    func onAddNewNote(_ action: @escaping () -> Void) -> Self {
+    func onAddNewNote(_ action: @escaping (_ position: CGPoint) -> Void) -> Self {
         var modified: Note = self
         modified.onAddNewNote = action
         return modified

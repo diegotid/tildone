@@ -8,16 +8,19 @@
 import SwiftUI
 import SwiftData
 
+// MARK: Desktop view
+
 struct Desktop: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var lists: [TodoList]
-    @State private var window: NSWindow?
+    @State private var mainWindow: NSWindow?
+    @State private var lastWindow: NSWindow?
     
     var body: some View {
         noteWindow(for: lists.first)
-            .background(WindowAccessor(window: $window)).onChange(of: window) {
-                window?.setNoteStyle()
-                window?.standardWindowButton(.closeButton)?.isHidden = true
+            .background(WindowAccessor(window: $mainWindow)).onChange(of: mainWindow) {
+                mainWindow?.setNoteStyle()
+                mainWindow?.standardWindowButton(.closeButton)?.isHidden = true
             }
             .onAppear {
                 if lists.isEmpty {
@@ -32,10 +35,41 @@ struct Desktop: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
-                createAndShowNewNote()
+                createAndShowNewNote(at: lastWindowUpperRightCorner())
             }
     }
 }
+
+// MARK: Desktop event handlers
+
+private extension Desktop {
+   
+   func createNewNote() {
+       let newList = TodoList()
+       modelContext.insert(newList)
+       do {
+           try modelContext.save()
+       } catch {
+           fatalError("Could not create a first list: \(error)")
+       }
+   }
+   
+   func delete(_ list: TodoList) {
+       modelContext.delete(list)
+       do {
+           try modelContext.save()
+       } catch {
+           fatalError("Could not delete list: \(error)")
+       }
+   }
+   
+   func createAndShowNewNote(at position: CGPoint) {
+       createNewNote()
+       openWindow(for: lists.last!, position: position)
+   }
+}
+
+// MARK: Desktop components
 
 private extension Desktop {
     
@@ -55,32 +89,13 @@ private extension Desktop {
                        alignment: .center)
         }
     }
+}
+ 
+// MARK: Window functions
+
+private extension Desktop {
     
-    func createNewNote() {
-        let newList = TodoList()
-        modelContext.insert(newList)
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Could not create a first list: \(error)")
-        }
-    }
-    
-    func delete(_ list: TodoList) {
-        modelContext.delete(list)
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Could not delete list: \(error)")
-        }
-    }
-    
-    func createAndShowNewNote() {
-        createNewNote()
-        openWindow(for: lists.last!)
-    }
-    
-    func openWindow(for list: TodoList) {
+    func openWindow(for list: TodoList, position: CGPoint? = nil) {
         let windowLayout = NSRect(x: 0,
                                   y: 0,
                                   width: Layout.defaultNoteWidth,
@@ -93,5 +108,17 @@ private extension Desktop {
         window.standardWindowButton(.closeButton)?.isHidden = !list.isEmpty
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
+        if let origin = position {
+            window.setFrameOrigin(
+                NSPoint(x: origin.x - Layout.defaultNoteWidth / 2,
+                        y: origin.y - Layout.defaultNoteHeight / 2)
+            )
+        }
+        self.lastWindow = window
+    }
+    
+    func lastWindowUpperRightCorner() -> CGPoint {
+        let window: NSWindow = lastWindow ?? mainWindow!
+        return CGPoint(x: window.frame.maxX, y: window.frame.maxY)
     }
 }
