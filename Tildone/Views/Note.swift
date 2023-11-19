@@ -16,6 +16,7 @@ struct Note: View {
     var list: TodoList?
     var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
+    @State private var noteWindow: NSWindow?
     @State private var editedTask: String = ""
     @State private var editedListTopic: String = ""
     @State private var isTopScrolledOut: Bool = false
@@ -75,6 +76,11 @@ struct Note: View {
                     .padding(.top, -20)
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+                if let window = notification.object as? NSWindow {
+                    self.noteWindow = window
+                }
+            }
         }
     }
 }
@@ -108,6 +114,7 @@ private extension Note {
         newTask.list = self.list
         modelContext.insert(newTask)
         self.editedTask = ""
+        updateWindowClosability()
         do {
             try modelContext.save()
         } catch {
@@ -126,6 +133,7 @@ private extension Note {
     
     func handleTaskToggle(_ task: Todo) {
         task.done.toggle()
+        updateWindowClosability()
         do {
             try modelContext.save()
         } catch {
@@ -143,6 +151,16 @@ private extension Note {
         } catch {
             fatalError("Error on topic edit: \(error)")
         }
+    }
+    
+    func updateWindowClosability() {
+        guard let window = self.noteWindow,
+              let closeButton = window.standardWindowButton(.closeButton),
+              let list = self.list
+        else {
+            return
+        }
+        closeButton.isHidden = !list.isComplete
     }
 }
 
