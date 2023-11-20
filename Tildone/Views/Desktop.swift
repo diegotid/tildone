@@ -28,12 +28,11 @@ struct Desktop: View {
                     createNewNote()
                 }
                 for list in lists.dropFirst() {
-                    if list.isComplete {
-                        delete(list)
-                    } else {
-                        openWindow(for: list)
-                    }
+                    openWindow(for: list)
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                deleteCompleteNotes()
             }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
                 createAndShowNewNote(at: lastWindowUpperRightCorner())
@@ -45,29 +44,35 @@ struct Desktop: View {
 
 private extension Desktop {
    
-   func createNewNote() {
-       let newList = TodoList()
-       modelContext.insert(newList)
-       do {
-           try modelContext.save()
-       } catch {
-           fatalError("Could not create a first list: \(error)")
-       }
-   }
-   
-   func delete(_ list: TodoList) {
-       modelContext.delete(list)
-       do {
-           try modelContext.save()
-       } catch {
-           fatalError("Could not delete list: \(error)")
-       }
-   }
-   
-   func createAndShowNewNote(at position: CGPoint) {
-       createNewNote()
-       openWindow(for: lists.last!, position: position)
-   }
+    func createNewNote() {
+        let newList = TodoList()
+        modelContext.insert(newList)
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Could not create a first list: \(error)")
+        }
+    }
+    
+    func delete(_ list: TodoList) {
+        modelContext.delete(list)
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Could not delete list: \(error)")
+        }
+    }
+    
+    func createAndShowNewNote(at position: CGPoint) {
+        createNewNote()
+        openWindow(for: lists.last!, position: position)
+    }
+    
+    func deleteCompleteNotes() {
+        for list in lists.filter({ $0.isComplete }) {
+            delete(list)
+        }
+    }
 }
 
 // MARK: Desktop components
