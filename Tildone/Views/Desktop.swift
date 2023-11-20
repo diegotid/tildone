@@ -22,6 +22,7 @@ struct Desktop: View {
                 guard let list: TodoList = lists.first else { return }
                 mainWindow?.setNoteStyle()
                 mainWindow?.standardWindowButton(.closeButton)?.isHidden = !list.isComplete
+                mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
             }
             .onAppear {
                 if lists.isEmpty {
