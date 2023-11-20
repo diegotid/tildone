@@ -18,7 +18,6 @@ struct Note: View {
 
     @State private var noteWindow: NSWindow?
     @State private var editedTask: String = ""
-    @State private var editedListTopic: String = ""
     @State private var isTopScrolledOut: Bool = false
     @FocusState private var isNewTaskFocused: Bool
 
@@ -107,7 +106,7 @@ extension Note {
 private extension Note {
     
     func handleTaskCommit() {
-        guard let list = self.list else {
+        guard let list = self.list, editedTask.count > 0 else {
             return
         }
         let newTask = Todo(editedTask, order: list.items.count + 1)
@@ -250,6 +249,9 @@ private extension Note {
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .focused($isNewTaskFocused)
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    handleTaskCommit()
+                }
             Spacer()
         }
         .padding(.leading, 2)

@@ -70,7 +70,7 @@ private extension Desktop {
     }
     
     func deleteCompleteNotes() {
-        for list in lists.filter({ $0.isComplete }) {
+        for list in lists.filter({ $0.isComplete && $0.topic == nil }) {
             delete(list)
         }
     }
