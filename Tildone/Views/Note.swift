@@ -152,6 +152,17 @@ private extension Note {
         }
     }
     
+    func handleKeyboard() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event -> NSEvent? in
+            if event.keyCode == Keyboard.tabKey && editedTask.count > 0 {
+                handleTaskCommit()
+                return nil
+            } else {
+                return event
+            }
+        }
+    }
+    
     func updateWindowClosability() {
         guard let window = self.noteWindow,
               let closeButton = window.standardWindowButton(.closeButton),
@@ -244,13 +255,16 @@ private extension Note {
             Checkbox()
                 .disabled(true)
             TextField(Copies.newTaskPlaceholder, text: $editedTask)
-                .onSubmit(handleTaskCommit)
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .focused($isNewTaskFocused)
+                .onSubmit(handleTaskCommit)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleTaskCommit()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    handleKeyboard()
                 }
             Spacer()
         }

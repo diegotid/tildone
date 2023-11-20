@@ -11,3 +11,7 @@ enum Copies {
     static let newTaskPlaceholder: String = "New task"
     static let listTopicPlaceholder: String = "Topic"
 }
+
+enum Keyboard {
+    static let tabKey: Int = 48
+}
