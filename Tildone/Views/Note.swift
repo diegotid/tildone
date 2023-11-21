@@ -170,7 +170,7 @@ private extension Note {
         else {
             return
         }
-        closeButton.isHidden = !list.isComplete
+        closeButton.isHidden = !list.isDeletable
     }
 }
 

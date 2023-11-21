@@ -21,7 +21,7 @@ struct Desktop: View {
             .background(WindowAccessor(window: $mainWindow)).onChange(of: mainWindow) {
                 guard let list: TodoList = lists.first else { return }
                 mainWindow?.setNoteStyle()
-                mainWindow?.standardWindowButton(.closeButton)?.isHidden = !list.isComplete
+                mainWindow?.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
                 mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
             }
             .onAppear {
@@ -70,7 +70,7 @@ private extension Desktop {
     }
     
     func deleteCompleteNotes() {
-        for list in lists.filter({ $0.isComplete && $0.topic == nil }) {
+        for list in lists.filter({ $0.isDeletable }) {
             delete(list)
         }
     }
@@ -112,7 +112,7 @@ private extension Desktop {
                               backing: .buffered,
                               defer: false)
         window.setNoteStyle()
-        window.standardWindowButton(.closeButton)?.isHidden = !list.isComplete
+        window.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
         if let origin = position {
