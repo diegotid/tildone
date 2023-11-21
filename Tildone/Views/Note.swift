@@ -75,10 +75,9 @@ struct Note: View {
                     .padding(.top, -20)
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
-                if let window = notification.object as? NSWindow {
-                    self.noteWindow = window
-                }
+            .background(WindowAccessor(window: $noteWindow))
+            .onAppear {
+                handleKeyboard()
             }
         }
     }
@@ -262,9 +261,6 @@ private extension Note {
                 .onSubmit(handleTaskCommit)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleTaskCommit()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                    handleKeyboard()
                 }
             Spacer()
         }
