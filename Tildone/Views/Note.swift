@@ -153,7 +153,9 @@ private extension Note {
     
     func handleKeyboard() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event -> NSEvent? in
-            if event.keyCode == Keyboard.tabKey && editedTask.count > 0 {
+            if event.keyCode == Keyboard.tabKey
+                && isNewTaskFocused == true
+                && editedTask.count > 0 {
                 handleTaskCommit()
                 return nil
             } else {
