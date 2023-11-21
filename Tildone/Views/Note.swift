@@ -301,7 +301,14 @@ struct ScrollFrame: ViewModifier {
 // MARK: Note preview
 
 #Preview {
-    Note()
+    let configuration = ModelConfiguration(for: Todo.self, TodoList.self,
+                                           isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Todo.self, TodoList.self,
+                                        configurations: configuration)
+    container.mainContext.insert(Todo.oneTask)
+    container.mainContext.insert(Todo.anotherTask)
+    container.mainContext.insert(TodoList.preview)
+    return Note()
         .todoList(.preview)
-        .modelContainer(for: [Todo.self, TodoList.self], inMemory: true)
+        .modelContainer(container)
 }
