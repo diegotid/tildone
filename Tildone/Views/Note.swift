@@ -21,6 +21,21 @@ struct Note: View {
     @State private var isTopScrolledOut: Bool = false
     @FocusState private var isNewTaskFocused: Bool
 
+    private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+
+    @State private var isAlreadyDone: Bool = false
+    @State private var isDone: Bool = false {
+        didSet {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                if !isAlreadyDone {
+                    self.isFadingAway = isDone
+                }
+            }
+        }
+    }
+    @State private var isFadingAway: Bool = false
+    @State private var fadeAwayOpacity: Float = 0.0
+    
     var body: some View {
         if let list = self.list {
             ZStack {
@@ -28,11 +43,12 @@ struct Note: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 6) {
                             listTopic()
-                                .opacity(isTopScrolledOut ? 0 : 1)
+                                .opacity(isTopScrolledOut || isDone && (list.topic ?? "").isEmpty ? 0 : 1)
                             ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
                                 listItem(task: item)
                             }
                             newListItem()
+                                .opacity(isDone ? 0 : 1)
                             Spacer()
                                 .id("bottom")
                         }
@@ -57,6 +73,9 @@ struct Note: View {
                     }
                     .padding(.top, -30)
                 }
+                if isDone {
+                    doneOverlay()
+                }
                 if let onAdd = onAddNewNote {
                     VStack {
                         HStack {
@@ -76,8 +95,11 @@ struct Note: View {
                 }
             }
             .background(WindowAccessor(window: $noteWindow))
+            .accentColor(Color(.checkboxOnFill))
             .onAppear {
                 handleKeyboard()
+                self.isDone = list.isComplete
+                self.isAlreadyDone = list.isComplete
             }
         }
     }
@@ -134,6 +156,9 @@ private extension Note {
         updateWindowClosability()
         do {
             try modelContext.save()
+            withAnimation {
+                self.isDone = list?.isComplete ?? false
+            }
         } catch {
             fatalError("Error on task edit: \(error)")
         }
@@ -183,7 +208,7 @@ private extension Note {
     func listTopic() -> some View {
         if let list = self.list {
             GeometryReader { geometry in
-                TextField(Copies.listTopicPlaceholder,
+                TextField(Copy.listTopicPlaceholder,
                           text: Binding<String>(
                             get: { list.topic ?? "" },
                             set: { handleTopicEdit(to: $0) }
@@ -236,7 +261,7 @@ private extension Note {
                     .foregroundColor(Color(.checkboxOnFill))
                     .strikethrough(color: Color(.checkboxOnFill))
             } else {
-                TextField(Copies.newTaskPlaceholder,
+                TextField(Copy.newTaskPlaceholder,
                           text: Binding<String>(
                             get: { task.what },
                             set: { handleTaskEdit(task, to: $0) }
@@ -255,7 +280,7 @@ private extension Note {
         HStack(spacing: 8) {
             Checkbox()
                 .disabled(true)
-            TextField(Copies.newTaskPlaceholder, text: $editedTask)
+            TextField(Copy.newTaskPlaceholder, text: $editedTask)
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
@@ -276,6 +301,43 @@ private extension Note {
             .fill(Color(nsColor: .noteBackground))
             .frame(width: .infinity, height: 30)
             .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+    }
+    
+    @ViewBuilder
+    func doneOverlay() -> some View {
+        ZStack {
+            Rectangle()
+                .fill(Color(nsColor: .noteBackground).opacity(0.5))
+                .frame(width: .infinity, height: .infinity)
+            VStack {
+                Spacer()
+                Image(systemName: "checkmark")
+                    .padding(.top, 12)
+                    .padding(.leading, 12)
+                    .font(.system(size: 90, weight: .bold))
+                    .foregroundColor(Color(.checkboxOnFill))
+                    .symbolEffect(.bounce, value: isFadingAway)
+                Text("Done!")
+                    .padding(.leading, 6)
+                    .padding(.bottom, isAlreadyDone ? 60 : 30)
+                    .font(.system(size: 30, weight: .bold))
+                    .foregroundColor(Color(.checkboxOnFill))
+                Spacer()
+                if !isAlreadyDone {
+                    ProgressView("Fading out once done",
+                                 value: fadeAwayOpacity,
+                                 total: Timeout.noteFadeOutSeconds)
+                        .foregroundColor(Color(.checkboxOnFill))
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
+                        .onReceive(timer) { _ in
+                            if fadeAwayOpacity < Timeout.noteFadeOutSeconds {
+                                fadeAwayOpacity += 0.05
+                            }
+                        }
+                }
+            }.opacity(0.9)
+        }
     }
 }
 

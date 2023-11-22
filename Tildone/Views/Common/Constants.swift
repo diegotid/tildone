@@ -7,11 +7,15 @@
 
 import Foundation
 
-enum Copies {
+enum Copy {
     static let newTaskPlaceholder: String = "New task"
     static let listTopicPlaceholder: String = "Topic"
 }
 
 enum Keyboard {
     static let tabKey: Int = 48
+}
+
+enum Timeout {
+    static let noteFadeOutSeconds: Float = 60
 }
