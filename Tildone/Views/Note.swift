@@ -324,7 +324,7 @@ private extension Note {
                     .foregroundColor(Color(.checkboxOnFill))
                 Spacer()
                 if !isAlreadyDone {
-                    ProgressView("Fading out once done",
+                    ProgressView(Copy.noteFadingOutDisplay,
                                  value: fadeAwayOpacity,
                                  total: Timeout.noteFadeOutSeconds)
                         .foregroundColor(Color(.checkboxOnFill))

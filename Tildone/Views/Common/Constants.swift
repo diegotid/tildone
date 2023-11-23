@@ -10,6 +10,7 @@ import Foundation
 enum Copy {
     static let newTaskPlaceholder: String = "New task"
     static let listTopicPlaceholder: String = "Topic"
+    static let noteFadingOutDisplay: String = "Fading out..."
 }
 
 enum Keyboard {
