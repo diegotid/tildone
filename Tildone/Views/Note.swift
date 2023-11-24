@@ -33,65 +33,57 @@ struct Note: View {
             }
         }
     }
+    @State private var windowAlpha: Double = 1
     @State private var isFadingAway: Bool = false
-    @State private var fadeAwayOpacity: Float = 0.0
+    @State private var fadeAwayCompleteness: Float = 0.0 {
+        didSet {
+            windowAlpha = 1.0 - Double(fadeAwayCompleteness / Timeout.noteFadeOutSeconds)
+            withAnimation {
+                noteWindow?.hasShadow = windowAlpha < 1.0 ? false : true
+                noteWindow?.standardWindowButton(.closeButton)?.isHidden = windowAlpha < 1.0
+                noteWindow?.backgroundColor = .noteBackground.withAlphaComponent(windowAlpha)
+            }
+        }
+    }
     
     var body: some View {
         if let list = self.list {
             ZStack {
-                ScrollViewReader { scroll in
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 6) {
-                            listTopic()
-                                .opacity(isTopScrolledOut || isDone && (list.topic ?? "").isEmpty ? 0 : 1)
-                            ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
-                                listItem(task: item)
+                Group {
+                    ScrollViewReader { scroll in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(spacing: 6) {
+                                listTopic()
+                                    .opacity(isTopScrolledOut || isDone && (list.topic ?? "").isEmpty ? 0 : 1)
+                                ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
+                                    listItem(task: item)
+                                }
+                                newListItem()
+                                    .opacity(isDone ? 0 : 1)
+                                Spacer()
+                                    .id("bottom")
                             }
-                            newListItem()
-                                .opacity(isDone ? 0 : 1)
-                            Spacer()
-                                .id("bottom")
+                            .onAppear {
+                                self.isNewTaskFocused = self.list!.topic != nil
+                            }
                         }
-                        .onAppear {
-                            self.isNewTaskFocused = self.list!.topic != nil
+                        .modifier(ScrollFrame())
+                        .onChange(of: list.items.count) {
+                            withAnimation {
+                                scroll.scrollTo("bottom", anchor: .bottom)
+                            }
                         }
                     }
-                    .modifier(ScrollFrame())
-                    .onChange(of: list.items.count) {
-                        withAnimation {
-                            scroll.scrollTo("bottom", anchor: .bottom)
-                        }
+                    if isTopScrolledOut {
+                        scrollingHeader()
+                    }
+                    if let onAdd = onAddNewNote {
+                        headerToolBar(onAdd: onAdd)
                     }
                 }
-                if isTopScrolledOut {
-                    VStack {
-                        ZStack {
-                            noteHeader()
-                            headerListTopic()
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, -30)
-                }
+                .opacity(windowAlpha / (isDone ? 2 : 1))
                 if isDone {
                     doneOverlay()
-                }
-                if let onAdd = onAddNewNote {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Button {
-                                onAdd(NSEvent.mouseLocation)
-                            } label: {
-                                Image(systemName: "plus")
-                                    .foregroundColor(Color(.primaryFontColor))
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.trailing, 6)
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, -20)
                 }
             }
             .background(WindowAccessor(window: $noteWindow))
@@ -296,48 +288,85 @@ private extension Note {
     }
     
     @ViewBuilder
-    func noteHeader() -> some View {
-        Rectangle()
-            .fill(Color(nsColor: .noteBackground))
-            .frame(width: .infinity, height: 30)
-            .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+    func scrollingHeader() -> some View {
+        VStack {
+            ZStack {
+                Rectangle()
+                    .fill(Color(nsColor: .noteBackground.withAlphaComponent(windowAlpha)))
+                    .frame(width: .infinity, height: 30)
+                    .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+                headerListTopic()
+            }
+            Spacer()
+        }
+        .padding(.top, -30)
+    }
+    
+    @ViewBuilder
+    func headerToolBar(onAdd: @escaping (_ position: CGPoint) -> Void) -> some View {
+        VStack {
+            HStack {
+                Spacer()
+                Button {
+                    onAdd(NSEvent.mouseLocation)
+                } label: {
+                    Image(systemName: "plus")
+                        .foregroundColor(Color(.primaryFontColor))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 6)
+            }
+            Spacer()
+        }
+        .padding(.top, -20)
     }
     
     @ViewBuilder
     func doneOverlay() -> some View {
-        ZStack {
-            Rectangle()
-                .fill(Color(nsColor: .noteBackground).opacity(0.5))
-                .frame(width: .infinity, height: .infinity)
-            VStack {
-                Spacer()
-                Image(systemName: "checkmark")
-                    .padding(.top, 12)
-                    .padding(.leading, 12)
-                    .font(.system(size: 90, weight: .bold))
-                    .foregroundColor(Color(.checkboxOnFill))
-                    .symbolEffect(.bounce, value: isFadingAway)
-                Text("Done!")
-                    .padding(.leading, 6)
-                    .padding(.bottom, isAlreadyDone ? 60 : 30)
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundColor(Color(.checkboxOnFill))
-                Spacer()
-                if !isAlreadyDone {
+        VStack {
+            Spacer()
+            Image(systemName: "checkmark")
+                .padding(.top, 12)
+                .padding(.leading, 12)
+                .font(.system(size: 90, weight: .bold))
+                .foregroundColor(Color(.checkboxOnFill))
+                .symbolEffect(.bounce, value: isFadingAway)
+            Text("Done!")
+                .padding(.leading, 6)
+                .padding(.bottom, isAlreadyDone ? 60 : 30)
+                .font(.system(size: 30, weight: .bold))
+                .foregroundColor(Color(.checkboxOnFill))
+            Spacer()
+            if !isAlreadyDone {
+                ZStack {
                     ProgressView(Copy.noteFadingOutDisplay,
-                                 value: fadeAwayOpacity,
+                                 value: fadeAwayCompleteness,
                                  total: Timeout.noteFadeOutSeconds)
-                        .foregroundColor(Color(.checkboxOnFill))
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
-                        .onReceive(timer) { _ in
-                            if fadeAwayOpacity < Timeout.noteFadeOutSeconds {
-                                fadeAwayOpacity += 0.05
-                            }
+                    .foregroundColor(Color(.checkboxOnFill))
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                    .onReceive(timer) { _ in
+                        if fadeAwayCompleteness < Timeout.noteFadeOutSeconds {
+                            fadeAwayCompleteness += 0.05
                         }
+                    }
+                    HStack {
+                        Spacer()
+                        Button {
+                            self.isDone = false
+                            fadeAwayCompleteness = 0.0
+                        } label: {
+                            Text(Copy.cancel)
+                                .foregroundColor(Color(.checkboxOnFill))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 30)
                 }
-            }.opacity(0.9)
+            }
         }
+        .opacity(windowAlpha * 0.9)
     }
 }
 

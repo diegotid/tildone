@@ -11,6 +11,7 @@ enum Copy {
     static let newTaskPlaceholder: String = "New task"
     static let listTopicPlaceholder: String = "Topic"
     static let noteFadingOutDisplay: String = "Fading out..."
+    static let cancel: String = "Cancel"
 }
 
 enum Keyboard {

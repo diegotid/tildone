@@ -34,5 +34,6 @@ extension NSWindow {
         self.standardWindowButton(.miniaturizeButton)?.isHidden = true
         self.standardWindowButton(.zoomButton)?.isHidden = true
         self.backgroundColor = .noteBackground
+        self.isOpaque = false
     }
 }
