@@ -37,3 +37,10 @@ extension NSWindow {
         self.isOpaque = false
     }
 }
+
+extension NSTextField {
+    open override var focusRingType: NSFocusRingType {
+        get { .none }
+        set { }
+    }
+}

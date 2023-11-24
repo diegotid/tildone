@@ -259,6 +259,7 @@ private extension Note {
                             set: { handleTaskEdit(task, to: $0) }
                           ))
                 .textFieldStyle(PlainTextFieldStyle())
+                .truncationMode(.tail)
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
             }
