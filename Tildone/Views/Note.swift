@@ -35,13 +35,20 @@ struct Note: View {
     }
     @State private var windowAlpha: Double = 1
     @State private var isFadingAway: Bool = false
-    @State private var fadeAwayCompleteness: Float = 0.0 {
+    @State private var fadeAwayProgress: Float = 0.0 {
         didSet {
-            windowAlpha = 1.0 - Double(fadeAwayCompleteness / Timeout.noteFadeOutSeconds)
+            windowAlpha = 1.0 - Double(fadeAwayProgress / Timeout.noteFadeOutSeconds)
+            let hasDiessapeared: Bool = fadeAwayProgress >= Timeout.noteFadeOutSeconds
+            let isDisappearing: Bool = windowAlpha < 1.0
             withAnimation {
-                noteWindow?.hasShadow = windowAlpha < 1.0 ? false : true
-                noteWindow?.standardWindowButton(.closeButton)?.isHidden = windowAlpha < 1.0
+                noteWindow?.level = isDisappearing ? .normal : .floating
+                noteWindow?.hasShadow = isDisappearing ? false : true
+                noteWindow?.standardWindowButton(.closeButton)?.isHidden = isDisappearing
                 noteWindow?.backgroundColor = .noteBackground.withAlphaComponent(windowAlpha)
+            }
+            if hasDiessapeared {
+                noteWindow?.close()
+                handleDisappearance()
             }
         }
     }
@@ -189,6 +196,18 @@ private extension Note {
             return
         }
         closeButton.isHidden = !list.isDeletable
+    }
+    
+    func handleDisappearance() {
+        guard let list = self.list else {
+            return
+        }
+        modelContext.delete(list)
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Could not delete list: \(error)")
+        }
     }
 }
 
@@ -341,21 +360,21 @@ private extension Note {
             if !isAlreadyDone {
                 ZStack {
                     ProgressView(Copy.noteFadingOutDisplay,
-                                 value: fadeAwayCompleteness,
+                                 value: fadeAwayProgress,
                                  total: Timeout.noteFadeOutSeconds)
                     .foregroundColor(Color(.checkboxOnFill))
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
                     .onReceive(timer) { _ in
-                        if fadeAwayCompleteness < Timeout.noteFadeOutSeconds {
-                            fadeAwayCompleteness += 0.05
+                        if fadeAwayProgress < Timeout.noteFadeOutSeconds {
+                            fadeAwayProgress += 0.05
                         }
                     }
                     HStack {
                         Spacer()
                         Button {
                             self.isDone = false
-                            fadeAwayCompleteness = 0.0
+                            fadeAwayProgress = 0.0
                         } label: {
                             Text(Copy.cancel)
                                 .foregroundColor(Color(.checkboxOnFill))
