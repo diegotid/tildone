@@ -19,5 +19,5 @@ enum Keyboard {
 }
 
 enum Timeout {
-    static let noteFadeOutSeconds: Float = 60
+    static let noteFadeOutSeconds: Float = 20
 }
