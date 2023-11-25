@@ -5,6 +5,7 @@
 //  Created by Diego Rivera on 25/4/21.
 //
 
+import SwiftUI
 import Foundation
 
 enum Copy {
@@ -16,6 +17,7 @@ enum Copy {
 
 enum Keyboard {
     static let tabKey: Int = 48
+    static let backspaceKey = KeyEquivalent("\u{7F}")
 }
 
 enum Timeout {

@@ -125,6 +125,15 @@ extension Note {
 
 private extension Note {
     
+    func delete(_ task: Todo) {
+        modelContext.delete(task)
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Error on task deletion: \(error)")
+        }
+    }
+    
     func handleTaskCommit() {
         guard let list = self.list, editedTask.count > 0 else {
             return
@@ -281,6 +290,14 @@ private extension Note {
                 .truncationMode(.tail)
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
+                .onKeyPress(Keyboard.backspaceKey) {
+                    if task.what.count > 0 {
+                        return .ignored
+                    } else {
+                        delete(task)
+                        return .handled
+                    }
+                }
             }
             Spacer()
         }
