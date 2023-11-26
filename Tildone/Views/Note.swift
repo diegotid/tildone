@@ -275,6 +275,7 @@ private extension Note {
             Checkbox(checked: task.done)
                 .onToggle {
                     handleTaskToggle(task)
+                    noteWindow?.makeFirstResponder(nil)
                 }
             if task.done {
                 Text(task.what)
@@ -313,8 +314,13 @@ private extension Note {
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
-                .focused($isNewTaskFocused)
                 .onSubmit(handleTaskCommit)
+                .focused($isNewTaskFocused)
+                .onChange(of: isNewTaskFocused) {
+                    if !editedTask.isEmpty {
+                        handleTaskCommit()
+                    }
+                }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     handleTaskCommit()
                 }
