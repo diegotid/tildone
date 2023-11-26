@@ -11,15 +11,26 @@ import SwiftData
 @Model
 final class Todo {
     var what: String
-    var order: Int
-    var done: Bool
+    var created: Date
+    var done: Date?
 
     @Relationship
     var list: TodoList?
+    
+    var isDone: Bool {
+        self.done != nil
+    }
 
-    public init(_ what: String, order: Int) {
+    public init(_ what: String) {
+        self.created = Date()
         self.what = what
-        self.order = order
-        self.done = false
+    }
+    
+    func setDone(_ done: Bool? = true) {
+        if done == false {
+            self.done = nil
+        } else {
+            self.done = Date()
+        }
     }
 }

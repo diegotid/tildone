@@ -20,7 +20,7 @@ final class TodoList {
         items.isEmpty && topic == nil
     }
     var isComplete: Bool {
-        !items.isEmpty && items.filter({ $0.done == false }).isEmpty
+        !items.isEmpty && items.filter({ !$0.isDone }).isEmpty
     }
     var isDeletable: Bool {
         isComplete || isEmpty

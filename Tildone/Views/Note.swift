@@ -62,7 +62,7 @@ struct Note: View {
                             VStack(spacing: 6) {
                                 listTopic()
                                     .opacity(isTopScrolledOut || isDone && (list.topic ?? "").isEmpty ? 0 : 1)
-                                ForEach(list.items.sorted(by: { $0.order < $1.order })) { item in
+                                ForEach(list.items.sorted(by: { $0.created < $1.created })) { item in
                                     listItem(task: item)
                                 }
                                 newListItem()
@@ -135,10 +135,10 @@ private extension Note {
     }
     
     func handleTaskCommit() {
-        guard let list = self.list, editedTask.count > 0 else {
+        guard editedTask.count > 0 else {
             return
         }
-        let newTask = Todo(editedTask, order: list.items.count + 1)
+        let newTask = Todo(editedTask)
         newTask.list = self.list
         modelContext.insert(newTask)
         self.editedTask = ""
@@ -160,7 +160,7 @@ private extension Note {
     }
     
     func handleTaskToggle(_ task: Todo) {
-        task.done.toggle()
+        task.setDone(!task.isDone)
         updateWindowClosability()
         do {
             try modelContext.save()
@@ -272,12 +272,12 @@ private extension Note {
     @ViewBuilder
     func listItem(task: Todo) -> some View {
         HStack(spacing: 8) {
-            Checkbox(checked: task.done)
+            Checkbox(checked: task.isDone)
                 .onToggle {
                     handleTaskToggle(task)
                     noteWindow?.makeFirstResponder(nil)
                 }
-            if task.done {
+            if task.isDone {
                 Text(task.what)
                     .foregroundColor(Color(.checkboxOnFill))
                     .strikethrough(color: Color(.checkboxOnFill))
