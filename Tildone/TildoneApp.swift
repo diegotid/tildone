@@ -9,6 +9,11 @@ import AppKit
 import SwiftUI
 import SwiftData
 
+enum Commercial {
+    case Free
+    case Premium
+}
+
 @main
 struct TildoneApp: App {
     
@@ -26,6 +31,7 @@ struct TildoneApp: App {
         WindowGroup {
             Desktop()
         }
+        .environment(\.license, .free)
         .modelContainer(sharedModelContainer)
         .windowStyle(HiddenTitleBarWindowStyle())
         .windowResizability(.contentSize)

@@ -11,6 +11,7 @@ import SwiftData
 // MARK: Note view
 
 struct Note: View {
+    @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
 
     var list: TodoList?
@@ -392,19 +393,21 @@ private extension Note {
                             fadeAwayProgress += 0.05
                         }
                     }
-                    HStack {
-                        Spacer()
-                        Button {
-                            self.isDone = false
-                            fadeAwayProgress = 0.0
-                        } label: {
-                            Text(Copy.cancel)
-                                .foregroundColor(.accentColor)
+                    if license == .pro {
+                        HStack {
+                            Spacer()
+                            Button {
+                                self.isDone = false
+                                fadeAwayProgress = 0.0
+                            } label: {
+                                Text(Copy.cancel)
+                                    .foregroundColor(.accentColor)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 30)
                     }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 30)
                 }
             }
         }
