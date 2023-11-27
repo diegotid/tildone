@@ -433,6 +433,7 @@ struct ScrollFrame: ViewModifier {
 
 // MARK: Note preview
 
+#if DEBUG
 #Preview {
     let configuration = ModelConfiguration(for: Todo.self, TodoList.self,
                                            isStoredInMemoryOnly: true)
@@ -445,3 +446,4 @@ struct ScrollFrame: ViewModifier {
         .todoList(.preview)
         .modelContainer(container)
 }
+#endif
