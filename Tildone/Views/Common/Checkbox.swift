@@ -17,7 +17,7 @@ struct Checkbox: View {
         return ZStack {
             Circle()
                 .fill(Color(.checkboxOffFill))
-                .overlay(Circle().stroke(Color(self.checked ? .checkboxOnFill : .checkboxBorder)))
+                .overlay(Circle().stroke(self.checked ? .accentColor : Color(.checkboxBorder)))
                 .frame(width: Layout.checkboxSize, height: Layout.checkboxSize, alignment: .center)
                 .opacity(disabled ? 0.6 : 1)
                 .onTapGesture(count: 1) {
@@ -28,7 +28,7 @@ struct Checkbox: View {
                 }
             if self.checked {
                 Circle()
-                    .fill(Color(.checkboxOnFill))
+                    .fill(Color.accentColor)
                     .frame(width: Layout.checkboxCheckSize,
                            height: Layout.checkboxCheckSize,
                            alignment: .center)

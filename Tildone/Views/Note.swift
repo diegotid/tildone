@@ -94,7 +94,6 @@ struct Note: View {
                 }
             }
             .background(WindowAccessor(window: $noteWindow))
-            .accentColor(Color(.checkboxOnFill))
             .onAppear {
                 handleKeyboard()
                 self.isDone = list.isComplete
@@ -279,8 +278,8 @@ private extension Note {
                 }
             if task.isDone {
                 Text(task.what)
-                    .foregroundColor(Color(.checkboxOnFill))
-                    .strikethrough(color: Color(.checkboxOnFill))
+                    .foregroundColor(.accentColor)
+                    .strikethrough(color: .accentColor)
             } else {
                 TextField(Copy.newTaskPlaceholder,
                           text: Binding<String>(
@@ -372,20 +371,20 @@ private extension Note {
                 .padding(.top, 12)
                 .padding(.leading, 12)
                 .font(.system(size: 90, weight: .bold))
-                .foregroundColor(Color(.checkboxOnFill))
+                .foregroundColor(.accentColor)
                 .symbolEffect(.bounce, value: isFadingAway)
             Text("Done!")
                 .padding(.leading, 6)
                 .padding(.bottom, isAlreadyDone ? 60 : 30)
                 .font(.system(size: 30, weight: .bold))
-                .foregroundColor(Color(.checkboxOnFill))
+                .foregroundColor(.accentColor)
             Spacer()
             if !isAlreadyDone {
                 ZStack {
                     ProgressView(Copy.noteFadingOutDisplay,
                                  value: fadeAwayProgress,
                                  total: Timeout.noteFadeOutSeconds)
-                    .foregroundColor(Color(.checkboxOnFill))
+                    .foregroundColor(.accentColor)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
                     .onReceive(timer) { _ in
@@ -400,7 +399,7 @@ private extension Note {
                             fadeAwayProgress = 0.0
                         } label: {
                             Text(Copy.cancel)
-                                .foregroundColor(Color(.checkboxOnFill))
+                                .foregroundColor(.accentColor)
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
