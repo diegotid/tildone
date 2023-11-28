@@ -15,12 +15,18 @@ struct Note: View {
     @Environment(\.modelContext) private var modelContext
 
     var list: TodoList?
+    var sortedTodoList: [Todo] {
+        (list?.items ?? [])
+            .filter({ $0.done == nil })
+            .sorted(by: { $0.created < $1.created })
+    }
     var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
     @State private var noteWindow: NSWindow?
     @State private var editedTask: String = ""
     @State private var isTopScrolledOut: Bool = false
     @FocusState private var isNewTaskFocused: Bool
+    @FocusState private var focusedTaskCreation: Date?
 
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
@@ -191,9 +197,41 @@ private extension Note {
                 && editedTask.count > 0 {
                 handleTaskCommit()
                 return nil
+            } else if event.keyCode == Keyboard.arrowUp {
+                handleMoveUp()
+                return nil
+            } else if event.keyCode == Keyboard.arrowDown {
+                handleMoveDown()
+                return nil
             } else {
                 return event
             }
+        }
+    }
+    
+    func handleMoveUp() {
+        guard let index = sortedTodoList.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+            focusedTaskCreation = sortedTodoList.last?.created
+            return
+        }
+        if index > 0 {
+            focusedTaskCreation = sortedTodoList[index - 1].created
+        } else {
+            focusedTaskCreation = nil
+            isNewTaskFocused = true
+        }
+    }
+    
+    func handleMoveDown() {
+        guard let index = sortedTodoList.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+            focusedTaskCreation = sortedTodoList.first?.created
+            return
+        }
+        if index < sortedTodoList.count - 1 {
+            focusedTaskCreation = sortedTodoList[index + 1].created
+        } else {
+            focusedTaskCreation = nil
+            isNewTaskFocused = true
         }
     }
     
@@ -287,6 +325,12 @@ private extension Note {
                             get: { task.what },
                             set: { handleTaskEdit(task, to: $0) }
                           ))
+                .onChange(of: focusedTaskCreation) {
+                    if focusedTaskCreation == task.created {
+                        debugPrint("Pendejo!")
+                    }
+                }
+                .focused($focusedTaskCreation, equals: task.created)
                 .textFieldStyle(PlainTextFieldStyle())
                 .truncationMode(.tail)
                 .foregroundColor(Color(.primaryFontColor))
