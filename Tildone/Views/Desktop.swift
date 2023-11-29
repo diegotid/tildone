@@ -15,6 +15,7 @@ struct Desktop: View {
     @Query private var lists: [TodoList]
     @State private var mainWindow: NSWindow?
     @State private var lastWindow: NSWindow?
+    @State private var isMainWindowNew: Bool = false
     
     var body: some View {
         noteWindow(for: lists.first)
@@ -23,10 +24,18 @@ struct Desktop: View {
                 mainWindow?.setNoteStyle()
                 mainWindow?.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
                 mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
+                if isMainWindowNew {
+                    let rect = NSRect(x: Layout.defaultNoteXPosition,
+                                      y: Layout.defaultNoteYPosition,
+                                      width: Layout.defaultNoteWidth,
+                                      height: Layout.defaultNoteHeight)
+                    mainWindow?.setFrame(rect, display: true)
+                }
             }
             .onAppear {
                 if lists.isEmpty {
                     createNewNote()
+                    self.isMainWindowNew = true
                 }
                 for list in lists.dropFirst() {
                     openWindow(for: list)

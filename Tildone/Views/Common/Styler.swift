@@ -15,12 +15,14 @@ extension NSColor {
 }
 
 enum Layout {
-    static let defaultNoteWidth: CGFloat = 250
-    static let defaultNoteHeight: CGFloat = 300
-    static let minNoteWidth: CGFloat = 180
-    static let minNoteHeight: CGFloat = 240
     static let checkboxSize: CGFloat = 14
     static let checkboxCheckSize: CGFloat = 8
+    static let minNoteWidth: CGFloat = 180
+    static let minNoteHeight: CGFloat = 240
+    static let defaultNoteWidth: CGFloat = 250
+    static let defaultNoteHeight: CGFloat = 300
+    static let defaultNoteXPosition: CGFloat = 50
+    static let defaultNoteYPosition: CGFloat = 90
 }
 
 extension NSWindow {
