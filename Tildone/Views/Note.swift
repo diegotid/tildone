@@ -29,6 +29,7 @@ struct Note: View {
     @State private var noteWindow: NSWindow?
     @State private var editedTask: String = ""
     @State private var isTopScrolledOut: Bool = false
+    @FocusState private var isTopicFocused: Bool
     @FocusState private var isNewTaskFocused: Bool
     @FocusState private var focusedTaskCreation: Date?
 
@@ -82,7 +83,8 @@ struct Note: View {
                                     .id("bottom")
                             }
                             .onAppear {
-                                self.isNewTaskFocused = self.list!.topic != nil
+                                self.isTopicFocused = self.list!.topic == nil
+                                self.isNewTaskFocused = !self.isTopicFocused
                             }
                         }
                         .modifier(ScrollFrame())
@@ -214,28 +216,42 @@ private extension Note {
     }
     
     func handleMoveUp() {
-        guard let index = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
-            focusedTaskCreation = sortedPendingTasks.last?.created
+        guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+            if isNewTaskFocused {
+                focusedTaskCreation = sortedPendingTasks.last?.created
+            } else {
+                focusedTaskCreation = nil
+                isNewTaskFocused = true
+                isTopicFocused = false
+            }
             return
         }
-        if index > 0 {
-            focusedTaskCreation = sortedPendingTasks[index - 1].created
+        if focusIndex > 0 {
+            focusedTaskCreation = sortedPendingTasks[focusIndex - 1].created
         } else {
             focusedTaskCreation = nil
-            isNewTaskFocused = true
+            isNewTaskFocused = false
+            isTopicFocused = true
         }
     }
     
     func handleMoveDown() {
-        guard let index = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
-            focusedTaskCreation = sortedPendingTasks.first?.created
+        guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+            if isTopicFocused {
+                focusedTaskCreation = sortedPendingTasks.first?.created
+            } else {
+                focusedTaskCreation = nil
+                isNewTaskFocused = false
+                isTopicFocused = true
+            }
             return
         }
-        if index < sortedPendingTasks.count - 1 {
-            focusedTaskCreation = sortedPendingTasks[index + 1].created
+        if focusIndex < sortedPendingTasks.count - 1 {
+            focusedTaskCreation = sortedPendingTasks[focusIndex + 1].created
         } else {
             focusedTaskCreation = nil
             isNewTaskFocused = true
+            isTopicFocused = false
         }
     }
     
@@ -261,11 +277,11 @@ private extension Note {
         }
     }
     
-    func placeCursor(forTask task: Todo) {
+    func placeCursor(forText value: String) {
         guard let noteView = noteWindow?.contentView else { return }
         let textFields: [NSTextField] = noteView.getNestedSubviews<NSTextField>()
         for textField in textFields {
-            if textField.stringValue == task.what {
+            if textField.stringValue == value {
                 textField.currentEditor()?.selectedRange = NSMakeRange(0, 0)
             }
         }
@@ -290,9 +306,14 @@ private extension Note {
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .padding(.top, 5)
-                .focused($isNewTaskFocused, equals: false)
+                .focused($isTopicFocused)
+                .onChange(of: isTopicFocused) {
+                    if let topic = list.topic, isTopicFocused {
+                        placeCursor(forText: topic)
+                    }
+                }
                 .onSubmit {
-                    self.isNewTaskFocused = true
+                    handleMoveDown()
                 }
                 .onChange(of: geometry.frame(in: .global)) {
                     let frame = geometry.frame(in: .global)
@@ -346,7 +367,7 @@ private extension Note {
                 .focused($focusedTaskCreation, equals: task.created)
                 .onChange(of: focusedTaskCreation) {
                     if focusedTaskCreation == task.created {
-                        placeCursor(forTask: task)
+                        placeCursor(forText: task.what)
                     }
                 }
                 .onKeyPress(Keyboard.backspaceKey) {
