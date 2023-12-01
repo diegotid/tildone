@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AppKit
 
 struct WindowAccessor: NSViewRepresentable {
     @Binding var window: NSWindow?
@@ -20,4 +19,21 @@ struct WindowAccessor: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+extension NSView {
+
+    class func getNestedSubviews<T: NSView>(view: NSView) -> [T] {
+        return view.subviews.flatMap { subView -> [T] in
+            var result = getNestedSubviews(view: subView) as [T]
+            if let view = subView as? T {
+                result.append(view)
+            }
+            return result
+        }
+    }
+
+    func getNestedSubviews<T: NSView>() -> [T] {
+        return NSView.getNestedSubviews(view: self) as [T]
+    }
 }

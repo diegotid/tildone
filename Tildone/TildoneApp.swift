@@ -5,7 +5,6 @@
 //  Created by Diego Rivera on 5/11/23.
 //
 
-import AppKit
 import SwiftUI
 import SwiftData
 

@@ -15,7 +15,11 @@ struct Note: View {
     @Environment(\.modelContext) private var modelContext
 
     var list: TodoList?
-    var sortedTodoList: [Todo] {
+    var sortedTasks: [Todo] {
+        (list?.items ?? [])
+            .sorted(by: { $0.created < $1.created })
+    }
+    var sortedPendingTasks: [Todo] {
         (list?.items ?? [])
             .filter({ $0.done == nil })
             .sorted(by: { $0.created < $1.created })
@@ -69,7 +73,7 @@ struct Note: View {
                             VStack(spacing: 6) {
                                 listTopic()
                                     .opacity(isTopScrolledOut || isDone && (list.topic ?? "").isEmpty ? 0 : 1)
-                                ForEach(list.items.sorted(by: { $0.created < $1.created })) { item in
+                                ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
                                 newListItem()
@@ -210,12 +214,12 @@ private extension Note {
     }
     
     func handleMoveUp() {
-        guard let index = sortedTodoList.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
-            focusedTaskCreation = sortedTodoList.last?.created
+        guard let index = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+            focusedTaskCreation = sortedPendingTasks.last?.created
             return
         }
         if index > 0 {
-            focusedTaskCreation = sortedTodoList[index - 1].created
+            focusedTaskCreation = sortedPendingTasks[index - 1].created
         } else {
             focusedTaskCreation = nil
             isNewTaskFocused = true
@@ -223,12 +227,12 @@ private extension Note {
     }
     
     func handleMoveDown() {
-        guard let index = sortedTodoList.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
-            focusedTaskCreation = sortedTodoList.first?.created
+        guard let index = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+            focusedTaskCreation = sortedPendingTasks.first?.created
             return
         }
-        if index < sortedTodoList.count - 1 {
-            focusedTaskCreation = sortedTodoList[index + 1].created
+        if index < sortedPendingTasks.count - 1 {
+            focusedTaskCreation = sortedPendingTasks[index + 1].created
         } else {
             focusedTaskCreation = nil
             isNewTaskFocused = true
@@ -254,6 +258,16 @@ private extension Note {
             try modelContext.save()
         } catch {
             fatalError("Could not delete list: \(error)")
+        }
+    }
+    
+    func placeCursor(forTask task: Todo) {
+        guard let noteView = noteWindow?.contentView else { return }
+        let textFields: [NSTextField] = noteView.getNestedSubviews<NSTextField>()
+        for textField in textFields {
+            if textField.stringValue == task.what {
+                textField.currentEditor()?.selectedRange = NSMakeRange(0, 0)
+            }
         }
     }
 }
@@ -325,16 +339,16 @@ private extension Note {
                             get: { task.what },
                             set: { handleTaskEdit(task, to: $0) }
                           ))
-                .onChange(of: focusedTaskCreation) {
-                    if focusedTaskCreation == task.created {
-                        debugPrint("Pendejo!")
-                    }
-                }
-                .focused($focusedTaskCreation, equals: task.created)
                 .textFieldStyle(PlainTextFieldStyle())
                 .truncationMode(.tail)
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
+                .focused($focusedTaskCreation, equals: task.created)
+                .onChange(of: focusedTaskCreation) {
+                    if focusedTaskCreation == task.created {
+                        placeCursor(forTask: task)
+                    }
+                }
                 .onKeyPress(Keyboard.backspaceKey) {
                     if task.what.count > 0 {
                         return .ignored
