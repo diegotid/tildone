@@ -150,7 +150,7 @@ private extension Note {
         guard editedTask.count > 0 else {
             return
         }
-        let newTask = Todo(editedTask)
+        let newTask = Todo(editedTask.capitalizingFirstLetter())
         newTask.list = self.list
         modelContext.insert(newTask)
         self.editedTask = ""
@@ -163,7 +163,7 @@ private extension Note {
     }
     
     func handleTaskEdit(_ task: Todo, to what: String) {
-        task.what = what
+        task.what = what.capitalizingFirstLetter()
         do {
             try modelContext.save()
         } catch {
@@ -185,10 +185,10 @@ private extension Note {
     }
     
     func handleTopicEdit(to topic: String) {
-        guard let _ = self.list else {
+        guard let list = self.list else {
             return
         }
-        self.list!.topic = topic
+        list.topic = topic.capitalizingFirstLetter()
         do {
             try modelContext.save()
         } catch {
