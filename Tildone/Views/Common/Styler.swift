@@ -8,9 +8,9 @@
 import SwiftUI
 
 extension NSColor {
-    static let noteBackground = #colorLiteral(red: 1, green: 0.9834647775, blue: 0.7855550647, alpha: 1)
+    static let noteBackground = #colorLiteral(red: 1, green: 0.9411764706, blue: 0.6274509804, alpha: 1)
+    static let checkboxBorder = #colorLiteral(red: 0.5338419676, green: 0.5067609549, blue: 0.3392150104, alpha: 1)
     static let primaryFontColor = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
-    static let checkboxBorder = #colorLiteral(red: 0.5011845827, green: 0.4942548871, blue: 0.4001311958, alpha: 0.5)
     static let checkboxOffFill = #colorLiteral(red: 0.9999960065, green: 1, blue: 1, alpha: 0.5)
 }
 
