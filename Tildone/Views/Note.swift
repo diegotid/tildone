@@ -176,6 +176,9 @@ private extension Note {
         updateWindowClosability()
         do {
             try modelContext.save()
+            guard newTaskText.isEmpty else {
+                return
+            }
             withAnimation {
                 self.isDone = list?.isComplete ?? false
             }
