@@ -27,7 +27,7 @@ struct Note: View {
     var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
     @State private var noteWindow: NSWindow?
-    @State private var editedTask: String = ""
+    @State private var newTaskText: String = ""
     @State private var isTopScrolledOut: Bool = false
     @FocusState private var isTopicFocused: Bool
     @FocusState private var isNewTaskFocused: Bool
@@ -35,11 +35,11 @@ struct Note: View {
 
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
-    @State private var isAlreadyDone: Bool = false
+    @State private var wasAlreadyDone: Bool = false
     @State private var isDone: Bool = false {
         didSet {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                if !isAlreadyDone {
+                if !wasAlreadyDone {
                     self.isFadingAway = isDone
                 }
             }
@@ -110,7 +110,7 @@ struct Note: View {
             .onAppear {
                 handleKeyboard()
                 self.isDone = list.isComplete
-                self.isAlreadyDone = list.isComplete
+                self.wasAlreadyDone = list.isComplete
             }
         }
     }
@@ -147,13 +147,13 @@ private extension Note {
     }
     
     func handleTaskCommit() {
-        guard editedTask.count > 0 else {
+        guard newTaskText.count > 0 else {
             return
         }
-        let newTask = Todo(editedTask.capitalizingFirstLetter())
+        let newTask = Todo(newTaskText.capitalizingFirstLetter())
         newTask.list = self.list
         modelContext.insert(newTask)
-        self.editedTask = ""
+        self.newTaskText = ""
         updateWindowClosability()
         do {
             try modelContext.save()
@@ -203,7 +203,7 @@ private extension Note {
             }
             if event.keyCode == Keyboard.tabKey
                 && isNewTaskFocused == true
-                && editedTask.count > 0 {
+                && newTaskText.count > 0 {
                 handleTaskCommit()
                 return nil
             } else if event.keyCode == Keyboard.arrowUp {
@@ -392,14 +392,14 @@ private extension Note {
         HStack(spacing: 8) {
             Checkbox()
                 .disabled(true)
-            TextField(Copy.newTaskPlaceholder, text: $editedTask)
+            TextField(Copy.newTaskPlaceholder, text: $newTaskText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .onSubmit(handleTaskCommit)
                 .focused($isNewTaskFocused)
                 .onChange(of: isNewTaskFocused) {
-                    if !editedTask.isEmpty {
+                    if !newTaskText.isEmpty {
                         handleTaskCommit()
                     }
                 }
@@ -458,11 +458,11 @@ private extension Note {
                 .symbolEffect(.bounce, value: isFadingAway)
             Text("Done!")
                 .padding(.leading, 6)
-                .padding(.bottom, isAlreadyDone ? 60 : 30)
+                .padding(.bottom, wasAlreadyDone ? 60 : 30)
                 .font(.system(size: 30, weight: .bold))
                 .foregroundColor(.accentColor)
             Spacer()
-            if !isAlreadyDone {
+            if !wasAlreadyDone {
                 ZStack {
                     ProgressView(Copy.noteFadingOutDisplay,
                                  value: fadeAwayProgress,
