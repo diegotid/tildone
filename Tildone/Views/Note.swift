@@ -215,6 +215,13 @@ private extension Note {
             } else if event.keyCode == Keyboard.arrowDown {
                 handleMoveDown()
                 return nil
+            } else if event.modifierFlags.contains(.command),
+                      event.charactersIgnoringModifiers == "w",
+                      let window = noteWindow,
+                      let list = self.list,
+                      list.isDeletable {
+                window.close()
+                return nil
             } else {
                 return event
             }
