@@ -137,15 +137,6 @@ extension Note {
 
 private extension Note {
     
-    func delete(_ task: Todo) {
-        modelContext.delete(task)
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Error on task deletion: \(error)")
-        }
-    }
-    
     func handleTaskCommit() {
         guard newTaskText.count > 0 else {
             return
@@ -163,6 +154,10 @@ private extension Note {
     }
     
     func handleTaskEdit(_ task: Todo, to what: String) {
+        guard !what.isEmpty else {
+            delete(task)
+            return
+        }
         task.what = what.capitalizingFirstLetter()
         do {
             try modelContext.save()
@@ -191,7 +186,11 @@ private extension Note {
         guard let list = self.list else {
             return
         }
-        list.topic = topic.capitalizingFirstLetter()
+        if topic.isEmpty {
+            list.topic = nil
+        } else {
+            list.topic = topic.capitalizingFirstLetter()
+        }
         do {
             try modelContext.save()
         } catch {
@@ -224,40 +223,70 @@ private extension Note {
     func handleMoveUp() {
         guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
             if isNewTaskFocused {
+                guard let list = self.list,
+                      !list.items.isEmpty else {
+                    focusOnTopic()
+                    return
+                }
                 focusedTaskCreation = sortedPendingTasks.last?.created
             } else {
-                focusedTaskCreation = nil
-                isNewTaskFocused = true
-                isTopicFocused = false
+                focusOnNewTask()
             }
             return
         }
         if focusIndex > 0 {
             focusedTaskCreation = sortedPendingTasks[focusIndex - 1].created
         } else {
-            focusedTaskCreation = nil
-            isNewTaskFocused = false
-            isTopicFocused = true
+            focusOnTopic()
         }
     }
     
     func handleMoveDown() {
         guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
             if isTopicFocused {
+                guard let list = self.list,
+                      !list.items.isEmpty else {
+                    focusOnNewTask()
+                    return
+                }
                 focusedTaskCreation = sortedPendingTasks.first?.created
             } else {
-                focusedTaskCreation = nil
-                isNewTaskFocused = false
-                isTopicFocused = true
+                focusOnTopic()
             }
             return
         }
         if focusIndex < sortedPendingTasks.count - 1 {
             focusedTaskCreation = sortedPendingTasks[focusIndex + 1].created
         } else {
-            focusedTaskCreation = nil
-            isNewTaskFocused = true
-            isTopicFocused = false
+            focusOnNewTask()
+        }
+    }
+    
+    func handleDisappearance() {
+        guard let list = self.list else {
+            return
+        }
+        modelContext.delete(list)
+        do {
+            try modelContext.save()
+        } catch {
+            fatalError("Could not delete list: \(error)")
+        }
+    }
+
+}
+
+// MARK: Private methods
+
+private extension Note {
+    
+    func delete(_ task: Todo) {
+        modelContext.delete(task)
+        do {
+            try modelContext.save()
+            focusOnNewTask()
+        } catch {
+            fatalError("Error on task deletion: \(error)")
         }
     }
     
@@ -271,16 +300,16 @@ private extension Note {
         closeButton.isHidden = !list.isDeletable
     }
     
-    func handleDisappearance() {
-        guard let list = self.list else {
-            return
-        }
-        modelContext.delete(list)
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Could not delete list: \(error)")
-        }
+    func focusOnTopic() {
+        self.focusedTaskCreation = nil
+        self.isNewTaskFocused = false
+        self.isTopicFocused = true
+    }
+    
+    func focusOnNewTask() {
+        self.focusedTaskCreation = nil
+        self.isNewTaskFocused = true
+        self.isTopicFocused = false
     }
     
     func placeCursor(forText value: String) {
@@ -318,13 +347,17 @@ private extension Note {
                         placeCursor(forText: topic)
                     }
                 }
-                .onSubmit {
-                    handleMoveDown()
-                }
                 .onChange(of: geometry.frame(in: .global)) {
                     let frame = geometry.frame(in: .global)
                     withAnimation(.easeInOut) {
                         self.isTopScrolledOut = frame.minY < 15
+                    }
+                }
+                .onSubmit {
+                    if list.items.isEmpty {
+                        focusOnNewTask()
+                    } else {
+                        handleMoveDown()
                     }
                 }
             }
@@ -376,13 +409,8 @@ private extension Note {
                         placeCursor(forText: task.what)
                     }
                 }
-                .onKeyPress(Keyboard.backspaceKey) {
-                    if task.what.count > 0 {
-                        return .ignored
-                    } else {
-                        delete(task)
-                        return .handled
-                    }
+                .onSubmit {
+                    handleMoveDown()
                 }
             }
             Spacer()

@@ -19,7 +19,6 @@ enum Keyboard {
     static let tabKey: Int = 48
     static let arrowUp: Int = 126
     static let arrowDown: Int = 125
-    static let backspaceKey = KeyEquivalent("\u{7F}")
 }
 
 enum Timeout {
