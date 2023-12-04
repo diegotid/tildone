@@ -193,6 +193,7 @@ private extension Note {
         }
         do {
             try modelContext.save()
+            updateWindowClosability()
         } catch {
             fatalError("Error on topic edit: \(error)")
         }
@@ -284,6 +285,7 @@ private extension Note {
         modelContext.delete(task)
         do {
             try modelContext.save()
+            updateWindowClosability()
             focusOnNewTask()
         } catch {
             fatalError("Error on task deletion: \(error)")
