@@ -13,9 +13,10 @@ import SwiftData
 struct Desktop: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var lists: [TodoList]
-    @State private var mainWindow: NSWindow?
-    @State private var lastWindow: NSWindow?
     @State private var isMainWindowNew: Bool = false
+    @State private var mainWindow: NSWindow?
+    @State private var foregroundWindow: NSWindow?
+    @Binding var foregroundList: TodoList?
     
     var body: some View {
         noteWindow(for: lists.first)
@@ -24,6 +25,8 @@ struct Desktop: View {
                 mainWindow?.setNoteStyle()
                 mainWindow?.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
                 mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
+                mainWindow?.title = list.hash
+                mainWindow?.titleVisibility = .hidden
                 if isMainWindowNew {
                     let rect = NSRect(x: Layout.defaultNoteXPosition,
                                       y: Layout.defaultNoteYPosition,
@@ -44,8 +47,22 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 deleteCompleteNotes()
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
+                if let window = event.object as? NSWindow,
+                   window.title == lists.first?.hash {
+                    foregroundList = lists.first
+                    foregroundWindow = window
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
-                createAndShowNewNote(at: lastWindowUpperRightCorner())
+                createAndShowNewNote(at: foregroundWindowUpperRightCorner())
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in
+                guard let list = foregroundList,
+                      list.isDeletable else {
+                    return
+                }
+                foregroundWindow?.close()
             }
     }
 }
@@ -103,6 +120,13 @@ private extension Desktop {
                        idealHeight: Layout.defaultNoteHeight,
                        maxHeight: .infinity,
                        alignment: .center)
+                .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
+                    if let window = event.object as? NSWindow,
+                       window.title == list?.hash {
+                        foregroundList = existingList
+                        foregroundWindow = window
+                    }
+                }
         }
     }
 }
@@ -124,17 +148,20 @@ private extension Desktop {
         window.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
+        window.title = list.hash
+        window.titleVisibility = .hidden
         if let origin = position {
             window.setFrameOrigin(
                 NSPoint(x: origin.x - Layout.defaultNoteWidth / 2,
                         y: origin.y - Layout.defaultNoteHeight / 2)
             )
         }
-        self.lastWindow = window
+        foregroundList = list
+        foregroundWindow = window
     }
     
-    func lastWindowUpperRightCorner() -> CGPoint {
-        let window: NSWindow = lastWindow ?? mainWindow!
+    func foregroundWindowUpperRightCorner() -> CGPoint {
+        let window: NSWindow = foregroundWindow ?? mainWindow!
         return CGPoint(x: window.frame.maxX, y: window.frame.maxY)
     }
 }

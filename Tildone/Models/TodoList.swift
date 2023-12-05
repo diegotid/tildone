@@ -25,6 +25,9 @@ final class TodoList {
     var isDeletable: Bool {
         isComplete || isEmpty
     }
+    var hash: String {
+        created.ISO8601Format()
+    }
 
     public init() {
         self.created = Date()

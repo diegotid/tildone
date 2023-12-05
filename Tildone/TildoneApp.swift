@@ -15,6 +15,7 @@ enum Commercial {
 
 @main
 struct TildoneApp: App {
+    @State var foregroundList: TodoList?
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Todo.self, TodoList.self])
@@ -28,7 +29,7 @@ struct TildoneApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Desktop()
+            Desktop(foregroundList: $foregroundList)
         }
         .environment(\.license, .free)
         .modelContainer(sharedModelContainer)
@@ -41,6 +42,11 @@ struct TildoneApp: App {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
                 .keyboardShortcut(KeyEquivalent("n"), modifiers: .command)
+                Button("Close (and remove)") {
+                    NotificationCenter.default.post(name: .close, object: nil)
+                }
+                .disabled(!(foregroundList?.isDeletable ?? false))
+                .keyboardShortcut(KeyEquivalent("w"), modifiers: .command)
             }
         }
     }
@@ -48,4 +54,5 @@ struct TildoneApp: App {
 
 extension Notification.Name {
     static let new = Notification.Name("new")
+    static let close = Notification.Name("close")
 }
