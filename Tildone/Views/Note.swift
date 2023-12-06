@@ -80,7 +80,7 @@ struct Note: View {
                                 newListItem()
                                     .opacity(isDone ? 0 : 1)
                                 Spacer()
-                                    .id(ViewLayout.bottomAnchor)
+                                    .id(Id.bottomAnchor)
                             }
                             .onAppear {
                                 self.isTopicFocused = self.list!.topic == nil
@@ -90,7 +90,7 @@ struct Note: View {
                         .modifier(ScrollFrame())
                         .onChange(of: list.items.count) {
                             withAnimation {
-                                scroll.scrollTo(ViewLayout.bottomAnchor, anchor: .bottom)
+                                scroll.scrollTo(Id.bottomAnchor, anchor: .bottom)
                             }
                         }
                     }

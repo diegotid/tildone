@@ -16,7 +16,22 @@ enum Commercial {
 @main
 struct TildoneApp: App {
     @State var foregroundList: TodoList?
+    @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    var appIconImage: Image? = {
+        guard let image = NSImage(named: Id.appIcon) else {
+            return nil
+        }
+        return Image(nsImage: image)
+    }()
+    
+    var appVersionLabel: Text? = {
+        guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+            return nil
+        }
+        return Text("Version \(version)")
+    }()
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Todo.self, TodoList.self])
@@ -39,6 +54,10 @@ struct TildoneApp: App {
         .commandsRemoved()
         .commandsReplaced {
             CommandGroup(replacing: .appInfo) {
+                Button(Copy.aboutCommand) {
+                    openWindow(id: Id.aboutWindow)
+                }
+                Divider()
                 Button(Copy.quitAppCommand) {
                     NSApplication.shared.terminate(self)
                 }
@@ -56,6 +75,29 @@ struct TildoneApp: App {
                 .keyboardShortcut("w")
             }
         }
+        Window(Copy.aboutCommand, id: Id.aboutWindow) {
+            VStack {
+                if appIconImage != nil {
+                    appIconImage!
+                        .resizable()
+                        .frame(maxWidth: Frame.aboutIconSize, maxHeight: Frame.aboutIconSize)
+                }
+                Text(Copy.appName)
+                    .font(.title)
+                    .bold()
+                    .padding(.bottom, 10)
+                if appVersionLabel != nil {
+                    appVersionLabel
+                        .font(.subheadline)
+                }
+                Text(Copy.contentRights)
+                    .font(.subheadline)
+            }
+            .padding()
+            .frame(width: Frame.aboutWindowWidth, height: Frame.aboutWindowHeight)
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
     }
 }
 
