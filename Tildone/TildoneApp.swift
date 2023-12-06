@@ -16,6 +16,7 @@ enum Commercial {
 @main
 struct TildoneApp: App {
     @State var foregroundList: TodoList?
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Todo.self, TodoList.self])
@@ -36,17 +37,23 @@ struct TildoneApp: App {
         .windowStyle(HiddenTitleBarWindowStyle())
         .windowResizability(.contentSize)
         .commandsRemoved()
-        .commands {
-            CommandMenu("Note") {
-                Button("New") {
+        .commandsReplaced {
+            CommandGroup(replacing: .appInfo) {
+                Button(Copy.quitAppCommand) {
+                    NSApplication.shared.terminate(self)
+                }
+                .keyboardShortcut("q")
+            }
+            CommandGroup(replacing: .toolbar) {
+                Button(Copy.newNoteCommand) {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
-                .keyboardShortcut(KeyEquivalent("n"), modifiers: .command)
-                Button("Close (and remove)") {
+                .keyboardShortcut("n")
+                Button(Copy.discardNoteCommand) {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }
                 .disabled(!(foregroundList?.isDeletable ?? false))
-                .keyboardShortcut(KeyEquivalent("w"), modifiers: .command)
+                .keyboardShortcut("w")
             }
         }
     }
@@ -55,4 +62,10 @@ struct TildoneApp: App {
 extension Notification.Name {
     static let new = Notification.Name("new")
     static let close = Notification.Name("close")
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
 }

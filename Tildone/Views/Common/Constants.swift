@@ -9,10 +9,18 @@ import SwiftUI
 import Foundation
 
 enum Copy {
+    static let quitAppCommand: String = "Quit Tildene"
+    static let newNoteCommand: String = "New note"
+    static let discardNoteCommand: String = "Close and discard empty note"
     static let newTaskPlaceholder: String = "New task"
     static let listTopicPlaceholder: String = "Topic"
     static let noteFadingOutDisplay: String = "Fading out..."
+    static let noteDone: String = "Done!"
     static let cancel: String = "Cancel"
+}
+
+enum ViewLayout {
+    static let bottomAnchor: String = "bottom"
 }
 
 enum Keyboard {

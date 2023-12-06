@@ -80,7 +80,7 @@ struct Note: View {
                                 newListItem()
                                     .opacity(isDone ? 0 : 1)
                                 Spacer()
-                                    .id("bottom")
+                                    .id(ViewLayout.bottomAnchor)
                             }
                             .onAppear {
                                 self.isTopicFocused = self.list!.topic == nil
@@ -90,7 +90,7 @@ struct Note: View {
                         .modifier(ScrollFrame())
                         .onChange(of: list.items.count) {
                             withAnimation {
-                                scroll.scrollTo("bottom", anchor: .bottom)
+                                scroll.scrollTo(ViewLayout.bottomAnchor, anchor: .bottom)
                             }
                         }
                     }
@@ -496,7 +496,7 @@ private extension Note {
                 .font(.system(size: 90, weight: .bold))
                 .foregroundColor(.accentColor)
                 .symbolEffect(.bounce, value: isFadingAway)
-            Text("Done!")
+            Text(Copy.noteDone)
                 .padding(.leading, 6)
                 .padding(.bottom, wasAlreadyDone ? 60 : 30)
                 .font(.system(size: 30, weight: .bold))
