@@ -36,6 +36,7 @@ struct Desktop: View {
                 }
             }
             .onAppear {
+                UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
                 if lists.isEmpty {
                     createNewNote()
                     self.isMainWindowNew = true
