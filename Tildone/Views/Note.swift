@@ -26,11 +26,15 @@ struct Note: View {
     }
     var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
+    enum Field: Hashable {
+        case topic
+        case task
+        case newTask
+    }
     @State private var noteWindow: NSWindow?
     @State private var newTaskText: String = ""
     @State private var isTopScrolledOut: Bool = false
-    @FocusState private var isTopicFocused: Bool
-    @FocusState private var isNewTaskFocused: Bool
+    @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskCreation: Date?
 
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
@@ -83,8 +87,11 @@ struct Note: View {
                                     .id(Id.bottomAnchor)
                             }
                             .onAppear {
-                                self.isTopicFocused = self.list!.topic == nil
-                                self.isNewTaskFocused = !self.isTopicFocused
+                                if self.list!.topic == nil {
+                                    self.focusedField = .topic
+                                } else {
+                                    self.focusedField = .newTask
+                                }
                             }
                         }
                         .modifier(ScrollFrame())
@@ -205,7 +212,7 @@ private extension Note {
                 return event
             }
             if event.keyCode == Keyboard.tabKey
-                && isNewTaskFocused == true
+                && focusedField == .newTask
                 && newTaskText.count > 0 {
                 handleTaskCommit()
                 return nil
@@ -230,7 +237,7 @@ private extension Note {
     
     func handleMoveUp() {
         guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
-            if isNewTaskFocused {
+            if focusedField == .newTask {
                 guard let list = self.list,
                       !list.items.isEmpty else {
                     focusOnTopic()
@@ -251,7 +258,7 @@ private extension Note {
     
     func handleMoveDown() {
         guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
-            if isTopicFocused {
+            if focusedField == .topic {
                 guard let list = self.list,
                       !list.items.isEmpty else {
                     focusOnNewTask()
@@ -311,14 +318,12 @@ private extension Note {
     
     func focusOnTopic() {
         self.focusedTaskCreation = nil
-        self.isNewTaskFocused = false
-        self.isTopicFocused = true
+        self.focusedField = .topic
     }
     
     func focusOnNewTask() {
         self.focusedTaskCreation = nil
-        self.isNewTaskFocused = true
-        self.isTopicFocused = false
+        self.focusedField = .newTask
     }
     
     func placeCursor(forText value: String) {
@@ -350,9 +355,9 @@ private extension Note {
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .padding(.top, 5)
-                .focused($isTopicFocused)
-                .onChange(of: isTopicFocused) {
-                    if let topic = list.topic, isTopicFocused {
+                .focused($focusedField, equals: .topic)
+                .onChange(of: focusedField) {
+                    if let topic = list.topic, focusedField == .topic {
                         placeCursor(forText: topic)
                     }
                 }
@@ -437,9 +442,9 @@ private extension Note {
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .onSubmit(handleTaskCommit)
-                .focused($isNewTaskFocused)
-                .onChange(of: isNewTaskFocused) {
-                    if !newTaskText.isEmpty {
+                .focused($focusedField, equals: .newTask)
+                .onChange(of: focusedField) {
+                    if focusedField != .newTask && !newTaskText.isEmpty {
                         handleTaskCommit()
                     }
                 }
