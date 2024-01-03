@@ -89,9 +89,12 @@ struct TildoneApp: App {
                 if appVersionLabel != nil {
                     appVersionLabel
                         .font(.subheadline)
+                        .padding(.bottom, 10)
                 }
                 Text(Copy.contentRights)
-                    .font(.subheadline)
+                if let website = URL(string: Copy.websiteLink) {
+                    Link(Copy.websiteName, destination: website)
+                }
             }
             .padding()
             .frame(width: Frame.aboutWindowWidth, height: Frame.aboutWindowHeight)
