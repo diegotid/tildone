@@ -82,6 +82,12 @@ struct TildoneApp: App {
                 .disabled(isCloseCommandDisabled)
                 .keyboardShortcut("w")
             }
+            CommandGroup(replacing: .toolbar) {
+                Button("Arrange notes") {
+                    NotificationCenter.default.post(name: .arrange, object: nil)
+                }
+                .keyboardShortcut("a", modifiers: [.shift, .command])
+            }
         }
         Window(Copy.aboutCommand, id: Id.aboutWindow) {
             VStack {
@@ -115,6 +121,7 @@ struct TildoneApp: App {
 extension Notification.Name {
     static let new = Notification.Name("new")
     static let close = Notification.Name("close")
+    static let arrange = Notification.Name("arrange")
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {

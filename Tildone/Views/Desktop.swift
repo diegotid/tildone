@@ -14,6 +14,7 @@ struct Desktop: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var lists: [TodoList]
     @State private var isMainWindowNew: Bool = false
+    @State private var noteWindows: [NSWindow] = []
     @State private var mainWindow: NSWindow?
     @State private var foregroundWindow: NSWindow?
     @Binding var foregroundList: TodoList?
@@ -27,6 +28,9 @@ struct Desktop: View {
                 mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
                 mainWindow?.title = list.hash
                 mainWindow?.titleVisibility = .hidden
+                if let window = mainWindow {
+                    noteWindows.append(window)
+                }
                 if isMainWindowNew {
                     let rect = NSRect(x: Layout.defaultNoteXPosition,
                                       y: Layout.defaultNoteYPosition,
@@ -65,10 +69,14 @@ struct Desktop: View {
                 if let list = foregroundList {
                     if list.isDeletable {
                         foregroundWindow?.close()
+                        noteWindows.removeAll(where: { $0.title == foregroundList?.hash })
                     }
                 } else {
                     foregroundWindow?.close()
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in
+                arrangeNotes()
             }
     }
 }
@@ -105,6 +113,26 @@ private extension Desktop {
         for list in lists.filter({ $0.isDeletable }) {
             delete(list)
         }
+    }
+    
+    func arrangeNotes() {
+        Desktop.positionOnScreen(noteWindows.sorted(by: {
+            $0.frame.origin.x < $1.frame.origin.x
+        }))
+    }
+    
+    static func positionOnScreen(_ windows: [NSWindow], fromX: Int = 0) {
+        guard let window: NSWindow = windows.first else {
+            return
+        }
+        let newX: Int = fromX + (fromX > 0 ? Frame.arrangedNotesSpacing : Frame.arrangedNotesMargin)
+        let newFrame = NSRect(x: newX,
+                              y: Frame.arrangedNotesMargin,
+                              width: Int(window.frame.width),
+                              height: Int(window.frame.height))
+        window.setFrame(newFrame, display: false, animate: true)
+        positionOnScreen(Array(windows.dropFirst()),
+                         fromX: newX + Int(window.frame.width))
     }
 }
 
@@ -159,6 +187,7 @@ private extension Desktop {
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
         window.title = list.hash
         window.titleVisibility = .hidden
+        noteWindows.append(window)
         if let origin = position {
             window.setFrameOrigin(
                 NSPoint(x: origin.x - Layout.defaultNoteWidth / 2,

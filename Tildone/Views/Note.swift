@@ -223,11 +223,8 @@ private extension Note {
                 handleMoveDown()
                 return nil
             } else if event.modifierFlags.contains(.command),
-                      event.charactersIgnoringModifiers == "w",
-                      let window = noteWindow,
-                      let list = self.list,
-                      list.isDeletable {
-                window.close()
+                      event.charactersIgnoringModifiers == "w" {
+                NotificationCenter.default.post(name: .close, object: nil)
                 return nil
             } else {
                 return event
