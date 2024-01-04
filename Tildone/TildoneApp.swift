@@ -42,6 +42,14 @@ struct TildoneApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+    
+    var isCloseCommandDisabled: Bool {
+        if let list = self.foregroundList {
+            !list.isDeletable
+        } else {
+            false
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -63,15 +71,15 @@ struct TildoneApp: App {
                 }
                 .keyboardShortcut("q")
             }
-            CommandGroup(replacing: .toolbar) {
+            CommandGroup(replacing: .newItem) {
                 Button(Copy.newNoteCommand) {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
                 .keyboardShortcut("n")
-                Button(Copy.discardNoteCommand) {
+                Button(foregroundList != nil ? Copy.discardNoteCommand : "Close about window") {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }
-                .disabled(!(foregroundList?.isDeletable ?? false))
+                .disabled(isCloseCommandDisabled)
                 .keyboardShortcut("w")
             }
         }
@@ -89,9 +97,12 @@ struct TildoneApp: App {
                 if appVersionLabel != nil {
                     appVersionLabel
                         .font(.subheadline)
+                        .padding(.bottom, 10)
                 }
                 Text(Copy.contentRights)
-                    .font(.subheadline)
+                if let website = URL(string: Copy.websiteLink) {
+                    Link(Copy.websiteName, destination: website)
+                }
             }
             .padding()
             .frame(width: Frame.aboutWindowWidth, height: Frame.aboutWindowHeight)

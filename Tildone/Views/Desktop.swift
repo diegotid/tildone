@@ -49,21 +49,26 @@ struct Desktop: View {
                 deleteCompleteNotes()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
-                if let window = event.object as? NSWindow,
-                   window.title == lists.first?.hash {
-                    foregroundList = lists.first
+                if let window = event.object as? NSWindow {
                     foregroundWindow = window
+                    if window.title == lists.first?.hash {
+                        foregroundList = lists.first
+                    } else if window.title == Copy.aboutCommand {
+                        foregroundList = nil
+                    }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
             }
             .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in
-                guard let list = foregroundList,
-                      list.isDeletable else {
-                    return
+                if let list = foregroundList {
+                    if list.isDeletable {
+                        foregroundWindow?.close()
+                    }
+                } else {
+                    foregroundWindow?.close()
                 }
-                foregroundWindow?.close()
             }
     }
 }
@@ -122,10 +127,13 @@ private extension Desktop {
                        maxHeight: .infinity,
                        alignment: .center)
                 .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
-                    if let window = event.object as? NSWindow,
-                       window.title == list?.hash {
-                        foregroundList = existingList
+                    if let window = event.object as? NSWindow {
                         foregroundWindow = window
+                        if window.title == list?.hash {
+                            foregroundList = existingList
+                        } else if window.title == Copy.aboutCommand {
+                            foregroundList = nil
+                        }
                     }
                 }
         }
