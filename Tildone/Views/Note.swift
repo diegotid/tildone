@@ -13,6 +13,8 @@ import SwiftData
 struct Note: View {
     @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
+    
+    @State private var isTextBlurred: Bool = false
 
     var list: TodoList?
     var sortedTasks: [Todo] {
@@ -108,6 +110,7 @@ struct Note: View {
                         headerToolBar(onAdd: onAdd)
                     }
                 }
+                .blur(radius: isTextBlurred ? 3 : 0)
                 .opacity(windowAlpha / (isDone ? 2 : 1))
                 if isDone {
                     doneOverlay()
@@ -120,8 +123,9 @@ struct Note: View {
                 self.wasAlreadyDone = list.isComplete
             }
             .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
-                if let (blurred, background) = notification.object as? (Bool, Bool) {
-                    noteWindow?.level = background ? .normal : .floating
+                if let (toBlur, toNormal) = notification.object as? (Bool, Bool) {
+                    noteWindow?.level = toNormal ? .normal : .floating
+                    isTextBlurred = toBlur
                 }
             }
         }
@@ -376,6 +380,7 @@ private extension Note {
                         handleMoveDown()
                     }
                 }
+                .blur(radius: isTextBlurred ? 1 : 0)
             }
             .padding(.bottom, 20)
         }

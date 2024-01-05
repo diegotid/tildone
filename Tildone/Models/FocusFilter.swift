@@ -16,7 +16,7 @@ struct FocusFilter: SetFocusFilterIntent {
     
     var displayRepresentation: DisplayRepresentation {
         var title: String?
-        switch (tastTextBlurred, noteMayStayBackground) {
+        switch (taskTextBlurred, noteMayStayBackground) {
         case (false, false):
             title = "Task text visible on a note that stays in the foreground"
         case (true, true):
@@ -30,7 +30,7 @@ struct FocusFilter: SetFocusFilterIntent {
     }
     
     @Parameter(title: "Task text blurred", default: false)
-    var tastTextBlurred: Bool
+    var taskTextBlurred: Bool
     
     @Parameter(title: "Note may stay in the background", default: false)
     var noteMayStayBackground: Bool
@@ -43,7 +43,7 @@ struct FocusFilter: SetFocusFilterIntent {
     
     func perform() async throws -> some IntentResult {
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .visibility, object: (tastTextBlurred, noteMayStayBackground))
+            NotificationCenter.default.post(name: .visibility, object: (taskTextBlurred, noteMayStayBackground))
         }
         return .result()
     }
