@@ -41,6 +41,10 @@ struct Desktop: View {
             }
             .onAppear {
                 UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
+                Task {
+                    let filterIntent = try await FocusFilter.current
+                    _ = try await filterIntent.perform()
+                }
                 if lists.isEmpty {
                     createNewNote()
                     self.isMainWindowNew = true

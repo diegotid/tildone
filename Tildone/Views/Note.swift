@@ -84,7 +84,7 @@ struct Note: View {
                                     listItem(task: item)
                                 }
                                 newListItem()
-                                    .opacity(isDone ? 0 : 1)
+                                    .opacity(isDone || isTextBlurred ? 0 : 1)
                                 Spacer()
                                     .id(Id.bottomAnchor)
                             }
@@ -128,6 +128,7 @@ struct Note: View {
                     isTextBlurred = toBlur
                 }
             }
+            .disabled(isTextBlurred)
         }
     }
 }
