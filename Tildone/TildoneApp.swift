@@ -122,6 +122,7 @@ extension Notification.Name {
     static let new = Notification.Name("new")
     static let close = Notification.Name("close")
     static let arrange = Notification.Name("arrange")
+    static let visibility = Notification.Name("visibility")
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
