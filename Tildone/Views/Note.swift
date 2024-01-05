@@ -119,6 +119,11 @@ struct Note: View {
                 self.isDone = list.isComplete
                 self.wasAlreadyDone = list.isComplete
             }
+            .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+                if let (blurred, background) = notification.object as? (Bool, Bool) {
+                    noteWindow?.level = background ? .normal : .floating
+                }
+            }
         }
     }
 }

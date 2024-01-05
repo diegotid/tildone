@@ -22,6 +22,7 @@
 		F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8D92AF850CC002ED6BF /* Mocks.swift */; };
 		F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8DB2AF854D7002ED6BF /* Desktop.swift */; };
 		F19B3BF32B155711003C094A /* LicenseType.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19B3BF22B155711003C094A /* LicenseType.swift */; };
+		F1D17AA92B47741900C7A500 /* FocusFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D17AA82B47741900C7A500 /* FocusFilter.swift */; };
 		F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */; };
 /* End PBXBuildFile section */
 
@@ -62,6 +63,7 @@
 		F180D8D92AF850CC002ED6BF /* Mocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mocks.swift; sourceTree = "<group>"; };
 		F180D8DB2AF854D7002ED6BF /* Desktop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Desktop.swift; sourceTree = "<group>"; };
 		F19B3BF22B155711003C094A /* LicenseType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseType.swift; sourceTree = "<group>"; };
+		F1D17AA82B47741900C7A500 /* FocusFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilter.swift; sourceTree = "<group>"; };
 		F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -155,6 +157,7 @@
 			children = (
 				F166704A2AF711EC000B76A5 /* Todo.swift */,
 				F16670752AF7133F000B76A5 /* TodoList.swift */,
+				F1D17AA82B47741900C7A500 /* FocusFilter.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -316,6 +319,7 @@
 				F16670762AF7133F000B76A5 /* TodoList.swift in Sources */,
 				F166704B2AF711EC000B76A5 /* Todo.swift in Sources */,
 				F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */,
+				F1D17AA92B47741900C7A500 /* FocusFilter.swift in Sources */,
 				F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */,
 				F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */,
 				F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */,
