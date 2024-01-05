@@ -62,6 +62,12 @@ struct Desktop: View {
                     }
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+                arrangeNotes()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in
+                arrangeNotes()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
             }
@@ -74,9 +80,6 @@ struct Desktop: View {
                 } else {
                     foregroundWindow?.close()
                 }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in
-                arrangeNotes()
             }
     }
 }
