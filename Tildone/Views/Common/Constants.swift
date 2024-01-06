@@ -11,6 +11,8 @@ import Foundation
 enum Copy {
     static let appName: String = "Tildone"
     static let aboutCommand: String = "About Tildone"
+    static let settingsCommand: String = "Settings..."
+    static let openOnLoginLabel: String = "Open at login"
     static let quitAppCommand: String = "Quit Tildene"
     static let contentRights: String = "© 2023 Diego Rivera"
     static let websiteLink: String = "http://cuatro.studio"

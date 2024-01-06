@@ -66,6 +66,11 @@ struct TildoneApp: App {
                     openWindow(id: Id.aboutWindow)
                 }
                 Divider()
+                SettingsLink {
+                    Text(Copy.settingsCommand)
+                }
+                .keyboardShortcut(",")
+                Divider()
                 Button(Copy.quitAppCommand) {
                     NSApplication.shared.terminate(self)
                 }
@@ -114,6 +119,13 @@ struct TildoneApp: App {
             .frame(width: Frame.aboutWindowWidth, height: Frame.aboutWindowHeight)
         }
         .windowResizability(.contentSize)
+        .commandsRemoved()
+        Settings {
+            Form {
+                Launcher.Toggle()
+            }
+            .padding()
+        }
         .commandsRemoved()
     }
 }
