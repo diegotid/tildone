@@ -13,11 +13,6 @@ import SwiftData
 struct Note: View {
     @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
-    
-    enum TaskLineTruncation: Int {
-        case single = 1
-        case multiple
-    }
     @AppStorage("taskLineTruncation") private var taskLineTruncation: TaskLineTruncation = .single
     
     @State private var isTextBlurred: Bool = false
