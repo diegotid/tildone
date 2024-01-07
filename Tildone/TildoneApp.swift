@@ -83,7 +83,7 @@ struct TildoneApp: App {
                 .keyboardShortcut("w")
             }
             CommandGroup(replacing: .toolbar) {
-                Button("Arrange notes") {
+                Button(Copy.arrangeCommand) {
                     NotificationCenter.default.post(name: .arrange, object: nil)
                 }
                 .keyboardShortcut("a", modifiers: [.shift, .command])
