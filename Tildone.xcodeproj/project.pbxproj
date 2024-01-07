@@ -21,6 +21,7 @@
 		F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166707B2AF716F8000B76A5 /* Checkbox.swift */; };
 		F17086B82B48D5BF00D2C7DD /* Launcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17086B72B48D5BF00D2C7DD /* Launcher.swift */; };
 		F17F46962B4A0FE000127AD9 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17F46952B4A0FE000127AD9 /* Settings.swift */; };
+		F17F469A2B4A1C0B00127AD9 /* View+Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17F46992B4A1C0B00127AD9 /* View+Util.swift */; };
 		F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8D92AF850CC002ED6BF /* Mocks.swift */; };
 		F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8DB2AF854D7002ED6BF /* Desktop.swift */; };
 		F19B3BF32B155711003C094A /* LicenseType.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19B3BF22B155711003C094A /* LicenseType.swift */; };
@@ -64,6 +65,7 @@
 		F166707B2AF716F8000B76A5 /* Checkbox.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Checkbox.swift; sourceTree = "<group>"; };
 		F17086B72B48D5BF00D2C7DD /* Launcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Launcher.swift; sourceTree = "<group>"; };
 		F17F46952B4A0FE000127AD9 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		F17F46992B4A1C0B00127AD9 /* View+Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Util.swift"; sourceTree = "<group>"; };
 		F180D8D92AF850CC002ED6BF /* Mocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mocks.swift; sourceTree = "<group>"; };
 		F180D8DB2AF854D7002ED6BF /* Desktop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Desktop.swift; sourceTree = "<group>"; };
 		F19B3BF22B155711003C094A /* LicenseType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseType.swift; sourceTree = "<group>"; };
@@ -185,6 +187,7 @@
 				F16670772AF7167D000B76A5 /* Styler.swift */,
 				F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */,
 				F17086B72B48D5BF00D2C7DD /* Launcher.swift */,
+				F17F46992B4A1C0B00127AD9 /* View+Util.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -329,6 +332,7 @@
 				F1D17AA92B47741900C7A500 /* FocusFilter.swift in Sources */,
 				F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */,
 				F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */,
+				F17F469A2B4A1C0B00127AD9 /* View+Util.swift in Sources */,
 				F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */,
 				F19B3BF32B155711003C094A /* LicenseType.swift in Sources */,
 				F17086B82B48D5BF00D2C7DD /* Launcher.swift in Sources */,
