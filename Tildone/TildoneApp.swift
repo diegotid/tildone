@@ -116,10 +116,7 @@ struct TildoneApp: App {
         .windowResizability(.contentSize)
         .commandsRemoved()
         Settings {
-            Form {
-                Launcher.Toggle()
-            }
-            .padding()
+            SettingsForm()
         }
         .commandsRemoved()
     }
