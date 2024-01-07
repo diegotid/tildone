@@ -20,6 +20,7 @@
 		F166707A2AF7167D000B76A5 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670782AF7167D000B76A5 /* Constants.swift */; };
 		F166707C2AF716F8000B76A5 /* Checkbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166707B2AF716F8000B76A5 /* Checkbox.swift */; };
 		F17086B82B48D5BF00D2C7DD /* Launcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17086B72B48D5BF00D2C7DD /* Launcher.swift */; };
+		F17F46962B4A0FE000127AD9 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17F46952B4A0FE000127AD9 /* Settings.swift */; };
 		F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8D92AF850CC002ED6BF /* Mocks.swift */; };
 		F180D8DC2AF854D7002ED6BF /* Desktop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F180D8DB2AF854D7002ED6BF /* Desktop.swift */; };
 		F19B3BF32B155711003C094A /* LicenseType.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19B3BF22B155711003C094A /* LicenseType.swift */; };
@@ -62,6 +63,7 @@
 		F16670782AF7167D000B76A5 /* Constants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		F166707B2AF716F8000B76A5 /* Checkbox.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Checkbox.swift; sourceTree = "<group>"; };
 		F17086B72B48D5BF00D2C7DD /* Launcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Launcher.swift; sourceTree = "<group>"; };
+		F17F46952B4A0FE000127AD9 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		F180D8D92AF850CC002ED6BF /* Mocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mocks.swift; sourceTree = "<group>"; };
 		F180D8DB2AF854D7002ED6BF /* Desktop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Desktop.swift; sourceTree = "<group>"; };
 		F19B3BF22B155711003C094A /* LicenseType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseType.swift; sourceTree = "<group>"; };
@@ -170,6 +172,7 @@
 				F1EA81F92AFEA81700E58A73 /* Common */,
 				F16670482AF711EC000B76A5 /* Note.swift */,
 				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
+				F17F46952B4A0FE000127AD9 /* Settings.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -320,6 +323,7 @@
 				F16670792AF7167D000B76A5 /* Styler.swift in Sources */,
 				F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */,
 				F16670762AF7133F000B76A5 /* TodoList.swift in Sources */,
+				F17F46962B4A0FE000127AD9 /* Settings.swift in Sources */,
 				F166704B2AF711EC000B76A5 /* Todo.swift in Sources */,
 				F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */,
 				F1D17AA92B47741900C7A500 /* FocusFilter.swift in Sources */,
