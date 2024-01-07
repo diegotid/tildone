@@ -14,6 +14,12 @@ struct Note: View {
     @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
     
+    enum TaskLineTruncation: Int {
+        case single = 1
+        case multiple
+    }
+    @AppStorage("taskLineTruncation") private var taskLineTruncation: TaskLineTruncation = .single
+    
     @State private var isTextBlurred: Bool = false
 
     var list: TodoList?
@@ -405,12 +411,13 @@ private extension Note {
     
     @ViewBuilder
     func listItem(task: Todo) -> some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Checkbox(checked: task.isDone)
                 .onToggle {
                     handleTaskToggle(task)
                     noteWindow?.makeFirstResponder(nil)
                 }
+                .padding(.vertical, 2)
             if task.isDone {
                 Text(task.what)
                     .foregroundColor(.accentColor)
@@ -420,9 +427,12 @@ private extension Note {
                           text: Binding<String>(
                             get: { task.what },
                             set: { handleTaskEdit(task, to: $0) }
-                          ))
+                          ),
+                          axis: taskLineTruncation == .single ? .horizontal : .vertical)
+                .if(taskLineTruncation == .single) { view in
+                    view.truncationMode(.tail)
+                }
                 .textFieldStyle(PlainTextFieldStyle())
-                .truncationMode(.tail)
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .focused($focusedTaskCreation, equals: task.created)
