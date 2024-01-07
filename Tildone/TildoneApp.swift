@@ -8,11 +8,6 @@
 import SwiftUI
 import SwiftData
 
-enum Commercial {
-    case Free
-    case Premium
-}
-
 @main
 struct TildoneApp: App {
     @State var foregroundList: TodoList?
