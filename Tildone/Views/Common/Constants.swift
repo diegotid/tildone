@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Foundation
 
 enum Copy {
     static let appName: String = "Tildone"
@@ -17,6 +16,20 @@ enum Copy {
     static let settingsSectionAppearance: String = "Appearance"
     static let settingsSectionAppearanceSingle: String = "Single line with ellipsis"
     static let settingsSectionAppearanceMultiple: String = "Multiline"
+    static let settingsArrangementDescription: String = "How to arrange your notes\n(when menu command used or ⇧⌘A pressed):"
+    static let settingsArrangementCornerLabel: String = "Corner of the screen"
+    static let settingsArrangementCornerTopLeft: String = "Top left corner"
+    static let settingsArrangementCornerTopRight: String = "Top right corner"
+    static let settingsArrangementCornerBottomRight: String = "Bottom right corner"
+    static let settingsArrangementCornerBottomLeft: String = "Bottom left corner"
+    static let settingsArrangementAlignmentHorizontal: String = "Horizontal"
+    static let settingsArrangementAlignmentVertical: String = "Vertical"
+    static let settingsArrangementSpacingMinimum: String = "Minimum spacing"
+    static let settingsArrangementSpacingMedium: String = "Medium spacing"
+    static let settingsArrangementSpacingMaximum: String = "Maximum spacing"
+    static let settingsArrangementMarginMinimum: String = "Minimum margin"
+    static let settingsArrangementMarginMedium: String = "Medium margin"
+    static let settingsArrangementMarginMaximum: String = "Maximum margin"
     static let openOnLoginLabel: String = "Open at login"
     static let quitAppCommand: String = "Quit Tildene"
     static let contentRights: String = "© 2023 Diego Rivera"
@@ -25,6 +38,7 @@ enum Copy {
     static let newNoteCommand: String = "New note"
     static let discardNoteCommand: String = "Discard empty note"
     static let taskPlaceholder: String = "Task"
+    static let desktopPlaceholder: String = "Desktop"
     static let newTaskPlaceholder: String = "New task"
     static let listTopicPlaceholder: String = "Topic"
     static let noteFadingOutDisplay: String = "Fading out..."
