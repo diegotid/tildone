@@ -19,6 +19,11 @@ struct Desktop: View {
     @State private var foregroundWindow: NSWindow?
     @Binding var foregroundList: TodoList?
     
+    @AppStorage("selectedArrangementCorner") var selectedArrangementCorner: ArrangementCorner = .bottomLeft
+    @AppStorage("selectedArrangementAlignment") var selectedArrangementAlignment: ArrangementAlignment = .horizontal
+    @AppStorage("selectedArrangementCornerMargin") var selectedArrangementCornerMargin: ArrangementSpacing = .medium
+    @AppStorage("selectedArrangementSpacing") var selectedArrangementSpacing: ArrangementSpacing = .minimum
+
     var body: some View {
         noteWindow(for: lists.first)
             .background(WindowAccessor(window: $mainWindow)).onChange(of: mainWindow) {
@@ -123,23 +128,45 @@ private extension Desktop {
     }
     
     func arrangeNotes() {
-        Desktop.positionOnScreen(noteWindows.sorted(by: {
-            $0.frame.origin.x < $1.frame.origin.x
-        }))
+        let horizontal: Bool = selectedArrangementAlignment == .horizontal
+        let inverse: Bool = horizontal
+            ? [.bottomRight, .topRight].contains(selectedArrangementCorner)
+            : [.topLeft, .topRight].contains(selectedArrangementCorner)
+        let sortedWindows = noteWindows.sorted(by: {
+            switch (horizontal, inverse) {
+            case (true, true): $0.frame.origin.x > $1.frame.origin.x
+            case (true, false): $0.frame.origin.x < $1.frame.origin.x
+            case (false, true): $0.frame.origin.y > $1.frame.origin.y
+            case (false, false): $0.frame.origin.y < $1.frame.origin.y
+            }
+        })
+        positionOnScreen(sortedWindows)
     }
     
-    static func positionOnScreen(_ windows: [NSWindow], fromX: Int = 0) {
-        guard let window: NSWindow = windows.first else {
+    func positionOnScreen(_ windows: [NSWindow], from: Int = 0) {
+        guard let window: NSWindow = windows.first,
+              let screenSize: CGSize = noteWindows.first?.screen?.frame.size else {
             return
         }
-        let newX: Int = fromX + (fromX > 0 ? Frame.arrangedNotesSpacing : Frame.arrangedNotesMargin)
-        let newFrame = NSRect(x: newX,
-                              y: Frame.arrangedNotesMargin,
-                              width: Int(window.frame.width),
-                              height: Int(window.frame.height))
+        let margin: Int = from > 0
+            ? selectedArrangementSpacing.rawValue
+            : selectedArrangementCornerMargin.rawValue
+        let newPosition: Int = from + margin
+        let windowX = Int(window.frame.width)
+        let windowY = Int(window.frame.height)
+        let horizontal: Bool = selectedArrangementAlignment == .horizontal
+        let inverseX: Bool = [.bottomRight, .topRight].contains(selectedArrangementCorner)
+        let inverseY: Bool = [.topLeft, .topRight].contains(selectedArrangementCorner)
+        let newX: Int = horizontal ? newPosition : selectedArrangementCornerMargin.rawValue
+        let newY: Int = !horizontal ? newPosition : selectedArrangementCornerMargin.rawValue
+        let finalX: Int = inverseX ? Int(screenSize.width) - newX - windowX : newX
+        let finalY: Int = inverseY ? Int(screenSize.height) - Frame.menuBarHeight - newY - windowY : newY
+        let newFrame = NSRect(x: finalX, y: finalY, width: windowX, height: windowY)
         window.setFrame(newFrame, display: false, animate: true)
-        positionOnScreen(Array(windows.dropFirst()),
-                         fromX: newX + Int(window.frame.width))
+        let delta: Int = horizontal ? Int(window.frame.width) : Int(window.frame.height)
+        let remainingWindows: [NSWindow] = Array(windows.dropFirst())
+        
+        positionOnScreen(remainingWindows, from: newPosition + delta)
     }
 }
 
