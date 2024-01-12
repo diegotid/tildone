@@ -57,39 +57,39 @@ struct TildoneApp: App {
         .commandsRemoved()
         .commandsReplaced {
             CommandGroup(replacing: .appInfo) {
-                Button(Copy.aboutCommand) {
+                Button(Copy.commandAbout) {
                     openWindow(id: Id.aboutWindow)
                 }
                 Divider()
                 SettingsLink {
-                    Text(Copy.settingsCommand)
+                    Text(Copy.commandSettings)
                 }
                 .keyboardShortcut(",")
                 Divider()
-                Button(Copy.quitAppCommand) {
+                Button(Copy.commandQuitApp) {
                     NSApplication.shared.terminate(self)
                 }
                 .keyboardShortcut("q")
             }
             CommandGroup(replacing: .newItem) {
-                Button(Copy.newNoteCommand) {
+                Button(Copy.commandNewNote) {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
                 .keyboardShortcut("n")
-                Button(foregroundList != nil ? Copy.discardNoteCommand : "Close about window") {
+                Button(foregroundList != nil ? Copy.commandDiscardNote : "Close about window") {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }
                 .disabled(isCloseCommandDisabled)
                 .keyboardShortcut("w")
             }
             CommandGroup(replacing: .toolbar) {
-                Button(Copy.arrangeCommand) {
+                Button(Copy.commandArrange) {
                     NotificationCenter.default.post(name: .arrange, object: nil)
                 }
                 .keyboardShortcut("a", modifiers: [.shift, .command])
             }
         }
-        Window(Copy.aboutCommand, id: Id.aboutWindow) {
+        Window(Copy.commandAbout, id: Id.aboutWindow) {
             VStack {
                 if appIconImage != nil {
                     appIconImage!

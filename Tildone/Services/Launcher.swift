@@ -9,7 +9,7 @@ import SwiftUI
 import ServiceManagement
 
 public enum Launcher {
-    private static let watching = Watcher()
+    static let watching = Watcher()
     
     public static var isEnabled: Bool {
         get {
@@ -32,19 +32,9 @@ public enum Launcher {
             }
         }
     }
-    
-    public struct Toggle: View {
-        @ObservedObject private var launcher = Launcher.watching
-        
-        public var body: some View {
-            SwiftUI.Toggle(isOn: $launcher.isEnabled) {
-                Text(Copy.openOnLoginLabel)
-            }
-        }
-    }
 }
 
-private extension Launcher {
+extension Launcher {
     final class Watcher: ObservableObject {
         var isEnabled: Bool {
             get {
