@@ -66,7 +66,7 @@ struct Desktop: View {
                     foregroundWindow = window
                     if window.title == lists.first?.hash {
                         foregroundList = lists.first
-                    } else if window.title == Copy.aboutCommand {
+                    } else if window.title == Copy.commandAbout {
                         foregroundList = nil
                     }
                 }
@@ -193,7 +193,7 @@ private extension Desktop {
                         foregroundWindow = window
                         if window.title == list?.hash {
                             foregroundList = existingList
-                        } else if window.title == Copy.aboutCommand {
+                        } else if window.title == Copy.commandAbout {
                             foregroundList = nil
                         }
                     }
