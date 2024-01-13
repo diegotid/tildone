@@ -89,6 +89,7 @@ struct Note: View {
                                 Spacer()
                                     .id(Id.bottomAnchor)
                             }
+                            .padding(.top, list.isDeletable ? 0 : -8)
                             .onAppear {
                                 if self.list!.topic == nil {
                                     self.focusedField = .topic
