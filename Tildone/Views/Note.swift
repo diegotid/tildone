@@ -360,6 +360,7 @@ private extension Note {
                             set: { handleTopicEdit(to: $0) }
                           ))
                 .textFieldStyle(PlainTextFieldStyle())
+                .truncationMode(.tail)
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
