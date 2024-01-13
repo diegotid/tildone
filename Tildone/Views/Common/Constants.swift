@@ -15,6 +15,7 @@ enum Copy {
     static let commandQuitApp: String = "Quit Tildene"
     static let commandNewNote: String = "New Note"
     static let commandDiscardNote: String = "Discard Empty Note"
+    static let commandCloseWindow: String = "Close window"
     static let commandArrange: String = "Arrange Notes"
     static let settingsSectionGeneral: String = "General"
     static let settingsSectionAppearance: String = "Appearance"
