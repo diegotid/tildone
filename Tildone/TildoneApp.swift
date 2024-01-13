@@ -65,7 +65,7 @@ struct TildoneApp: App {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
                 .keyboardShortcut("n")
-                Button(foregroundList != nil ? Copy.commandDiscardNote : "Close about window") {
+                Button(foregroundList != nil ? Copy.commandDiscardNote : Copy.commandCloseWindow) {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }
                 .disabled(isCloseCommandDisabled)

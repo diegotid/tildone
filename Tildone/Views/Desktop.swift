@@ -23,6 +23,11 @@ struct Desktop: View {
     @AppStorage("selectedArrangementAlignment") var selectedArrangementAlignment: ArrangementAlignment = .horizontal
     @AppStorage("selectedArrangementCornerMargin") var selectedArrangementCornerMargin: ArrangementSpacing = .medium
     @AppStorage("selectedArrangementSpacing") var selectedArrangementSpacing: ArrangementSpacing = .minimum
+    
+    static private var appWindowTitles: [String] = [
+        Copy.commandAbout,
+        Copy.commandCheckUpdates
+    ]
 
     var body: some View {
         noteWindow(for: lists.first)
@@ -66,7 +71,7 @@ struct Desktop: View {
                     foregroundWindow = window
                     if window.title == lists.first?.hash {
                         foregroundList = lists.first
-                    } else if window.title == Copy.commandAbout {
+                    } else if Desktop.appWindowTitles.contains(window.title) {
                         foregroundList = nil
                     }
                 }
