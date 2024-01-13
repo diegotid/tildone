@@ -10,11 +10,12 @@ import SwiftUI
 enum Copy {
     static let appName: String = "Tildone"
     static let commandAbout: String = "About \(Copy.appName)"
-    static let commandArrange: String = "Arrange Notes"
+    static let commandCheckUpdates: String = "Check for Updates..."
     static let commandSettings: String = "Settings..."
     static let commandQuitApp: String = "Quit Tildene"
     static let commandNewNote: String = "New Note"
     static let commandDiscardNote: String = "Discard Empty Note"
+    static let commandArrange: String = "Arrange Notes"
     static let settingsSectionGeneral: String = "General"
     static let settingsSectionAppearance: String = "Appearance"
     static let settingsSectionAppearanceSingle: String = "Single line with ellipsis"
@@ -35,8 +36,13 @@ enum Copy {
     static let settingsArrangementMarginMaximum: String = "Maximum margin"
     static let settingsOpenOnLoginLabel: String = "Open at login"
     static let contentRights: String = "© 2023 Diego Rivera"
+    static let aboutAppVersion: String = "Version"
+    static let aboutCurrentVersion: String = "yours is"
     static let websiteLink: String = "http://cuatro.studio"
     static let websiteName: String = "cuatro.studio"
+    static let appVersionUpToDate: String = "Your app is up to date"
+    static let appVersionAvailable: String = "There is an update available!"
+    static let appVersionVisiteStore: String = "Check it on the App Store"
     static let taskPlaceholder: String = "Task"
     static let desktopPlaceholder: String = "Desktop"
     static let newTaskPlaceholder: String = "New task"
@@ -48,8 +54,9 @@ enum Copy {
 
 enum Id {
     static let appIcon: String = "AppIcon"
-    static let aboutWindow: String = "about-tildone"
     static let bottomAnchor: String = "bottom"
+    static let aboutWindow: String = "about-tildone"
+    static let updateWindow: String = "update-tildone"
 }
 
 enum Frame {

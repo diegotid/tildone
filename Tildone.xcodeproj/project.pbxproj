@@ -27,6 +27,9 @@
 		F19B3BF32B155711003C094A /* LicenseType.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19B3BF22B155711003C094A /* LicenseType.swift */; };
 		F1D17AA92B47741900C7A500 /* FocusFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D17AA82B47741900C7A500 /* FocusFilter.swift */; };
 		F1D3001B2B51F2FB00654241 /* Launcher+Toggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3001A2B51F2FB00654241 /* Launcher+Toggle.swift */; };
+		F1D3001D2B51F3E100654241 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3001C2B51F3E100654241 /* UpdateChecker.swift */; };
+		F1D3001F2B51FE0E00654241 /* Updates.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3001E2B51FE0E00654241 /* Updates.swift */; };
+		F1D300212B52061400654241 /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D300202B52061400654241 /* About.swift */; };
 		F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */; };
 /* End PBXBuildFile section */
 
@@ -72,6 +75,9 @@
 		F19B3BF22B155711003C094A /* LicenseType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseType.swift; sourceTree = "<group>"; };
 		F1D17AA82B47741900C7A500 /* FocusFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilter.swift; sourceTree = "<group>"; };
 		F1D3001A2B51F2FB00654241 /* Launcher+Toggle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Launcher+Toggle.swift"; sourceTree = "<group>"; };
+		F1D3001C2B51F3E100654241 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		F1D3001E2B51FE0E00654241 /* Updates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updates.swift; sourceTree = "<group>"; };
+		F1D300202B52061400654241 /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -178,6 +184,8 @@
 				F16670482AF711EC000B76A5 /* Note.swift */,
 				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
 				F17F46952B4A0FE000127AD9 /* Settings.swift */,
+				F1D3001E2B51FE0E00654241 /* Updates.swift */,
+				F1D300202B52061400654241 /* About.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -186,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				F17086B72B48D5BF00D2C7DD /* Launcher.swift */,
+				F1D3001C2B51F3E100654241 /* UpdateChecker.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -337,6 +346,7 @@
 				F16670792AF7167D000B76A5 /* Styler.swift in Sources */,
 				F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */,
 				F16670762AF7133F000B76A5 /* TodoList.swift in Sources */,
+				F1D3001D2B51F3E100654241 /* UpdateChecker.swift in Sources */,
 				F17F46962B4A0FE000127AD9 /* Settings.swift in Sources */,
 				F166704B2AF711EC000B76A5 /* Todo.swift in Sources */,
 				F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */,
@@ -346,7 +356,9 @@
 				F17F469A2B4A1C0B00127AD9 /* View+Util.swift in Sources */,
 				F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */,
 				F19B3BF32B155711003C094A /* LicenseType.swift in Sources */,
+				F1D3001F2B51FE0E00654241 /* Updates.swift in Sources */,
 				F17086B82B48D5BF00D2C7DD /* Launcher.swift in Sources */,
+				F1D300212B52061400654241 /* About.swift in Sources */,
 				F166707A2AF7167D000B76A5 /* Constants.swift in Sources */,
 				F1D3001B2B51F2FB00654241 /* Launcher+Toggle.swift in Sources */,
 			);
