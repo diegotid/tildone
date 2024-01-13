@@ -14,20 +14,6 @@ struct TildoneApp: App {
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    var appIconImage: Image? = {
-        guard let image = NSImage(named: Id.appIcon) else {
-            return nil
-        }
-        return Image(nsImage: image)
-    }()
-    
-    var appVersionLabel: Text? = {
-        guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
-            return nil
-        }
-        return Text("Version \(version)")
-    }()
-    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Todo.self, TodoList.self])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
@@ -60,6 +46,9 @@ struct TildoneApp: App {
                 Button(Copy.commandAbout) {
                     openWindow(id: Id.aboutWindow)
                 }
+                Button(Copy.commandCheckUpdates) {
+                    openWindow(id: Id.updateWindow)
+                }
                 Divider()
                 SettingsLink {
                     Text(Copy.commandSettings)
@@ -90,28 +79,12 @@ struct TildoneApp: App {
             }
         }
         Window(Copy.commandAbout, id: Id.aboutWindow) {
-            VStack {
-                if appIconImage != nil {
-                    appIconImage!
-                        .resizable()
-                        .frame(maxWidth: Frame.aboutIconSize, maxHeight: Frame.aboutIconSize)
-                }
-                Text(Copy.appName)
-                    .font(.title)
-                    .bold()
-                    .padding(.bottom, 10)
-                if appVersionLabel != nil {
-                    appVersionLabel
-                        .font(.subheadline)
-                        .padding(.bottom, 10)
-                }
-                Text(Copy.contentRights)
-                if let website = URL(string: Copy.websiteLink) {
-                    Link(Copy.websiteName, destination: website)
-                }
-            }
-            .padding()
-            .frame(width: Frame.aboutWindowWidth, height: Frame.aboutWindowHeight)
+            About()
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
+        Window(Copy.commandCheckUpdates, id: Id.updateWindow) {
+            Updates()
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
