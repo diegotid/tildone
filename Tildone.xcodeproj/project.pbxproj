@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
 		F16670492AF711EC000B76A5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670482AF711EC000B76A5 /* Note.swift */; };
 		F166704B2AF711EC000B76A5 /* Todo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166704A2AF711EC000B76A5 /* Todo.swift */; };
@@ -51,6 +52,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F16670462AF711EC000B76A5 /* TildoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneApp.swift; sourceTree = "<group>"; };
 		F16670482AF711EC000B76A5 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
@@ -195,6 +197,7 @@
 			children = (
 				F17086B72B48D5BF00D2C7DD /* Launcher.swift */,
 				F1D3001C2B51F3E100654241 /* UpdateChecker.swift */,
+				F13428112B5353070045343D /* Copier.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -347,6 +350,7 @@
 				F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */,
 				F16670762AF7133F000B76A5 /* TodoList.swift in Sources */,
 				F1D3001D2B51F3E100654241 /* UpdateChecker.swift in Sources */,
+				F13428122B5353070045343D /* Copier.swift in Sources */,
 				F17F46962B4A0FE000127AD9 /* Settings.swift in Sources */,
 				F166704B2AF711EC000B76A5 /* Todo.swift in Sources */,
 				F180D8DA2AF850CC002ED6BF /* Mocks.swift in Sources */,

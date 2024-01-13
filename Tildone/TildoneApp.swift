@@ -71,6 +71,18 @@ struct TildoneApp: App {
                 .disabled(isCloseCommandDisabled)
                 .keyboardShortcut("w")
             }
+            CommandGroup(replacing: .textEditing) {
+                Menu(Copy.commandCopy) {
+                    Button(Copy.commandCopyTask) {
+                        NotificationCenter.default.post(name: .copy, object: nil)
+                    }
+                    .keyboardShortcut("c")
+                    Button(Copy.commandCopyList) {
+                        foregroundList?.copy()
+                    }
+                    .keyboardShortcut("c", modifiers: [.shift, .command])
+                }
+            }
             CommandGroup(replacing: .toolbar) {
                 Button(Copy.commandArrange) {
                     NotificationCenter.default.post(name: .arrange, object: nil)
@@ -98,6 +110,7 @@ struct TildoneApp: App {
 extension Notification.Name {
     static let new = Notification.Name("new")
     static let close = Notification.Name("close")
+    static let copy = Notification.Name("copy")
     static let arrange = Notification.Name("arrange")
     static let visibility = Notification.Name("visibility")
 }

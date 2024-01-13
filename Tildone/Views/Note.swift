@@ -441,6 +441,12 @@ private extension Note {
                 .onSubmit {
                     handleMoveDown()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                    guard focusedTaskCreation == task.created else {
+                        return
+                    }
+                    task.copy()
+                }
             }
             Spacer()
         }
