@@ -8,12 +8,24 @@
             "state" : "translated",
             "value" : "(actual %@)"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(le vôtre est %@)"
+          }
         }
       }
     },
     "© 2023 Diego Rivera" : {
       "localizations" : {
         "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "© 2023 Diego Rivera"
+          }
+        },
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "© 2023 Diego Rivera"
@@ -27,6 +39,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Acerca de Tildone"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos de Tildone"
           }
         }
       }
@@ -44,6 +62,12 @@
             "state" : "translated",
             "value" : "Acerca de..."
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos..."
+          }
         }
       }
     },
@@ -53,6 +77,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aspecto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apparence"
           }
         }
       }
@@ -64,6 +94,12 @@
             "state" : "translated",
             "value" : "Organizar notas"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organiser les notes"
+          }
         }
       }
     },
@@ -73,6 +109,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esquina inferior izquierda"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En bas à gauche"
           }
         }
       }
@@ -84,6 +126,12 @@
             "state" : "translated",
             "value" : "Esquina inferior derecha"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En bas à droite"
+          }
         }
       }
     },
@@ -94,6 +142,12 @@
             "state" : "translated",
             "value" : "Cancelar"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
         }
       }
     },
@@ -103,6 +157,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Comprobar actualizaciones..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier les mises à jour..."
           }
         }
       }
@@ -120,6 +180,12 @@
             "state" : "translated",
             "value" : "Comprobar actualizaciones"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier les mises à jour"
+          }
         }
       }
     },
@@ -129,6 +195,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Actualizar en App Store"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifiez sur l'App Store"
           }
         }
       }
@@ -140,6 +212,12 @@
             "state" : "translated",
             "value" : "Cómo limitar la visibilidad de los contenidos de tus notas en este modo de concentración"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez comment limiter la visibilité du contenu de vos notes en fonction de ce Focus"
+          }
         }
       }
     },
@@ -149,6 +227,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cerrar ventana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer la fenêtre"
           }
         }
       }
@@ -160,6 +244,12 @@
             "state" : "translated",
             "value" : "Copiar"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier"
+          }
         }
       }
     },
@@ -169,6 +259,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copiar el texto de la tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier le texte de la tâche"
           }
         }
       }
@@ -180,12 +276,24 @@
             "state" : "translated",
             "value" : "Copiar la lista de tareas completa"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier toute la liste de tâches"
+          }
         }
       }
     },
     "cuatro.studio" : {
       "localizations" : {
         "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cuatro.studio"
+          }
+        },
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "cuatro.studio"
@@ -200,6 +308,12 @@
             "state" : "translated",
             "value" : "Escritorio"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bureau"
+          }
         }
       }
     },
@@ -209,6 +323,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Descartar nota vacía"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer la note vide"
           }
         }
       }
@@ -220,6 +340,12 @@
             "state" : "translated",
             "value" : "¡Hecho!"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé !"
+          }
         }
       }
     },
@@ -229,6 +355,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desapareciendo..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disparition..."
           }
         }
       }
@@ -240,12 +372,24 @@
             "state" : "translated",
             "value" : "General"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Général"
+          }
         }
       }
     },
     "Horizontal" : {
       "localizations" : {
         "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal"
+          }
+        },
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Horizontal"
@@ -260,6 +404,12 @@
             "state" : "translated",
             "value" : "Cómo organizar tus notas (comando de menú o combinación de teclas ⇧⌘A)"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment organiser vos notes (lorsque la commande du menu est utilisée ou que ⇧⌘A est pressé):"
+          }
         }
       }
     },
@@ -269,6 +419,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Margen máximo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marge maximale"
           }
         }
       }
@@ -280,6 +436,12 @@
             "state" : "translated",
             "value" : "Espaciado máximo"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écart maximal"
+          }
         }
       }
     },
@@ -289,6 +451,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Margen medio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marge moyenne"
           }
         }
       }
@@ -300,6 +468,12 @@
             "state" : "translated",
             "value" : "Espaciado medio"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écart moyen"
+          }
         }
       }
     },
@@ -309,6 +483,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Margen mínimo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marge minimale"
           }
         }
       }
@@ -320,6 +500,12 @@
             "state" : "translated",
             "value" : "Espaciado mínimo"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écart minimal"
+          }
         }
       }
     },
@@ -329,6 +515,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Multi-línea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multi-ligne"
           }
         }
       }
@@ -340,6 +532,12 @@
             "state" : "translated",
             "value" : "Nueva Nota"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelle note"
+          }
         }
       }
     },
@@ -349,6 +547,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nueva tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelle tâche"
           }
         }
       }
@@ -366,6 +570,12 @@
             "state" : "translated",
             "value" : "Tarea"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche"
+          }
         }
       }
     },
@@ -375,6 +585,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La nota puede estar tras otras ventanas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La note peut rester en arrière-plan"
           }
         }
       }
@@ -386,6 +602,12 @@
             "state" : "translated",
             "value" : "Abrir al iniciar sesión"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir à la connexion"
+          }
         }
       }
     },
@@ -395,6 +617,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cerrar Tildone"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter Tildone"
           }
         }
       }
@@ -406,6 +634,12 @@
             "state" : "translated",
             "value" : "Configurar visibilidad de los contenidos"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Définir la visibilité du contenu"
+          }
         }
       }
     },
@@ -415,6 +649,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Configuración..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paramètres..."
           }
         }
       }
@@ -426,6 +666,12 @@
             "state" : "translated",
             "value" : "Línea única truncada"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une seule ligne tronquée"
+          }
         }
       }
     },
@@ -435,6 +681,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche"
           }
         }
       }
@@ -446,6 +698,12 @@
             "state" : "translated",
             "value" : "Texto de la tarea difuminado"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texte de la tâche flou"
+          }
         }
       }
     },
@@ -456,12 +714,24 @@
             "state" : "translated",
             "value" : "¡Hay una actualización disponible!"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une mise à jour est disponible !"
+          }
         }
       }
     },
     "Tildone" : {
       "localizations" : {
         "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone"
+          }
+        },
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tildone"
@@ -476,6 +746,12 @@
             "state" : "translated",
             "value" : "Esquina superior izquierda"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En haut à gauche"
+          }
         }
       }
     },
@@ -485,6 +761,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esquina superior derecha"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En haut à droite"
           }
         }
       }
@@ -496,6 +778,12 @@
             "state" : "translated",
             "value" : "Asunto"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sujet"
+          }
         }
       }
     },
@@ -505,6 +793,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Versión %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@"
           }
         }
       }
@@ -522,12 +816,24 @@
             "state" : "translated",
             "value" : "Versión %@"
           }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@"
+          }
         }
       }
     },
     "Vertical" : {
       "localizations" : {
         "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical"
+          }
+        },
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vertical"
@@ -541,6 +847,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aplicación actualizada a su última versión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre application est à jour"
           }
         }
       }
