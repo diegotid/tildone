@@ -55,7 +55,7 @@ struct TildoneApp: App {
                 }
                 .keyboardShortcut(",")
                 Divider()
-                Button("Quit Tildene") {
+                Button("Quit Tildone") {
                     NSApplication.shared.terminate(self)
                 }
                 .keyboardShortcut("q")
