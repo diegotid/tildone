@@ -117,7 +117,7 @@ private extension SettingsForm {
                             .stroke(.accent, lineWidth: 6)
                     )
                 }
-            Text(SettingsForm.copyForTaskAppearance(with: option))
+            SettingsForm.taskAppearanceText(with: option)
                 .if(taskLineTruncation == option) { view in
                     view.bold()
                 }
@@ -230,10 +230,10 @@ extension SettingsForm {
         }
     }
     
-    static func copyForTaskAppearance(with option: TaskLineTruncation) -> String {
+    static func taskAppearanceText(with option: TaskLineTruncation) -> Text {
         switch option {
-        case .single: "Single line with ellipsis"
-        case .multiple: "Multiline"
+        case .single: Text("Single line with ellipsis")
+        case .multiple: Text("Multiline")
         }
     }
 }

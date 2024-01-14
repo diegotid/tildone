@@ -64,6 +64,7 @@ struct Updates: View {
                         }
                     } else {
                         Text("Your app is up to date")
+                            .multilineTextAlignment(.center)
                         if let current = currentVersion {
                             Text("Version.uptodate \(current)")
                                 .font(.subheadline)

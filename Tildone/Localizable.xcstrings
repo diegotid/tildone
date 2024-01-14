@@ -2,41 +2,110 @@
   "sourceLanguage" : "en",
   "strings" : {
     "(yours is %@)" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(actual %@)"
+          }
+        }
+      }
     },
     "© 2023 Diego Rivera" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "© 2023 Diego Rivera"
+          }
+        }
+      }
     },
     "About Tildone" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de Tildone"
+          }
+        }
+      }
     },
     "About Tildone.window" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "About"
+            "value" : "About..."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de..."
           }
         }
       }
     },
     "Appearance" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aspecto"
+          }
+        }
+      }
     },
     "Arrange Notes" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organizar notas"
+          }
+        }
+      }
     },
     "Bottom left corner" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquina inferior izquierda"
+          }
+        }
+      }
     },
     "Bottom right corner" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquina inferior derecha"
+          }
+        }
+      }
     },
     "Cancel" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
+          }
+        }
+      }
     },
     "Check for Updates..." : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobar actualizaciones..."
+          }
+        }
+      }
     },
     "Check for Updates.window" : {
       "localizations" : {
@@ -45,116 +114,400 @@
             "state" : "translated",
             "value" : "Check for Updates"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobar actualizaciones"
+          }
         }
       }
     },
     "Check it on the App Store" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizar en App Store"
+          }
+        }
+      }
     },
     "Choose how to limit your notes' content visibility based on this Focus" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo limitar la visibilidad de los contenidos de tus notas en este modo de concentración"
+          }
+        }
+      }
     },
     "Close window" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar ventana"
+          }
+        }
+      }
     },
     "Copy" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar"
+          }
+        }
+      }
     },
     "Copy task text" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar el texto de la tarea"
+          }
+        }
+      }
     },
     "Copy whole task list" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar la lista de tareas completa"
+          }
+        }
+      }
     },
     "cuatro.studio" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cuatro.studio"
+          }
+        }
+      }
     },
     "Desktop" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escritorio"
+          }
+        }
+      }
     },
     "Discard Empty Note" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar nota vacía"
+          }
+        }
+      }
     },
     "Done!" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Hecho!"
+          }
+        }
+      }
     },
     "Fading out..." : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desapareciendo..."
+          }
+        }
+      }
     },
     "General" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
     },
     "Horizontal" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal"
+          }
+        }
+      }
     },
     "How to arrange your notes\n(when menu command used or ⇧⌘A pressed):" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo organizar tus notas (comando de menú o combinación de teclas ⇧⌘A)"
+          }
+        }
+      }
     },
     "Maximum margin" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Margen máximo"
+          }
+        }
+      }
     },
     "Maximum spacing" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espaciado máximo"
+          }
+        }
+      }
     },
     "Medium margin" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Margen medio"
+          }
+        }
+      }
     },
     "Medium spacing" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espaciado medio"
+          }
+        }
+      }
     },
     "Minimum margin" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Margen mínimo"
+          }
+        }
+      }
     },
     "Minimum spacing" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espaciado mínimo"
+          }
+        }
+      }
+    },
+    "Multiline" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multi-línea"
+          }
+        }
+      }
     },
     "New Note" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva Nota"
+          }
+        }
+      }
     },
     "New task" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva tarea"
+          }
+        }
+      }
     },
     "New task.default" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarea"
+          }
+        }
+      }
     },
     "Note may stay in the background" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La nota puede estar tras otras ventanas"
+          }
+        }
+      }
     },
     "Open at login" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir al iniciar sesión"
+          }
+        }
+      }
     },
-    "Quit Tildene" : {
-
+    "Quit Tildone" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar Tildone"
+          }
+        }
+      }
     },
     "Set contents visibility" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar visibilidad de los contenidos"
+          }
+        }
+      }
     },
     "Settings..." : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuración..."
+          }
+        }
+      }
+    },
+    "Single line with ellipsis" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea única truncada"
+          }
+        }
+      }
     },
     "Task" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarea"
+          }
+        }
+      }
     },
     "Task text blurred" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto de la tarea difuminado"
+          }
+        }
+      }
     },
     "There is an update available!" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Hay una actualización disponible!"
+          }
+        }
+      }
     },
     "Tildone" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone"
+          }
+        }
+      }
     },
     "Top left corner" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquina superior izquierda"
+          }
+        }
+      }
     },
     "Top right corner" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquina superior derecha"
+          }
+        }
+      }
     },
     "Topic" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asunto"
+          }
+        }
+      }
     },
     "Version %@" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %@"
+          }
+        }
+      }
     },
     "Version.uptodate %@" : {
       "localizations" : {
@@ -163,14 +516,34 @@
             "state" : "translated",
             "value" : "Version %@"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %@"
+          }
         }
       }
     },
     "Vertical" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical"
+          }
+        }
+      }
     },
     "Your app is up to date" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicación actualizada a su última versión"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
