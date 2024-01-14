@@ -24,10 +24,7 @@ struct Desktop: View {
     @AppStorage("selectedArrangementCornerMargin") var selectedArrangementCornerMargin: ArrangementSpacing = .medium
     @AppStorage("selectedArrangementSpacing") var selectedArrangementSpacing: ArrangementSpacing = .minimum
     
-    static private var appWindowTitles: [String] = [
-        Copy.commandAbout,
-        Copy.commandCheckUpdates
-    ]
+    static private var appWindowIds: [String] = [Id.aboutWindow, Id.updateWindow]
 
     var body: some View {
         noteWindow(for: lists.first)
@@ -71,7 +68,8 @@ struct Desktop: View {
                     foregroundWindow = window
                     if window.title == lists.first?.hash {
                         foregroundList = lists.first
-                    } else if Desktop.appWindowTitles.contains(window.title) {
+                    } else if let windowId = window.identifier?.rawValue,
+                              Desktop.appWindowIds.contains(windowId) {
                         foregroundList = nil
                     }
                 }
@@ -198,7 +196,7 @@ private extension Desktop {
                         foregroundWindow = window
                         if window.title == list?.hash {
                             foregroundList = existingList
-                        } else if window.title == Copy.commandAbout {
+                        } else if window.identifier?.rawValue == Id.aboutWindow {
                             foregroundList = nil
                         }
                     }
