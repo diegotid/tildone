@@ -33,7 +33,7 @@ struct SettingsForm: View {
                     Section {
                         Launcher.Toggle()
                     } header: {
-                        Text(Copy.settingsSectionGeneral)
+                        Text("General")
                             .bold()
                     }
                     Divider()
@@ -44,7 +44,7 @@ struct SettingsForm: View {
                             desktopAppearanceSettings()
                         }
                     } header: {
-                        Text(Copy.settingsSectionAppearance)
+                        Text("Appearance")
                             .bold()
                     }
                 }
@@ -61,7 +61,7 @@ private extension SettingsForm {
     
     @ViewBuilder
     func taskAppearanceSettings() -> some View {
-        Text(Copy.taskPlaceholder)
+        Text("Task")
             .font(.subheadline)
             .foregroundColor(.secondary)
         HStack(spacing: 18) {
@@ -72,7 +72,7 @@ private extension SettingsForm {
     
     @ViewBuilder
     func desktopAppearanceSettings() -> some View {
-        Text(Copy.desktopPlaceholder)
+        Text("Desktop")
             .font(.subheadline)
             .foregroundColor(.secondary)
             .padding(.top, 8)
@@ -95,7 +95,7 @@ private extension SettingsForm {
                 }
             }
             VStack {
-                Text(Copy.settingsArrangementDescription)
+                Text("How to arrange your notes\n(when menu command used or ⇧⌘A pressed):")
                     .frame(width: 160, alignment: .leading)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -146,41 +146,41 @@ private extension SettingsForm {
     @ViewBuilder
     func desktopPickers() -> some View {
         Picker(selection: $selectedArrangementCorner) {
-            Text(Copy.settingsArrangementCornerBottomLeft)
+            Text("Bottom left corner")
                 .tag(ArrangementCorner.bottomLeft)
-            Text(Copy.settingsArrangementCornerBottomRight)
+            Text("Bottom right corner")
                 .tag(ArrangementCorner.bottomRight)
-            Text(Copy.settingsArrangementCornerTopRight)
+            Text("Top right corner")
                 .tag(ArrangementCorner.topRight)
-            Text(Copy.settingsArrangementCornerTopLeft)
+            Text("Top left corner")
                 .tag(ArrangementCorner.topLeft)
         } label: {
             EmptyView()
         }
         Picker(selection: $selectedArrangementAlignment) {
-            Text(Copy.settingsArrangementAlignmentHorizontal)
+            Text("Horizontal")
                 .tag(ArrangementAlignment.horizontal)
-            Text(Copy.settingsArrangementAlignmentVertical)
+            Text("Vertical")
                 .tag(ArrangementAlignment.vertical)
         } label: {
             EmptyView()
         }
         Picker(selection: $selectedArrangementCornerMargin) {
-            Text(Copy.settingsArrangementMarginMinimum)
+            Text("Minimum margin")
                 .tag(ArrangementSpacing.minimum)
-            Text(Copy.settingsArrangementMarginMedium)
+            Text("Medium margin")
                 .tag(ArrangementSpacing.medium)
-            Text(Copy.settingsArrangementMarginMaximum)
+            Text("Maximum margin")
                 .tag(ArrangementSpacing.maximum)
         } label: {
             EmptyView()
         }
         Picker(selection: $selectedArrangementSpacing) {
-            Text(Copy.settingsArrangementSpacingMinimum)
+            Text("Minimum spacing")
                 .tag(ArrangementSpacing.minimum)
-            Text(Copy.settingsArrangementSpacingMedium)
+            Text("Medium spacing")
                 .tag(ArrangementSpacing.medium)
-            Text(Copy.settingsArrangementSpacingMaximum)
+            Text("Maximum spacing")
                 .tag(ArrangementSpacing.maximum)
         } label: {
             EmptyView()
@@ -232,8 +232,8 @@ extension SettingsForm {
     
     static func copyForTaskAppearance(with option: TaskLineTruncation) -> String {
         switch option {
-        case .single: Copy.settingsSectionAppearanceSingle
-        case .multiple: Copy.settingsSectionAppearanceMultiple
+        case .single: "Single line with ellipsis"
+        case .multiple: "Multiline"
         }
     }
 }

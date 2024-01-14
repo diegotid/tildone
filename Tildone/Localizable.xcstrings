@@ -1,0 +1,177 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "(yours is %@)" : {
+
+    },
+    "© 2023 Diego Rivera" : {
+
+    },
+    "About Tildone" : {
+
+    },
+    "About Tildone.window" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        }
+      }
+    },
+    "Appearance" : {
+
+    },
+    "Arrange Notes" : {
+
+    },
+    "Bottom left corner" : {
+
+    },
+    "Bottom right corner" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Check for Updates..." : {
+
+    },
+    "Check for Updates.window" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates"
+          }
+        }
+      }
+    },
+    "Check it on the App Store" : {
+
+    },
+    "Choose how to limit your notes' content visibility based on this Focus" : {
+
+    },
+    "Close window" : {
+
+    },
+    "Copy" : {
+
+    },
+    "Copy task text" : {
+
+    },
+    "Copy whole task list" : {
+
+    },
+    "cuatro.studio" : {
+
+    },
+    "Desktop" : {
+
+    },
+    "Discard Empty Note" : {
+
+    },
+    "Done!" : {
+
+    },
+    "Fading out..." : {
+
+    },
+    "General" : {
+
+    },
+    "Horizontal" : {
+
+    },
+    "How to arrange your notes\n(when menu command used or ⇧⌘A pressed):" : {
+
+    },
+    "Maximum margin" : {
+
+    },
+    "Maximum spacing" : {
+
+    },
+    "Medium margin" : {
+
+    },
+    "Medium spacing" : {
+
+    },
+    "Minimum margin" : {
+
+    },
+    "Minimum spacing" : {
+
+    },
+    "New Note" : {
+
+    },
+    "New task" : {
+
+    },
+    "New task.default" : {
+
+    },
+    "Note may stay in the background" : {
+
+    },
+    "Open at login" : {
+
+    },
+    "Quit Tildene" : {
+
+    },
+    "Set contents visibility" : {
+
+    },
+    "Settings..." : {
+
+    },
+    "Task" : {
+
+    },
+    "Task text blurred" : {
+
+    },
+    "There is an update available!" : {
+
+    },
+    "Tildone" : {
+
+    },
+    "Top left corner" : {
+
+    },
+    "Top right corner" : {
+
+    },
+    "Topic" : {
+
+    },
+    "Version %@" : {
+
+    },
+    "Version.uptodate %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@"
+          }
+        }
+      }
+    },
+    "Vertical" : {
+
+    },
+    "Your app is up to date" : {
+
+    }
+  },
+  "version" : "1.0"
+}

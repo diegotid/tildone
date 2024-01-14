@@ -35,7 +35,7 @@ struct Updates: View {
                 if isChecking {
                     ProgressView()
                 } else {
-                    Text(Copy.appName)
+                    Text("Tildone")
                         .font(.title)
                         .bold()
                         .padding(.bottom, 10)
@@ -43,29 +43,29 @@ struct Updates: View {
                        let current = currentVersion,
                        latest.compare(current, options: .numeric) == .orderedDescending
                     {
-                        Text(Copy.appVersionAvailable)
+                        Text("There is an update available!")
                         HStack(spacing: 2) {
-                            Text("\(Copy.aboutAppVersion) \(latest)")
+                            Text("Version \(latest)")
                                 .font(.subheadline)
                             if currentVersion != nil {
-                                Text("(\(Copy.aboutCurrentVersion) \(currentVersion!))")
+                                Text("(yours is \(currentVersion!))")
                                     .font(.subheadline)
                             }
                         }
                         if let appStoreLink = URL(string: UpdateChecker.Remote.appStoreAppUrl) {
-                            Button(Copy.appVersionVisiteStore) {
+                            Button("Check it on the App Store") {
                                 NSWorkspace.shared.open(appStoreLink)
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(Color.accentColor)
                             .padding(.top, 12)
                         } else {
-                            Text(Copy.appVersionVisiteStore)
+                            Text("Check it on the App Store")
                         }
                     } else {
-                        Text(Copy.appVersionUpToDate)
+                        Text("Your app is up to date")
                         if let current = currentVersion {
-                            Text("\(Copy.aboutAppVersion) \(current)")
+                            Text("Version.uptodate \(current)")
                                 .font(.subheadline)
                         }
                     }

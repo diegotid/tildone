@@ -354,7 +354,7 @@ private extension Note {
     func listTopic() -> some View {
         if let list = self.list {
             GeometryReader { geometry in
-                TextField(Copy.listTopicPlaceholder,
+                TextField("Topic",
                           text: Binding<String>(
                             get: { list.topic ?? "" },
                             set: { handleTopicEdit(to: $0) }
@@ -420,7 +420,7 @@ private extension Note {
                     .foregroundColor(.accentColor)
                     .strikethrough(color: .accentColor)
             } else {
-                TextField(Copy.newTaskPlaceholder,
+                TextField("New task.default",
                           text: Binding<String>(
                             get: { task.what },
                             set: { handleTaskEdit(task, to: $0) }
@@ -458,7 +458,7 @@ private extension Note {
         HStack(spacing: 8) {
             Checkbox()
                 .disabled(true)
-            TextField(Copy.newTaskPlaceholder, text: $newTaskText)
+            TextField("New task", text: $newTaskText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
@@ -522,7 +522,7 @@ private extension Note {
                 .font(.system(size: 90, weight: .bold))
                 .foregroundColor(.accentColor)
                 .symbolEffect(.bounce, value: isFadingAway)
-            Text(Copy.noteDone)
+            Text("Done!")
                 .padding(.leading, 6)
                 .padding(.bottom, wasAlreadyDone ? 60 : 30)
                 .font(.system(size: 30, weight: .bold))
@@ -530,7 +530,7 @@ private extension Note {
             Spacer()
             if !wasAlreadyDone {
                 ZStack {
-                    ProgressView(Copy.noteFadingOutDisplay,
+                    ProgressView("Fading out...",
                                  value: fadeAwayProgress,
                                  total: Timeout.noteFadeOutSeconds)
                     .foregroundColor(.accentColor)
@@ -548,7 +548,7 @@ private extension Note {
                                 self.isDone = false
                                 fadeAwayProgress = 0.0
                             } label: {
-                                Text(Copy.cancel)
+                                Text("Cancel")
                                     .foregroundColor(.accentColor)
                             }
                             .buttonStyle(PlainButtonStyle())
