@@ -20,7 +20,7 @@ struct About: View {
         guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
             return nil
         }
-        return Text("\(Copy.aboutAppVersion) \(version)")
+        return Text("Version \(version)")
     }()
     
     var body: some View {
@@ -30,7 +30,7 @@ struct About: View {
                     .resizable()
                     .frame(maxWidth: Frame.aboutIconSize, maxHeight: Frame.aboutIconSize)
             }
-            Text(Copy.appName)
+            Text("Tildone")
                 .font(.title)
                 .bold()
                 .padding(.bottom, 10)
@@ -39,9 +39,9 @@ struct About: View {
                     .font(.subheadline)
                     .padding(.bottom, 10)
             }
-            Text(Copy.contentRights)
-            if let website = URL(string: Copy.websiteLink) {
-                Link(Copy.websiteName, destination: website)
+            Text("© 2023 Diego Rivera")
+            if let website = URL(string: "http://cuatro.studio") {
+                Link("cuatro.studio", destination: website)
             }
         }
         .padding()

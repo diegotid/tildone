@@ -43,59 +43,59 @@ struct TildoneApp: App {
         .commandsRemoved()
         .commandsReplaced {
             CommandGroup(replacing: .appInfo) {
-                Button(Copy.commandAbout) {
+                Button("About Tildone") {
                     openWindow(id: Id.aboutWindow)
                 }
-                Button(Copy.commandCheckUpdates) {
+                Button("Check for Updates...") {
                     openWindow(id: Id.updateWindow)
                 }
                 Divider()
                 SettingsLink {
-                    Text(Copy.commandSettings)
+                    Text("Settings...")
                 }
                 .keyboardShortcut(",")
                 Divider()
-                Button(Copy.commandQuitApp) {
+                Button("Quit Tildene") {
                     NSApplication.shared.terminate(self)
                 }
                 .keyboardShortcut("q")
             }
             CommandGroup(replacing: .newItem) {
-                Button(Copy.commandNewNote) {
+                Button("New Note") {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
                 .keyboardShortcut("n")
-                Button(foregroundList != nil ? Copy.commandDiscardNote : Copy.commandCloseWindow) {
+                Button(foregroundList != nil ? "Discard Empty Note" : "Close window") {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }
                 .disabled(isCloseCommandDisabled)
                 .keyboardShortcut("w")
             }
             CommandGroup(replacing: .textEditing) {
-                Menu(Copy.commandCopy) {
-                    Button(Copy.commandCopyTask) {
+                Menu("Copy") {
+                    Button("Copy task text") {
                         NotificationCenter.default.post(name: .copy, object: nil)
                     }
                     .keyboardShortcut("c")
-                    Button(Copy.commandCopyList) {
+                    Button("Copy whole task list") {
                         foregroundList?.copy()
                     }
                     .keyboardShortcut("c", modifiers: [.shift, .command])
                 }
             }
             CommandGroup(replacing: .toolbar) {
-                Button(Copy.commandArrange) {
+                Button("Arrange Notes") {
                     NotificationCenter.default.post(name: .arrange, object: nil)
                 }
                 .keyboardShortcut("a", modifiers: [.shift, .command])
             }
         }
-        Window(Copy.commandAbout, id: Id.aboutWindow) {
+        Window("About Tildone.window", id: Id.aboutWindow) {
             About()
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
-        Window(Copy.commandCheckUpdates, id: Id.updateWindow) {
+        Window("Check for Updates.window", id: Id.updateWindow) {
             Updates()
         }
         .windowResizability(.contentSize)
