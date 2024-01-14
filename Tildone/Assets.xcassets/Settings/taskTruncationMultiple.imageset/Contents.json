@@ -3,10 +3,23 @@
     {
       "filename" : "taskTruncationMultiple.png",
       "idiom" : "universal"
+    },
+    {
+      "filename" : "taskTruncationMultiple.fr.png",
+      "idiom" : "universal",
+      "locale" : "fr"
+    },
+    {
+      "filename" : "taskTruncationMultiple.es.png",
+      "idiom" : "universal",
+      "locale" : "es"
     }
   ],
   "info" : {
     "author" : "xcode",
     "version" : 1
+  },
+  "properties" : {
+    "localizable" : true
   }
 }
