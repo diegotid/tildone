@@ -305,6 +305,7 @@
 				en,
 				Base,
 				es,
+				fr,
 			);
 			mainGroup = F166703A2AF711EC000B76A5;
 			productRefGroup = F16670442AF711EC000B76A5 /* Products */;
