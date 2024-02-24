@@ -14,6 +14,12 @@
             "state" : "translated",
             "value" : "(le vôtre est %@)"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(你的是 %@)"
+          }
         }
       }
     },
@@ -26,6 +32,12 @@
           }
         },
         "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "© 2023 Diego Rivera"
+          }
+        },
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "© 2023 Diego Rivera"
@@ -45,6 +57,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "À propos de Tildone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于 Tildone"
           }
         }
       }
@@ -68,6 +86,12 @@
             "state" : "translated",
             "value" : "À propos..."
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于..."
+          }
         }
       }
     },
@@ -83,6 +107,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apparence"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外观"
           }
         }
       }
@@ -100,6 +130,12 @@
             "state" : "translated",
             "value" : "Organiser les notes"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "排列笔记"
+          }
         }
       }
     },
@@ -115,6 +151,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En bas à gauche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左下角"
           }
         }
       }
@@ -132,6 +174,12 @@
             "state" : "translated",
             "value" : "En bas à droite"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右下角"
+          }
         }
       }
     },
@@ -148,6 +196,12 @@
             "state" : "translated",
             "value" : "Annuler"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
         }
       }
     },
@@ -163,6 +217,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vérifier les mises à jour..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查更新..."
           }
         }
       }
@@ -186,6 +246,12 @@
             "state" : "translated",
             "value" : "Vérifier les mises à jour"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查更新"
+          }
         }
       }
     },
@@ -201,6 +267,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vérifiez sur l'App Store"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在App Store中查看"
           }
         }
       }
@@ -218,6 +290,12 @@
             "state" : "translated",
             "value" : "Choisissez comment limiter la visibilité du contenu de vos notes en fonction de ce Focus"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择如何根据此焦点限制笔记内容的可见性"
+          }
         }
       }
     },
@@ -233,6 +311,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fermer la fenêtre"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭窗口"
           }
         }
       }
@@ -250,6 +334,12 @@
             "state" : "translated",
             "value" : "Copier"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
         }
       }
     },
@@ -265,6 +355,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copier le texte de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制任务文本"
           }
         }
       }
@@ -282,6 +378,12 @@
             "state" : "translated",
             "value" : "Copier toute la liste de tâches"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制整个任务列表"
+          }
         }
       }
     },
@@ -294,6 +396,12 @@
           }
         },
         "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cuatro.studio"
+          }
+        },
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "cuatro.studio"
@@ -314,6 +422,12 @@
             "state" : "translated",
             "value" : "Bureau"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "桌面"
+          }
         }
       }
     },
@@ -329,6 +443,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer la note vide"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "丢弃空笔记"
           }
         }
       }
@@ -346,6 +466,12 @@
             "state" : "translated",
             "value" : "Terminé !"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成！"
+          }
         }
       }
     },
@@ -361,6 +487,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Disparition..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "渐远..."
           }
         }
       }
@@ -378,6 +510,12 @@
             "state" : "translated",
             "value" : "Général"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "常规"
+          }
         }
       }
     },
@@ -393,6 +531,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Horizontal"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "水平"
           }
         }
       }
@@ -410,6 +554,12 @@
             "state" : "translated",
             "value" : "Comment organiser vos notes (lorsque la commande du menu est utilisée ou que ⇧⌘A est pressé):"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何排列您的笔记 (当使用菜单命令或按 ⇧⌘A 时)"
+          }
         }
       }
     },
@@ -425,6 +575,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Marge maximale"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大边距"
           }
         }
       }
@@ -442,6 +598,12 @@
             "state" : "translated",
             "value" : "Écart maximal"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大间距"
+          }
         }
       }
     },
@@ -457,6 +619,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Marge moyenne"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中等边距"
           }
         }
       }
@@ -474,6 +642,12 @@
             "state" : "translated",
             "value" : "Écart moyen"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中等间距"
+          }
         }
       }
     },
@@ -489,6 +663,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Marge minimale"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最小边距"
           }
         }
       }
@@ -506,6 +686,12 @@
             "state" : "translated",
             "value" : "Écart minimal"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最小间距"
+          }
         }
       }
     },
@@ -521,6 +707,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Multi-ligne"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多行"
           }
         }
       }
@@ -538,6 +730,12 @@
             "state" : "translated",
             "value" : "Nouvelle note"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建笔记"
+          }
         }
       }
     },
@@ -553,6 +751,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nouvelle tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建任务"
           }
         }
       }
@@ -576,6 +780,12 @@
             "state" : "translated",
             "value" : "Tâche"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务"
+          }
         }
       }
     },
@@ -591,6 +801,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La note peut rester en arrière-plan"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记可能保留在后台"
           }
         }
       }
@@ -608,6 +824,12 @@
             "state" : "translated",
             "value" : "Ouvrir à la connexion"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登录时打开"
+          }
         }
       }
     },
@@ -623,6 +845,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quitter Tildone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出 Tildone"
           }
         }
       }
@@ -640,6 +868,12 @@
             "state" : "translated",
             "value" : "Définir la visibilité du contenu"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置内容可见性"
+          }
         }
       }
     },
@@ -655,6 +889,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Paramètres..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置..."
           }
         }
       }
@@ -672,6 +912,12 @@
             "state" : "translated",
             "value" : "Une seule ligne tronquée"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单行"
+          }
         }
       }
     },
@@ -687,6 +933,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务"
           }
         }
       }
@@ -704,6 +956,12 @@
             "state" : "translated",
             "value" : "Texte de la tâche flou"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务文本模糊"
+          }
         }
       }
     },
@@ -720,6 +978,12 @@
             "state" : "translated",
             "value" : "Une mise à jour est disponible !"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有可用更新！"
+          }
         }
       }
     },
@@ -732,6 +996,12 @@
           }
         },
         "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone"
+          }
+        },
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tildone"
@@ -752,6 +1022,12 @@
             "state" : "translated",
             "value" : "En haut à gauche"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左上角"
+          }
         }
       }
     },
@@ -767,6 +1043,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En haut à droite"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右上角"
           }
         }
       }
@@ -784,6 +1066,12 @@
             "state" : "translated",
             "value" : "Sujet"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主题"
+          }
         }
       }
     },
@@ -799,6 +1087,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Version %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本 %@"
           }
         }
       }
@@ -822,6 +1116,12 @@
             "state" : "translated",
             "value" : "Version %@"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本 %@"
+          }
         }
       }
     },
@@ -838,6 +1138,12 @@
             "state" : "translated",
             "value" : "Vertical"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "垂直"
+          }
         }
       }
     },
@@ -853,6 +1159,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Votre application est à jour"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您的应用已更新"
           }
         }
       }
