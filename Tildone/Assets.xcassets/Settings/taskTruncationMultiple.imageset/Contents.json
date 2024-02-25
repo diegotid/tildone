@@ -13,6 +13,11 @@
       "filename" : "taskTruncationMultiple.es.png",
       "idiom" : "universal",
       "locale" : "es"
+    },
+    {
+      "filename" : "taskTruncationMultiple.cn.png",
+      "idiom" : "universal",
+      "locale" : "zh-Hans"
     }
   ],
   "info" : {
