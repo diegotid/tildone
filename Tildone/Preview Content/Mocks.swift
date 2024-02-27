@@ -16,12 +16,12 @@ extension TodoList {
 
 extension Todo {
     static var oneTask = {
-        let task = Todo("First task")
+        let task = Todo("First task", at: 0)
         task.setDone()
         return task
     }()
     static var anotherTask = {
-        let task = Todo("Second task")
+        let task = Todo("Second task", at: 1)
         task.setDone()
         return task
     }()
