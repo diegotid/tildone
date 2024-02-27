@@ -20,12 +20,12 @@ struct Note: View {
     var list: TodoList?
     var sortedTasks: [Todo] {
         (list?.items ?? [])
-            .sorted(by: { $0.created < $1.created })
+            .sorted()
     }
     var sortedPendingTasks: [Todo] {
         (list?.items ?? [])
             .filter({ $0.done == nil })
-            .sorted(by: { $0.created < $1.created })
+            .sorted()
     }
     var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
@@ -156,11 +156,9 @@ extension Note {
 
 private extension Note {
     
-    func handleTaskCommit() {
-        guard newTaskText.count > 0 else {
-            return
-        }
-        let newTask = Todo(newTaskText.capitalizingFirstLetter())
+    func createNewTask(at index: Int) {
+        leavePlace(at: index)
+        let newTask = Todo(newTaskText.capitalizingFirstLetter(), at: index)
         newTask.list = self.list
         modelContext.insert(newTask)
         self.newTaskText = ""
@@ -170,6 +168,22 @@ private extension Note {
         } catch {
             fatalError("Error on task creation: \(error)")
         }
+    }
+    
+    func leavePlace(at index: Int) {
+        for task in sortedTasks {
+            guard let currentIndex = task.index else { continue }
+            if currentIndex >= index {
+                task.index = currentIndex + 1
+            }
+        }
+    }
+    
+    func handleTaskCommit() {
+        guard newTaskText.count > 0 else {
+            return
+        }
+        createNewTask(at: list?.items.count ?? 0)
     }
     
     func handleTaskEdit(_ task: Todo, to what: String) {
@@ -241,6 +255,23 @@ private extension Note {
             } else {
                 return event
             }
+        }
+    }
+    
+    func handleEnter(forTask task: Todo) {
+        guard let textField = textField(forText: task.what),
+              let textView = textField.currentEditor() as? NSTextView,
+              let position = textView.selectedRanges.first?.rangeValue.location
+        else {
+            return
+        }
+        switch position {
+        case 0:
+            createNewTask(at: task.index ?? list?.items.maxIndex() ?? 0)
+        case textView.textStorage?.length:
+            handleMoveDown()
+        default:
+            createNewTask(at: 1 + (task.index ?? list?.items.maxIndex() ?? 0))
         }
     }
     
@@ -336,13 +367,27 @@ private extension Note {
     }
     
     func placeCursor(forText value: String) {
-        guard let noteView = noteWindow?.contentView else { return }
+        placeCursor(forText: value, at: 0)
+    }
+    
+    func placeCursor(forText value: String, at position: Int) {
+        guard let textField = textField(forText: value) else {
+            return
+        }
+        textField.currentEditor()?.selectedRange = NSMakeRange(position, position)
+    }
+    
+    func textField(forText value: String) -> NSTextField? {
+        guard let noteView = noteWindow?.contentView else {
+            return nil
+        }
         let textFields: [NSTextField] = noteView.getNestedSubviews<NSTextField>()
         for textField in textFields {
             if textField.stringValue == value {
-                textField.currentEditor()?.selectedRange = NSMakeRange(0, 0)
+                return textField
             }
         }
+        return nil
     }
 }
 
@@ -440,6 +485,10 @@ private extension Note {
                 }
                 .onSubmit {
                     handleMoveDown()
+                }
+                .onKeyPress(keys: [.return]) { _ in
+                    handleEnter(forTask: task)
+                    return .handled
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                     guard focusedTaskCreation == task.created else {
