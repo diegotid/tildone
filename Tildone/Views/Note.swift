@@ -40,6 +40,10 @@ struct Note: View {
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskCreation: Date?
 
+    private var isThereNoNewTasks: Bool {
+        return (list?.items ?? []).filter({ $0.what.isEmpty }).isEmpty
+    }
+
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     @State private var wasAlreadyDone: Bool = false
@@ -84,8 +88,10 @@ struct Note: View {
                                 ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
-                                newListItem()
-                                    .opacity(isDone || isTextBlurred ? 0 : 1)
+                                if isThereNoNewTasks {
+                                    newListItem()
+                                        .opacity(isDone || isTextBlurred ? 0 : 1)
+                                }
                                 Spacer()
                                     .id(Id.bottomAnchor)
                             }
@@ -165,6 +171,7 @@ private extension Note {
         updateWindowClosability()
         do {
             try modelContext.save()
+            focusedTaskCreation = newTask.created
         } catch {
             fatalError("Error on task creation: \(error)")
         }
@@ -176,6 +183,20 @@ private extension Note {
             if currentIndex >= index {
                 task.index = currentIndex + 1
             }
+        }
+    }
+    
+    func freeOtherNewTasks(notAt index: Int) {
+        for task in sortedTasks {
+            guard task.index != index else { continue }
+            if task.what.isEmpty {
+                modelContext.delete(task)
+            }
+        }
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error try to delete empty new tasks \(error.localizedDescription)")
         }
     }
     
@@ -267,7 +288,9 @@ private extension Note {
         }
         switch position {
         case 0:
-            createNewTask(at: task.index ?? list?.items.maxIndex() ?? 0)
+            let index: Int = task.index ?? list?.items.maxIndex() ?? 0
+            createNewTask(at: index)
+            freeOtherNewTasks(notAt: index)
         case textView.textStorage?.length:
             handleMoveDown()
         default:
@@ -455,6 +478,7 @@ private extension Note {
     func listItem(task: Todo) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Checkbox(checked: task.isDone)
+                .disabled(task.what.isEmpty)
                 .onToggle {
                     handleTaskToggle(task)
                     noteWindow?.makeFirstResponder(nil)
