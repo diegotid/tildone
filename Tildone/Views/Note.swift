@@ -19,13 +19,13 @@ struct Note: View {
 
     var list: TodoList?
     var sortedTasks: [Todo] {
-        (list?.items ?? [])
-            .sorted()
+        let tasks = list?.items ?? []
+        return tasks.sorted()
     }
     var sortedPendingTasks: [Todo] {
-        (list?.items ?? [])
-            .filter({ $0.done == nil })
-            .sorted()
+        let tasks = list?.items ?? []
+        let pending = tasks.filter({ $0.done == nil })
+        return pending.sorted()
     }
     var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
