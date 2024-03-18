@@ -40,10 +40,6 @@ struct Note: View {
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskCreation: Date?
 
-    private var isThereNoNewTasks: Bool {
-        return (list?.items ?? []).filter({ $0.what.isEmpty }).isEmpty
-    }
-
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     @State private var wasAlreadyDone: Bool = false
@@ -88,10 +84,8 @@ struct Note: View {
                                 ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
-                                if isThereNoNewTasks {
-                                    newListItem()
-                                        .opacity(isDone || isTextBlurred ? 0 : 1)
-                                }
+                                newListItem()
+                                    .opacity(isDone || isTextBlurred ? 0 : 1)
                                 Spacer()
                                     .id(Id.bottomAnchor)
                             }
@@ -171,7 +165,6 @@ private extension Note {
         updateWindowClosability()
         do {
             try modelContext.save()
-            focusedTaskCreation = newTask.created
         } catch {
             fatalError("Error on task creation: \(error)")
         }
@@ -186,20 +179,6 @@ private extension Note {
         }
     }
     
-    func freeOtherNewTasks(notAt index: Int) {
-        for task in sortedTasks {
-            guard task.index != index else { continue }
-            if task.what.isEmpty {
-                modelContext.delete(task)
-            }
-        }
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error try to delete empty new tasks \(error.localizedDescription)")
-        }
-    }
-    
     func handleTaskCommit() {
         guard newTaskText.count > 0 else {
             return
@@ -209,7 +188,6 @@ private extension Note {
     
     func handleTaskEdit(_ task: Todo, to what: String) {
         guard !what.isEmpty else {
-            delete(task)
             return
         }
         task.what = what.capitalizingFirstLetter()
@@ -290,7 +268,6 @@ private extension Note {
         case 0:
             let index: Int = task.index ?? list?.items.maxIndex() ?? 0
             createNewTask(at: index)
-            freeOtherNewTasks(notAt: index)
         case textView.textStorage?.length:
             handleMoveDown()
         default:
