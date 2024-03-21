@@ -130,6 +130,14 @@ struct Note: View {
                     isTextBlurred = toBlur
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .clean)) { notification in
+                guard let listHash = notification.object as? String else {
+                    return
+                }
+                if self.list?.hash == listHash {
+                    clean()
+                }
+            }
             .disabled(isTextBlurred)
         }
     }
@@ -175,6 +183,14 @@ private extension Note {
             guard let currentIndex = task.index else { continue }
             if currentIndex >= index {
                 task.index = currentIndex + 1
+            }
+        }
+    }
+    
+    func clean() {
+        for task in sortedTasks {
+            if task.what.isEmpty {
+                delete(task)
             }
         }
     }
@@ -328,7 +344,6 @@ private extension Note {
             fatalError("Could not delete list: \(error)")
         }
     }
-
 }
 
 // MARK: Private methods
