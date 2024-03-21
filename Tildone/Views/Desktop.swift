@@ -17,7 +17,9 @@ struct Desktop: View {
     @State private var noteWindows: [NSWindow] = []
     @State private var mainWindow: NSWindow?
     @State private var foregroundWindow: NSWindow?
-    @Binding var foregroundList: TodoList?
+    @Binding var foregroundList: TodoList? {
+        didSet { cleanUnfocusedNotes() }
+    }
     
     @AppStorage("selectedArrangementCorner") var selectedArrangementCorner: ArrangementCorner = .bottomLeft
     @AppStorage("selectedArrangementAlignment") var selectedArrangementAlignment: ArrangementAlignment = .horizontal
@@ -170,6 +172,13 @@ private extension Desktop {
         let remainingWindows: [NSWindow] = Array(windows.dropFirst())
         
         positionOnScreen(remainingWindows, from: newPosition + delta)
+    }
+    
+    func cleanUnfocusedNotes() {
+        for list in lists {
+            guard list != foregroundList else { continue }
+            NotificationCenter.default.post(name: .clean, object: list.hash)
+        }
     }
 }
 
