@@ -174,9 +174,6 @@ private extension Note {
     }
     
     func handleTaskEdit(_ task: Todo, to what: String) {
-        guard !what.isEmpty else {
-            return
-        }
         task.what = what.capitalizingFirstLetter()
         do {
             try modelContext.save()
@@ -235,11 +232,11 @@ private extension Note {
                 handleMoveDown()
                 return nil
             } else if event.keyCode == Keyboard.delete {
-                handleDelete()
-                return nil
+                let hasBeenDeleted: Bool = handleDelete()
+                return hasBeenDeleted ? nil : event
             } else if event.keyCode == Keyboard.backSpace {
-                handleDelete(isBackwards: true)
-                return nil
+                let hasBeenDeleted: Bool = handleDelete(isBackwards: true)
+                return hasBeenDeleted ? nil : event
             } else if event.modifierFlags.contains(.command),
                       event.charactersIgnoringModifiers == "w" {
                 NotificationCenter.default.post(name: .close, object: nil)
@@ -311,18 +308,20 @@ private extension Note {
         }
     }
     
-    func handleDelete(isBackwards: Bool = false) {
+    func handleDelete(isBackwards: Bool = false) -> Bool {
         guard let index = focusedIndex(),
               index > 0,
               index < sortedPendingTasks.count - 1 else {
-            return
+            return false
         }
         let task = sortedPendingTasks[index]
         if task.what.isEmpty {
             delete(task)
             let newIndex = index - (isBackwards ? 1 : 0)
             focusedTaskCreation = sortedPendingTasks[newIndex].created
+            return true
         }
+        return false
     }
     
     func handleDisappearance() {
