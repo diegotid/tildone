@@ -25,6 +25,8 @@ enum Keyboard {
     static let tabKey: Int = 48
     static let arrowUp: Int = 126
     static let arrowDown: Int = 125
+    static let delete: Int = 117
+    static let backSpace: Int = 51
 }
 
 enum Timeout {

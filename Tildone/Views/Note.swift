@@ -263,6 +263,12 @@ private extension Note {
             } else if event.keyCode == Keyboard.arrowDown {
                 handleMoveDown()
                 return nil
+            } else if event.keyCode == Keyboard.delete {
+                handleDelete()
+                return nil
+            } else if event.keyCode == Keyboard.backSpace {
+                handleDelete(isBackwards: true)
+                return nil
             } else if event.modifierFlags.contains(.command),
                       event.charactersIgnoringModifiers == "w" {
                 NotificationCenter.default.post(name: .close, object: nil)
@@ -292,7 +298,7 @@ private extension Note {
     }
     
     func handleMoveUp() {
-        guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+        guard let index = focusedIndex() else {
             if focusedField == .newTask {
                 guard let list = self.list,
                       !list.items.isEmpty else {
@@ -305,15 +311,15 @@ private extension Note {
             }
             return
         }
-        if focusIndex > 0 {
-            focusedTaskCreation = sortedPendingTasks[focusIndex - 1].created
+        if index > 0 {
+            focusedTaskCreation = sortedPendingTasks[index - 1].created
         } else {
             focusOnTopic()
         }
     }
     
     func handleMoveDown() {
-        guard let focusIndex = sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation) else {
+        guard let index = focusedIndex() else {
             if focusedField == .topic {
                 guard let list = self.list,
                       !list.items.isEmpty else {
@@ -326,10 +332,24 @@ private extension Note {
             }
             return
         }
-        if focusIndex < sortedPendingTasks.count - 1 {
-            focusedTaskCreation = sortedPendingTasks[focusIndex + 1].created
+        if index < sortedPendingTasks.count - 1 {
+            focusedTaskCreation = sortedPendingTasks[index + 1].created
         } else {
             focusOnNewTask()
+        }
+    }
+    
+    func handleDelete(isBackwards: Bool = false) {
+        guard let index = focusedIndex(),
+              index > 0,
+              index < sortedPendingTasks.count - 1 else {
+            return
+        }
+        let task = sortedPendingTasks[index]
+        if task.what.isEmpty {
+            delete(task)
+            let newIndex = index - (isBackwards ? 1 : 0)
+            focusedTaskCreation = sortedPendingTasks[newIndex].created
         }
     }
     
@@ -355,7 +375,6 @@ private extension Note {
         do {
             try modelContext.save()
             updateWindowClosability()
-            focusOnNewTask()
         } catch {
             fatalError("Error on task deletion: \(error)")
         }
@@ -379,6 +398,10 @@ private extension Note {
     func focusOnNewTask() {
         self.focusedTaskCreation = nil
         self.focusedField = .newTask
+    }
+    
+    func focusedIndex() -> Int? {
+        sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation)
     }
     
     func placeCursor(forText value: String) {
