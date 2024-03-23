@@ -27,6 +27,24 @@ extension Todo {
     public func copy() {
         Copier.copy(self.what, forType: .string)
     }
+    
+    public func paste() {
+        guard let clipboard = NSPasteboard.general.string(forType: .string) else {
+            return
+        }
+        let lines = clipboard.components(separatedBy: "\n").map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }.filter {
+            !$0.isEmpty
+        }
+        guard let firstLine = lines.first else {
+            return
+        }
+        self.what = firstLine
+        if lines.count > 1 {
+            self.list?.paste(Array(lines.dropFirst()), from: 1 + (self.index ?? 0))
+        }
+    }
 }
 
 // MARK: TodoList extension
@@ -41,5 +59,11 @@ extension TodoList {
         let htmlTitle: String = (self.topic != nil) ? "<strong>\(topic!)</strong>" : ""
         let htmlList: String = "\(htmlTitle)<ul>\(htmlListItems)</ul>"
         Copier.copy(htmlList, forType: .html)
+    }
+    
+    public func paste(_ content: [String], from index: Int) {
+        for line in content.reversed() {
+            createNewTask(todo: line, at: index)
+        }
     }
 }

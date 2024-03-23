@@ -134,8 +134,8 @@ struct Note: View {
                 guard let listHash = notification.object as? String else {
                     return
                 }
-                if self.list?.hash == listHash {
-                    clean()
+                if list.hash == listHash {
+                    list.clean()
                 }
             }
             .disabled(isTextBlurred)
@@ -164,42 +164,13 @@ extension Note {
 
 private extension Note {
     
-    func createNewTask(at index: Int) {
-        leavePlace(at: index)
-        let newTask = Todo(newTaskText.capitalizingFirstLetter(), at: index)
-        newTask.list = self.list
-        modelContext.insert(newTask)
-        self.newTaskText = ""
-        updateWindowClosability()
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Error on task creation: \(error)")
-        }
-    }
-    
-    func leavePlace(at index: Int) {
-        for task in sortedTasks {
-            guard let currentIndex = task.index else { continue }
-            if currentIndex >= index {
-                task.index = currentIndex + 1
-            }
-        }
-    }
-    
-    func clean() {
-        for task in sortedTasks {
-            if task.what.isEmpty {
-                delete(task)
-            }
-        }
-    }
-    
     func handleTaskCommit() {
         guard newTaskText.count > 0 else {
             return
         }
-        createNewTask(at: list?.items.count ?? 0)
+        list?.createNewTask(todo: newTaskText, at: list?.items.count ?? 0)
+        self.newTaskText = ""
+        updateWindowClosability()
     }
     
     func handleTaskEdit(_ task: Todo, to what: String) {
@@ -289,11 +260,12 @@ private extension Note {
         switch position {
         case 0:
             let index: Int = task.index ?? list?.items.maxIndex() ?? 0
-            createNewTask(at: index)
+            list?.createNewTask(todo: newTaskText, at: index)
         case textView.textStorage?.length:
             handleMoveDown()
         default:
-            createNewTask(at: 1 + (task.index ?? list?.items.maxIndex() ?? 0))
+            list?.createNewTask(todo: newTaskText,
+                                at: 1 + (task.index ?? list?.items.maxIndex() ?? 0))
         }
     }
     
@@ -522,18 +494,20 @@ private extension Note {
                         placeCursor(forText: task.what)
                     }
                 }
-                .onSubmit {
-                    handleMoveDown()
-                }
                 .onKeyPress(keys: [.return]) { _ in
                     handleEnter(forTask: task)
                     return .handled
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                    guard focusedTaskCreation == task.created else {
-                        return
-                    }
+                    guard focusedTaskCreation == task.created else { return }
                     task.copy()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                    guard focusedTaskCreation == task.created else { return }
+                    task.paste()
+                }
+                .onSubmit {
+                    handleMoveDown()
                 }
             }
             Spacer()
