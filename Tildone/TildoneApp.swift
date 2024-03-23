@@ -82,6 +82,10 @@ struct TildoneApp: App {
                     }
                     .keyboardShortcut("c", modifiers: [.shift, .command])
                 }
+                Button("Paste") {
+                    NotificationCenter.default.post(name: .paste, object: nil)
+                }
+                .keyboardShortcut("v")
             }
             CommandGroup(replacing: .toolbar) {
                 Button("Arrange Notes") {
@@ -111,6 +115,7 @@ extension Notification.Name {
     static let new = Notification.Name("new")
     static let close = Notification.Name("close")
     static let copy = Notification.Name("copy")
+    static let paste = Notification.Name("paste")
     static let clean = Notification.Name("clean")
     static let arrange = Notification.Name("arrange")
     static let visibility = Notification.Name("visibility")

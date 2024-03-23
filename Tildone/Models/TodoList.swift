@@ -34,3 +34,40 @@ final class TodoList {
         self.items = []
     }
 }
+
+extension TodoList {
+    
+    func createNewTask(todo: String, at index: Int) {
+        leavePlace(at: index)
+        let newTask = Todo(todo.capitalizingFirstLetter(), at: index)
+        newTask.list = self
+        modelContext?.insert(newTask)
+        do {
+            try modelContext?.save()
+        } catch {
+            fatalError("Error on task creation: \(error)")
+        }
+    }
+    
+    func clean() {
+        for task in items.sorted() {
+            if task.what.isEmpty {
+                modelContext?.delete(task)
+            }
+        }
+        do {
+            try modelContext?.save()
+        } catch {
+            fatalError("Error on task list cleaning: \(error)")
+        }
+    }
+    
+    private func leavePlace(at index: Int) {
+        for task in items.sorted() {
+            guard let currentIndex = task.index else { continue }
+            if currentIndex >= index {
+                task.index = currentIndex + 1
+            }
+        }
+    }
+}
