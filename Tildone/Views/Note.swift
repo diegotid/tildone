@@ -15,8 +15,6 @@ struct Note: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("taskLineTruncation") private var taskLineTruncation: TaskLineTruncation = .single
     
-    @State private var isTextBlurred: Bool = false
-
     var list: TodoList?
     var sortedTasks: [Todo] {
         let tasks = list?.items ?? []
@@ -36,7 +34,12 @@ struct Note: View {
     }
     @State private var noteWindow: NSWindow?
     @State private var newTaskText: String = ""
+    @State private var isTextBlurred: Bool = false
     @State private var isTopScrolledOut: Bool = false
+    @State private var isTopicHidden: Bool = false
+    @State private var isTopicEmpty: Bool = false {
+        didSet { updateTopicVisibility() }
+    }
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskCreation: Date?
 
@@ -45,6 +48,7 @@ struct Note: View {
     @State private var wasAlreadyDone: Bool = false
     @State private var isDone: Bool = false {
         didSet {
+            updateTopicVisibility()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 if !wasAlreadyDone {
                     self.isFadingAway = isDone
@@ -80,7 +84,8 @@ struct Note: View {
                         ScrollView(.vertical, showsIndicators: false) {
                             VStack(spacing: 6) {
                                 listTopic()
-                                    .opacity(isTopScrolledOut || isDone && (list.topic ?? "").isEmpty ? 0 : 1)
+                                    .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
+                                    .frame(height: isTopicHidden ? 1 : 30)
                                 ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
@@ -202,7 +207,8 @@ private extension Note {
         guard let list = self.list else {
             return
         }
-        if topic.isEmpty {
+        isTopicEmpty = topic.isEmpty
+        if isTopicEmpty {
             list.topic = nil
         } else {
             list.topic = topic.capitalizingFirstLetter()
@@ -308,6 +314,16 @@ private extension Note {
         }
     }
     
+    func handleHover(_ isHover: Bool) {
+        withAnimation {
+            if isHover {
+                isTopicHidden = false
+            } else {
+                updateTopicVisibility()
+            }
+        }
+    }
+    
     func handleDelete(isBackwards: Bool = false) -> Bool {
         guard let index = focusedIndex(),
               index > 0,
@@ -359,6 +375,12 @@ private extension Note {
             return
         }
         closeButton.isHidden = !list.isDeletable
+    }
+    
+    func updateTopicVisibility() {
+        withAnimation {
+            self.isTopicHidden = isTopicEmpty && (isDone || focusedField != .topic)
+        }
     }
     
     func focusOnTopic() {
@@ -424,12 +446,16 @@ private extension Note {
                     if let topic = list.topic, focusedField == .topic {
                         placeCursor(forText: topic)
                     }
+                    updateTopicVisibility()
                 }
                 .onChange(of: geometry.frame(in: .global)) {
                     let frame = geometry.frame(in: .global)
                     withAnimation(.easeInOut) {
-                        self.isTopScrolledOut = frame.minY < 15
+                        self.isTopScrolledOut = frame.minY < 10
                     }
+                }
+                .onHover { isHover in
+                    handleHover(isHover)
                 }
                 .onSubmit {
                     if list.items.isEmpty {
@@ -512,6 +538,11 @@ private extension Note {
             Spacer()
         }
         .padding(.leading, 2)
+        .if(task == sortedTasks.first) { view in
+            view.onHover { isHover in
+                handleHover(isHover)
+            }
+        }
     }
     
     @ViewBuilder
