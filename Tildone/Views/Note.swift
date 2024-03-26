@@ -94,7 +94,7 @@ struct Note: View {
                                 Spacer()
                                     .id(Id.bottomAnchor)
                             }
-                            .padding(.top, list.isDeletable ? 0 : -8)
+                            .padding(.top, list.isDeletable && !list.isComplete ? 0 : -8)
                             .onAppear {
                                 if self.list!.topic == nil {
                                     self.focusedField = .topic
@@ -370,8 +370,9 @@ private extension Note {
     }
     
     func updateTopicVisibility() {
+        let isComplete = list?.isComplete ?? false
         withAnimation {
-            self.isTopicHidden = isTopicEmpty && (isDone || focusedField != .topic)
+            self.isTopicHidden = isTopicEmpty && (isComplete || focusedField != .topic)
         }
     }
     
