@@ -560,6 +560,11 @@ private extension Note {
         }
         .padding(.leading, 2)
         .padding(.bottom, 10)
+        .if(sortedTasks.isEmpty) { view in
+            view.onHover { isHover in
+                handleHover(isHover)
+            }
+        }
     }
     
     @ViewBuilder
