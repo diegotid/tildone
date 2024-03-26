@@ -341,15 +341,7 @@ private extension Note {
     }
     
     func handleDisappearance() {
-        guard let list = self.list else {
-            return
-        }
-        modelContext.delete(list)
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Could not delete list: \(error)")
-        }
+        self.list?.delete()
     }
 }
 

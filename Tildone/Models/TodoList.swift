@@ -49,8 +49,21 @@ extension TodoList {
         }
     }
     
+    func delete() {
+        print(items)
+        for task in items {
+            modelContext?.delete(task)
+        }
+        modelContext?.delete(self)
+        do {
+            try modelContext?.save()
+        } catch {
+            fatalError("Could not delete list: \(error)")
+        }
+    }
+    
     func clean() {
-        for task in items.sorted() {
+        for task in items {
             if task.what.isEmpty {
                 modelContext?.delete(task)
             }
