@@ -112,15 +112,6 @@ private extension Desktop {
         }
     }
     
-    func delete(_ list: TodoList) {
-        modelContext.delete(list)
-        do {
-            try modelContext.save()
-        } catch {
-            fatalError("Could not delete list: \(error)")
-        }
-    }
-    
     func createAndShowNewNote(at position: CGPoint) {
         createNewNote()
         openWindow(for: lists.last!, position: position)
@@ -128,7 +119,7 @@ private extension Desktop {
     
     func deleteCompleteNotes() {
         for list in lists.filter({ $0.isDeletable }) {
-            delete(list)
+            list.delete()
         }
     }
     
