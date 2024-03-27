@@ -74,7 +74,7 @@ struct Updates: View {
             }
             .padding(.horizontal, 20)
             .onAppear {
-                UpdateChecker.getAppStoreVersion { version in
+                UpdateChecker.getAppVersion { version in
                     self.latestVersion = version
                     self.isChecking = false
                 }

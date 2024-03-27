@@ -44,6 +44,9 @@ struct Note: View {
     @FocusState private var focusedTaskCreation: Date?
 
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    private var color: NSColor {
+        list?.isSystemList ?? false ? .systemNoteBackground : .noteBackground
+    }
 
     @State private var wasAlreadyDone: Bool = false
     @State private var isDone: Bool = false {
@@ -67,7 +70,7 @@ struct Note: View {
                 noteWindow?.level = isDisappearing ? .normal : .floating
                 noteWindow?.hasShadow = isDisappearing ? false : true
                 noteWindow?.standardWindowButton(.closeButton)?.isHidden = isDisappearing
-                noteWindow?.backgroundColor = .noteBackground.withAlphaComponent(windowAlpha)
+                noteWindow?.backgroundColor = self.color.withAlphaComponent(windowAlpha)
             }
             if hasDiessapeared {
                 noteWindow?.close()
@@ -89,8 +92,12 @@ struct Note: View {
                                 ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
-                                newListItem()
-                                    .opacity(isDone || isTextBlurred ? 0 : 1)
+                                if !list.isSystemList {
+                                    newListItem()
+                                        .opacity(isDone || isTextBlurred ? 0 : 1)
+                                } else {
+                                    systemContent(list)
+                                }
                                 Spacer()
                                     .id(Id.bottomAnchor)
                             }
@@ -500,6 +507,7 @@ private extension Note {
                             set: { handleTaskEdit(task, to: $0) }
                           ),
                           axis: taskLineTruncation == .single ? .horizontal : .vertical)
+                .disabled(list?.isSystemList ?? true)
                 .if(taskLineTruncation == .single) { view in
                     view.truncationMode(.tail)
                 }
@@ -573,7 +581,7 @@ private extension Note {
         VStack {
             ZStack {
                 Rectangle()
-                    .fill(Color(nsColor: .noteBackground.withAlphaComponent(windowAlpha)))
+                    .fill(Color(nsColor: self.color.withAlphaComponent(windowAlpha)))
                     .frame(width: .infinity, height: 30)
                     .shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
                 headerListTopic()
@@ -650,6 +658,25 @@ private extension Note {
             }
         }
         .opacity(windowAlpha * 0.9)
+    }
+    
+    @ViewBuilder
+    func systemContent(_ list: TodoList) -> some View {
+        VStack {
+            Spacer()
+            if let content: String = list.systemContent {
+                HStack {
+                    Text(content)
+                    Spacer()
+                }
+            }
+            if let url = list.systemURL {
+                Link("Visit release notes", destination: url)
+                    .buttonStyle(BorderedProminentButtonStyle())
+                    .padding()
+                    .padding(.trailing, 15)
+            }
+        }
     }
 }
 

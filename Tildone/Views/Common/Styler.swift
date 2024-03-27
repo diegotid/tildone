@@ -9,6 +9,7 @@ import SwiftUI
 
 extension NSColor {
     static let noteBackground = #colorLiteral(red: 1, green: 0.9411764706, blue: 0.6274509804, alpha: 1)
+    static let systemNoteBackground = #colorLiteral(red: 0.7331673503, green: 0.9972032905, blue: 0.7244514823, alpha: 1)
     static let checkboxBorder = #colorLiteral(red: 0.5338419676, green: 0.5067609549, blue: 0.3392150104, alpha: 1)
     static let primaryFontColor = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
     static let checkboxOffFill = #colorLiteral(red: 0.9999960065, green: 1, blue: 1, alpha: 0.5)
@@ -26,7 +27,7 @@ enum Layout {
 }
 
 extension NSWindow {
-    func setNoteStyle() {
+    func setNoteStyle(isSystem: Bool = false) {
         self.level = .floating
         self.makeKeyAndOrderFront(nil)
         self.titlebarAppearsTransparent = true
@@ -34,7 +35,7 @@ extension NSWindow {
         self.makeKeyAndOrderFront(nil)
         self.standardWindowButton(.miniaturizeButton)?.isHidden = true
         self.standardWindowButton(.zoomButton)?.isHidden = true
-        self.backgroundColor = .noteBackground
+        self.backgroundColor = isSystem ? .systemNoteBackground : .noteBackground
         self.isOpaque = false
     }
 }
