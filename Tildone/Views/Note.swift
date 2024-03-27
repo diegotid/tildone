@@ -501,7 +501,7 @@ private extension Note {
                     .foregroundColor(.accentColor)
                     .strikethrough(color: .accentColor)
             } else {
-                TextField("New task.default",
+                TextField("New task",
                           text: Binding<String>(
                             get: { task.what },
                             set: { handleTaskEdit(task, to: $0) }

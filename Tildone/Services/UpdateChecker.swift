@@ -48,18 +48,18 @@ struct UpdateChecker {
     
     private static func releaseCheckList(version: String) -> TodoList {
         let checkList = TodoList()
-        let checkWhatsNewTask = Todo("Check release notes", at: 0)
-        checkList.topic = "Updated to v\(version)"
+        let checkWhatsNewTask = Todo(String(localized: "Check release notes"), at: 0)
+        checkList.topic = String(localized: "Updated to v\(version)")
         checkList.items = [checkWhatsNewTask]
         checkList.systemURL = URL(string: Remote.releaseNotesUrl)
-        checkList.systemContent = """
+        checkList.systemContent = String(localized: """
         Tildone has been updated featuring now:
         \u{2022} Open at login
         \u{2022} Focus filters
         \u{2022} Arrange notes
         \u{2022} Spanish, French and Chinese
         \u{2022} Several other improvements
-        """
+        """)
         return checkList
     }
 }

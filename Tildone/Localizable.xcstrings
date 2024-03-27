@@ -1054,25 +1054,24 @@
         }
       }
     },
-    "Tildone has been updated featuring now:\n        \\u{2022} Open at login\n        \\u{2022} Focus filters\n        \\u{2022} Arrange notes\n        \\u{2022} Spanish, French and Chinese\n        \\u{2022} Several other improvements" : {
-      "extractionState" : "manual",
+    "Tildone has been updated featuring now:\n• Open at login\n• Focus filters\n• Arrange notes\n• Spanish, French and Chinese\n• Several other improvements" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tildone se ha actualizado e incluye ahora:\n         \\u{2022} Abrir al iniciar sesión\n         \\u{2022} Filtros de foco\n         \\u{2022} Organización de notas\n         \\u{2022} Español, francés y chino\n         \\u{2022} Varias otras mejoras"
+            "value" : "Tildone se ha actualizado e incluye ahora:\n• Abrir al iniciar sesión\n• Filtros de foco\n• Organización de notas\n• Español, francés y chino\n• Varias otras mejoras"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tildone a été mis à jour avec désormais :\n         \\u{2022} Ouvrir lors de la connexion\n         \\u{2022} Filtres de focus\n         \\u{2022} Organiser les notes\n         \\u{2022} espagnol, français et chinois\n         \\u{2022} Plusieurs autres améliorations"
+            "value" : "Tildone a été mis à jour avec désormais :\n• Ouvrir lors de la connexion\n• Filtres de focus\n• Organiser les notes\n• Espagnol, français et chinois\n• Plusieurs autres améliorations"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tildone 已更新，现在包含：\n         \\u{2022} 登录时打开\n         \\u{2022} 焦点过滤器\n         \\u{2022} 整理笔记\n         \\u{2022} 西班牙语、法语和中文\n         \\u{2022} 其他多项改进"
+            "value" : "Tildone 已更新，现在包含：\n• 登录时打开\n• 焦点过滤器\n• 整理笔记\n• 西班牙语、法语和中文\n• 其他多项改进"
           }
         }
       }
