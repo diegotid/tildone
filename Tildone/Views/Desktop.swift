@@ -49,32 +49,12 @@ struct Desktop: View {
                 }
             }
             .onAppear {
-                UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
-                Task {
-                    let filterIntent = try await FocusFilter.current
-                    _ = try await filterIntent.perform()
-                }
-                if lists.isEmpty {
-                    createNewNote()
-                    self.isMainWindowNew = true
-                }
-                for list in lists.dropFirst() {
-                    openWindow(for: list)
-                }
+                setWindowOptions()
+                openNoteWindows()
+                createWhatsNewNoteIfNeeded()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 deleteCompleteNotes()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
-                if let window = event.object as? NSWindow {
-                    foregroundWindow = window
-                    if window.title == lists.first?.hash {
-                        foregroundList = lists.first
-                    } else if let windowId = window.identifier?.rawValue,
-                              Desktop.appWindowIds.contains(windowId) {
-                        foregroundList = nil
-                    }
-                }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
@@ -86,13 +66,11 @@ struct Desktop: View {
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
             }
             .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in
-                if let list = foregroundList {
-                    if list.isDeletable {
-                        foregroundWindow?.close()
-                        noteWindows.removeAll(where: { $0.title == foregroundList?.hash })
-                    }
-                } else {
-                    foregroundWindow?.close()
+                handleClose()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
+                if let window = event.object as? NSWindow {
+                    handleFocus(window)
                 }
             }
     }
@@ -101,6 +79,16 @@ struct Desktop: View {
 // MARK: Desktop event handlers
 
 private extension Desktop {
+    
+    func openNoteWindows() {
+        if lists.isEmpty {
+            createNewNote()
+            self.isMainWindowNew = true
+        }
+        for list in lists.dropFirst() {
+            openWindow(for: list)
+        }
+    }
    
     func createNewNote() {
         let newList = TodoList()
@@ -115,6 +103,27 @@ private extension Desktop {
     func createAndShowNewNote(at position: CGPoint) {
         createNewNote()
         openWindow(for: lists.last!, position: position)
+    }
+    
+    func handleFocus(_ window: NSWindow) {
+        foregroundWindow = window
+        if window.title == lists.first?.hash {
+            foregroundList = lists.first
+        } else if let windowId = window.identifier?.rawValue,
+                  Desktop.appWindowIds.contains(windowId) {
+            foregroundList = nil
+        }
+    }
+    
+    func handleClose() {
+        if let list = foregroundList {
+            if list.isDeletable {
+                foregroundWindow?.close()
+                noteWindows.removeAll(where: { $0.title == foregroundList?.hash })
+            }
+        } else {
+            foregroundWindow?.close()
+        }
     }
     
     func deleteCompleteNotes() {
@@ -171,6 +180,34 @@ private extension Desktop {
             NotificationCenter.default.post(name: .clean, object: list.hash)
         }
     }
+    
+    func setWindowOptions() {
+        UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
+        Task {
+            let filterIntent = try await FocusFilter.current
+            _ = try await filterIntent.perform()
+        }
+    }
+    
+    func createWhatsNewNoteIfNeeded() {
+        Task {
+            if let list: TodoList = await UpdateChecker.getNewReleaseCheckList() {
+                createWhatsNewNote(checkList: list)
+            }
+        }
+    }
+    
+    func createWhatsNewNote(checkList: TodoList) {
+        modelContext.insert(checkList)
+        do {
+            try modelContext.save()
+            DispatchQueue.main.async {
+                openWindow(for: checkList)
+            }
+        } catch {
+            debugPrint(error.localizedDescription)
+        }
+    }
 }
 
 // MARK: Desktop components
@@ -218,7 +255,7 @@ private extension Desktop {
                               styleMask: [.titled, .closable, .resizable, .borderless],
                               backing: .buffered,
                               defer: false)
-        window.setNoteStyle()
+        window.setNoteStyle(isSystem: list.isSystemList)
         window.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))

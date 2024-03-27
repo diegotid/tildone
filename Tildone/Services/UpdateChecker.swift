@@ -6,49 +6,70 @@
 //
 
 import Foundation
+import StoreKit
 
 struct UpdateChecker {
-    static func getAppStoreVersion(completion: @escaping (String?) -> Void) {
-        guard let bundleId = Bundle.main.bundleIdentifier,
-              let lookup = URL(string: "\(UpdateChecker.Remote.appStoreLookupUrl)?bundleId=\(bundleId)")
-        else {
-            completion(nil)
-            return
-        }
-        URLSession.shared.dataTask(with: lookup) { (data, response, error) in
-            guard let optionalData = data,
-                  error == nil
-            else {
-                completion(nil)
-                return
-            }
+    
+    static func getAppVersion(completion: @escaping (String?) -> Void) {
+        Task {
             do {
-                guard let json = try JSONSerialization.jsonObject(
-                    with: optionalData,
-                    options: []
-                ) as? [String: Any] else {
+                let app = try await AppTransaction.shared
+                switch app {
+                case .verified(let installed):
+                    completion(installed.appVersion)
+                default:
                     completion(nil)
-                    return
                 }
-                guard let results = json[UpdateChecker.Remote.appStoreResultsKey] as? [[String: Any]],
-                      let version = results.first?[UpdateChecker.Remote.appStoreVersionKey] as? String
-                else {
-                    completion(nil)
-                    return
-                }
-                completion(version)
             } catch {
+                debugPrint(error.localizedDescription)
                 completion(nil)
             }
-        }.resume()
+        }
+    }
+    
+    static func getNewReleaseCheckList() async -> TodoList? {
+        do {
+            let app = try await AppTransaction.shared
+            if case .verified(let installed) = app {
+                let known: String? = UserDefaults.standard.string(forKey: Local.knownVersionFlag)
+                let isKnown: Bool = installed.appVersion == known
+                let isUpdated: Bool = installed.appVersion != installed.originalAppVersion
+                if isUpdated && !isKnown {
+                    UserDefaults.standard.setValue(installed.appVersion, forKey: Local.knownVersionFlag)
+                    return releaseCheckList(version: installed.appVersion)
+                }
+            }
+            return nil
+        } catch {
+            debugPrint(error.localizedDescription)
+            return nil
+        }
+    }
+    
+    private static func releaseCheckList(version: String) -> TodoList {
+        let checkList = TodoList()
+        let checkWhatsNewTask = Todo("Check release notes", at: 0)
+        checkList.topic = "Updated to v\(version)"
+        checkList.items = [checkWhatsNewTask]
+        checkList.systemURL = URL(string: Remote.releaseNotesUrl)
+        checkList.systemContent = """
+        Tildone has been updated featuring now:
+        \u{2022} Open at login
+        \u{2022} Focus filters
+        \u{2022} Arrange notes
+        \u{2022} Spanish, French and Chinese
+        \u{2022} Several other improvements
+        """
+        return checkList
     }
 }
 
 extension UpdateChecker {
+    enum Local {
+        static let knownVersionFlag: String = "knownAppVersion"
+    }
     enum Remote {
-        static let appStoreLookupUrl: String = "https://itunes.apple.com/lookup"
         static let appStoreAppUrl: String = "https://apps.apple.com/app/tildone/id6473126292"
-        static let appStoreResultsKey: String = "results"
-        static let appStoreVersionKey: String = "version"
+        static let releaseNotesUrl: String = "http://cuatro.studio/tildone/release"
     }
 }

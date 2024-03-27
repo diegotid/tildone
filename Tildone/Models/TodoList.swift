@@ -12,6 +12,8 @@ import SwiftData
 final class TodoList {
     var created: Date
     var topic: String?
+    var systemURL: URL?
+    var systemContent: String?
     
     @Relationship(inverse:\Todo.list)
     var items: [Todo]
@@ -27,6 +29,9 @@ final class TodoList {
     }
     var hash: String {
         created.ISO8601Format()
+    }
+    var isSystemList: Bool {
+        systemContent != nil
     }
 
     public init() {
@@ -50,7 +55,6 @@ extension TodoList {
     }
     
     func delete() {
-        print(items)
         for task in items {
             modelContext?.delete(task)
         }
