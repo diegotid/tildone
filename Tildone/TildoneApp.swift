@@ -46,15 +46,10 @@ struct TildoneApp: App {
                 Button("About Tildone") {
                     openWindow(id: Id.aboutWindow)
                 }
-                Button("Check for Updates...") {
-                    openWindow(id: Id.updateWindow)
-                }
-                Divider()
                 SettingsLink {
                     Text("Settings...")
                 }
                 .keyboardShortcut(",")
-                Divider()
                 Button("Quit Tildone") {
                     NSApplication.shared.terminate(self)
                 }
@@ -96,11 +91,6 @@ struct TildoneApp: App {
         }
         Window("About Tildone.window", id: Id.aboutWindow) {
             About()
-        }
-        .windowResizability(.contentSize)
-        .commandsRemoved()
-        Window("Check for Updates.window", id: Id.updateWindow) {
-            Updates()
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
