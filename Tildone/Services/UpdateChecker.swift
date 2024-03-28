@@ -10,23 +10,6 @@ import StoreKit
 
 struct UpdateChecker {
     
-    static func getAppVersion(completion: @escaping (String?) -> Void) {
-        Task {
-            do {
-                let app = try await AppTransaction.shared
-                switch app {
-                case .verified(let installed):
-                    completion(installed.appVersion)
-                default:
-                    completion(nil)
-                }
-            } catch {
-                debugPrint(error.localizedDescription)
-                completion(nil)
-            }
-        }
-    }
-    
     static func getNewReleaseCheckList() async -> TodoList? {
         do {
             let app = try await AppTransaction.shared
@@ -69,7 +52,6 @@ extension UpdateChecker {
         static let knownVersionFlag: String = "knownAppVersion"
     }
     enum Remote {
-        static let appStoreAppUrl: String = "https://apps.apple.com/app/tildone/id6473126292"
         static let releaseNotesUrl: String = "http://cuatro.studio/tildone/release"
     }
 }
