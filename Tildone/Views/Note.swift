@@ -14,6 +14,7 @@ struct Note: View {
     @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
     @AppStorage("taskLineTruncation") private var taskLineTruncation: TaskLineTruncation = .single
+    @AppStorage("fontSize") private var fontSize = Double(FontSize.small.rawValue)
     
     var list: TodoList?
     var sortedTasks: [Todo] {
@@ -89,6 +90,7 @@ struct Note: View {
                                 listTopic()
                                     .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
                                     .frame(height: isTopicHidden ? 1 : 30)
+                                    .padding(.bottom, CGFloat(FontSize(rawValue: fontSize)!.toValue() - 10))
                                 ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
@@ -429,6 +431,8 @@ private extension Note {
     @ViewBuilder
     func listTopic() -> some View {
         if let list = self.list {
+            let listTaksOffset: CGFloat = 20 / CGFloat(FontSize.small.toValue())
+            let size = listTaksOffset * CGFloat(FontSize(rawValue: fontSize)!.toValue())
             GeometryReader { geometry in
                 TextField("Topic",
                           text: Binding<String>(
@@ -437,7 +441,7 @@ private extension Note {
                           ))
                 .textFieldStyle(PlainTextFieldStyle())
                 .truncationMode(.tail)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: size, weight: .bold, design: .rounded))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .padding(.top, 5)
@@ -466,7 +470,7 @@ private extension Note {
                 }
                 .blur(radius: isTextBlurred ? 1 : 0)
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, size)
         }
     }
     
@@ -488,7 +492,7 @@ private extension Note {
     
     @ViewBuilder
     func listItem(task: Todo) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             Checkbox(checked: task.isDone)
                 .disabled(task.what.isEmpty)
                 .onToggle {
@@ -498,6 +502,7 @@ private extension Note {
                 .padding(.vertical, 2)
             if task.isDone {
                 Text(task.what)
+                    .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
                     .foregroundColor(.accentColor)
                     .strikethrough(color: .accentColor)
             } else {
@@ -512,6 +517,7 @@ private extension Note {
                     view.truncationMode(.tail)
                 }
                 .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .focused($focusedTaskCreation, equals: task.created)
@@ -553,6 +559,7 @@ private extension Note {
                 .disabled(true)
             TextField("New task", text: $newTaskText)
                 .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .onSubmit(handleTaskCommit)
