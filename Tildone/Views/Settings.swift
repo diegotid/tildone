@@ -11,6 +11,9 @@ import SwiftUI
 
 struct SettingsForm: View {
     
+    @AppStorage("fontSize")
+    private var fontSize = Double(FontSize.small.rawValue)
+    
     @AppStorage("taskLineTruncation")
     private var taskLineTruncation: TaskLineTruncation = .single
     
@@ -40,6 +43,7 @@ struct SettingsForm: View {
                         .padding(.top, 8)
                     Section {
                         VStack(alignment: .leading) {
+                            fontSizeSettings()
                             taskAppearanceSettings()
                             desktopAppearanceSettings()
                         }
@@ -51,13 +55,41 @@ struct SettingsForm: View {
             }
             .padding(24)
         }
-        .frame(width: 470, height: 520)
+        .frame(width: 470, height: 635)
     }
 }
 
 // MARK: Form components
 
 private extension SettingsForm {
+    
+    @ViewBuilder
+    func fontSizeSettings() -> some View {
+        Text("Font size")
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .padding(.top, 1)
+        HStack {
+            Spacer()
+            Text("Task text sample")
+                .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
+            Spacer()
+        }
+        Slider(
+            value: $fontSize,
+            in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue),
+            step: 1
+        )
+        .padding(.trailing, 10)
+        HStack {
+            ForEach(FontSize.allCases, id: \.self) { fontSize in
+                Text(fontSize.toString())
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.bottom, 14)
+    }
     
     @ViewBuilder
     func taskAppearanceSettings() -> some View {
@@ -239,6 +271,38 @@ extension SettingsForm {
 }
 
 // MARK: Enum types
+
+enum FontSize: Int, CaseIterable {
+    case xSmall = 0
+    case small
+    case medium
+    case large
+    case xLarge
+    
+    init?(rawValue: Double) {
+        self = FontSize.allCases[Int(rawValue)]
+    }
+    
+    func toValue() -> Int {
+        switch self {
+        case .xSmall: 10
+        case .small: 13
+        case .medium: 16
+        case .large: 20
+        case .xLarge: 24
+        }
+    }
+    
+    func toString() -> String {
+        switch self {
+        case .xSmall: String(localized: "X Small")
+        case .small: String(localized: "Small")
+        case .medium: String(localized: "Medium")
+        case .large: String(localized: "Large")
+        case .xLarge: String(localized: "X Large")
+        }
+    }
+}
 
 enum TaskLineTruncation: Int {
     case single = 1
