@@ -55,7 +55,7 @@ struct SettingsForm: View {
             }
             .padding(24)
         }
-        .frame(width: 470, height: 635)
+        .frame(width: 470, height: 600)
     }
 }
 
@@ -65,29 +65,25 @@ private extension SettingsForm {
     
     @ViewBuilder
     func fontSizeSettings() -> some View {
-        Text("Font size")
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-            .padding(.top, 1)
         HStack {
             Spacer()
-            Text("Task text sample")
-                .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
+            Text("Font size")
+                .font(.system(size: CGFloat(fontSize)))
             Spacer()
         }
+        .frame(minHeight: 28)
         Slider(
             value: $fontSize,
-            in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue),
-            step: 1
-        )
-        .padding(.trailing, 10)
-        HStack {
-            ForEach(FontSize.allCases, id: \.self) { fontSize in
-                Text(fontSize.toString())
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity)
-            }
+            in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue)
+        ) {
+            Text("Font size")
+        } minimumValueLabel: {
+            Text("X Small")
+        } maximumValueLabel: {
+            Text("X Large")
         }
+        .labelsHidden()
+        .padding(.trailing, 10)
         .padding(.bottom, 14)
     }
     
@@ -272,35 +268,15 @@ extension SettingsForm {
 
 // MARK: Enum types
 
-enum FontSize: Int, CaseIterable {
-    case xSmall = 0
-    case small
+enum FontSize: Double, CaseIterable {
+    case xSmall = 10
+    case small = 13
     case medium
     case large
-    case xLarge
+    case xLarge = 24
     
-    init?(rawValue: Double) {
-        self = FontSize.allCases[Int(rawValue)]
-    }
-    
-    func toValue() -> Int {
-        switch self {
-        case .xSmall: 10
-        case .small: 13
-        case .medium: 16
-        case .large: 20
-        case .xLarge: 24
-        }
-    }
-    
-    func toString() -> String {
-        switch self {
-        case .xSmall: String(localized: "X Small")
-        case .small: String(localized: "Small")
-        case .medium: String(localized: "Medium")
-        case .large: String(localized: "Large")
-        case .xLarge: String(localized: "X Large")
-        }
+    init?(fromLegacySetting legacyValue: Double) {
+        self = FontSize.allCases[Int(legacyValue)]
     }
 }
 

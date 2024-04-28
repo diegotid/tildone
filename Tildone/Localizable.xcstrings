@@ -714,6 +714,28 @@
         }
       }
     },
+    "New features:\n• Font size customizable in settings\n\nFrom the previous release:\n• Open at login\n• Focus filters\n• Arrange notes\n• Spanish, French and Chinese\n• Several other improvements" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuevas funciones:\n• Tamaño de letra personalizable en los ajustes\n\nDe la versión anterior:\n• Abrir al iniciar sesión\n• Filtros de enfoque\n• Ordenar notas\n• Español, francés y chino\n• Otras mejoras"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelles fonctionnalités :\n• Taille de la police personnalisable dans les paramètres\n\nDepuis la version précédente :\n• Ouvrir à la connexion\n• Filtres de mise au point\n• Classer les notes\n• Espagnol, français et chinois\n• Plusieurs autres améliorations"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新功能：\n• 可在设置中自定义字体大小\n\n上一版本：\n• 登录时打开\n• 焦点过滤器\n• 排列备注\n• 西班牙语、法语和中文\n• 其他一些改进"
+          }
+        }
+      }
+    },
     "New Note" : {
       "localizations" : {
         "es" : {
@@ -1007,28 +1029,6 @@
         }
       }
     },
-    "Task text sample" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ejemplo de texto de tarea"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exemple de texte de tâche"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "任务文本示例"
-          }
-        }
-      }
-    },
     "Tildone" : {
       "localizations" : {
         "es" : {
@@ -1047,28 +1047,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tildone"
-          }
-        }
-      }
-    },
-    "Tildone has been updated featuring now:\n• Open at login\n• Focus filters\n• Arrange notes\n• Spanish, French and Chinese\n• Several other improvements" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tildone se ha actualizado e incluye ahora:\n• Abrir al iniciar sesión\n• Filtros de foco\n• Organización de notas\n• Español, francés y chino\n• Varias otras mejoras"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tildone a été mis à jour avec désormais :\n• Ouvrir lors de la connexion\n• Filtres de focus\n• Organiser les notes\n• Espagnol, français et chinois\n• Plusieurs autres améliorations"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tildone 已更新，现在包含：\n• 登录时打开\n• 焦点过滤器\n• 整理笔记\n• 西班牙语、法语和中文\n• 其他多项改进"
           }
         }
       }
