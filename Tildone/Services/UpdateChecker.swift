@@ -36,7 +36,10 @@ struct UpdateChecker {
         checkList.items = [checkWhatsNewTask]
         checkList.systemURL = URL(string: Remote.releaseNotesUrl)
         checkList.systemContent = String(localized: """
-        Tildone has been updated featuring now:
+        New features:
+        \u{2022} Font size customizable in settings
+        
+        From the previous release:
         \u{2022} Open at login
         \u{2022} Focus filters
         \u{2022} Arrange notes

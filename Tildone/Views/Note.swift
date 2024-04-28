@@ -90,7 +90,7 @@ struct Note: View {
                                 listTopic()
                                     .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
                                     .frame(height: isTopicHidden ? 1 : 30)
-                                    .padding(.bottom, CGFloat(FontSize(rawValue: fontSize)!.toValue() - 10))
+                                    .padding(.bottom, CGFloat(fontSize - 10))
                                 ForEach(sortedTasks, id: \.created) { item in
                                     listItem(task: item)
                                 }
@@ -137,6 +137,7 @@ struct Note: View {
                 handleKeyboard()
                 self.isDone = list.isComplete
                 self.wasAlreadyDone = list.isComplete
+                convertLegacyFontSizeSettingIfNeeded()
             }
             .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
                 if let (toBlur, toNormal) = notification.object as? (Bool, Bool) {
@@ -352,6 +353,13 @@ private extension Note {
     func handleDisappearance() {
         self.list?.delete()
     }
+    
+    func convertLegacyFontSizeSettingIfNeeded() {
+        if fontSize < FontSize.xSmall.rawValue,
+           let newFontSize = FontSize(fromLegacySetting: fontSize) {
+            fontSize = newFontSize.rawValue
+        }
+    }
 }
 
 // MARK: Private methods
@@ -431,8 +439,8 @@ private extension Note {
     @ViewBuilder
     func listTopic() -> some View {
         if let list = self.list {
-            let listTaksOffset: CGFloat = 20 / CGFloat(FontSize.small.toValue())
-            let size = listTaksOffset * CGFloat(FontSize(rawValue: fontSize)!.toValue())
+            let listTaksOffset: CGFloat = 20 / CGFloat(FontSize.small.rawValue)
+            let size = listTaksOffset * CGFloat(fontSize)
             GeometryReader { geometry in
                 TextField("Topic",
                           text: Binding<String>(
@@ -502,7 +510,7 @@ private extension Note {
                 .padding(.vertical, 2)
             if task.isDone {
                 Text(task.what)
-                    .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
+                    .font(.system(size: CGFloat(fontSize)))
                     .foregroundColor(.accentColor)
                     .strikethrough(color: .accentColor)
             } else {
@@ -517,7 +525,7 @@ private extension Note {
                     view.truncationMode(.tail)
                 }
                 .textFieldStyle(PlainTextFieldStyle())
-                .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
+                .font(.system(size: CGFloat(fontSize)))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .focused($focusedTaskCreation, equals: task.created)
@@ -559,7 +567,7 @@ private extension Note {
                 .disabled(true)
             TextField("New task", text: $newTaskText)
                 .textFieldStyle(PlainTextFieldStyle())
-                .font(.system(size: CGFloat(FontSize(rawValue: fontSize)!.toValue())))
+                .font(.system(size: CGFloat(fontSize)))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
                 .onSubmit(handleTaskCommit)
