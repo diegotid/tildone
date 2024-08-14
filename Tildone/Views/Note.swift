@@ -654,21 +654,19 @@ private extension Note {
                             fadeAwayProgress += 0.05
                         }
                     }
-                    if license == .pro {
-                        HStack {
-                            Spacer()
-                            Button {
-                                self.isDone = false
-                                fadeAwayProgress = 0.0
-                            } label: {
-                                Text("Cancel")
-                                    .foregroundColor(.accentColor)
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                    HStack {
+                        Spacer()
+                        Button {
+                            self.isDone = false
+                            fadeAwayProgress = 0.0
+                        } label: {
+                            Text("Cancel")
+                                .foregroundColor(.accentColor)
                         }
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 30)
+                        .buttonStyle(PlainButtonStyle())
                     }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 30)
                 }
             }
         }
