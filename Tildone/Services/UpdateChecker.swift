@@ -37,14 +37,10 @@ struct UpdateChecker {
         checkList.systemURL = URL(string: Remote.releaseNotesUrl)
         checkList.systemContent = String(localized: """
         New features:
-        \u{2022} Font size customizable in settings
+        \u{2022} Option to cancel note fading out when completed
         
         From the previous release:
-        \u{2022} Open at login
-        \u{2022} Focus filters
-        \u{2022} Arrange notes
-        \u{2022} Spanish, French and Chinese
-        \u{2022} Several other improvements
+        \u{2022} Font size customizable in settings
         """)
         return checkList
     }

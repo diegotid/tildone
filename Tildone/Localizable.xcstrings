@@ -714,24 +714,24 @@
         }
       }
     },
-    "New features:\n• Font size customizable in settings\n\nFrom the previous release:\n• Open at login\n• Focus filters\n• Arrange notes\n• Spanish, French and Chinese\n• Several other improvements" : {
+    "New features:\n• Option to cancel note fading out when completed\n\nFrom the previous release:\n• Font size customizable in settings" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuevas funciones:\n• Tamaño de letra personalizable en los ajustes\n\nDe la versión anterior:\n• Abrir al iniciar sesión\n• Filtros de enfoque\n• Ordenar notas\n• Español, francés y chino\n• Otras mejoras"
+            "value" : "Nuevas funciones:\n• Opción para cancelar la desaparición gradual de la nota una vez finalizada\n\nDe la versión anterior:\n• Tamaño de letra personalizable en los ajustes"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelles fonctionnalités :\n• Taille de la police personnalisable dans les paramètres\n\nDepuis la version précédente :\n• Ouvrir à la connexion\n• Filtres de mise au point\n• Classer les notes\n• Espagnol, français et chinois\n• Plusieurs autres améliorations"
+            "value" : "Nouvelles fonctionnalités:\n• Option pour annuler la disparition des notes une fois terminées\n\nDepuis la version précédente:\n• Taille de la police personnalisable dans les paramètres\n"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新功能：\n• 可在设置中自定义字体大小\n\n上一版本：\n• 登录时打开\n• 焦点过滤器\n• 排列备注\n• 西班牙语、法语和中文\n• 其他一些改进"
+            "value" : "新功能：\n• 完成后可选择取消音符淡出\n\n上一版本：\n• 可在设置中自定义字体大小"
           }
         }
       }
