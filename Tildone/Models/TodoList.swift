@@ -41,7 +41,6 @@ final class TodoList {
 }
 
 extension TodoList {
-    
     func createNewTask(todo: String, at index: Int) {
         leavePlace(at: index)
         let newTask = Todo(todo.capitalizingFirstLetter(), at: index)
@@ -52,6 +51,10 @@ extension TodoList {
         } catch {
             fatalError("Error on task creation: \(error)")
         }
+    }
+    
+    func remove(_ task: Todo) {
+        self.items.removeAll(where: { $0.created == task.created })
     }
     
     func delete() {
@@ -78,8 +81,10 @@ extension TodoList {
             fatalError("Error on task list cleaning: \(error)")
         }
     }
-    
-    private func leavePlace(at index: Int) {
+}
+
+private extension TodoList {
+    func leavePlace(at index: Int) {
         for task in items.sorted() {
             guard let currentIndex = task.index else { continue }
             if currentIndex >= index {
