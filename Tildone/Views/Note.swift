@@ -42,7 +42,7 @@ struct Note: View {
         didSet { updateTopicVisibility() }
     }
     @FocusState private var focusedField: Field?
-    @FocusState private var focusedTaskCreation: Date?
+    @FocusState private var focusedTaskDate: Date?
 
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
     private var color: NSColor {
@@ -290,14 +290,14 @@ private extension Note {
                     focusOnTopic()
                     return
                 }
-                focusedTaskCreation = sortedPendingTasks.last?.created
+                focusedTaskDate = sortedPendingTasks.last?.created
             } else {
                 focusOnNewTask()
             }
             return
         }
         if index > 0 {
-            focusedTaskCreation = sortedPendingTasks[index - 1].created
+            focusedTaskDate = sortedPendingTasks[index - 1].created
         } else {
             focusOnTopic()
         }
@@ -311,14 +311,14 @@ private extension Note {
                     focusOnNewTask()
                     return
                 }
-                focusedTaskCreation = sortedPendingTasks.first?.created
+                focusedTaskDate = sortedPendingTasks.first?.created
             } else {
                 focusOnTopic()
             }
             return
         }
         if index < sortedPendingTasks.count - 1 {
-            focusedTaskCreation = sortedPendingTasks[index + 1].created
+            focusedTaskDate = sortedPendingTasks[index + 1].created
         } else {
             focusOnNewTask()
         }
@@ -335,16 +335,17 @@ private extension Note {
     }
     
     func handleDelete(isBackwards: Bool = false) -> Bool {
-        guard let index = focusedIndex(),
-              index > 0,
-              index < sortedPendingTasks.count - 1 else {
+        guard let index = focusedIndex() else {
             return false
         }
         let task = sortedPendingTasks[index]
         if task.what.isEmpty {
             delete(task)
-            let newIndex = index - (isBackwards ? 1 : 0)
-            focusedTaskCreation = sortedPendingTasks[newIndex].created
+            var newIndex = index - (isBackwards ? 1 : 0)
+            if newIndex < 0 {
+                newIndex = sortedPendingTasks.count - 1
+            }
+            focusedTaskDate = sortedPendingTasks[newIndex].created
             return true
         }
         return false
@@ -370,6 +371,7 @@ private extension Note {
         modelContext.delete(task)
         do {
             try modelContext.save()
+            list?.remove(task)
             updateWindowClosability()
         } catch {
             fatalError("Error on task deletion: \(error)")
@@ -394,17 +396,17 @@ private extension Note {
     }
     
     func focusOnTopic() {
-        self.focusedTaskCreation = nil
+        self.focusedTaskDate = nil
         self.focusedField = .topic
     }
     
     func focusOnNewTask() {
-        self.focusedTaskCreation = nil
+        self.focusedTaskDate = nil
         self.focusedField = .newTask
     }
     
     func focusedIndex() -> Int? {
-        sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskCreation)
+        sortedPendingTasks.map({ $0.created }).firstIndex(of: focusedTaskDate)
     }
     
     func placeCursor(forText value: String) {
@@ -528,9 +530,9 @@ private extension Note {
                 .font(.system(size: CGFloat(fontSize)))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
-                .focused($focusedTaskCreation, equals: task.created)
-                .onChange(of: focusedTaskCreation) {
-                    if focusedTaskCreation == task.created {
+                .focused($focusedTaskDate, equals: task.created)
+                .onChange(of: focusedTaskDate) {
+                    if focusedTaskDate == task.created {
                         placeCursor(forText: task.what)
                     }
                 }
@@ -539,11 +541,11 @@ private extension Note {
                     return .handled
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                    guard focusedTaskCreation == task.created else { return }
+                    guard focusedTaskDate == task.created else { return }
                     task.copy()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                    guard focusedTaskCreation == task.created else { return }
+                    guard focusedTaskDate == task.created else { return }
                     task.paste()
                 }
                 .onSubmit {
