@@ -180,10 +180,10 @@ extension Note {
 private extension Note {
     
     func handleTaskCommit() {
-        guard newTaskText.count > 0 else {
+        guard !newTaskText.isEmpty else {
             return
         }
-        list?.createNewTask(todo: newTaskText, at: list?.items.count ?? 0)
+        list?.createNewTask(todo: newTaskText, at: list?.items.endIndex)
         self.newTaskText = ""
         updateWindowClosability()
     }
@@ -238,7 +238,7 @@ private extension Note {
             }
             if event.keyCode == Keyboard.tabKey
                 && focusedField == .newTask
-                && newTaskText.count > 0 {
+                && !newTaskText.isEmpty {
                 handleTaskCommit()
                 return nil
             } else if event.keyCode == Keyboard.arrowUp {
@@ -317,7 +317,7 @@ private extension Note {
             }
             return
         }
-        if index < sortedPendingTasks.count - 1 {
+        if index < sortedPendingTasks.endIndex - 1 {
             focusedTaskDate = sortedPendingTasks[index + 1].created
         } else {
             focusOnNewTask()
@@ -343,7 +343,7 @@ private extension Note {
             delete(task)
             var newIndex = index - (isBackwards ? 1 : 0)
             if newIndex < 0 {
-                newIndex = sortedPendingTasks.count - 1
+                newIndex = sortedPendingTasks.endIndex - 1
             }
             focusedTaskDate = sortedPendingTasks[newIndex].created
             return true
