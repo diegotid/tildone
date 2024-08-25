@@ -179,11 +179,12 @@ extension Note {
 
 private extension Note {
     
-    func handleTaskCommit() {
-        guard !newTaskText.isEmpty else {
+    func handleNewTaskCommit() {
+        guard let list = self.list,
+              !newTaskText.isEmpty else {
             return
         }
-        list?.createNewTask(todo: newTaskText, at: list?.items.endIndex)
+        list.createNewTask(todo: newTaskText, at: 1 + list.items.count)
         self.newTaskText = ""
         updateWindowClosability()
     }
@@ -239,7 +240,7 @@ private extension Note {
             if event.keyCode == Keyboard.tabKey
                 && focusedField == .newTask
                 && !newTaskText.isEmpty {
-                handleTaskCommit()
+                handleNewTaskCommit()
                 return nil
             } else if event.keyCode == Keyboard.arrowUp {
                 handleMoveUp()
@@ -572,15 +573,15 @@ private extension Note {
                 .font(.system(size: CGFloat(fontSize)))
                 .foregroundColor(Color(.primaryFontColor))
                 .background(Color.clear)
-                .onSubmit(handleTaskCommit)
+                .onSubmit(handleNewTaskCommit)
                 .focused($focusedField, equals: .newTask)
                 .onChange(of: focusedField) {
                     if focusedField != .newTask && !newTaskText.isEmpty {
-                        handleTaskCommit()
+                        handleNewTaskCommit()
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    handleTaskCommit()
+                    handleNewTaskCommit()
                 }
             Spacer()
         }

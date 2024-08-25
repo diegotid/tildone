@@ -41,6 +41,7 @@ final class TodoList {
 }
 
 extension TodoList {
+    
     func createNewTask(todo: String, at index: Int) {
         leavePlace(at: index)
         let newTask = Todo(todo.capitalizingFirstLetter(), at: index)
@@ -55,6 +56,7 @@ extension TodoList {
     
     func remove(_ task: Todo) {
         self.items.removeAll(where: { $0.created == task.created })
+        flattenIndexes()
     }
     
     func delete() {
@@ -90,6 +92,12 @@ private extension TodoList {
             if currentIndex >= index {
                 task.index = currentIndex + 1
             }
+        }
+    }
+    
+    func flattenIndexes() {
+        for (index, task) in items.sorted().enumerated() {
+            task.index = index + 1
         }
     }
 }
