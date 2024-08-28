@@ -61,6 +61,7 @@ struct Note: View {
         }
     }
     @State private var windowAlpha: Double = 1
+    @State private var isMinimized: Bool = false
     @State private var isFadingAway: Bool = false
     @State private var fadeAwayProgress: Float = 0.0 {
         didSet {
@@ -81,7 +82,7 @@ struct Note: View {
     }
     
     var body: some View {
-        if let list = self.list {
+        if let list = self.list, !isMinimized {
             ZStack {
                 Group {
                     ScrollViewReader { scroll in
@@ -132,6 +133,13 @@ struct Note: View {
                     doneOverlay()
                 }
             }
+            .frame(minWidth: Layout.minNoteWidth,
+                   idealWidth: Layout.defaultNoteWidth,
+                   maxWidth: .infinity,
+                   minHeight: Layout.minNoteHeight,
+                   idealHeight: Layout.defaultNoteHeight,
+                   maxHeight: .infinity,
+                   alignment: .center)
             .background(WindowAccessor(window: $noteWindow))
             .onAppear {
                 handleKeyboard()
@@ -154,6 +162,21 @@ struct Note: View {
                 }
             }
             .disabled(isTextBlurred)
+        } else if isMinimized {
+            Text("Holi 👋🏽")
+                .foregroundStyle(Color.black)
+                .frame(minWidth: Layout.minimizedNoteWidth,
+                       idealWidth: Layout.minimizedNoteWidth,
+                       maxWidth: Layout.minimizedNoteWidth,
+                       minHeight: Layout.minimizedNoteHeight,
+                       idealHeight: Layout.minimizedNoteHeight,
+                       maxHeight: Layout.minimizedNoteHeight,
+                       alignment: .center)
+                .onTapGesture {
+                    withAnimation {
+                        self.isMinimized = false
+                    }
+                }
         }
     }
 }
@@ -615,13 +638,27 @@ private extension Note {
             HStack {
                 Spacer()
                 Button {
+                    if let window = self.noteWindow {
+                        withAnimation {
+                            self.isMinimized = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.right.and.arrow.down.left")
+                        .foregroundColor(Color(.primaryFontColor))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .font(.system(size: 11))
+                .padding(.trailing, -1)
+                .padding(.top, 1)
+                Button {
                     onAdd(NSEvent.mouseLocation)
                 } label: {
                     Image(systemName: "plus")
                         .foregroundColor(Color(.primaryFontColor))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .padding(.trailing, 6)
+                .padding(.trailing, 9)
             }
             Spacer()
         }
@@ -705,13 +742,6 @@ struct ScrollFrame: ViewModifier {
             .padding(.trailing, 5)
             .padding(.leading, 20)
             .colorScheme(.light)
-            .frame(minWidth: Layout.minNoteWidth,
-                   idealWidth: Layout.defaultNoteWidth,
-                   maxWidth: .infinity,
-                   minHeight: Layout.minNoteHeight,
-                   idealHeight: Layout.defaultNoteHeight,
-                   maxHeight: .infinity,
-                   alignment: .center)
     }
 }
 

@@ -221,13 +221,6 @@ private extension Desktop {
                 .todoList(existingList)
                 .onAddNewNote(createAndShowNewNote)
                 .environment(\.modelContext, modelContext)
-                .frame(minWidth: Layout.minNoteWidth,
-                       idealWidth: Layout.defaultNoteWidth,
-                       maxWidth: .infinity,
-                       minHeight: Layout.minNoteHeight,
-                       idealHeight: Layout.defaultNoteHeight,
-                       maxHeight: .infinity,
-                       alignment: .center)
                 .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                     if let window = event.object as? NSWindow {
                         foregroundWindow = window
