@@ -62,6 +62,9 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in
                 arrangeNotes()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .arrangeMinimized)) { _ in
+                arrangeNotes(onlyMinimized: true)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
             }
@@ -132,19 +135,23 @@ private extension Desktop {
         }
     }
     
-    func arrangeNotes() {
+    func arrangeNotes(onlyMinimized: Bool = false) {
         let horizontal: Bool = selectedArrangementAlignment == .horizontal
         let inverse: Bool = horizontal
             ? [.bottomRight, .topRight].contains(selectedArrangementCorner)
             : [.topLeft, .topRight].contains(selectedArrangementCorner)
-        let sortedWindows = noteWindows.sorted(by: {
-            switch (horizontal, inverse) {
-            case (true, true): $0.frame.origin.x > $1.frame.origin.x
-            case (true, false): $0.frame.origin.x < $1.frame.origin.x
-            case (false, true): $0.frame.origin.y > $1.frame.origin.y
-            case (false, false): $0.frame.origin.y < $1.frame.origin.y
+        let sortedWindows = noteWindows
+            .sorted(by: {
+                switch (horizontal, inverse) {
+                case (true, true): $0.frame.origin.x > $1.frame.origin.x
+                case (true, false): $0.frame.origin.x < $1.frame.origin.x
+                case (false, true): $0.frame.origin.y > $1.frame.origin.y
+                case (false, false): $0.frame.origin.y < $1.frame.origin.y
+                }
+            })
+            .filter {
+                !onlyMinimized || $0.title.starts(with: "_")
             }
-        })
         positionOnScreen(sortedWindows)
     }
     
@@ -167,7 +174,11 @@ private extension Desktop {
         let finalX: Int = inverseX ? Int(screenSize.width) - newX - windowX : newX
         let finalY: Int = inverseY ? Int(screenSize.height) - Frame.menuBarHeight - newY - windowY : newY
         let newFrame = NSRect(x: finalX, y: finalY, width: windowX, height: windowY)
-        window.setFrame(newFrame, display: false, animate: true)
+        DispatchQueue.main.async {
+            withAnimation {
+                window.setFrame(newFrame, display: false, animate: true)
+            }
+        }
         let delta: Int = horizontal ? Int(window.frame.width) : Int(window.frame.height)
         let remainingWindows: [NSWindow] = Array(windows.dropFirst())
         
