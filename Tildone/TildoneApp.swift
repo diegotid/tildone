@@ -108,6 +108,7 @@ extension Notification.Name {
     static let paste = Notification.Name("paste")
     static let clean = Notification.Name("clean")
     static let arrange = Notification.Name("arrange")
+    static let arrangeMinimized = Notification.Name("arrangeMinimized")
     static let visibility = Notification.Name("visibility")
 }
 

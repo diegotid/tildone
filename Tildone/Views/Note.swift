@@ -62,6 +62,7 @@ struct Note: View {
     }
     @State private var windowAlpha: Double = 1
     @State private var isMinimized: Bool = false
+    @State private var minimizedFromFrame: NSRect? = nil
     @State private var isFadingAway: Bool = false
     @State private var fadeAwayProgress: Float = 0.0 {
         didSet {
@@ -173,9 +174,7 @@ struct Note: View {
                        maxHeight: Layout.minimizedNoteHeight,
                        alignment: .center)
                 .onTapGesture {
-                    withAnimation {
-                        self.isMinimized = false
-                    }
+                    handleRestoreFromMinimize()
                 }
         }
     }
@@ -377,6 +376,38 @@ private extension Note {
     
     func handleDisappearance() {
         self.list?.delete()
+    }
+    
+    func handleMinimize() {
+        if let window = self.noteWindow {
+            window.title = "_" + window.title
+            self.minimizedFromFrame = window.frame
+            NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+            withAnimation {
+                self.isMinimized = true
+            } completion: {
+                NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+            }
+        }
+    }
+    
+    func handleRestoreFromMinimize() {
+        if let window = self.noteWindow,
+           window.title.starts(with: "_"),
+           let originalFrame = self.minimizedFromFrame
+        {
+            window.title = String(window.title.dropFirst())
+            self.minimizedFromFrame = nil
+            DispatchQueue.main.async {
+                withAnimation {
+                    window.setFrame(originalFrame, display: true, animate: true)
+                } completion: {
+                    withAnimation {
+                        self.isMinimized = false
+                    }
+                }
+            }
+        }
     }
     
     func convertLegacyFontSizeSettingIfNeeded() {
@@ -638,11 +669,7 @@ private extension Note {
             HStack {
                 Spacer()
                 Button {
-                    if let window = self.noteWindow {
-                        withAnimation {
-                            self.isMinimized = true
-                        }
-                    }
+                    handleMinimize()
                 } label: {
                     Image(systemName: "arrow.up.right.and.arrow.down.left")
                         .foregroundColor(Color(.primaryFontColor))
