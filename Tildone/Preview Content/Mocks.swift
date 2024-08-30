@@ -11,7 +11,7 @@ extension TodoList {
     static var preview = {
         let list = TodoList()
         list.topic = "Mock list"
-        list.items = [.oneTask, .anotherTask]
+        list.items = [.oneTask, .anotherTask, .undoneTask]
         list.systemURL = URL(string: "http://cuatro.studio")
         list.systemContent = """
         Tildone has been updated featuring now:
@@ -34,6 +34,10 @@ extension Todo {
     static var anotherTask = {
         let task = Todo("Second task", at: 1)
         task.setDone()
+        return task
+    }()
+    static var undoneTask = {
+        let task = Todo("Undone task", at: 2)
         return task
     }()
 }

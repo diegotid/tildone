@@ -83,99 +83,12 @@ struct Note: View {
     }
     
     var body: some View {
-        if let list = self.list, !isMinimized {
-            ZStack {
-                Group {
-                    ScrollViewReader { scroll in
-                        ScrollView(.vertical, showsIndicators: false) {
-                            VStack(spacing: 6) {
-                                listTopic()
-                                    .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
-                                    .frame(height: isTopicHidden ? 1 : 30)
-                                    .padding(.bottom, CGFloat(fontSize - 10))
-                                ForEach(sortedTasks, id: \.created) { item in
-                                    listItem(task: item)
-                                }
-                                if !list.isSystemList {
-                                    newListItem()
-                                        .opacity(isDone || isTextBlurred ? 0 : 1)
-                                } else {
-                                    systemContent(list)
-                                }
-                                Spacer()
-                                    .id(Id.bottomAnchor)
-                            }
-                            .padding(.top, list.isDeletable && !list.isComplete ? 0 : -8)
-                            .onAppear {
-                                if self.list!.topic == nil {
-                                    self.focusedField = .topic
-                                } else {
-                                    self.focusedField = .newTask
-                                }
-                            }
-                        }
-                        .modifier(ScrollFrame())
-                        .onChange(of: list.items.count) {
-                            withAnimation {
-                                scroll.scrollTo(Id.bottomAnchor, anchor: .bottom)
-                            }
-                        }
-                    }
-                    if isTopScrolledOut {
-                        scrollingHeader()
-                    }
-                    if let onAdd = onAddNewNote {
-                        headerToolBar(onAdd: onAdd)
-                    }
-                }
-                .blur(radius: isTextBlurred ? 3 : 0)
-                .opacity(windowAlpha / (isDone ? 2 : 1))
-                if isDone {
-                    doneOverlay()
-                }
+        if let list = self.list {
+            if isMinimized {
+                taskListProgess(list)
+            } else {
+                taskList(list)
             }
-            .frame(minWidth: Layout.minNoteWidth,
-                   idealWidth: Layout.defaultNoteWidth,
-                   maxWidth: .infinity,
-                   minHeight: Layout.minNoteHeight,
-                   idealHeight: Layout.defaultNoteHeight,
-                   maxHeight: .infinity,
-                   alignment: .center)
-            .background(WindowAccessor(window: $noteWindow))
-            .onAppear {
-                handleKeyboard()
-                self.isDone = list.isComplete
-                self.wasAlreadyDone = list.isComplete
-                convertLegacyFontSizeSettingIfNeeded()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
-                if let (toBlur, toNormal) = notification.object as? (Bool, Bool) {
-                    noteWindow?.level = toNormal ? .normal : .floating
-                    isTextBlurred = toBlur
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .clean)) { notification in
-                guard let listHash = notification.object as? String else {
-                    return
-                }
-                if list.hash == listHash {
-                    list.clean()
-                }
-            }
-            .disabled(isTextBlurred)
-        } else if isMinimized {
-            Text("Holi 👋🏽")
-                .foregroundStyle(Color.black)
-                .frame(minWidth: Layout.minimizedNoteWidth,
-                       idealWidth: Layout.minimizedNoteWidth,
-                       maxWidth: Layout.minimizedNoteWidth,
-                       minHeight: Layout.minimizedNoteHeight,
-                       idealHeight: Layout.minimizedNoteHeight,
-                       maxHeight: Layout.minimizedNoteHeight,
-                       alignment: .center)
-                .onTapGesture {
-                    handleRestoreFromMinimize()
-                }
         }
     }
 }
@@ -494,6 +407,125 @@ private extension Note {
 private extension Note {
     
     @ViewBuilder
+    func taskList(_ list: TodoList) -> some View {
+        ZStack {
+            Group {
+                ScrollViewReader { scroll in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 6) {
+                            listTopic()
+                                .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
+                                .frame(height: isTopicHidden ? 1 : 30)
+                                .padding(.bottom, CGFloat(fontSize - 10))
+                            ForEach(sortedTasks, id: \.created) { item in
+                                listItem(task: item)
+                            }
+                            if !list.isSystemList {
+                                newListItem()
+                                    .opacity(isDone || isTextBlurred ? 0 : 1)
+                            } else {
+                                systemContent(list)
+                            }
+                            Spacer()
+                                .id(Id.bottomAnchor)
+                        }
+                        .padding(.top, list.isDeletable && !list.isComplete ? 0 : -8)
+                        .onAppear {
+                            if self.list!.topic == nil {
+                                self.focusedField = .topic
+                            } else {
+                                self.focusedField = .newTask
+                            }
+                        }
+                    }
+                    .modifier(ScrollFrame())
+                    .onChange(of: list.items.count) {
+                        withAnimation {
+                            scroll.scrollTo(Id.bottomAnchor, anchor: .bottom)
+                        }
+                    }
+                }
+                if isTopScrolledOut {
+                    scrollingHeader()
+                }
+                if let onAdd = onAddNewNote {
+                    headerToolBar(onAdd: onAdd)
+                }
+            }
+            .blur(radius: isTextBlurred ? 3 : 0)
+            .opacity(windowAlpha / (isDone ? 2 : 1))
+            if isDone {
+                doneOverlay()
+            }
+        }
+        .frame(minWidth: Layout.minNoteWidth,
+               idealWidth: Layout.defaultNoteWidth,
+               maxWidth: .infinity,
+               minHeight: Layout.minNoteHeight,
+               idealHeight: Layout.defaultNoteHeight,
+               maxHeight: .infinity,
+               alignment: .center)
+        .background(WindowAccessor(window: $noteWindow))
+        .onAppear {
+            handleKeyboard()
+            self.isDone = list.isComplete
+            self.wasAlreadyDone = list.isComplete
+            convertLegacyFontSizeSettingIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+            if let (toBlur, toNormal) = notification.object as? (Bool, Bool) {
+                noteWindow?.level = toNormal ? .normal : .floating
+                isTextBlurred = toBlur
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .clean)) { notification in
+            guard let listHash = notification.object as? String else {
+                return
+            }
+            if list.hash == listHash {
+                list.clean()
+            }
+        }
+        .disabled(isTextBlurred)
+    }
+    
+    @ViewBuilder
+    func taskListProgess(_ list: TodoList) -> some View {
+        let pendingCount: Int = list.items.filter({ !$0.isDone }).count
+        let progressValue = list.items.isEmpty ? 0.0 : Float(list.items.count - pendingCount)
+        let progressGoal = list.items.isEmpty ? 1 : list.items.count
+        let progressComplete: Bool = pendingCount == 0 && !list.items.isEmpty
+        let color: Color = progressComplete ? .accentColor : Color(nsColor: .checkboxBorder)
+        let label: String = progressComplete ? "all done" : (list.items.isEmpty ? "no tasks" : "pending")
+        Gauge(value: progressValue, in: 0...Float(progressGoal)) {
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(color)
+                .padding(.top, 6)
+                .padding(.leading, -16)
+        } currentValueLabel: {
+            Text("\(pendingCount)")
+                .bold()
+                .font(.system(size: 30))
+                .foregroundStyle(color)
+        }
+        .gaugeStyle(.accessoryCircular)
+        .padding(.top, -25)
+        .padding(.leading, 2)
+        .tint(Gradient(colors: [.clear, color]))
+        .frame(minWidth: Layout.minimizedNoteWidth,
+               idealWidth: Layout.minimizedNoteWidth,
+               maxWidth: Layout.minimizedNoteWidth,
+               minHeight: Layout.minimizedNoteHeight,
+               idealHeight: Layout.minimizedNoteHeight,
+               maxHeight: Layout.minimizedNoteHeight,
+               alignment: .center)
+        .onTapGesture {
+            handleRestoreFromMinimize()
+        }
+    }
+    
+    @ViewBuilder
     func listTopic() -> some View {
         if let list = self.list {
             let listTaksOffset: CGFloat = 20 / CGFloat(FontSize.small.rawValue)
@@ -782,6 +814,7 @@ struct ScrollFrame: ViewModifier {
                                         configurations: configuration)
     container.mainContext.insert(Todo.oneTask)
     container.mainContext.insert(Todo.anotherTask)
+    container.mainContext.insert(Todo.undoneTask)
     container.mainContext.insert(TodoList.preview)
     return Note()
         .todoList(.preview)

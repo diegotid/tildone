@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld" : {
+
+    },
     "© 2023 Diego Rivera" : {
       "localizations" : {
         "es" : {
