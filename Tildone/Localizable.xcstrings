@@ -164,6 +164,9 @@
         }
       }
     },
+    "Bring All Up" : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "es" : {
@@ -650,6 +653,9 @@
           }
         }
       }
+    },
+    "Minimize All" : {
+
     },
     "Minimum margin" : {
       "localizations" : {

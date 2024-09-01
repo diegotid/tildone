@@ -83,6 +83,15 @@ struct TildoneApp: App {
                 .keyboardShortcut("v")
             }
             CommandGroup(replacing: .toolbar) {
+                Button("Minimize All") {
+                    NotificationCenter.default.post(name: .minimizeAll, object: nil)
+                }
+                .keyboardShortcut("m", modifiers: [.shift, .command])
+                Button("Bring All Up") {
+                    NotificationCenter.default.post(name: .bringAllUp, object: nil)
+                }
+                .keyboardShortcut("u", modifiers: [.shift, .command])
+                Divider()
                 Button("Arrange Notes") {
                     NotificationCenter.default.post(name: .arrange, object: nil)
                 }
@@ -109,6 +118,8 @@ extension Notification.Name {
     static let clean = Notification.Name("clean")
     static let arrange = Notification.Name("arrange")
     static let arrangeMinimized = Notification.Name("arrangeMinimized")
+    static let minimizeAll = Notification.Name("minimizeAll")
+    static let bringAllUp = Notification.Name("bringAllUp")
     static let visibility = Notification.Name("visibility")
 }
 

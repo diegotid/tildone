@@ -304,7 +304,7 @@ private extension Note {
         }
     }
     
-    func handleRestoreFromMinimize() {
+    func handleBringUp() {
         if let window = self.noteWindow,
            window.title.starts(with: "_"),
            let originalFrame = self.minimizedFromFrame
@@ -437,6 +437,9 @@ private extension Note {
                                 self.focusedField = .newTask
                             }
                         }
+                        .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in
+                            handleMinimize()
+                        }
                     }
                     .modifier(ScrollFrame())
                     .onChange(of: list.items.count) {
@@ -521,7 +524,10 @@ private extension Note {
                maxHeight: Layout.minimizedNoteHeight,
                alignment: .center)
         .onTapGesture {
-            handleRestoreFromMinimize()
+            handleBringUp()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in
+            handleBringUp()
         }
     }
     
