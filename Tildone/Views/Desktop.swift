@@ -140,24 +140,40 @@ private extension Desktop {
         let inverse: Bool = horizontal
             ? [.bottomRight, .topRight].contains(selectedArrangementCorner)
             : [.topLeft, .topRight].contains(selectedArrangementCorner)
-        let sortedWindows = noteWindows
-            .sorted(by: {
-                switch (horizontal, inverse) {
-                case (true, true): $0.frame.origin.x > $1.frame.origin.x
-                case (true, false): $0.frame.origin.x < $1.frame.origin.x
-                case (false, true): $0.frame.origin.y > $1.frame.origin.y
-                case (false, false): $0.frame.origin.y < $1.frame.origin.y
+        for windows in noteWindowScreenMap().values {
+            let sortedWindows = windows
+                .sorted(by: {
+                    switch (horizontal, inverse) {
+                    case (true, true): $0.frame.origin.x > $1.frame.origin.x
+                    case (true, false): $0.frame.origin.x < $1.frame.origin.x
+                    case (false, true): $0.frame.origin.y > $1.frame.origin.y
+                    case (false, false): $0.frame.origin.y < $1.frame.origin.y
+                    }
+                })
+                .filter {
+                    !onlyMinimized || $0.title.starts(with: "_")
                 }
-            })
-            .filter {
-                !onlyMinimized || $0.title.starts(with: "_")
+            positionOnScreen(sortedWindows)
+        }
+    }
+    
+    func noteWindowScreenMap() -> [NSScreen: [NSWindow]] {
+        var screenMap: [NSScreen: [NSWindow]] = [:]
+        for window in noteWindows {
+            if let screen = window.screen {
+                if screenMap[screen] == nil {
+                    screenMap[screen] = [window]
+                } else {
+                    screenMap[screen]?.append(window)
+                }
             }
-        positionOnScreen(sortedWindows)
+        }
+        return screenMap
     }
     
     func positionOnScreen(_ windows: [NSWindow], from: Int = 0) {
         guard let window: NSWindow = windows.first,
-              let screenSize: CGSize = noteWindows.first?.screen?.frame.size else {
+              let screenFrame: NSRect = window.screen?.frame else {
             return
         }
         let margin: Int = from > 0
@@ -171,9 +187,12 @@ private extension Desktop {
         let inverseY: Bool = [.topLeft, .topRight].contains(selectedArrangementCorner)
         let newX: Int = horizontal ? newPosition : selectedArrangementCornerMargin.rawValue
         let newY: Int = !horizontal ? newPosition : selectedArrangementCornerMargin.rawValue
-        let finalX: Int = inverseX ? Int(screenSize.width) - newX - windowX : newX
-        let finalY: Int = inverseY ? Int(screenSize.height) - Frame.menuBarHeight - newY - windowY : newY
-        let newFrame = NSRect(x: finalX, y: finalY, width: windowX, height: windowY)
+        let finalX: Int = inverseX ? Int(screenFrame.size.width) - newX - windowX : newX
+        let finalY: Int = inverseY ? Int(screenFrame.size.height) - Frame.menuBarHeight - newY - windowY : newY
+        let newFrame = NSRect(x: finalX + Int(screenFrame.origin.x),
+                              y: finalY + Int(screenFrame.origin.y),
+                              width: windowX,
+                              height: windowY)
         DispatchQueue.main.async {
             withAnimation {
                 window.setFrame(newFrame, display: false, animate: true)
