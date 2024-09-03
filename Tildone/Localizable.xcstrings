@@ -2,7 +2,26 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%lld" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        }
+      }
     },
     "© 2023 Diego Rivera" : {
       "localizations" : {
@@ -165,7 +184,26 @@
       }
     },
     "Bring All Up" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a mostrar todo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amener tout en haut"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部带上"
+          }
+        }
+      }
     },
     "Cancel" : {
       "localizations" : {
@@ -655,7 +693,26 @@
       }
     },
     "Minimize All" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minimizar todo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduire tout"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最小化全部"
+          }
+        }
+      }
     },
     "Minimum margin" : {
       "localizations" : {
@@ -723,24 +780,24 @@
         }
       }
     },
-    "New features:\n• Option to cancel note fading out when completed\n\nFrom the previous release:\n• Font size customizable in settings" : {
+    "New features:\n• Every note can now be minimized into a progress gauge\n• Menu options and shortcuts from minimizing all notes or bring them back up\n• Empty tasks in a note can be deleted from the keyboard\n• Minor bug fixing (perhaps you didn't realize about)\n\nFrom the previous release:\n• Option to cancel note fading out when completed\n• Font size customizable in settings" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuevas funciones:\n• Opción para cancelar la desaparición gradual de la nota una vez finalizada\n\nDe la versión anterior:\n• Tamaño de letra personalizable en los ajustes"
+            "value" : "Nuevas características:\n• Cada nota ahora se puede minimizar mostrando un indicador de progreso\n• Opciones de menú y atajos para minimizar todas las notas o recuperarlas\n• Las tareas vacías en una nota se pueden eliminar desde el teclado\n• Corrección de errores menores (quizás ni siquiera los notaste)\n\nDe la versión anterior:\n• Opción para cancelar la nota que desaparece cuando se completa\n• Tamaño de fuente personalizable en la configuración"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelles fonctionnalités:\n• Option pour annuler la disparition des notes une fois terminées\n\nDepuis la version précédente:\n• Taille de la police personnalisable dans les paramètres\n"
+            "value" : "Nouvelles fonctionnalités :\n• Chaque note peut désormais être minimisée dans une jauge de progression\n• Options de menu et raccourcis pour minimiser toutes les notes ou les faire réapparaître\n• Les tâches vides dans une note peuvent être supprimées à partir du clavier\n• Correction de bugs mineurs (vous n'en aviez peut-être pas conscience)\n\nDe la version précédente :\n• Option pour annuler la disparition des notes une fois terminées\n• Taille de police personnalisable dans les paramètres"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新功能：\n• 完成后可选择取消音符淡出\n\n上一版本：\n• 可在设置中自定义字体大小"
+            "value" : "新功能：\n• 现在可以将每条笔记最小化为进度表\n• 菜单选项和快捷方式可最小化所有笔记或将其恢复\n• 可以从键盘删除笔记中的空任务\n• 修复小错误（也许您没有意识到）\n\n与上一版本相比：\n• 完成时取消笔记淡出的选项\n• 可在设置中自定义字体大小"
           }
         }
       }

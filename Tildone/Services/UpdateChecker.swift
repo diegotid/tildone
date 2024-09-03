@@ -37,9 +37,13 @@ struct UpdateChecker {
         checkList.systemURL = URL(string: Remote.releaseNotesUrl)
         checkList.systemContent = String(localized: """
         New features:
-        \u{2022} Option to cancel note fading out when completed
+        \u{2022} Every note can now be minimized into a progress gauge
+        \u{2022} Menu options and shortcuts from minimizing all notes or bring them back up
+        \u{2022} Empty tasks in a note can be deleted from the keyboard
+        \u{2022} Minor bug fixing (perhaps you didn't realize about)
         
         From the previous release:
+        \u{2022} Option to cancel note fading out when completed
         \u{2022} Font size customizable in settings
         """)
         return checkList
