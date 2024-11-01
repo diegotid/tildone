@@ -499,13 +499,18 @@ private extension Note {
         let progressGoal = list.items.isEmpty ? 1 : list.items.count
         let progressComplete: Bool = pendingCount == 0 && !list.items.isEmpty
         let color: Color = progressComplete ? .accentColor : Color(nsColor: .checkboxBorder)
-        let label: String = progressComplete ? "all done" : (list.items.isEmpty ? "no tasks" : "pending")
+        let allDoneLabel = NSLocalizedString("all done", comment: "All tasks are completed")
+        let pendingLabel = NSLocalizedString("pending", comment: "Tasks are pending")
+        let emptyLabel = NSLocalizedString("no tasks", comment: "No tasks available")
+        let label: String = progressComplete ? allDoneLabel : (list.items.isEmpty ? emptyLabel : pendingLabel)
         Gauge(value: progressValue, in: 0...Float(progressGoal)) {
             Text(label)
                 .font(.system(size: 10))
                 .foregroundStyle(color)
                 .padding(.top, 6)
-                .padding(.leading, -16)
+                .padding(.trailing, 6)
+                .padding(.leading, -19)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         } currentValueLabel: {
             Text("\(pendingCount)")
                 .bold()
