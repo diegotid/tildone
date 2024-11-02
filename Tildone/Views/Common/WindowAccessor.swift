@@ -8,17 +8,38 @@
 import SwiftUI
 
 struct WindowAccessor: NSViewRepresentable {
+    @Binding var note: any View
     @Binding var window: NSWindow?
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
             self.window = view.window
+            if let minimizeButton = self.window?.standardWindowButton(.miniaturizeButton) {
+                minimizeButton.target = context.coordinator
+                minimizeButton.action = #selector(Coordinator.minimizeButtonClicked)
+            }
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject {
+        var parent: WindowAccessor
+        
+        init(_ parent: WindowAccessor) {
+            self.parent = parent
+        }
+        
+        @objc func minimizeButtonClicked() {
+            (parent.note as? Note)?.handleMinimize()
+        }
+    }
 }
 
 extension NSView {

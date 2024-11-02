@@ -35,10 +35,23 @@ extension NSWindow {
         self.titlebarAppearsTransparent = true
         self.isReleasedWhenClosed = false
         self.makeKeyAndOrderFront(nil)
-        self.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        self.standardWindowButton(.zoomButton)?.isHidden = true
+        self.standardWindowButton(.closeButton)?.style()
+        self.standardWindowButton(.miniaturizeButton)?.style()
+        self.standardWindowButton(.zoomButton)?.style()
+        self.standardWindowButton(.zoomButton)?.isEnabled = false
         self.backgroundColor = isSystem ? .systemNoteBackground : .noteBackground
         self.isOpaque = false
+    }
+}
+
+extension NSButton {
+    func style() {
+        let frame = NSRect(x: 1, y: 2, width: 12, height: 12)
+        let overlay = NSView(frame: frame)
+        overlay.wantsLayer = true
+        overlay.layer?.cornerRadius = frame.width / 2
+        overlay.layer?.backgroundColor = NSColor.checkboxBorder.withAlphaComponent(0.2).cgColor
+        self.addSubview(overlay)
     }
 }
 

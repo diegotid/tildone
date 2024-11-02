@@ -29,11 +29,13 @@ struct Desktop: View {
     static private var appWindowIds: [String] = [Id.aboutWindow, Id.updateWindow]
 
     var body: some View {
-        noteWindow(for: lists.first)
-            .background(WindowAccessor(window: $mainWindow)).onChange(of: mainWindow) {
+        let note = noteWindow(for: lists.first)
+        return note
+            .background(WindowAccessor(note: Binding.constant(note), window: $mainWindow))
+            .onChange(of: mainWindow) {
                 guard let list: TodoList = lists.first else { return }
                 mainWindow?.setNoteStyle()
-                mainWindow?.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
+                mainWindow?.standardWindowButton(.closeButton)?.isEnabled = list.isDeletable
                 mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
                 mainWindow?.title = list.hash
                 mainWindow?.titleVisibility = .hidden
@@ -249,7 +251,6 @@ private extension Desktop {
         if let existingList = list {
             Note()
                 .todoList(existingList)
-                .onAddNewNote(createAndShowNewNote)
                 .environment(\.modelContext, modelContext)
                 .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                     if let window = event.object as? NSWindow {
@@ -275,11 +276,11 @@ private extension Desktop {
                                   width: Layout.defaultNoteWidth,
                                   height: Layout.defaultNoteHeight)
         let window = NSWindow(contentRect: windowLayout,
-                              styleMask: [.titled, .closable, .resizable, .borderless],
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
                               backing: .buffered,
                               defer: false)
         window.setNoteStyle(isSystem: list.isSystemList)
-        window.standardWindowButton(.closeButton)?.isHidden = !list.isDeletable
+        window.standardWindowButton(.closeButton)?.isEnabled = list.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
         window.title = list.hash
