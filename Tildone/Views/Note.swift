@@ -26,7 +26,6 @@ struct Note: View {
         let pending = tasks.filter({ $0.done == nil })
         return pending.sorted()
     }
-    var onAddNewNote: ((_ position: CGPoint) -> Void)?
 
     enum Field: Hashable {
         case topic
@@ -61,7 +60,13 @@ struct Note: View {
         }
     }
     @State private var windowAlpha: Double = 1
-    @State private var isMinimized: Bool = false
+    @State private var isMinimized: Bool = false {
+        didSet {
+            noteWindow?.standardWindowButton(.closeButton)?.isHidden = isMinimized
+            noteWindow?.standardWindowButton(.miniaturizeButton)?.isHidden = isMinimized
+            noteWindow?.standardWindowButton(.zoomButton)?.isHidden = isMinimized
+        }
+    }
     @State private var minimizedFromFrame: NSRect? = nil
     @State private var isFadingAway: Bool = false
     @State private var fadeAwayProgress: Float = 0.0 {
@@ -72,7 +77,7 @@ struct Note: View {
             withAnimation {
                 noteWindow?.level = isDisappearing ? .normal : .floating
                 noteWindow?.hasShadow = isDisappearing ? false : true
-                noteWindow?.standardWindowButton(.closeButton)?.isHidden = isDisappearing
+                noteWindow?.standardWindowButton(.closeButton)?.isEnabled = !isDisappearing
                 noteWindow?.backgroundColor = self.color.withAlphaComponent(windowAlpha)
             }
             if hasDiessapeared {
@@ -102,11 +107,23 @@ extension Note {
         modified.list = list
         return modified
     }
+}
+
+// MARK: Public note event handlers
+
+extension Note {
     
-    func onAddNewNote(_ action: @escaping (_ position: CGPoint) -> Void) -> Self {
-        var modified: Note = self
-        modified.onAddNewNote = action
-        return modified
+    func handleMinimize() {
+        if let window = self.noteWindow {
+            window.title = "_" + window.title
+            self.minimizedFromFrame = window.frame
+            NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+            withAnimation {
+                self.isMinimized = true
+            } completion: {
+                NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+            }
+        }
     }
 }
 
@@ -291,19 +308,6 @@ private extension Note {
         self.list?.delete()
     }
     
-    func handleMinimize() {
-        if let window = self.noteWindow {
-            window.title = "_" + window.title
-            self.minimizedFromFrame = window.frame
-            NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
-            withAnimation {
-                self.isMinimized = true
-            } completion: {
-                NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
-            }
-        }
-    }
-    
     func handleBringUp() {
         if let window = self.noteWindow,
            window.title.starts(with: "_"),
@@ -353,7 +357,7 @@ private extension Note {
         else {
             return
         }
-        closeButton.isHidden = !list.isDeletable
+        closeButton.isEnabled = list.isDeletable
     }
     
     func updateTopicVisibility() {
@@ -429,7 +433,6 @@ private extension Note {
                             Spacer()
                                 .id(Id.bottomAnchor)
                         }
-                        .padding(.top, list.isDeletable && !list.isComplete ? 0 : -8)
                         .onAppear {
                             if self.list!.topic == nil {
                                 self.focusedField = .topic
@@ -451,9 +454,6 @@ private extension Note {
                 if isTopScrolledOut {
                     scrollingHeader()
                 }
-                if let onAdd = onAddNewNote {
-                    headerToolBar(onAdd: onAdd)
-                }
             }
             .blur(radius: isTextBlurred ? 3 : 0)
             .opacity(windowAlpha / (isDone ? 2 : 1))
@@ -468,7 +468,7 @@ private extension Note {
                idealHeight: Layout.defaultNoteHeight,
                maxHeight: .infinity,
                alignment: .center)
-        .background(WindowAccessor(window: $noteWindow))
+        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
         .onAppear {
             handleKeyboard()
             self.isDone = list.isComplete
@@ -591,7 +591,7 @@ private extension Note {
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(Color(.primaryFontColor))
                     .padding(.top, 2)
-                    .padding(.leading, 21)
+                    .padding(.leading, 70)
                     .padding(.trailing, 18)
                 Spacer()
             }
@@ -704,35 +704,6 @@ private extension Note {
             Spacer()
         }
         .padding(.top, -30)
-    }
-    
-    @ViewBuilder
-    func headerToolBar(onAdd: @escaping (_ position: CGPoint) -> Void) -> some View {
-        VStack {
-            HStack {
-                Spacer()
-                Button {
-                    handleMinimize()
-                } label: {
-                    Image(systemName: "arrow.up.right.and.arrow.down.left")
-                        .foregroundColor(Color(.primaryFontColor))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .font(.system(size: 11))
-                .padding(.trailing, -1)
-                .padding(.top, 1)
-                Button {
-                    onAdd(NSEvent.mouseLocation)
-                } label: {
-                    Image(systemName: "plus")
-                        .foregroundColor(Color(.primaryFontColor))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.trailing, 9)
-            }
-            Spacer()
-        }
-        .padding(.top, -20)
     }
     
     @ViewBuilder
