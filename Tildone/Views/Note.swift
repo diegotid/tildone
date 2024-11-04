@@ -77,7 +77,9 @@ struct Note: View {
             withAnimation {
                 noteWindow?.level = isDisappearing ? .normal : .floating
                 noteWindow?.hasShadow = isDisappearing ? false : true
-                noteWindow?.standardWindowButton(.closeButton)?.isEnabled = !isDisappearing
+                noteWindow?.standardWindowButton(.closeButton)?.isHidden = isDisappearing
+                noteWindow?.standardWindowButton(.miniaturizeButton)?.isHidden = isDisappearing
+                noteWindow?.standardWindowButton(.zoomButton)?.isHidden = isDisappearing
                 noteWindow?.backgroundColor = self.color.withAlphaComponent(windowAlpha)
             }
             if hasDiessapeared {
@@ -528,6 +530,7 @@ private extension Note {
                idealHeight: Layout.minimizedNoteHeight,
                maxHeight: Layout.minimizedNoteHeight,
                alignment: .center)
+        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
         .onTapGesture {
             handleBringUp()
         }

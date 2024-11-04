@@ -15,15 +15,14 @@ struct WindowAccessor: NSViewRepresentable {
         let view = NSView()
         DispatchQueue.main.async {
             self.window = view.window
-            if let minimizeButton = self.window?.standardWindowButton(.miniaturizeButton) {
-                minimizeButton.target = context.coordinator
-                minimizeButton.action = #selector(Coordinator.minimizeButtonClicked)
-            }
         }
+        WindowAccessor.setMinimizingAction(self.window, context: context)
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        WindowAccessor.setMinimizingAction(nsView.window, context: context)
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -38,6 +37,16 @@ struct WindowAccessor: NSViewRepresentable {
         
         @objc func minimizeButtonClicked() {
             (parent.note as? Note)?.handleMinimize()
+        }
+    }
+}
+
+private extension WindowAccessor {
+    
+    static func setMinimizingAction(_ window: NSWindow? = nil, context: Context) {
+        if let minimizeButton = window?.standardWindowButton(.miniaturizeButton) {
+            minimizeButton.target = context.coordinator
+            minimizeButton.action = #selector(Coordinator.minimizeButtonClicked)
         }
     }
 }
