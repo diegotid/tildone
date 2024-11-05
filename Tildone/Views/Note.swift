@@ -505,24 +505,38 @@ private extension Note {
         let pendingLabel = NSLocalizedString("pending", comment: "Tasks are pending")
         let emptyLabel = NSLocalizedString("no tasks", comment: "No tasks available")
         let label: String = progressComplete ? allDoneLabel : (list.items.isEmpty ? emptyLabel : pendingLabel)
-        Gauge(value: progressValue, in: 0...Float(progressGoal)) {
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(color)
-                .padding(.top, 6)
-                .padding(.trailing, 6)
-                .padding(.leading, -19)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        } currentValueLabel: {
-            Text("\(pendingCount)")
-                .bold()
-                .font(.system(size: 30))
-                .foregroundStyle(color)
+        VStack {
+            if (list.topic != nil) {
+                Text(list.topic!)
+                    .font(.system(size: 12))
+                    .foregroundStyle(color)
+                    .bold()
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.top, -32)
+                    .padding(.leading, 8)
+                    .padding(.trailing, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Gauge(value: progressValue, in: 0...Float(progressGoal)) {
+                Text(label)
+                    .font(.system(size: 10))
+                    .foregroundStyle(color)
+                    .padding(.top, 6)
+                    .padding(.trailing, 6)
+                    .padding(.leading, -19)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            } currentValueLabel: {
+                Text("\(pendingCount)")
+                    .bold()
+                    .font(.system(size: 30))
+                    .foregroundStyle(color)
+            }
+            .gaugeStyle(.accessoryCircular)
+            .padding(.top, list.topic != nil ? -18 : -25)
+            .padding(.leading, 2)
+            .tint(Gradient(colors: [.clear, color]))
         }
-        .gaugeStyle(.accessoryCircular)
-        .padding(.top, -25)
-        .padding(.leading, 2)
-        .tint(Gradient(colors: [.clear, color]))
         .frame(minWidth: Layout.minimizedNoteWidth,
                idealWidth: Layout.minimizedNoteWidth,
                maxWidth: Layout.minimizedNoteWidth,
