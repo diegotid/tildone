@@ -803,24 +803,25 @@
         }
       }
     },
-    "New features:\n• Every note can now be minimized into a progress gauge\n• Menu options and shortcuts from minimizing all notes or bring them back up\n• Empty tasks in a note can be deleted from the keyboard\n• Minor bug fixing (perhaps you didn't realize about)\n\nFrom the previous release:\n• Option to cancel note fading out when completed\n• Font size customizable in settings" : {
+    "New features:\n• Restyle window buttons to standard\n• Show topic on minimized notes\n• Bug fixing\n\nFrom the previous release:\n• Every note can now be minimized into a progress gauge\n• Empty tasks in a note can be deleted from the keyboard" : {
+      "extractionState" : "manual",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuevas características:\n• Cada nota ahora se puede minimizar mostrando un indicador de progreso\n• Opciones de menú y atajos para minimizar todas las notas o recuperarlas\n• Las tareas vacías en una nota se pueden eliminar desde el teclado\n• Corrección de errores menores (quizás ni siquiera los notaste)\n\nDe la versión anterior:\n• Opción para cancelar la nota que desaparece cuando se completa\n• Tamaño de fuente personalizable en la configuración"
+            "value" : "Nuevas características:\n• Rediseño de los botones de ventana a los estándar\n• Mostrar el asunto en las notas minimizadas\n• Corrección de errores\n\nDe la versión anterior:\n• Cada nota ahora se puede minimizar mostrando un indicador de progreso\n• Las tareas vacías en una nota se pueden eliminar desde el teclado"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nouvelles fonctionnalités :\n• Chaque note peut désormais être minimisée dans une jauge de progression\n• Options de menu et raccourcis pour minimiser toutes les notes ou les faire réapparaître\n• Les tâches vides dans une note peuvent être supprimées à partir du clavier\n• Correction de bugs mineurs (vous n'en aviez peut-être pas conscience)\n\nDe la version précédente :\n• Option pour annuler la disparition des notes une fois terminées\n• Taille de police personnalisable dans les paramètres"
+            "value" : "Nouvelles fonctionnalités:\n• Remodelage des boutons de fenêtre en standard\n• Afficher le sujet sur les notes réduites\n• Correction de bugs\n\nDe la version précédente:\n• Chaque note peut désormais être minimisée dans une jauge de progression\n• Les tâches vides dans une note peuvent être supprimées à partir du clavier"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新功能：\n• 现在可以将每条笔记最小化为进度表\n• 菜单选项和快捷方式可最小化所有笔记或将其恢复\n• 可以从键盘删除笔记中的空任务\n• 修复小错误（也许您没有意识到）\n\n与上一版本相比：\n• 完成时取消笔记淡出的选项\n• 可在设置中自定义字体大小"
+            "value" : "新功能：\n• 将窗口按钮样式重新设置为标准\n• 在最小化的笔记上显示主题\n• 修复错误\n\n与上一版本相比：\n• 现在可以将每条笔记最小化为进度表\n• 可以从键盘删除笔记中的空任务"
           }
         }
       }
