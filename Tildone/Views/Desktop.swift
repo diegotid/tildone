@@ -12,44 +12,28 @@ import SwiftData
 
 struct Desktop: View {
     @Environment(\.modelContext) private var modelContext
+    
     @Query private var lists: [TodoList]
-    @State private var isMainWindowNew: Bool = false
     @State private var noteWindows: [NSWindow] = []
-    @State private var mainWindow: NSWindow?
     @State private var foregroundWindow: NSWindow?
     @Binding var foregroundList: TodoList? {
         didSet { cleanUnfocusedNotes() }
     }
     
-    @AppStorage("selectedArrangementCorner") var selectedArrangementCorner: ArrangementCorner = .bottomLeft
-    @AppStorage("selectedArrangementAlignment") var selectedArrangementAlignment: ArrangementAlignment = .horizontal
-    @AppStorage("selectedArrangementCornerMargin") var selectedArrangementCornerMargin: ArrangementSpacing = .medium
-    @AppStorage("selectedArrangementSpacing") var selectedArrangementSpacing: ArrangementSpacing = .minimum
+    @AppStorage("selectedArrangementCorner")
+    var selectedArrangementCorner: ArrangementCorner = .bottomLeft
+    @AppStorage("selectedArrangementAlignment")
+    var selectedArrangementAlignment: ArrangementAlignment = .horizontal
+    @AppStorage("selectedArrangementCornerMargin")
+    var selectedArrangementCornerMargin: ArrangementSpacing = .medium
+    @AppStorage("selectedArrangementSpacing")
+    var selectedArrangementSpacing: ArrangementSpacing = .minimum
     
     static private var appWindowIds: [String] = [Id.aboutWindow, Id.updateWindow]
 
     var body: some View {
-        let note = noteWindow(for: lists.first)
-        return note
-            .background(WindowAccessor(note: Binding.constant(note), window: $mainWindow))
-            .onChange(of: mainWindow) {
-                guard let list: TodoList = lists.first else { return }
-                mainWindow?.setNoteStyle()
-                mainWindow?.standardWindowButton(.closeButton)?.isEnabled = list.isDeletable
-                mainWindow?.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
-                mainWindow?.title = list.hash
-                mainWindow?.titleVisibility = .hidden
-                if let window = mainWindow {
-                    noteWindows.append(window)
-                }
-                if isMainWindowNew {
-                    let rect = NSRect(x: Layout.defaultNoteXPosition,
-                                      y: Layout.defaultNoteYPosition,
-                                      width: Layout.defaultNoteWidth,
-                                      height: Layout.defaultNoteHeight)
-                    mainWindow?.setFrame(rect, display: true)
-                }
-            }
+        Color.clear
+            .frame(width: 0, height: 0)
             .onAppear {
                 setWindowOptions()
                 openNoteWindows()
@@ -88,9 +72,8 @@ private extension Desktop {
     func openNoteWindows() {
         if lists.isEmpty {
             createNewNote()
-            self.isMainWindowNew = true
         }
-        for list in lists.dropFirst() {
+        for list in lists {
             openWindow(for: list)
         }
     }
@@ -297,7 +280,19 @@ private extension Desktop {
     }
     
     func foregroundWindowUpperRightCorner() -> CGPoint {
-        let window: NSWindow = foregroundWindow ?? mainWindow!
+        guard let window = foregroundWindow else {
+            return randomPositionOnScreen()
+        }
         return CGPoint(x: window.frame.maxX, y: window.frame.maxY)
+    }
+    
+    func randomPositionOnScreen() -> CGPoint {
+        let screenFrame = NSScreen.main?.frame ?? .zero
+        let margin = CGFloat(selectedArrangementCornerMargin.rawValue)
+        let maxX = screenFrame.maxX - Layout.defaultNoteWidth - margin
+        let maxY = screenFrame.maxY - Layout.defaultNoteHeight - margin
+        let randomX = CGFloat.random(in: screenFrame.minX...maxX)
+        let randomY = CGFloat.random(in: screenFrame.minY...maxY)
+        return CGPoint(x: randomX, y: randomY)
     }
 }
