@@ -13,8 +13,11 @@ import SwiftData
 struct Note: View {
     @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("taskLineTruncation") private var taskLineTruncation: TaskLineTruncation = .single
-    @AppStorage("fontSize") private var fontSize = Double(FontSize.small.rawValue)
+    
+    @AppStorage("taskLineTruncation")
+    private var taskLineTruncation: TaskLineTruncation = .single
+    @AppStorage("fontSize")
+    private var fontSize = Double(FontSize.small.rawValue)
     
     var list: TodoList?
     var sortedTasks: [Todo] {
