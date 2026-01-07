@@ -35,7 +35,7 @@ struct FocusFilter: SetFocusFilterIntent {
     @Parameter(title: "Note may stay in the background", default: false)
     var noteMayStayBackground: Bool
     
-    static var openAppWhenRun: Bool = true
+    static var openAppWhenRun: Bool = false
     
     var appContext: FocusFilterAppContext {
         return FocusFilterAppContext()
