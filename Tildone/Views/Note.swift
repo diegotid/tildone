@@ -122,12 +122,12 @@ extension Note {
         if let window = self.noteWindow {
             window.title = "_" + window.title
             self.minimizedFromFrame = window.frame
-            NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+            let minimizedFrame = minimizedFrame(for: window)
             withAnimation {
                 self.isMinimized = true
-            } completion: {
-                NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
             }
+            window.setFrame(minimizedFrame, display: true, animate: false)
+            NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
         }
     }
 }
@@ -408,6 +408,15 @@ private extension Note {
             }
         }
         return nil
+    }
+
+    func minimizedFrame(for window: NSWindow) -> NSRect {
+        let contentRect = NSRect(origin: .zero,
+                                 size: NSSize(width: Layout.minimizedNoteWidth,
+                                              height: Layout.minimizedNoteHeight))
+        let frameRect = window.frameRect(forContentRect: contentRect)
+        let origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frameRect.height)
+        return NSRect(origin: origin, size: frameRect.size)
     }
 }
 
