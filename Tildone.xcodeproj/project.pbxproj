@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
 		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
 		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
@@ -52,6 +53,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -140,6 +142,7 @@
 				F16670742AF71273000B76A5 /* Views */,
 				F1D300192B51F16A00654241 /* Services */,
 				F166704E2AF711ED000B76A5 /* Preview Content */,
+				F107B17C2F0DE77800D20216 /* Info.plist */,
 			);
 			path = Tildone;
 			sourceTree = "<group>";
@@ -322,6 +325,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F107B17D2F0DE77800D20216 /* Info.plist in Resources */,
 				F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */,
 				F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */,
 				F13428142B535EA40045343D /* Localizable.xcstrings in Resources */,
