@@ -14,7 +14,7 @@ extension Launcher {
         
         public var body: some View {
             SwiftUI.Toggle(isOn: $launcher.isEnabled) {
-                Text("Open at login")
+                Text("Launch at login")
             }
         }
     }
