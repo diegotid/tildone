@@ -71,14 +71,15 @@ private extension Desktop {
     
     func openNoteWindows() {
         if lists.isEmpty {
-            createNewNote()
+            let newList = createNewNote()
+            openWindow(for: newList)
         }
         for list in lists {
             openWindow(for: list)
         }
     }
    
-    func createNewNote() {
+    func createNewNote() -> TodoList {
         let newList = TodoList()
         modelContext.insert(newList)
         do {
@@ -86,11 +87,12 @@ private extension Desktop {
         } catch {
             fatalError("Could not create a first list: \(error)")
         }
+        return newList
     }
     
     func createAndShowNewNote(at position: CGPoint) {
-        createNewNote()
-        openWindow(for: lists.last!, position: position)
+        let newList = createNewNote()
+        openWindow(for: newList, position: position)
     }
     
     func handleFocus(_ window: NSWindow) {
@@ -107,7 +109,9 @@ private extension Desktop {
         if let list = foregroundList {
             if list.isDeletable {
                 foregroundWindow?.close()
-                noteWindows.removeAll(where: { $0.title == foregroundList?.hash })
+                let baseTitle = list.hash
+                let minimizedTitle = "_" + baseTitle
+                noteWindows.removeAll(where: { $0.title == baseTitle || $0.title == minimizedTitle })
             }
         } else {
             foregroundWindow?.close()
@@ -254,6 +258,13 @@ private extension Desktop {
 private extension Desktop {
     
     func openWindow(for list: TodoList, position: CGPoint? = nil) {
+        if let existingWindow = existingWindow(for: list) {
+            trackWindow(existingWindow)
+            foregroundList = list
+            foregroundWindow = existingWindow
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
         let windowLayout = NSRect(x: 0,
                                   y: 0,
                                   width: Layout.defaultNoteWidth,
@@ -268,7 +279,7 @@ private extension Desktop {
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
         window.title = list.hash
         window.titleVisibility = .hidden
-        noteWindows.append(window)
+        trackWindow(window)
         if let origin = position {
             window.setFrameOrigin(
                 NSPoint(x: origin.x - Layout.defaultNoteWidth / 2,
@@ -277,6 +288,20 @@ private extension Desktop {
         }
         foregroundList = list
         foregroundWindow = window
+    }
+
+    func existingWindow(for list: TodoList) -> NSWindow? {
+        let baseTitle = list.hash
+        let minimizedTitle = "_" + baseTitle
+        return NSApplication.shared.windows.first(where: {
+            $0.title == baseTitle || $0.title == minimizedTitle
+        })
+    }
+
+    func trackWindow(_ window: NSWindow) {
+        if !noteWindows.contains(where: { $0 === window }) {
+            noteWindows.append(window)
+        }
     }
     
     func foregroundWindowUpperRightCorner() -> CGPoint {
