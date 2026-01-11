@@ -176,6 +176,7 @@
 		F16670732AF7122F000B76A5 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				F16670782AF7167D000B76A5 /* Constants.swift */,
 				F166704A2AF711EC000B76A5 /* Todo.swift */,
 				F16670752AF7133F000B76A5 /* TodoList.swift */,
 				F1D17AA82B47741900C7A500 /* FocusFilter.swift */,
@@ -208,7 +209,6 @@
 		F1EA81F92AFEA81700E58A73 /* Common */ = {
 			isa = PBXGroup;
 			children = (
-				F16670782AF7167D000B76A5 /* Constants.swift */,
 				F166707B2AF716F8000B76A5 /* Checkbox.swift */,
 				F1D3001A2B51F2FB00654241 /* Launcher+Toggle.swift */,
 				F16670772AF7167D000B76A5 /* Styler.swift */,

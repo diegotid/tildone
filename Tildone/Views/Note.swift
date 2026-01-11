@@ -13,18 +13,30 @@ import SwiftData
 struct Note: View {
     @Environment(\.license) private var license
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) var colorScheme
     
-    @AppStorage("taskLineTruncation")
+    @AppStorage(TaskLineTruncation.storageKey)
     private var taskLineTruncation: TaskLineTruncation = .single
-    @AppStorage("fontSize")
+    
+    @AppStorage(FontSize.storageKey)
     private var fontSize = Double(FontSize.small.rawValue)
     
-    var list: TodoList?
-    var sortedTasks: [Todo] {
+    @AppStorage(NoteColor.storageKey)
+    private var noteColor: NoteColor = .yellow
+    
+    @AppStorage(NoteWindowBackground.opacityStorageKey)
+    private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
+    private var isDark: Bool { colorScheme == .dark && noteBackgroundOpacity < 0.5 }
+    
+    private var list: TodoList?
+    private var isPreview: Bool = false
+    
+    private var sortedTasks: [Todo] {
         let tasks = list?.items ?? []
         return tasks.sorted()
     }
-    var sortedPendingTasks: [Todo] {
+    
+    private var sortedPendingTasks: [Todo] {
         let tasks = list?.items ?? []
         let pending = tasks.filter({ $0.done == nil })
         return pending.sorted()
@@ -35,6 +47,7 @@ struct Note: View {
         case task
         case newTask
     }
+    
     @State private var noteWindow: NSWindow?
     @State private var newTaskText: String = ""
     @State private var isTextBlurred: Bool = false
@@ -43,12 +56,13 @@ struct Note: View {
     @State private var isTopicEmpty: Bool = false {
         didSet { updateTopicVisibility() }
     }
+    
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskDate: Date?
 
     private var timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
     private var color: NSColor {
-        list?.isSystemList ?? false ? .systemNoteBackground : .noteBackground
+        list?.isSystemList ?? false ? .systemNoteBackground : noteColor.nsColor
     }
 
     @State private var wasAlreadyDone: Bool = false
@@ -83,7 +97,10 @@ struct Note: View {
                 noteWindow?.standardWindowButton(.closeButton)?.isHidden = isDisappearing
                 noteWindow?.standardWindowButton(.miniaturizeButton)?.isHidden = isDisappearing
                 noteWindow?.standardWindowButton(.zoomButton)?.isHidden = isDisappearing
-                noteWindow?.backgroundColor = self.color.withAlphaComponent(windowAlpha)
+                noteWindow?.applyNoteBackgroundColor(
+                    self.color,
+                    alpha: CGFloat(noteBackgroundOpacity * windowAlpha)
+                )
             }
             if hasDiessapeared {
                 noteWindow?.close()
@@ -93,12 +110,20 @@ struct Note: View {
     }
     
     var body: some View {
-        if let list = self.list {
-            if isMinimized {
-                taskListProgess(list)
-            } else {
-                taskList(list)
+        Group {
+            if let list = self.list {
+                if isMinimized {
+                    taskListProgess(list)
+                } else {
+                    taskList(list)
+                }
             }
+        }
+        .onChange(of: noteColor) { _, _ in
+            applyCurrentNoteBackground()
+        }
+        .onChange(of: noteBackgroundOpacity) { _, _ in
+            applyCurrentNoteBackground()
         }
     }
 }
@@ -106,10 +131,15 @@ struct Note: View {
 // MARK: Note parameters
 
 extension Note {
-    
     func todoList(_ list: TodoList) -> Self {
         var modified: Note = self
         modified.list = list
+        return modified
+    }
+
+    func previewMode(_ enabled: Bool = true) -> Self {
+        var modified: Note = self
+        modified.isPreview = enabled
         return modified
     }
 }
@@ -117,7 +147,6 @@ extension Note {
 // MARK: Public note event handlers
 
 extension Note {
-    
     func handleMinimize() {
         if let window = self.noteWindow {
             window.title = "_" + window.title
@@ -135,7 +164,6 @@ extension Note {
 // MARK: Note event handlers
 
 private extension Note {
-    
     func handleNewTaskCommit() {
         guard let list = self.list,
               !newTaskText.isEmpty else {
@@ -343,7 +371,6 @@ private extension Note {
 // MARK: Private methods
 
 private extension Note {
-    
     func delete(_ task: Todo) {
         modelContext.delete(task)
         do {
@@ -370,6 +397,13 @@ private extension Note {
         withAnimation {
             self.isTopicHidden = isTopicEmpty && (isComplete || focusedField != .topic)
         }
+    }
+
+    func applyCurrentNoteBackground() {
+        noteWindow?.applyNoteBackgroundColor(
+            self.color,
+            alpha: CGFloat(noteBackgroundOpacity * windowAlpha)
+        )
     }
     
     func focusOnTopic() {
@@ -423,7 +457,6 @@ private extension Note {
 // MARK: Note components
 
 private extension Note {
-    
     @ViewBuilder
     func taskList(_ list: TodoList) -> some View {
         ZStack {
@@ -482,9 +515,13 @@ private extension Note {
                idealHeight: Layout.defaultNoteHeight,
                maxHeight: .infinity,
                alignment: .center)
-        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        .if(!isPreview) { view in
+            view.background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        }
         .onAppear {
-            handleKeyboard()
+            if !isPreview {
+                handleKeyboard()
+            }
             self.isDone = list.isComplete
             self.wasAlreadyDone = list.isComplete
             convertLegacyFontSizeSettingIfNeeded()
@@ -556,7 +593,9 @@ private extension Note {
                idealHeight: Layout.minimizedNoteHeight,
                maxHeight: Layout.minimizedNoteHeight,
                alignment: .center)
-        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        .if(!isPreview) { view in
+            view.background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        }
         .onTapGesture {
             handleBringUp()
         }
@@ -571,23 +610,44 @@ private extension Note {
             let listTaksOffset: CGFloat = 20 / CGFloat(FontSize.small.rawValue)
             let size = listTaksOffset * CGFloat(fontSize)
             GeometryReader { geometry in
-                TextField("Topic",
-                          text: Binding<String>(
-                            get: { list.topic ?? "" },
-                            set: { handleTopicEdit(to: $0) }
-                          ))
-                .textFieldStyle(PlainTextFieldStyle())
-                .truncationMode(.tail)
-                .font(.system(size: size, weight: .bold, design: .rounded))
-                .foregroundColor(Color(.primaryFontColor))
-                .background(Color.clear)
-                .padding(.top, 5)
-                .focused($focusedField, equals: .topic)
-                .onChange(of: focusedField) {
-                    if let topic = list.topic, focusedField == .topic {
-                        placeCursor(forText: topic)
+                Group {
+                    if isPreview, let topic = list.topic, !topic.isEmpty {
+                        Text(topic)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .font(.system(size: size, weight: .bold, design: .rounded))
+                            .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                            .background(Color.clear)
+                            .padding(.top, 5)
+                            .blur(radius: isTextBlurred ? 1 : 0)
+                    } else {
+                        TextField("Topic",
+                                  text: Binding<String>(
+                                    get: { list.topic ?? "" },
+                                    set: { handleTopicEdit(to: $0) }
+                                  ))
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .truncationMode(.tail)
+                        .font(.system(size: size, weight: .bold, design: .rounded))
+                        .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                        .background(Color.clear)
+                        .padding(.top, 5)
+                        .focused($focusedField, equals: .topic)
+                        .onChange(of: focusedField) {
+                            if let topic = list.topic, focusedField == .topic {
+                                placeCursor(forText: topic)
+                            }
+                            updateTopicVisibility()
+                        }
+                        .onSubmit {
+                            if list.items.isEmpty {
+                                focusOnNewTask()
+                            } else {
+                                handleMoveDown()
+                            }
+                        }
+                        .blur(radius: isTextBlurred ? 1 : 0)
                     }
-                    updateTopicVisibility()
                 }
                 .onChange(of: geometry.frame(in: .global)) {
                     let frame = geometry.frame(in: .global)
@@ -598,14 +658,6 @@ private extension Note {
                 .onHover { isHover in
                     handleHover(isHover)
                 }
-                .onSubmit {
-                    if list.items.isEmpty {
-                        focusOnNewTask()
-                    } else {
-                        handleMoveDown()
-                    }
-                }
-                .blur(radius: isTextBlurred ? 1 : 0)
             }
             .padding(.bottom, size)
         }
@@ -618,7 +670,7 @@ private extension Note {
                 Text(topic)
                     .lineLimit(1)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(.primaryFontColor))
+                    .foregroundColor(colorScheme == .dark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
                     .padding(.top, 2)
                     .padding(.leading, 70)
                     .padding(.trailing, 18)
@@ -629,54 +681,68 @@ private extension Note {
     
     @ViewBuilder
     func listItem(task: Todo) -> some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Checkbox(checked: task.isDone)
                 .disabled(task.what.isEmpty)
                 .onToggle {
                     handleTaskToggle(task)
                     noteWindow?.makeFirstResponder(nil)
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, 2.4)
             if task.isDone {
                 Text(task.what)
                     .font(.system(size: CGFloat(fontSize)))
-                    .foregroundColor(.accentColor)
-                    .strikethrough(color: .accentColor)
-            } else {
-                TextField("New task.default",
-                          text: Binding<String>(
-                            get: { task.what },
-                            set: { handleTaskEdit(task, to: $0) }
-                          ),
-                          axis: taskLineTruncation == .single ? .horizontal : .vertical)
-                .disabled(list?.isSystemList ?? true)
-                .if(taskLineTruncation == .single) { view in
-                    view.truncationMode(.tail)
-                }
-                .textFieldStyle(PlainTextFieldStyle())
-                .font(.system(size: CGFloat(fontSize)))
-                .foregroundColor(Color(.primaryFontColor))
-                .background(Color.clear)
-                .focused($focusedTaskDate, equals: task.created)
-                .onChange(of: focusedTaskDate) {
-                    if focusedTaskDate == task.created {
-                        placeCursor(forText: task.what)
+                    .foregroundColor(isDark ? Color(.primaryFontWhite).opacity(0.6) : Color(.primaryFontColor).opacity(0.6))
+                    .overlay(alignment: .center) {
+                        Rectangle()
+                            .fill(Color.accentColor)
+                            .frame(height: 2)
+                            .offset(y: 1)
                     }
-                }
-                .onKeyPress(keys: [.return]) { _ in
-                    handleEnter(forTask: task)
-                    return .handled
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                    guard focusedTaskDate == task.created else { return }
-                    task.copy()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                    guard focusedTaskDate == task.created else { return }
-                    task.paste()
-                }
-                .onSubmit {
-                    handleMoveDown()
+            } else {
+                if isPreview && !task.what.isEmpty {
+                    Text(task.what)
+                        .font(.system(size: CGFloat(fontSize)))
+                        .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                        .if(taskLineTruncation == .single) { view in
+                            view.lineLimit(1).truncationMode(.tail)
+                        }
+                } else {
+                    TextField("New task.default",
+                              text: Binding<String>(
+                                get: { task.what },
+                                set: { handleTaskEdit(task, to: $0) }
+                              ),
+                              axis: taskLineTruncation == .single ? .horizontal : .vertical)
+                    .disabled(list?.isSystemList ?? true)
+                    .if(taskLineTruncation == .single) { view in
+                        view.truncationMode(.tail)
+                    }
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: CGFloat(fontSize)))
+                    .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                    .background(Color.clear)
+                    .focused($focusedTaskDate, equals: task.created)
+                    .onChange(of: focusedTaskDate) {
+                        if focusedTaskDate == task.created {
+                            placeCursor(forText: task.what)
+                        }
+                    }
+                    .onKeyPress(keys: [.return]) { _ in
+                        handleEnter(forTask: task)
+                        return .handled
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                        guard focusedTaskDate == task.created else { return }
+                        task.copy()
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                        guard focusedTaskDate == task.created else { return }
+                        task.paste()
+                    }
+                    .onSubmit {
+                        handleMoveDown()
+                    }
                 }
             }
             Spacer()
@@ -694,21 +760,29 @@ private extension Note {
         HStack(spacing: 8) {
             Checkbox()
                 .disabled(true)
-            TextField("New task", text: $newTaskText)
-                .textFieldStyle(PlainTextFieldStyle())
-                .font(.system(size: CGFloat(fontSize)))
-                .foregroundColor(Color(.primaryFontColor))
-                .background(Color.clear)
-                .onSubmit(handleNewTaskCommit)
-                .focused($focusedField, equals: .newTask)
-                .onChange(of: focusedField) {
-                    if focusedField != .newTask && !newTaskText.isEmpty {
+            ZStack(alignment: .leading) {
+                if newTaskText.isEmpty {
+                    Text("New task")
+                        .font(.system(size: CGFloat(fontSize)))
+                        .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                        .opacity(0.6)
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $newTaskText)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: CGFloat(fontSize)))
+                    .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                    .onSubmit(handleNewTaskCommit)
+                    .focused($focusedField, equals: .newTask)
+                    .onChange(of: focusedField) {
+                        if focusedField != .newTask && !newTaskText.isEmpty {
+                            handleNewTaskCommit()
+                        }
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                         handleNewTaskCommit()
                     }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    handleNewTaskCommit()
-                }
+            }
             Spacer()
         }
         .padding(.leading, 2)
@@ -790,6 +864,7 @@ private extension Note {
             if let content: String = list.systemContent {
                 HStack {
                     Text(content)
+                        .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
                     Spacer()
                 }
             }

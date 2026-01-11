@@ -20,13 +20,16 @@ struct Desktop: View {
         didSet { cleanUnfocusedNotes() }
     }
     
-    @AppStorage("selectedArrangementCorner")
+    @AppStorage(ArrangementCorner.storageKey)
     var selectedArrangementCorner: ArrangementCorner = .bottomLeft
-    @AppStorage("selectedArrangementAlignment")
+    
+    @AppStorage(ArrangementAlignment.storageKey)
     var selectedArrangementAlignment: ArrangementAlignment = .horizontal
-    @AppStorage("selectedArrangementCornerMargin")
+    
+    @AppStorage(ArrangementSpacing.cornerStorageKey)
     var selectedArrangementCornerMargin: ArrangementSpacing = .medium
-    @AppStorage("selectedArrangementSpacing")
+    
+    @AppStorage(ArrangementSpacing.sideStorageKey)
     var selectedArrangementSpacing: ArrangementSpacing = .minimum
     
     static private var appWindowIds: [String] = [Id.aboutWindow, Id.updateWindow]
@@ -273,9 +276,10 @@ private extension Desktop {
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
                               backing: .buffered,
                               defer: false)
-        window.setNoteStyle(isSystem: list.isSystemList)
+        window.setNoteStyle(noteColor: NoteColor.current())
         window.standardWindowButton(.closeButton)?.isEnabled = list.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: list))
+        window.applyNoteBackground(isSystem: list.isSystemList)
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
         window.title = list.hash
         window.titleVisibility = .hidden
