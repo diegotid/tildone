@@ -570,7 +570,7 @@ private extension Note {
         let progressValue = list.items.isEmpty ? 0.0 : Float(list.items.count - pendingCount)
         let progressGoal = list.items.isEmpty ? 1 : list.items.count
         let progressComplete: Bool = pendingCount == 0 && !list.items.isEmpty
-        let color: Color = progressComplete ? .accentColor : Color(nsColor: .checkboxBorder)
+        let color: Color = progressComplete ? .accentColor : isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)
         let allDoneLabel = NSLocalizedString("all done", comment: "All tasks are completed")
         let pendingLabel = NSLocalizedString("pending", comment: "Tasks are pending")
         let emptyLabel = NSLocalizedString("no tasks", comment: "No tasks available")
