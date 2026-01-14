@@ -283,13 +283,17 @@ private extension Desktop {
         window.setFrameAutosaveName(ISO8601DateFormatter().string(from: list.created))
         window.title = list.hash
         window.titleVisibility = .hidden
+        let desiredOrigin: CGPoint = {
+            guard let origin = position else {
+                return window.frame.origin
+            }
+            return CGPoint(x: origin.x - window.frame.size.width / 2,
+                           y: origin.y - window.frame.size.height / 2)
+        }()
+        let targetScreen = screenForNewWindow(at: position)
+        let clampedOrigin = clampedOrigin(for: window, desiredOrigin: desiredOrigin, on: targetScreen)
+        window.setFrameOrigin(clampedOrigin)
         trackWindow(window)
-        if let origin = position {
-            window.setFrameOrigin(
-                NSPoint(x: origin.x - Layout.defaultNoteWidth / 2,
-                        y: origin.y - Layout.defaultNoteHeight / 2)
-            )
-        }
         foregroundList = list
         foregroundWindow = window
     }
@@ -306,6 +310,31 @@ private extension Desktop {
         if !noteWindows.contains(where: { $0 === window }) {
             noteWindows.append(window)
         }
+    }
+
+    func screenForNewWindow(at position: CGPoint?) -> NSScreen {
+        if let position = position,
+           let screen = NSScreen.screens.first(where: { $0.frame.contains(position) }) {
+            return screen
+        }
+        if let screen = foregroundWindow?.screen {
+            return screen
+        }
+        return NSScreen.main ?? NSScreen.screens.first!
+    }
+
+    func clampedOrigin(for window: NSWindow, desiredOrigin: CGPoint, on screen: NSScreen) -> CGPoint {
+        let visibleFrame = screen.visibleFrame
+        let windowSize = window.frame.size
+        var minX = visibleFrame.minX
+        var maxX = visibleFrame.maxX - windowSize.width
+        if maxX < minX { maxX = minX }
+        var minY = visibleFrame.minY
+        var maxY = visibleFrame.maxY - windowSize.height
+        if maxY < minY { maxY = minY }
+        let clampedX = min(max(desiredOrigin.x, minX), maxX)
+        let clampedY = min(max(desiredOrigin.y, minY), maxY)
+        return CGPoint(x: clampedX, y: clampedY)
     }
     
     func foregroundWindowUpperRightCorner() -> CGPoint {
