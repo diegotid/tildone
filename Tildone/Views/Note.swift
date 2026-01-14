@@ -56,6 +56,7 @@ struct Note: View {
     @State private var isTopicEmpty: Bool = false {
         didSet { updateTopicVisibility() }
     }
+    @State private var didSetInitialFocus: Bool = false
     
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskDate: Date?
@@ -405,6 +406,21 @@ private extension Note {
             alpha: CGFloat(noteBackgroundOpacity * windowAlpha)
         )
     }
+
+    func applyInitialFocusIfNeeded() {
+        guard !didSetInitialFocus,
+              !isPreview,
+              let list = list,
+              list.items.isEmpty,
+              list.topic == nil,
+              noteWindow != nil else {
+            return
+        }
+        didSetInitialFocus = true
+        DispatchQueue.main.async {
+            focusOnTopic()
+        }
+    }
     
     func focusOnTopic() {
         self.focusedTaskDate = nil
@@ -486,6 +502,7 @@ private extension Note {
                             } else {
                                 self.focusedField = .newTask
                             }
+                            applyInitialFocusIfNeeded()
                         }
                         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in
                             handleMinimize()
@@ -525,6 +542,10 @@ private extension Note {
             self.isDone = list.isComplete
             self.wasAlreadyDone = list.isComplete
             convertLegacyFontSizeSettingIfNeeded()
+            applyInitialFocusIfNeeded()
+        }
+        .onChange(of: noteWindow) {
+            applyInitialFocusIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
             if let (toBlur, toNormal) = notification.object as? (Bool, Bool) {
