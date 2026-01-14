@@ -713,6 +713,8 @@ private extension Note {
             if task.isDone {
                 Text(task.what)
                     .font(.system(size: CGFloat(fontSize)))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .foregroundColor(isDark ? Color(.primaryFontWhite).opacity(0.6) : Color(.primaryFontColor).opacity(0.6))
                     .overlay(alignment: .center) {
                         Rectangle()
