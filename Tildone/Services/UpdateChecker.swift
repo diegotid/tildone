@@ -37,13 +37,8 @@ struct UpdateChecker {
         checkList.systemURL = URL(string: Remote.releaseNotesUrl)
         checkList.systemContent = String(localized: """
         New features:
-        \u{2022} Restyle window buttons to standard
-        \u{2022} Show topic on minimized notes
-        \u{2022} Bug fixing
-        
-        From the previous release:
-        \u{2022} Every note can now be minimized into a progress gauge
-        \u{2022} Empty tasks in a note can be deleted from the keyboard
+        \u{2022} Ability to change color and adjust the transparency of notes
+        \u{2022} Enhanced keyboard navigation for the task list
         """)
         return checkList
     }
