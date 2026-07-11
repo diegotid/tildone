@@ -10,6 +10,7 @@
 		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
 		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
+		F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F15A835D2F5200B600231A3F /* TildoneIcon.icon */; };
 		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
 		F16670492AF711EC000B76A5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670482AF711EC000B76A5 /* Note.swift */; };
 		F166704B2AF711EC000B76A5 /* Todo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166704A2AF711EC000B76A5 /* Todo.swift */; };
@@ -56,6 +57,7 @@
 		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		F15A835D2F5200B600231A3F /* TildoneIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = TildoneIcon.icon; sourceTree = "<group>"; };
 		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F16670462AF711EC000B76A5 /* TildoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneApp.swift; sourceTree = "<group>"; };
 		F16670482AF711EC000B76A5 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
@@ -136,6 +138,7 @@
 				F16670462AF711EC000B76A5 /* TildoneApp.swift */,
 				F19B3BF22B155711003C094A /* LicenseType.swift */,
 				F166704C2AF711ED000B76A5 /* Assets.xcassets */,
+				F15A835D2F5200B600231A3F /* TildoneIcon.icon */,
 				F13428132B535EA40045343D /* Localizable.xcstrings */,
 				F16670512AF711ED000B76A5 /* Tildone.entitlements */,
 				F16670732AF7122F000B76A5 /* Models */,
@@ -329,6 +332,7 @@
 				F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */,
 				F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */,
 				F13428142B535EA40045343D /* Localizable.xcstrings in Resources */,
+				F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -529,7 +533,7 @@
 		F166706B2AF711EE000B76A5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = TildoneIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -561,7 +565,7 @@
 		F166706C2AF711EE000B76A5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = TildoneIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
