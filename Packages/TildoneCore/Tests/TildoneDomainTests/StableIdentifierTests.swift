@@ -1,3 +1,9 @@
+//
+//  StableIdentifierTests.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 7/12/26.
+//
 import Foundation
 import XCTest
 @testable import TildoneDomain

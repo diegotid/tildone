@@ -1,3 +1,9 @@
+//
+//  DomainModels.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 7/12/26.
+//
 import Foundation
 
 public enum LifecycleState: String, Codable, Hashable, Sendable {

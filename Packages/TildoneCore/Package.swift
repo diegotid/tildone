@@ -1,3 +1,9 @@
+//
+//  Package.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 7/12/26.
+//
 // swift-tools-version: 5.9
 import PackageDescription
 

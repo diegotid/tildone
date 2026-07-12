@@ -1,3 +1,9 @@
+//
+//  PersistenceTypes.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 7/12/26.
+//
 import Foundation
 import TildoneDomain
 
@@ -109,4 +115,31 @@ public struct WorkspaceSnapshot: Codable, Hashable, Sendable {
     public let logicalCounter: UInt64
     public let sharedSchemaVersion: Int
     public let futureSyncEngineState: Data?
+}
+
+public enum QuarantinedRecordKind: String, Codable, Hashable, Sendable {
+    case note
+    case task
+    case schemaMarker
+    case unknown
+}
+
+public enum QuarantineCategory: String, Codable, Hashable, Sendable {
+    case malformedIdentifier
+    case unsupportedSchema
+    case invalidOwnership
+    case invalidVersion
+    case invalidLifecycle
+    case invalidCompletion
+    case invalidOrderToken
+    case unsupportedRecordType
+}
+
+public struct QuarantinedRecordSnapshot: Codable, Hashable, Sendable {
+    public let id: UUID
+    public let recordKind: QuarantinedRecordKind
+    public let opaqueRecordID: String
+    public let category: QuarantineCategory
+    public let recordSchemaVersion: Int?
+    public let quarantinedAt: Date
 }
