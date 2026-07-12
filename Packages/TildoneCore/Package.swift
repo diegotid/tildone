@@ -1,10 +1,10 @@
+// swift-tools-version: 5.9
 //
 //  Package.swift
 //  Tildone
 //
 //  Created by Diego Rivera on 7/12/26.
 //
-// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
@@ -23,7 +23,11 @@ let package = Package(
         .target(name: "TildonePersistence", dependencies: ["TildoneDomain"]),
         .target(name: "TildoneSync", dependencies: ["TildoneDomain"]),
         .testTarget(name: "TildoneDomainTests", dependencies: ["TildoneDomain"]),
-        .testTarget(name: "TildonePersistenceTests", dependencies: ["TildonePersistence"]),
+        .testTarget(
+            name: "TildonePersistenceTests",
+            dependencies: ["TildonePersistence"],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "TildoneSyncTests", dependencies: ["TildoneSync"])
     ]
 )

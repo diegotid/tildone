@@ -12,7 +12,12 @@ final class DomainModelTests: XCTestCase {
     func testOrdinaryNoteEditDoesNotResurrectTombstone() throws {
         var note = Fixtures.note()
         try note.delete(version: Fixtures.stamp(2))
-        try note.rename(to: "Edited while deleted", version: Fixtures.stamp(3), editedAt: Date(timeIntervalSince1970: 30))
+        try note.rename(
+            to: "Edited while deleted",
+            version: Fixtures.stamp(3),
+            editedAt: Date(timeIntervalSince1970: 30),
+            meaningfulEditVersion: Fixtures.stamp(4)
+        )
 
         XCTAssertEqual(note.lifecycle, .deleted)
         XCTAssertEqual(note.lifecycleVersion, Fixtures.stamp(2))

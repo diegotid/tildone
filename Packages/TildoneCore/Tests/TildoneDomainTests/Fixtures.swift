@@ -28,7 +28,8 @@ enum Fixtures {
             title: "Title",
             titleVersion: stamp(1),
             lifecycleVersion: stamp(1),
-            lastMeaningfulEditAt: lastMeaningfulEditAt
+            lastMeaningfulEditAt: lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: stamp(1)
         )
     }
 
