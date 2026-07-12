@@ -41,6 +41,7 @@ public struct Note: Codable, Hashable, Sendable {
     public private(set) var lifecycleVersion: VersionStamp
     /// Display/sort metadata only. This date is not a conflict authority.
     public private(set) var lastMeaningfulEditAt: Date
+    public private(set) var lastMeaningfulEditVersion: VersionStamp
     public let schemaVersion: Int
 
     public init(
@@ -51,6 +52,7 @@ public struct Note: Codable, Hashable, Sendable {
         lifecycle: LifecycleState = .active,
         lifecycleVersion: VersionStamp,
         lastMeaningfulEditAt: Date,
+        lastMeaningfulEditVersion: VersionStamp,
         schemaVersion: Int = Note.currentSchemaVersion
     ) {
         self.id = id
@@ -60,14 +62,24 @@ public struct Note: Codable, Hashable, Sendable {
         self.lifecycle = lifecycle
         self.lifecycleVersion = lifecycleVersion
         self.lastMeaningfulEditAt = lastMeaningfulEditAt
+        self.lastMeaningfulEditVersion = lastMeaningfulEditVersion
         self.schemaVersion = schemaVersion
     }
 
-    public mutating func rename(to title: String?, version: VersionStamp, editedAt: Date) throws {
+    public mutating func rename(
+        to title: String?,
+        version: VersionStamp,
+        editedAt: Date,
+        meaningfulEditVersion: VersionStamp
+    ) throws {
         guard version > titleVersion else { throw DomainMutationError.versionMustAdvance }
+        guard meaningfulEditVersion > lastMeaningfulEditVersion else {
+            throw DomainMutationError.versionMustAdvance
+        }
         self.title = title
         titleVersion = version
-        lastMeaningfulEditAt = max(lastMeaningfulEditAt, editedAt)
+        lastMeaningfulEditAt = editedAt
+        lastMeaningfulEditVersion = meaningfulEditVersion
     }
 
     public mutating func delete(version: VersionStamp) throws {
@@ -81,8 +93,12 @@ public struct Note: Codable, Hashable, Sendable {
 
     /// Records display/sort metadata without making wall-clock time a conflict
     /// authority. Persistence calls this for meaningful child-task changes.
-    public mutating func recordMeaningfulEdit(at date: Date) {
-        lastMeaningfulEditAt = max(lastMeaningfulEditAt, date)
+    public mutating func recordMeaningfulEdit(at date: Date, version: VersionStamp) throws {
+        guard version > lastMeaningfulEditVersion else {
+            throw DomainMutationError.versionMustAdvance
+        }
+        lastMeaningfulEditAt = date
+        lastMeaningfulEditVersion = version
     }
 
     private mutating func setLifecycle(_ state: LifecycleState, version: VersionStamp) throws {

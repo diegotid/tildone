@@ -26,6 +26,10 @@ public extension Note {
             (lifecycle, lifecycleVersion),
             (other.lifecycle, other.lifecycleVersion)
         )
+        let winningMeaningfulEdit = try mergeVersioned(
+            (lastMeaningfulEditAt, lastMeaningfulEditVersion),
+            (other.lastMeaningfulEditAt, other.lastMeaningfulEditVersion)
+        )
 
         return Self(
             id: id,
@@ -34,7 +38,8 @@ public extension Note {
             titleVersion: winningTitle.version,
             lifecycle: winningLifecycle.value,
             lifecycleVersion: winningLifecycle.version,
-            lastMeaningfulEditAt: max(lastMeaningfulEditAt, other.lastMeaningfulEditAt),
+            lastMeaningfulEditAt: winningMeaningfulEdit.value,
+            lastMeaningfulEditVersion: winningMeaningfulEdit.version,
             schemaVersion: max(schemaVersion, other.schemaVersion)
         )
     }

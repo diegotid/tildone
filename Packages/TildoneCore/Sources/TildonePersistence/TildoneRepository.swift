@@ -10,6 +10,7 @@ import TildoneDomain
 
 public actor TildoneRepository: TildoneRepositoryProtocol {
     private let container: ModelContainer
+    private let ownership: WorkspaceOwnershipLease?
     private let workspace: WorkspaceIdentity
     private let now: @Sendable () -> Date
     private var failNextSave = false
@@ -21,6 +22,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     ) throws {
         self.workspace = descriptor.workspace
         self.now = now
+        let ownership = try WorkspaceOwnershipLease.acquire(for: Self.storeURL(for: descriptor))
         do {
             container = try Self.makeContainer(descriptor: descriptor)
         } catch let error as PersistenceError {
@@ -28,6 +30,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         } catch {
             throw PersistenceError.openFailure
         }
+        self.ownership = ownership
 
         let context = ModelContext(container)
         context.autosaveEnabled = false
@@ -41,14 +44,12 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 ))
                 try context.save()
             } else {
-                guard metadata.count == 1,
-                      metadata[0].workspaceKindRawValue == descriptor.workspace.kindRawValue,
-                      metadata[0].opaqueWorkspaceID == descriptor.workspace.opaqueID,
-                      ReplicaID(string: metadata[0].replicaID) != nil,
-                      metadata[0].logicalCounter >= 0,
-                      metadata[0].sharedSchemaVersion == 1 else {
-                    throw PersistenceError.workspaceMismatch
-                }
+                guard metadata.count == 1 else { throw PersistenceError.workspaceMismatch }
+                try Self.validateWorkspaceMetadata(
+                    metadata[0],
+                    expectedWorkspace: descriptor.workspace,
+                    in: context
+                )
             }
         } catch let error as PersistenceError {
             throw error
@@ -141,7 +142,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             title: title,
             titleVersion: stamp,
             lifecycleVersion: stamp,
-            lastMeaningfulEditAt: createdAt
+            lastMeaningfulEditAt: createdAt,
+            lastMeaningfulEditVersion: stamp
         )
         context.insert(try StoredDomainMapping.storedNote(from: note))
         try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
@@ -162,7 +164,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     }
 
     public func visibleNotes() throws -> [Note] {
-        let notes = try readContext().fetch(FetchDescriptor<StoredNote>()).map(StoredDomainMapping.note)
+        let notes = try mappedUniqueNotes(in: readContext())
         return notes.filter { $0.lifecycle == .active }.sorted {
             if $0.lastMeaningfulEditAt != $1.lastMeaningfulEditAt {
                 return $0.lastMeaningfulEditAt > $1.lastMeaningfulEditAt
@@ -180,11 +182,23 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let stored = try requireStoredNote(id: id, in: context)
         var note = try StoredDomainMapping.note(from: stored)
         guard note.lifecycle == .active else { throw PersistenceError.domainInvariant }
-        let stamp = try nextStamp(try workspaceMetadata(in: context), observing: note.titleVersion)
-        do { try note.rename(to: title, version: stamp, editedAt: editedAt) }
+        let metadata = try workspaceMetadata(in: context)
+        let titleStamp = try nextStamp(metadata, observing: note.titleVersion)
+        let meaningfulEditStamp = try nextStamp(
+            metadata,
+            observing: max(note.lastMeaningfulEditVersion, titleStamp)
+        )
+        do {
+            try note.rename(
+                to: title,
+                version: titleStamp,
+                editedAt: editedAt,
+                meaningfulEditVersion: meaningfulEditStamp
+            )
+        }
         catch { throw PersistenceError.domainInvariant }
         try StoredDomainMapping.update(stored, from: note)
-        try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+        try enqueue(.note, id: id.stringValue, sequence: meaningfulEditStamp.logicalCounter, in: context)
         try saveMutation(context)
         return note
     }
@@ -243,7 +257,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let storedNote = try requireStoredNote(id: noteID, in: context)
         var note = try StoredDomainMapping.note(from: storedNote)
         guard note.lifecycle == .active else { throw PersistenceError.domainInvariant }
-        let stamp = try nextStamp(try workspaceMetadata(in: context))
+        let metadata = try workspaceMetadata(in: context)
+        let stamp = try nextStamp(metadata)
         let task = Task(
             id: id,
             noteID: noteID,
@@ -255,10 +270,16 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             orderVersion: stamp,
             lifecycleVersion: stamp
         )
-        note.recordMeaningfulEdit(at: createdAt)
+        let meaningfulEditStamp = try nextStamp(
+            metadata,
+            observing: max(note.lastMeaningfulEditVersion, stamp)
+        )
+        do { try note.recordMeaningfulEdit(at: createdAt, version: meaningfulEditStamp) }
+        catch { throw PersistenceError.domainInvariant }
         try StoredDomainMapping.update(storedNote, from: note)
         context.insert(try StoredDomainMapping.storedTask(from: task))
         try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+        try enqueue(.note, id: noteID.stringValue, sequence: meaningfulEditStamp.logicalCounter, in: context)
         try saveMutation(context)
         return task
     }
@@ -284,8 +305,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     public func orderedTasks(in noteID: NoteID) throws -> [Task] {
         let owner = try note(id: noteID, includingDeleted: true)
         guard owner.lifecycle == .active else { return [] }
-        return try storedTasks(noteID: noteID, in: readContext())
-            .map { try StoredDomainMapping.task(from: $0, expectedNoteID: noteID) }
+        return try mappedUniqueTasks(noteID: noteID, in: readContext())
             .filter { $0.lifecycle == .active }
             .sorted(by: Task.orderedBefore)
     }
@@ -339,10 +359,21 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let stamp = try nextStamp(metadata, observing: maxVersion(in: task))
         do { try mutation(&task, stamp) }
         catch { throw PersistenceError.domainInvariant }
-        owner.recordMeaningfulEdit(at: now())
+        let meaningfulEditStamp = try nextStamp(
+            metadata,
+            observing: max(owner.lastMeaningfulEditVersion, stamp)
+        )
+        do { try owner.recordMeaningfulEdit(at: now(), version: meaningfulEditStamp) }
+        catch { throw PersistenceError.domainInvariant }
         try StoredDomainMapping.update(ownerStored, from: owner)
         try StoredDomainMapping.update(stored, from: task)
         try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+        try enqueue(
+            .note,
+            id: owner.id.stringValue,
+            sequence: meaningfulEditStamp.logicalCounter,
+            in: context
+        )
         try saveMutation(context)
         return task
     }
@@ -350,7 +381,9 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     // MARK: Durable outbox and workspace state
 
     public func pendingMutations(includeSuperseded: Bool = false) throws -> [PendingMutationSnapshot] {
-        let rows = try readContext().fetch(FetchDescriptor<PendingMutation>())
+        let context = readContext()
+        let rows = try context.fetch(FetchDescriptor<PendingMutation>())
+        try Self.validatePendingMutationRows(rows, in: context)
         return try rows
             .filter { includeSuperseded || $0.supersededByMutationID == nil }
             .map(Self.snapshot)
@@ -358,14 +391,18 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     }
 
     public func recordMutationAttempt(id: UUID, at date: Date) throws {
+        guard date.timeIntervalSinceReferenceDate.isFinite else {
+            throw PersistenceError.domainInvariant
+        }
         let context = mutationContext()
         let idString = id.uuidString.lowercased()
-        let rows = try context.fetch(FetchDescriptor<PendingMutation>(
-            predicate: #Predicate { $0.mutationID == idString }
-        ))
+        let allRows = try context.fetch(FetchDescriptor<PendingMutation>())
+        try Self.validatePendingMutationRows(allRows, in: context)
+        let rows = allRows.filter { $0.mutationID == idString }
         guard rows.count == 1, let row = rows.first else {
-            throw PersistenceError.missing(.task, idString)
+            throw PersistenceError.missingPendingMutation(idString)
         }
+        guard row.supersededByMutationID == nil else { throw PersistenceError.domainInvariant }
         guard row.attemptCount < Int64.max else { throw PersistenceError.counterOverflow }
         row.attemptCount += 1
         row.lastAttemptAt = date
@@ -375,7 +412,17 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     public func acknowledgeMutations(ids: Set<UUID>) throws {
         let context = mutationContext()
         let strings = Set(ids.map { $0.uuidString.lowercased() })
-        for row in try context.fetch(FetchDescriptor<PendingMutation>()) where strings.contains(row.mutationID) {
+        let rows = try context.fetch(FetchDescriptor<PendingMutation>())
+        try Self.validatePendingMutationRows(rows, in: context)
+        var reconciledIDs = strings
+        var changed = true
+        while changed {
+            changed = false
+            for row in rows where row.supersededByMutationID.map(reconciledIDs.contains) == true {
+                if reconciledIDs.insert(row.mutationID).inserted { changed = true }
+            }
+        }
+        for row in rows where reconciledIDs.contains(row.mutationID) {
             context.delete(row)
         }
         try save(context)
@@ -383,10 +430,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     public func workspaceSnapshot() throws -> WorkspaceSnapshot {
         let metadata = try workspaceMetadata(in: readContext())
-        guard metadata.logicalCounter >= 0,
-              let replica = ReplicaID(string: metadata.replicaID) else {
-            throw PersistenceError.workspaceMismatch
-        }
+        let replica = try Self.validatedReplica(in: metadata)
         return WorkspaceSnapshot(
             identityKind: metadata.workspaceKindRawValue,
             opaqueWorkspaceID: metadata.opaqueWorkspaceID,
@@ -410,6 +454,11 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         recordSchemaVersion: Int?,
         at date: Date
     ) throws {
+        guard Self.isContentFreeQuarantineIdentifier(opaqueRecordID, kind: recordKind),
+              recordSchemaVersion == nil || recordSchemaVersion! > 0,
+              date.timeIntervalSinceReferenceDate.isFinite else {
+            throw PersistenceError.invalidQuarantineMetadata
+        }
         let context = mutationContext()
         context.insert(QuarantinedRecord(
             recordKind: recordKind.rawValue,
@@ -422,12 +471,18 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     }
 
     public func quarantinedRecords() throws -> [QuarantinedRecordSnapshot] {
-        try readContext().fetch(FetchDescriptor<QuarantinedRecord>()).map { row in
+        var identifiers: Set<UUID> = []
+        return try readContext().fetch(FetchDescriptor<QuarantinedRecord>()).map { row in
             guard let id = UUID(uuidString: row.quarantineID),
+                  row.quarantineID == id.uuidString.lowercased(),
+                  identifiers.insert(id).inserted,
                   let kind = QuarantinedRecordKind(rawValue: row.recordKind),
-                  let category = QuarantineCategory(rawValue: row.errorCategory) else {
+                  let category = QuarantineCategory(rawValue: row.errorCategory),
+                  Self.isContentFreeQuarantineIdentifier(row.opaqueRecordID, kind: kind),
+                  row.recordSchemaVersion == nil || row.recordSchemaVersion! > 0,
+                  row.quarantinedAt.timeIntervalSinceReferenceDate.isFinite else {
                 throw PersistenceError.malformedRepresentation(
-                    .note, "quarantine", field: "quarantineMetadata"
+                    .note, "invalid", field: "quarantineMetadata"
                 )
             }
             return QuarantinedRecordSnapshot(
@@ -467,22 +522,83 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     private func workspaceMetadata(in context: ModelContext) throws -> WorkspaceMetadata {
         let rows = try context.fetch(FetchDescriptor<WorkspaceMetadata>())
-        guard rows.count == 1, let metadata = rows.first,
-              metadata.workspaceKindRawValue == workspace.kindRawValue,
-              metadata.opaqueWorkspaceID == workspace.opaqueID else {
+        guard rows.count == 1, let metadata = rows.first else {
             throw PersistenceError.workspaceMismatch
         }
+        try Self.validateWorkspaceMetadata(metadata, expectedWorkspace: workspace, in: context)
         return metadata
+    }
+
+    private nonisolated static func validateWorkspaceMetadata(
+        _ metadata: WorkspaceMetadata,
+        expectedWorkspace workspace: WorkspaceIdentity,
+        in context: ModelContext
+    ) throws {
+        guard metadata.singletonKey == "workspace",
+              metadata.workspaceKindRawValue == workspace.kindRawValue,
+              metadata.opaqueWorkspaceID == workspace.opaqueID,
+              metadata.sharedSchemaVersion == 1,
+              metadata.logicalCounter >= 0 else {
+            throw PersistenceError.workspaceMismatch
+        }
+        _ = try validatedReplica(in: metadata)
+        switch workspace {
+        case .localOnly:
+            guard metadata.opaqueWorkspaceID == nil else { throw PersistenceError.workspaceMismatch }
+        case let .account(id):
+            guard metadata.opaqueWorkspaceID == id.uuidString.lowercased() else {
+                throw PersistenceError.workspaceMismatch
+            }
+        }
+        try validateCounterFloor(metadata, in: context)
+        let pending = try context.fetch(FetchDescriptor<PendingMutation>())
+        try validatePendingMutationRows(pending, in: context)
+    }
+
+    private nonisolated static func validateCounterFloor(
+        _ metadata: WorkspaceMetadata,
+        in context: ModelContext
+    ) throws {
+        var maximum: Int64 = 0
+        for note in try context.fetch(FetchDescriptor<StoredNote>()) {
+            let counters = [
+                note.titleVersionCounter,
+                note.lifecycleVersionCounter,
+                note.lastMeaningfulEditVersionCounter
+            ]
+            guard counters.allSatisfy({ $0 >= 0 }) else { throw PersistenceError.workspaceMismatch }
+            maximum = max(maximum, counters.max() ?? 0)
+        }
+        for task in try context.fetch(FetchDescriptor<StoredTask>()) {
+            let counters = [
+                task.textVersionCounter,
+                task.completionVersionCounter,
+                task.orderVersionCounter,
+                task.lifecycleVersionCounter
+            ]
+            guard counters.allSatisfy({ $0 >= 0 }) else { throw PersistenceError.workspaceMismatch }
+            maximum = max(maximum, counters.max() ?? 0)
+        }
+        for mutation in try context.fetch(FetchDescriptor<PendingMutation>()) {
+            guard mutation.sequence >= 0 else { throw PersistenceError.workspaceMismatch }
+            maximum = max(maximum, mutation.sequence)
+        }
+        guard metadata.logicalCounter >= maximum else { throw PersistenceError.workspaceMismatch }
+    }
+
+    private nonisolated static func validatedReplica(in metadata: WorkspaceMetadata) throws -> ReplicaID {
+        guard let replica = ReplicaID(string: metadata.replicaID),
+              metadata.replicaID == replica.stringValue else {
+            throw PersistenceError.workspaceMismatch
+        }
+        return replica
     }
 
     private func nextStamp(
         _ metadata: WorkspaceMetadata,
         observing stamp: VersionStamp? = nil
     ) throws -> VersionStamp {
-        guard metadata.logicalCounter >= 0,
-              let replica = ReplicaID(string: metadata.replicaID) else {
-            throw PersistenceError.workspaceMismatch
-        }
+        let replica = try Self.validatedReplica(in: metadata)
         let observed = stamp?.logicalCounter ?? 0
         let current = max(UInt64(metadata.logicalCounter), observed)
         guard current < UInt64(Int64.max) else { throw PersistenceError.counterOverflow }
@@ -507,7 +623,13 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             }
         ))
         let newID = UUID().uuidString.lowercased()
-        for row in active { row.supersededByMutationID = newID }
+        for row in active {
+            if row.attemptCount == 0 {
+                context.delete(row)
+            } else {
+                row.supersededByMutationID = newID
+            }
+        }
         context.insert(PendingMutation(
             mutationID: newID,
             targetKindRawValue: kindRaw,
@@ -519,10 +641,15 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     private static func snapshot(_ row: PendingMutation) throws -> PendingMutationSnapshot {
         guard let id = UUID(uuidString: row.mutationID),
+              row.mutationID == id.uuidString.lowercased(),
               let kind = PersistedEntityKind(rawValue: row.targetKindRawValue),
-              row.sequence >= 0, row.attemptCount >= 0,
+              isCanonicalTargetID(row.targetStableID, kind: kind),
+              row.sequence > 0, row.attemptCount >= 0,
+              row.createdAt.timeIntervalSinceReferenceDate.isFinite,
+              row.lastAttemptAt?.timeIntervalSinceReferenceDate.isFinite != false,
+              (row.attemptCount == 0) == (row.lastAttemptAt == nil),
               row.supersededByMutationID == nil || UUID(uuidString: row.supersededByMutationID!) != nil else {
-            throw PersistenceError.malformedRepresentation(.task, row.targetStableID, field: "pendingMutation")
+            throw PersistenceError.malformedRepresentation(.task, "invalid", field: "pendingMutation")
         }
         return PendingMutationSnapshot(
             id: id,
@@ -534,6 +661,77 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             lastAttemptAt: row.lastAttemptAt,
             supersededBy: row.supersededByMutationID.flatMap(UUID.init(uuidString:))
         )
+    }
+
+    private static func validatePendingMutationRows(
+        _ rows: [PendingMutation],
+        in context: ModelContext
+    ) throws {
+        let noteIDs = Set(try context.fetch(FetchDescriptor<StoredNote>()).map(\.stableID))
+        let taskIDs = Set(try context.fetch(FetchDescriptor<StoredTask>()).map(\.stableID))
+        var byID: [String: PendingMutation] = [:]
+        var activeTargets: Set<String> = []
+        for row in rows {
+            let snapshot = try snapshot(row)
+            let targetExists = switch snapshot.targetKind {
+            case .note: noteIDs.contains(snapshot.targetStableID)
+            case .task: taskIDs.contains(snapshot.targetStableID)
+            }
+            guard targetExists else {
+                throw PersistenceError.malformedRepresentation(
+                    snapshot.targetKind, "invalid", field: "pendingMutationTarget"
+                )
+            }
+            guard byID.updateValue(row, forKey: row.mutationID) == nil else {
+                throw PersistenceError.malformedRepresentation(.task, "invalid", field: "pendingMutationID")
+            }
+            if row.supersededByMutationID == nil {
+                let target = row.targetKindRawValue + ":" + row.targetStableID
+                guard activeTargets.insert(target).inserted else {
+                    throw PersistenceError.malformedRepresentation(.task, "invalid", field: "activeMutation")
+                }
+            }
+        }
+        for row in rows {
+            guard let successorID = row.supersededByMutationID else { continue }
+            guard successorID != row.mutationID,
+                  let successor = byID[successorID],
+                  successor.targetKindRawValue == row.targetKindRawValue,
+                  successor.targetStableID == row.targetStableID,
+                  successor.sequence > row.sequence else {
+                throw PersistenceError.malformedRepresentation(.task, "invalid", field: "supersession")
+            }
+        }
+    }
+
+    private static func isCanonicalTargetID(_ value: String, kind: PersistedEntityKind) -> Bool {
+        switch kind {
+        case .note:
+            guard let id = NoteID(string: value) else { return false }
+            return value == id.stringValue
+        case .task:
+            guard let id = TaskID(string: value) else { return false }
+            return value == id.stringValue
+        }
+    }
+
+    private static func isContentFreeQuarantineIdentifier(
+        _ value: String,
+        kind: QuarantinedRecordKind
+    ) -> Bool {
+        switch kind {
+        case .note:
+            guard let id = NoteID(recordName: value) else { return false }
+            return value == id.recordName
+        case .task:
+            guard let id = TaskID(recordName: value) else { return false }
+            return value == id.recordName
+        case .schemaMarker, .unknown:
+            let prefix = kind == .schemaMarker ? "schema-" : "unknown-"
+            guard value.hasPrefix(prefix),
+                  let id = UUID(uuidString: String(value.dropFirst(prefix.count))) else { return false }
+            return value == prefix + id.uuidString.lowercased()
+        }
     }
 
     private func storedNote(id: NoteID, in context: ModelContext) throws -> StoredNote? {
@@ -573,6 +771,28 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return try context.fetch(FetchDescriptor<StoredTask>(
             predicate: #Predicate { $0.noteStableID == value }
         ))
+    }
+
+    private func mappedUniqueNotes(in context: ModelContext) throws -> [Note] {
+        var identifiers: Set<NoteID> = []
+        return try context.fetch(FetchDescriptor<StoredNote>()).map { stored in
+            let note = try StoredDomainMapping.note(from: stored)
+            guard identifiers.insert(note.id).inserted else {
+                throw PersistenceError.duplicateID(.note, note.id.stringValue)
+            }
+            return note
+        }
+    }
+
+    private func mappedUniqueTasks(noteID: NoteID, in context: ModelContext) throws -> [Task] {
+        var identifiers: Set<TaskID> = []
+        return try storedTasks(noteID: noteID, in: context).map { stored in
+            let task = try StoredDomainMapping.task(from: stored, expectedNoteID: noteID)
+            guard identifiers.insert(task.id).inserted else {
+                throw PersistenceError.duplicateID(.task, task.id.stringValue)
+            }
+            return task
+        }
     }
 
     private func maxVersion(in task: Task) -> VersionStamp {

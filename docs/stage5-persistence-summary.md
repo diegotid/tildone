@@ -2,107 +2,282 @@
 
 ## Scope and boundaries
 
-Stage 5 adds the local-first `TildonePersistence` target inside `Packages/TildoneCore`. It depends only on Foundation, SwiftData, and `TildoneDomain`. It does not integrate either shipping app, open or modify the released Mac SwiftData store, import `Todo`/`TodoList`, enable iCloud, add networking, or implement CloudKit/`CKSyncEngine`.
+Stage 5 now includes the persistence hardening pass required before Stage 6.
+The work remains confined to `TildoneDomain`, `TildonePersistence`, their tests,
+fixtures, the package manifest, and this summary. It does not implement legacy
+import/cutover, application integration, networking, CloudKit, `CKSyncEngine`,
+entitlements, UI, or automatic SwiftData CloudKit mirroring. The released
+`Todo`/`TodoList` sources, project file, and application entitlements are
+unchanged.
 
-Because `docs/stage4-domain-summary.md` was absent, the completed Stage 4 sources and tests were treated as authoritative. Stage 4 had no repository protocols, so `TildoneDomain` gained only Foundation-only async `NoteRepository` and `TaskRepository` protocols plus `Note.recordMeaningfulEdit(at:)` for domain-owned display metadata.
+`Package.swift` keeps `// swift-tools-version: 5.9` as its required first line,
+with the requested copyright-style header immediately below it.
 
-## Stored schema and deletion rules
+The durable rules in `AGENTS.md` remain correct and were not weakened:
 
-`TildoneSchemaV1` is an explicit `VersionedSchema` with version `1.0.0`. `TildoneSchemaMigrationPlan` centrally lists that schema and deliberately has no migration stages for the initial version. This version identifies the new shared store only; it is unrelated to the released Mac schema.
+- every shared `ModelConfiguration` explicitly uses
+  `cloudKitDatabase: .none`;
+- the released legacy store is never opened using the shared schema or
+  migrated in place;
+- stored models and `ModelContext` remain internal to persistence; and
+- every shared content mutation atomically records transport-neutral outbound
+  evidence.
 
-The schema contains five SwiftData models:
+## Final V1 schema decisions
 
-- `StoredNote`: stable ID, creation date, optional title, independent title stamp, lifecycle/tombstone and stamp, last meaningful edit date, and record schema version.
-- `StoredTask`: stable ID, immutable owning note ID, creation date, text/stamp, completion payload/stamp, order token/stamp, lifecycle/tombstone and stamp, and record schema version.
-- `PendingMutation`: content-free mutation ID, target kind/stable ID, logical sequence, creation/attempt metadata, and supersession link.
-- `WorkspaceMetadata`: singleton workspace identity, replica ID, durable logical counter, shared-schema version, and uninterpreted optional bytes reserved for future sync-engine state.
-- `QuarantinedRecord`: content-free record identity/type, typed safe error category, optional record schema version, and quarantine date.
+`TildoneSchemaV1` remains version `1.0.0` with five SwiftData models and no
+migration stage because this is still the first shared-store schema.
 
-There are intentionally no SwiftData relationships or cascading delete rules. Ownership is an immutable stable note ID on every task. No content row is physically deleted by repository operations. This protects tombstone evidence, tolerates future task-before-parent delivery, and prevents framework cascades from erasing sync evidence. Outbox acknowledgements physically remove only acknowledged mutation rows. There is no time-based or automatic garbage collection.
+- `StoredNote` now stores `lastMeaningfulEditAt` with its own
+  `lastMeaningfulEditVersionCounter` and
+  `lastMeaningfulEditVersionReplicaID`. The date/version pair is independent
+  of title and lifecycle.
+- `StoredTask` retains independent text, completion, order, and lifecycle
+  payload/version pairs and immutable stable note ownership.
+- `PendingMutation` remains content-free and transport-neutral. Attempt count
+  is the durable boundary between work that was never dispatched and work
+  that may be in flight.
+- `WorkspaceMetadata` remains the single durable owner of workspace identity,
+  replica identity, logical counter, schema version, and uninterpreted future
+  engine state.
+- `QuarantinedRecord` remains content-free. Accepted opaque IDs are canonical
+  note/task record names or canonical typed schema/unknown UUID identifiers.
 
-No UI/window state, derived counts, user preferences, CloudKit records/system fields, or transport-operation concepts are stored. Counts and visibility are derived from validated domain snapshots.
+There are still no SwiftData relationships or physical content deletion in the
+shared schema. Note/task lifecycle tombstones remain on their content rows and
+are retained indefinitely.
 
-## Mapping and errors
+## Meaningful-edit semantics
 
-`StoredDomainMapping` is the explicit, testable boundary in both directions. It validates note/task IDs, ownership, nonnegative representable counters, replica IDs, lifecycle raw values, completion Boolean/date consistency, canonical order tokens, and record schema compatibility. It never crashes or invents repairs. Corrupt identifier text is replaced with a safe diagnostic marker instead of being echoed.
+`Note.lastMeaningfulEditAt` is now a proper versioned domain property.
+`Note.merged(with:)` merges its date and version as one payload using the same
+deterministic logical-version rule as other mutable properties; wall-clock
+maximum no longer chooses the value.
 
-`PersistenceError` provides typed open, save, missing/duplicate identity, ownership, malformed representation, invariant, schema, workspace/location, counter, and atomic-mutation failures. Error payloads contain only stable opaque IDs, field/category names, or schema numbers—not note titles or task text. Store creation never falls back to a new empty store after an open failure.
+Renaming a note advances the title version and meaningful-edit version
+independently. Every task create/edit/toggle/move/delete/restore operation also
+advances the owning note's meaningful-edit version. Persistence updates the
+task, owning note, workspace counter, task outbox row, and note outbox row in
+one `ModelContext.save()`. Independent title/lifecycle/task versions are not
+changed as a side effect.
 
-## Repository API and concurrency
+Two logical counters may therefore be consumed by one user operation when two
+synchronized records change. Counter density is not an invariant; strict
+monotonicity and atomic durability are.
 
-`TildoneRepository` is an actor conforming to the domain repository protocols. Domain `Note`/`Task` values are `Sendable` snapshots crossing actor isolation; SwiftData models and contexts remain internal. The actor serializes stable-ID checks and workspace logical-counter advancement. It creates a fresh `ModelContext` for each read or mutation and disables autosave.
+## Physical workspace ownership and concurrency
 
-Supported note operations are create, fetch including an explicit tombstone option, visible/meaningful-change queries, rename, soft delete, and explicit restore. Note deletion tombstones all active children in the same transaction. Supported task operations are add, fetch, deterministic ordered query, text edit, completion/uncompletion, move, soft delete, explicit restore, and domain-derived summaries. Task creation/mutation/restore rejects missing or deleted parents; ownership is never changed.
+One repository owns one physical workspace for the lifetime of its
+`ModelContainer`. `WorkspaceOwnershipLease` enforces this before a container is
+created:
 
-All business mutations use `TildoneDomain` mutation methods and advance only the affected property stamp. Task changes update the owning note's meaningful-edit display date without using wall-clock time as conflict authority.
+1. a process-local registry excludes duplicate repositories in the same
+   process, including equivalent canonical/symlinked paths; and
+2. a nonblocking Darwin `flock` on a workspace-owned lock file excludes a
+   cooperating second process.
 
-## Atomic durable outbox
+The actor retains the lease as long as it retains the container and releases
+both together on deinitialization. A second opener receives
+`PersistenceError.workspaceInUse`; it cannot race metadata creation, stable-ID
+checks, or logical-counter updates. In-memory repositories remain isolated and
+do not claim a disk lease.
 
-Each content mutation updates content, the workspace logical counter, and one or more `PendingMutation` rows in one `ModelContext.save()`. A failed save discards the operation context, leaving neither content nor outbound evidence committed.
+This makes actor serialization an implementation detail inside an enforceable
+workspace lifetime rather than the only concurrency guarantee. The stored
+metadata counter is additionally checked against every stored property version
+and pending sequence before it is advanced, preventing silent counter reuse
+after malformed or manually altered metadata.
 
-Pending work contains no title or task text. Repeated changes to one target create a new sequenced row and mark the prior active row as superseded. Thus a stale in-flight acknowledgement cannot remove newer work. Active scheduling excludes superseded rows; all rows remain individually acknowledgeable/removable. Attempt count/date are durable and retry-safe. No CloudKit operation types or scheduling assumptions appear in persistence.
+The lock is advisory: code that bypasses the internal repository and directly
+opens the SQLite file could ignore it. Stored model types and container
+construction are internal, so supported clients cannot do that. Stage 6 must
+keep all shared-store access behind the repository/lease boundary.
 
-## Tombstones and visibility
+## Outbox supersession and acknowledgement
 
-Deleted notes/tasks remain durable lifecycle rows and are hidden from ordinary fetches. Ordinary field edits never change lifecycle state. Restore is an explicit repository call that obtains a newer lifecycle stamp. Deleting a note atomically tombstones its active tasks and enqueues each stable target. Restoring a note does not implicitly restore children. Tombstones survive reopen and are retained indefinitely in this stage.
+The outbox contains only mutation UUID, target kind, opaque stable UUID,
+logical sequence, dates, attempt count, and supersession UUID. It contains no
+title, task text, record payload, CloudKit operation, or network concept.
 
-## Workspaces and locations
+Supersession is now state-aware:
 
-`PersistenceStoreDescriptor` provides persistent, in-memory test, preview, and temporary-migration configurations. Tests and previews receive a caller-supplied base directory or isolated in-memory identifier.
+- an active row with `attemptCount == 0` was never dispatched and is deleted
+  when newer work for the same target is enqueued;
+- an active row with an attempt is retained and linked to the newer row because
+  it may be in flight;
+- schedulable queries return only the newest active row;
+- stale acknowledgement of an older mutation removes only that older row and
+  cannot remove its successor; and
+- acknowledgement of a newer mutation removes that row and reconciles all of
+  its superseded ancestors, so no dangling supersession link remains.
 
-Persistent locations are deterministic:
+Attempts, supersession, acknowledgement, restart, and retries are durable and
+idempotent. Metadata validation requires canonical mutation UUIDs, canonical
+target UUIDs, a matching stored entity of the declared kind, positive sequence,
+consistent attempt date/count, unique active target, existing same-target
+newer supersession links, and an acyclic sequence-increasing chain.
 
-```text
-<base>/TildoneSharedStore-v1/local-only/tildone-shared.sqlite
-<base>/TildoneSharedStore-v1/accounts/<opaque-account-UUID>/tildone-shared.sqlite
-```
+## Stored-representation validation and safe diagnostics
 
-Preview and temporary-migration roots include caller-controlled UUIDs and cannot collide with production. Every directory is created explicitly and failures are typed. The new filename/root cannot collide with the legacy default store. Account UUIDs are opaque caller-supplied keys; persistence performs no account query, adoption, or workspace merge.
+Mapping and repository reads reject rather than repair:
 
-Every `ModelConfiguration`, both disk and memory, explicitly sets `cloudKitDatabase: .none`. The target does not import CloudKit and needs no entitlement.
+- noncanonical or malformed note/task/replica UUID strings;
+- duplicate stored identities and duplicate workspace metadata rows;
+- invalid ownership, lifecycle, completion/date pairing, order token, schema
+  version, logical counter, or nonfinite date;
+- malformed workspace singleton key/kind/account UUID/replica/schema/counter;
+- counters below any durable content version or pending sequence;
+- malformed pending target, attempt, UUID, active-target, or supersession data;
+  and
+- malformed quarantine UUID/kind/category/schema/content-free identifier.
 
-## Tests
+Errors use typed categories and only canonical opaque identifiers or the fixed
+safe marker `invalid`. Corrupt raw values, titles, and task text are never
+echoed through errors or quarantine snapshots. Quarantine insertion rejects
+arbitrary strings such as user content.
 
-`TildonePersistenceTests` uses only in-memory stores and caller-created temporary directories. Coverage includes:
+## Fixtures and provenance
 
-- complete note/task round trips including every ID, stamp, lifecycle, completion/date, order token, Unicode, and optional title;
-- malformed IDs/ownership/order/stamps/lifecycle/completion/schema with typed failures;
-- independent mutation stamps, deterministic equal-token ordering, summaries, visibility, meaningful-edit queries, invalid/deleted parents, parent deletion, and explicit restore;
-- atomic outbox success, supersession, retry, acknowledgement, content-free snapshots, reopen durability, and forced-save rollback leaving neither half;
-- concurrent duplicate creation, actor-serialized monotonic counters, and independent in-memory repositories;
-- create/reopen durability, local/account workspace isolation, repeatable paths, typed bad locations, opaque state, schema/migration wiring, and proof a sentinel legacy-store path remains byte-for-byte untouched.
+Fixture details and hashes are also stored beside the artifacts in
+`Tests/TildonePersistenceTests/Fixtures/README.md`.
 
-## Validation commands and results
+### Shared V1 on-disk fixture
 
-Validation used Xcode 26.4.1 (build 17E202), macOS 26.5.2, the macOS 26.4 SDK, and iOS 26.4 SDK. SwiftPM compiler/module caches were redirected to `/tmp` because the managed sandbox blocks the user cache; SwiftPM itself required approved execution outside its nested sandbox.
+`TildoneSharedStoreV1` is an actual SQLite-backed SwiftData store generated
+through the public repository API from finalized V1 using Xcode 26.4.1. It
+contains note/task content, active and superseded outbox rows, workspace state,
+and quarantine metadata. Tests copy it to a temporary directory and open the
+copy through `TildoneSchemaMigrationPlan`.
 
-- `swift test --filter TildoneDomainTests` in `Packages/TildoneCore`: passed 28 tests.
-- `swift test --filter TildonePersistenceTests`: passed 14 tests.
-- `swift test`: passed all 43 TildoneCore tests (28 domain, 14 persistence, 1 sync boundary placeholder).
-- `xcodebuild -scheme TildonePersistence -destination 'generic/platform=macOS' ... build`: succeeded for macOS 14.0, arm64 and x86_64.
-- `xcodebuild -scheme TildonePersistence -destination 'generic/platform=iOS' ... build`: succeeded for iOS 17.0, arm64.
-- `xcodebuild -project Tildone.xcodeproj -scheme Tildone -destination 'platform=macOS' ... -only-testing:TildoneTests test`: succeeded; both existing Mac unit tests passed.
-- Full Mac `Tildone` scheme test: app and test targets built, the two unit tests passed, but the generated `TildoneUITests-Runner` exited before establishing an XCTest connection. The result bundle reported one runner-bootstrap failure and no failed test assertion, so Mac UI execution is not validated in this environment.
-- `xcodebuild -project Tildone.xcodeproj -scheme 'Tildone iOS' -destination 'generic/platform=iOS' ... build`: succeeded for the iOS scaffold.
-- iOS simulator unit-test attempt on iPad (A16), iOS 26.4.1: simulator and test bundles built, but Xcode remained blocked waiting for the target runner to materialize. The run was interrupted after 85 seconds; iOS test execution is unavailable in this environment.
+SQLite SHA-256:
+`a36abb3b0f597118b28c155db5ab074e8a2af7f0838f7194ea783e9957426ee6`.
 
-All Xcode builds used isolated `/tmp` DerivedData and `CODE_SIGNING_ALLOWED=NO`; they did not alter application entitlements or project signing settings. Static audits found only Foundation/SwiftData/TildoneDomain imports in persistence, no forbidden framework/target references, `.none` at both `ModelConfiguration` construction sites, no shared-store database files under the repository, and no diff in `Tildone/Models/Todo.swift` or `TodoList.swift`.
+Because V1 is the first schema, there is no V1-to-V2 migration stage yet. This
+fixture is the frozen V1 input required for the first real future migration;
+the next schema change must add that stage and migrate a copied fixture.
 
-## CloudKit exclusion audit
+### Released Tildone 1.6.0 legacy fixture
 
-`TildonePersistence` imports only Foundation, SwiftData, and `TildoneDomain`. It has no dependency on `TildoneSync`, SwiftUI, AppKit, UIKit, application targets, CloudKit, or `CKSyncEngine`. Both `ModelConfiguration` construction sites explicitly use `.none`; there is no `.automatic` configuration construction.
+`TildoneLegacy160/default.store` was generated in a temporary Swift package
+whose module was named `Tildone`, using the exact persisted `Todo` and
+`TodoList` declarations from Git tag `1.6.0`. It used an explicit test output
+URL and never resolved or opened the installed application's production store.
+It covers Unicode, nil and duplicate indexes, completion, an empty transient
+task, and a system release note.
 
-## Deferred to Stage 6 or later
+Legacy SQLite SHA-256:
+`2ec613cc46f73561136daa025abe31f79186cdae8867abc8e0e0ff0c6811c5e4`.
 
-- Side-by-side reading/importing/verifying `Todo` and `TodoList`, migration provenance/cutover, rollback retention, and released-store fixtures.
-- App UI/repository integration and iPhone UI.
-- CloudKit mapping, `CKSyncEngine`, zones, schemas, account discovery/change handling, networking, entitlements, production capabilities, and App Store configuration.
-- Local-only-to-account adoption, workspace merge, conflict UI/recovery copies, production tombstone compaction, and sync-state interpretation.
+Released source hashes:
 
-## Deviations and owner-review risks
+- `Todo.swift`:
+  `09c6ec936192ecb822e58bf8c5fbc2cfd895429664b60b0a8f532caced42c87e`
+- `TodoList.swift`:
+  `46f0a44bb635ab610d5e1abe16b69ac36c5d39eaff11ed99b234eeac2039739b`
 
-There is no separate tombstone model: lifecycle state and lifecycle stamp live on the durable content row, which retains the complete record. This is narrower and safer for property-level merges than duplicating identity across content and tombstone tables.
+Stage 5 does not import this fixture. A test treats it as immutable bytes,
+creates and mutates a separate shared store, then verifies the fixture remains
+byte-for-byte identical. The user's production path was deliberately not
+resolved, read, launched, or checksummed, because doing so would weaken the
+stronger rule that Stage 5 never touches it.
 
-SwiftData stores logical counters as signed 64-bit integers. The domain can represent `UInt64`, so persistence reports `counterOverflow` beyond `Int64.max` instead of truncating or wrapping. At one mutation per second that boundary is operationally unreachable, but it is a deliberate representational limit.
+## Expanded test coverage
 
-The quarantine table and opaque future sync-state bytes are present, but remote-record ingestion and interpretation remain sync-stage work. Schema V1 currently has no migration stage; the migration-plan wiring must gain an explicit next stage before any stored model changes ship. Real released-store migration compatibility remains unverified because Stage 5 never opens that store and no released fixture is present.
+The persistence suite now covers:
+
+- canonical full round trips including independent meaningful-edit versions;
+- malformed stored notes/tasks, canonical UUIDs, ownership, dates, versions,
+  completion, order, lifecycle, and future schema;
+- duplicate metadata and stable identities;
+- one lifetime owner for a physical store and same-store concurrent rejection;
+- logical-counter monotonicity and replica retention across reopen;
+- failed create/update/delete rollback of content, counter, and outbox;
+- atomic task-plus-note scheduling and independent property versions;
+- undispatched coalescing, in-flight retention, retry, restart, old-first and
+  new-first acknowledgement, and stale acknowledgements;
+- malformed workspace/outbox/supersession/quarantine metadata and content-free
+  diagnostics;
+- actual copied V1 fixture opening through the migration plan; and
+- immutable released-1.6.0 fixture and sentinel legacy-path non-modification.
+
+## Validation matrix (2026-07-13)
+
+Toolchain: Xcode 26.4.1 (build 17E202), Apple Swift 6.3.1 in Swift 5 package
+language mode, macOS 26.5.2, macOS 26.4 SDK, and iOS 26.4 SDK. SwiftPM cache
+paths were redirected to `/tmp`; Xcode commands used isolated `/tmp`
+DerivedData and `CODE_SIGNING_ALLOWED=NO`. Xcode package/build commands required
+execution outside the managed nested sandbox so Xcode could access its normal
+caches and CoreSimulator services.
+
+- `swift test --disable-sandbox --filter TildoneDomainTests` with temporary
+  module caches: passed 28 tests.
+- `swift test --disable-sandbox --filter TildonePersistenceTests`: passed 25
+  tests.
+- `swift test --disable-sandbox`: passed all 54 package tests (28 domain, 25
+  persistence, 1 sync boundary placeholder).
+- `xcodebuild -project Tildone.xcodeproj -scheme TildonePersistence
+  -destination 'generic/platform=macOS' -derivedDataPath
+  /tmp/TildoneStage5PackageMac CODE_SIGNING_ALLOWED=NO build`: succeeded for
+  arm64 and x86_64, macOS 14.0.
+- The same persistence build with `-destination 'generic/platform=iOS'` and
+  `/tmp/TildoneStage5PackageiOS`: succeeded for arm64, iOS 17.0.
+- `xcodebuild -project Tildone.xcodeproj -scheme Tildone -configuration Debug
+  -destination 'platform=macOS' -derivedDataPath /tmp/TildoneStage5MacApp
+  CODE_SIGNING_ALLOWED=NO build`: succeeded. The pre-existing explicit
+  specialization warning in `Note.swift` remains; persistence introduced no
+  warning.
+- The Mac command with `/tmp/TildoneStage5MacTests`,
+  `-only-testing:TildoneTests test`: passed both existing unit tests.
+- `xcodebuild -project Tildone.xcodeproj -scheme 'Tildone iOS'
+  -configuration Debug -destination 'generic/platform=iOS'
+  -derivedDataPath /tmp/TildoneStage5iOSApp CODE_SIGNING_ALLOWED=NO build`:
+  succeeded.
+- The iOS command targeting the booted iPhone 17 Pro simulator
+  `8D41C6D2-4E49-4831-A1B8-D81D5B962FF0`, using
+  `/tmp/TildoneStage5iOSTests` and `-only-testing:TildoneiOSTests test`:
+  passed the scaffold unit test.
+
+The Mac UI test runner was not launched. It launches the shipping Mac bundle
+identity and the current UI tests do not inject a safe legacy-store URL; running
+it could open or mutate the user's production default store. Building the UI
+test bundle occurred as part of unit-test preparation, but execution remains a
+Stage 6/app-test harness prerequisite. This is a deliberate safety limitation,
+not a passing UI result.
+
+## Static audits
+
+- Persistence imports Foundation, SwiftData, TildoneDomain, and Darwin only.
+  Darwin is used solely for the cross-process workspace lock. There are no
+  SwiftUI, AppKit, UIKit, ServiceManagement, application-target, TildoneSync,
+  CloudKit, `CKSyncEngine`, URLSession, or Network imports/references.
+- Both production `ModelConfiguration` construction sites explicitly use
+  `cloudKitDatabase: .none`; no automatic/private/public CloudKit database
+  configuration exists in the package.
+- `git diff --exit-code` confirms no changes to `Todo.swift`, `TodoList.swift`,
+  `Tildone.entitlements`, or `project.pbxproj`.
+- Fixture hashes remained identical after all tests.
+- `git diff --check` passes and no shared-store database was produced outside
+  test resources or isolated `/tmp` locations.
+
+## Remaining risks and Stage 6 readiness
+
+- The file lock is advisory and is tested for same-process/same-disk exclusion;
+  a dedicated subprocess crash/lock-stealing longevity test would further
+  strengthen cross-process evidence.
+- SwiftData emits harmless Core Data registration diagnostics during many
+  short-lived in-memory test containers on this toolchain.
+- V1 is frozen by the checked-in fixture, but there is no V2 migration yet.
+- The released legacy fixture proves schema provenance and gives Stage 6 a safe
+  source, but import mapping, verification markers, interruption recovery,
+  idempotency, rollback retention, and cutover are intentionally not built.
+- Mac UI tests need dependency-injected store locations before they can be run
+  without risking production legacy data.
+- CloudKit/sync transport, accounts, networking, app integration, and
+  entitlements remain entirely unimplemented.
+
+Stage 6 importer development is safe to begin against copied fixtures and
+temporary destinations. Stage 6 cutover is not yet safe to ship: it must first
+implement side-by-side read-only legacy access, verified/idempotent mapping,
+interruption recovery, production-path injection, rollback evidence, and a
+safe Mac UI/integration test harness. No Stage 6 behavior was implemented in
+this pass.

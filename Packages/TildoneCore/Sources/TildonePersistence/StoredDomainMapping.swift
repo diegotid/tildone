@@ -9,8 +9,12 @@ import TildoneDomain
 
 enum StoredDomainMapping {
     static func note(from stored: StoredNote) throws -> Note {
-        guard let id = NoteID(string: stored.stableID) else {
+        guard let id = NoteID(string: stored.stableID), stored.stableID == id.stringValue else {
             throw malformed(.note, "invalid", "stableID")
+        }
+        guard stored.createdAt.timeIntervalSinceReferenceDate.isFinite,
+              stored.lastMeaningfulEditAt.timeIntervalSinceReferenceDate.isFinite else {
+            throw malformed(.note, id.stringValue, "date")
         }
         try validateSchema(stored.recordSchemaVersion, kind: .note)
         guard let lifecycle = LifecycleState(rawValue: stored.lifecycleRawValue) else {
@@ -36,16 +40,28 @@ enum StoredDomainMapping {
                 field: "lifecycleVersion"
             ),
             lastMeaningfulEditAt: stored.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: try stamp(
+                counter: stored.lastMeaningfulEditVersionCounter,
+                replica: stored.lastMeaningfulEditVersionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "lastMeaningfulEditVersion"
+            ),
             schemaVersion: stored.recordSchemaVersion
         )
     }
 
     static func task(from stored: StoredTask, expectedNoteID: NoteID? = nil) throws -> Task {
-        guard let id = TaskID(string: stored.stableID) else {
+        guard let id = TaskID(string: stored.stableID), stored.stableID == id.stringValue else {
             throw malformed(.task, "invalid", "stableID")
         }
-        guard let noteID = NoteID(string: stored.noteStableID) else {
+        guard let noteID = NoteID(string: stored.noteStableID),
+              stored.noteStableID == noteID.stringValue else {
             throw malformed(.task, id.stringValue, "ownership")
+        }
+        guard stored.createdAt.timeIntervalSinceReferenceDate.isFinite,
+              stored.completedAt?.timeIntervalSinceReferenceDate.isFinite != false else {
+            throw malformed(.task, id.stringValue, "date")
         }
         if let expectedNoteID, expectedNoteID != noteID {
             throw PersistenceError.ownershipMismatch(
@@ -114,6 +130,7 @@ enum StoredDomainMapping {
     static func storedNote(from note: Note) throws -> StoredNote {
         let title = try parts(note.titleVersion)
         let lifecycle = try parts(note.lifecycleVersion)
+        let meaningfulEdit = try parts(note.lastMeaningfulEditVersion)
         return StoredNote(
             stableID: note.id.stringValue,
             createdAt: note.createdAt,
@@ -124,6 +141,8 @@ enum StoredDomainMapping {
             lifecycleVersionCounter: lifecycle.counter,
             lifecycleVersionReplicaID: lifecycle.replica,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersionCounter: meaningfulEdit.counter,
+            lastMeaningfulEditVersionReplicaID: meaningfulEdit.replica,
             recordSchemaVersion: note.schemaVersion
         )
     }
@@ -131,6 +150,7 @@ enum StoredDomainMapping {
     static func update(_ stored: StoredNote, from note: Note) throws {
         let title = try parts(note.titleVersion)
         let lifecycle = try parts(note.lifecycleVersion)
+        let meaningfulEdit = try parts(note.lastMeaningfulEditVersion)
         stored.title = note.title
         stored.titleVersionCounter = title.counter
         stored.titleVersionReplicaID = title.replica
@@ -138,6 +158,8 @@ enum StoredDomainMapping {
         stored.lifecycleVersionCounter = lifecycle.counter
         stored.lifecycleVersionReplicaID = lifecycle.replica
         stored.lastMeaningfulEditAt = note.lastMeaningfulEditAt
+        stored.lastMeaningfulEditVersionCounter = meaningfulEdit.counter
+        stored.lastMeaningfulEditVersionReplicaID = meaningfulEdit.replica
         stored.recordSchemaVersion = note.schemaVersion
     }
 
@@ -211,7 +233,8 @@ enum StoredDomainMapping {
         stableID: String,
         field: String
     ) throws -> VersionStamp {
-        guard counter >= 0, let replicaID = ReplicaID(string: replica) else {
+        guard counter >= 0, let replicaID = ReplicaID(string: replica),
+              replica == replicaID.stringValue else {
             throw malformed(kind, stableID, field)
         }
         return VersionStamp(logicalCounter: UInt64(counter), replicaID: replicaID)

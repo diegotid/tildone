@@ -32,6 +32,8 @@ final class StoredNote {
     var lifecycleVersionCounter: Int64
     var lifecycleVersionReplicaID: String
     var lastMeaningfulEditAt: Date
+    var lastMeaningfulEditVersionCounter: Int64
+    var lastMeaningfulEditVersionReplicaID: String
     var recordSchemaVersion: Int
 
     init(
@@ -44,6 +46,8 @@ final class StoredNote {
         lifecycleVersionCounter: Int64,
         lifecycleVersionReplicaID: String,
         lastMeaningfulEditAt: Date,
+        lastMeaningfulEditVersionCounter: Int64,
+        lastMeaningfulEditVersionReplicaID: String,
         recordSchemaVersion: Int
     ) {
         self.stableID = stableID
@@ -55,6 +59,8 @@ final class StoredNote {
         self.lifecycleVersionCounter = lifecycleVersionCounter
         self.lifecycleVersionReplicaID = lifecycleVersionReplicaID
         self.lastMeaningfulEditAt = lastMeaningfulEditAt
+        self.lastMeaningfulEditVersionCounter = lastMeaningfulEditVersionCounter
+        self.lastMeaningfulEditVersionReplicaID = lastMeaningfulEditVersionReplicaID
         self.recordSchemaVersion = recordSchemaVersion
     }
 }

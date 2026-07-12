@@ -92,13 +92,24 @@ final class DomainMergeTests: XCTestCase {
     func testNoteMergeUsesLogicalVersionsNotDates() throws {
         var logicallyLater = Fixtures.note(lastMeaningfulEditAt: Date(timeIntervalSince1970: 10))
         var clockLater = Fixtures.note(lastMeaningfulEditAt: Date(timeIntervalSince1970: 1_000))
-        try logicallyLater.rename(to: "logical winner", version: Fixtures.stamp(4), editedAt: Date(timeIntervalSince1970: 10))
-        try clockLater.rename(to: "newer wall clock", version: Fixtures.stamp(3), editedAt: Date(timeIntervalSince1970: 1_000))
+        try logicallyLater.rename(
+            to: "logical winner",
+            version: Fixtures.stamp(4),
+            editedAt: Date(timeIntervalSince1970: 10),
+            meaningfulEditVersion: Fixtures.stamp(6)
+        )
+        try clockLater.rename(
+            to: "newer wall clock",
+            version: Fixtures.stamp(3),
+            editedAt: Date(timeIntervalSince1970: 1_000),
+            meaningfulEditVersion: Fixtures.stamp(5)
+        )
 
         let merged = try logicallyLater.merged(with: clockLater)
 
         XCTAssertEqual(merged.title, "logical winner")
-        XCTAssertEqual(merged.lastMeaningfulEditAt, Date(timeIntervalSince1970: 1_000))
+        XCTAssertEqual(merged.lastMeaningfulEditAt, Date(timeIntervalSince1970: 10))
+        XCTAssertEqual(merged.lastMeaningfulEditVersion, Fixtures.stamp(6))
     }
 
     func testInvalidImmutableOrSameVersionDivergenceIsRejectedSymmetrically() throws {

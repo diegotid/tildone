@@ -26,7 +26,8 @@ final class TildonePersistenceTests: XCTestCase {
             titleVersion: titleStamp,
             lifecycle: .deleted,
             lifecycleVersion: lifecycleStamp,
-            lastMeaningfulEditAt: createdAt.addingTimeInterval(10)
+            lastMeaningfulEditAt: createdAt.addingTimeInterval(10),
+            lastMeaningfulEditVersion: stamp(4)
         )
         XCTAssertEqual(try StoredDomainMapping.note(from: StoredDomainMapping.storedNote(from: note)), note)
 
@@ -47,12 +48,21 @@ final class TildonePersistenceTests: XCTestCase {
 
         let nilTitle = Note(
             id: NoteID(), createdAt: createdAt, title: nil,
-            titleVersion: stamp(8), lifecycleVersion: stamp(8), lastMeaningfulEditAt: createdAt
+            titleVersion: stamp(8), lifecycleVersion: stamp(8), lastMeaningfulEditAt: createdAt,
+            lastMeaningfulEditVersion: stamp(8)
         )
         XCTAssertNil(try StoredDomainMapping.note(from: StoredDomainMapping.storedNote(from: nilTitle)).title)
     }
 
     func testMalformedStoredRepresentationsProduceTypedErrors() throws {
+        let uppercaseNote = try StoredDomainMapping.storedNote(from: makeNote())
+        uppercaseNote.stableID = "ABCDEF00-0000-0000-0000-000000000001"
+        assertMalformed(try StoredDomainMapping.note(from: uppercaseNote), field: "stableID")
+
+        let uppercaseReplica = try StoredDomainMapping.storedNote(from: makeNote())
+        uppercaseReplica.titleVersionReplicaID = "ABCDEF00-0000-0000-0000-000000000002"
+        assertMalformed(try StoredDomainMapping.note(from: uppercaseReplica), field: "titleVersion")
+
         let validTask = try StoredDomainMapping.storedTask(from: makeTask())
         validTask.orderTokenRawValue = "BAD"
         assertMalformed(try StoredDomainMapping.task(from: validTask), field: "orderToken")
@@ -65,6 +75,10 @@ final class TildonePersistenceTests: XCTestCase {
         let owner = try StoredDomainMapping.storedTask(from: makeTask())
         owner.noteStableID = "not-a-uuid"
         assertMalformed(try StoredDomainMapping.task(from: owner), field: "ownership")
+
+        let uppercaseTask = try StoredDomainMapping.storedTask(from: makeTask())
+        uppercaseTask.stableID = "ABCDEF00-0000-0000-0000-000000000003"
+        assertMalformed(try StoredDomainMapping.task(from: uppercaseTask), field: "stableID")
 
         let otherOwner = try StoredDomainMapping.storedTask(from: makeTask())
         XCTAssertThrowsError(try StoredDomainMapping.task(from: otherOwner, expectedNoteID: NoteID())) {
@@ -187,22 +201,35 @@ final class TildonePersistenceTests: XCTestCase {
         let first = try await repository.pendingMutations().first!
         _ = try await repository.renameNote(id: noteID, to: "second secret", editedAt: createdAt)
 
-        let active = try await repository.pendingMutations()
-        let all = try await repository.pendingMutations(includeSuperseded: true)
+        var active = try await repository.pendingMutations()
+        var all = try await repository.pendingMutations(includeSuperseded: true)
         XCTAssertEqual(active.count, 1)
-        XCTAssertEqual(all.count, 2)
-        XCTAssertEqual(all.first(where: { $0.id == first.id })?.supersededBy, active[0].id)
+        XCTAssertEqual(all.count, 1, "Never-dispatched work should be coalesced away")
+        XCTAssertNotEqual(active[0].id, first.id)
         XCTAssertGreaterThan(active[0].sequence, first.sequence)
 
         try await repository.recordMutationAttempt(id: active[0].id, at: createdAt)
-        let retried = try await repository.pendingMutations()[0]
-        XCTAssertEqual(retried.attemptCount, 1)
-        XCTAssertEqual(retried.lastAttemptAt, createdAt)
+        let inFlightID = active[0].id
+        _ = try await repository.renameNote(id: noteID, to: "third secret", editedAt: createdAt)
+        active = try await repository.pendingMutations()
+        all = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertEqual(active.count, 1)
+        XCTAssertEqual(all.count, 2, "Potentially in-flight work must be retained")
+        XCTAssertEqual(all.first(where: { $0.id == inFlightID })?.supersededBy, active[0].id)
+        XCTAssertEqual(all.first(where: { $0.id == inFlightID })?.attemptCount, 1)
+        XCTAssertEqual(all.first(where: { $0.id == inFlightID })?.lastAttemptAt, createdAt)
         let encoded = String(decoding: try JSONEncoder().encode(all), as: UTF8.self)
         XCTAssertFalse(encoded.contains(secret))
         XCTAssertFalse(encoded.contains("second secret"))
+        XCTAssertFalse(encoded.contains("third secret"))
 
-        try await repository.acknowledgeMutations(ids: [first.id, active[0].id])
+        try await repository.acknowledgeMutations(ids: [inFlightID])
+        var remainingIDs = try await repository.pendingMutations().map(\.id)
+        XCTAssertEqual(remainingIDs, [active[0].id])
+        try await repository.acknowledgeMutations(ids: [inFlightID])
+        remainingIDs = try await repository.pendingMutations().map(\.id)
+        XCTAssertEqual(remainingIDs, [active[0].id])
+        try await repository.acknowledgeMutations(ids: [active[0].id])
         let acknowledged = try await repository.pendingMutations(includeSuperseded: true)
         XCTAssertTrue(acknowledged.isEmpty)
     }
@@ -239,6 +266,113 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(metadata.replicaID, replica)
         XCTAssertEqual(metadata.sharedSchemaVersion, 1)
         XCTAssertEqual(metadata.futureSyncEngineState, Data([0, 1, 255]))
+    }
+
+    func testSameDiskWorkspaceHasOneLifetimeOwnerAndReopensAfterRelease() async throws {
+        let base = try temporaryDirectory()
+        let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: base, workspace: .localOnly)
+        var owner: TildoneRepository? = try TildoneRepository(descriptor: descriptor, replicaID: replica)
+
+        let failures = await withTaskGroup(of: Bool.self, returning: [Bool].self) { group in
+            for _ in 0..<12 {
+                group.addTask {
+                    do {
+                        _ = try TildoneRepository(descriptor: descriptor, replicaID: ReplicaID())
+                        return false
+                    } catch {
+                        return error as? PersistenceError == .workspaceInUse
+                    }
+                }
+            }
+            var results: [Bool] = []
+            for await result in group { results.append(result) }
+            return results
+        }
+        XCTAssertTrue(failures.allSatisfy { $0 })
+
+        _ = try await owner?.createNote(id: noteID, createdAt: createdAt, title: "owned")
+        owner = nil
+        let reopened = try TildoneRepository(descriptor: descriptor, replicaID: ReplicaID())
+        let reopenedNote = try await reopened.note(id: noteID)
+        XCTAssertEqual(reopenedNote.title, "owned")
+    }
+
+    func testCounterIsMonotonicAcrossReopen() async throws {
+        let base = try temporaryDirectory()
+        let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: base, workspace: .localOnly)
+        let before: UInt64
+        do {
+            let repository = try TildoneRepository(descriptor: descriptor, replicaID: replica)
+            _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+            _ = try await repository.addTask(
+                id: taskID, to: noteID, createdAt: createdAt, text: "task",
+                orderToken: try OrderToken(rawValue: "h")
+            )
+            before = try await repository.workspaceSnapshot().logicalCounter
+        }
+        let reopened = try TildoneRepository(descriptor: descriptor, replicaID: ReplicaID())
+        let edited = try await reopened.editTask(id: taskID, text: "edited")
+        let note = try await reopened.note(id: noteID)
+        let after = try await reopened.workspaceSnapshot().logicalCounter
+        XCTAssertGreaterThan(edited.textVersion.logicalCounter, before)
+        XCTAssertGreaterThan(note.lastMeaningfulEditVersion.logicalCounter, edited.textVersion.logicalCounter)
+        XCTAssertEqual(after, note.lastMeaningfulEditVersion.logicalCounter)
+        let reopenedWorkspace = try await reopened.workspaceSnapshot()
+        XCTAssertEqual(reopenedWorkspace.replicaID, replica)
+    }
+
+    func testTaskMutationAtomicallySchedulesTaskAndMeaningfullyEditedNote() async throws {
+        let repository = try makeRepository(now: createdAt.addingTimeInterval(40))
+        let original = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        try await repository.acknowledgeMutations(ids: Set(try await repository.pendingMutations().map(\.id)))
+
+        _ = try await repository.addTask(
+            id: taskID, to: noteID, createdAt: createdAt.addingTimeInterval(10), text: "task",
+            orderToken: try OrderToken(rawValue: "h")
+        )
+        let note = try await repository.note(id: noteID)
+        let pending = try await repository.pendingMutations()
+        XCTAssertGreaterThan(note.lastMeaningfulEditVersion, original.lastMeaningfulEditVersion)
+        XCTAssertEqual(note.titleVersion, original.titleVersion)
+        XCTAssertEqual(note.lifecycleVersion, original.lifecycleVersion)
+        XCTAssertEqual(Set(pending.map { $0.targetKind.rawValue + ":" + $0.targetStableID }), [
+            "note:\(noteID.stringValue)", "task:\(taskID.stringValue)"
+        ])
+    }
+
+    func testFailedUpdateAndDeleteTransactionsRollBackContentCounterAndOutbox() async throws {
+        let repository = try makeRepository()
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: "before")
+        _ = try await repository.addTask(
+            id: taskID, to: noteID, createdAt: createdAt, text: "before",
+            orderToken: try OrderToken(rawValue: "h")
+        )
+        try await repository.acknowledgeMutations(ids: Set(try await repository.pendingMutations().map(\.id)))
+        let counter = try await repository.workspaceSnapshot().logicalCounter
+
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            _ = try await repository.editTask(id: self.taskID, text: "must not persist")
+        }
+        var persistedTask = try await repository.task(id: taskID)
+        var persistedWorkspace = try await repository.workspaceSnapshot()
+        var persistedPending = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertEqual(persistedTask.text, "before")
+        XCTAssertEqual(persistedWorkspace.logicalCounter, counter)
+        XCTAssertTrue(persistedPending.isEmpty)
+
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            try await repository.deleteNote(id: self.noteID)
+        }
+        let persistedNote = try await repository.note(id: noteID)
+        persistedTask = try await repository.task(id: taskID)
+        persistedWorkspace = try await repository.workspaceSnapshot()
+        persistedPending = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertEqual(persistedNote.lifecycle, .active)
+        XCTAssertEqual(persistedTask.lifecycle, .active)
+        XCTAssertEqual(persistedWorkspace.logicalCounter, counter)
+        XCTAssertTrue(persistedPending.isEmpty)
     }
 
     func testWorkspaceIsolationRepeatableLocationsAndLegacyPathNoncollision() async throws {
@@ -312,6 +446,193 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(quarantined[0].category, .invalidOrderToken)
         let migrationQuarantine = try await migrationRepository.quarantinedRecords()
         XCTAssertTrue(migrationQuarantine.isEmpty)
+
+        await XCTAssertThrowsPersistenceError(.invalidQuarantineMetadata) {
+            try await previewRepository.quarantine(
+                recordKind: .task,
+                opaqueRecordID: "private task text",
+                category: .malformedIdentifier,
+                recordSchemaVersion: 1,
+                at: self.createdAt
+            )
+        }
+    }
+
+    func testDuplicateWorkspaceMetadataAndDuplicateStoredIdentitiesAreRejected() async throws {
+        let duplicateMetadataBase = try temporaryDirectory()
+        let duplicateMetadataDescriptor = PersistenceStoreDescriptor.persistent(
+            baseDirectory: duplicateMetadataBase,
+            workspace: .localOnly
+        )
+        try withRawStore(duplicateMetadataDescriptor) { context in
+            context.insert(WorkspaceMetadata(
+                workspaceKindRawValue: "local-only", opaqueWorkspaceID: nil,
+                replicaID: replica.stringValue
+            ))
+            context.insert(WorkspaceMetadata(
+                workspaceKindRawValue: "local-only", opaqueWorkspaceID: nil,
+                replicaID: ReplicaID().stringValue
+            ))
+        }
+        XCTAssertThrowsError(try TildoneRepository(
+            descriptor: duplicateMetadataDescriptor,
+            replicaID: replica
+        )) {
+            XCTAssertEqual($0 as? PersistenceError, .workspaceMismatch)
+        }
+
+        let duplicateIdentityBase = try temporaryDirectory()
+        let duplicateIdentityDescriptor = PersistenceStoreDescriptor.persistent(
+            baseDirectory: duplicateIdentityBase,
+            workspace: .localOnly
+        )
+        try withRawStore(duplicateIdentityDescriptor) { context in
+            context.insert(WorkspaceMetadata(
+                workspaceKindRawValue: "local-only", opaqueWorkspaceID: nil,
+                replicaID: replica.stringValue, logicalCounter: 1
+            ))
+            context.insert(try StoredDomainMapping.storedNote(from: makeNote()))
+            context.insert(try StoredDomainMapping.storedNote(from: makeNote()))
+        }
+        let repository = try TildoneRepository(descriptor: duplicateIdentityDescriptor, replicaID: replica)
+        await XCTAssertThrowsPersistenceError(.duplicateID(.note, noteID.stringValue)) {
+            _ = try await repository.visibleNotes()
+        }
+    }
+
+    func testMalformedWorkspaceAndOutboxRowsAreRejectedWithoutEchoingPayloads() async throws {
+        let workspaceBase = try temporaryDirectory()
+        let workspaceDescriptor = PersistenceStoreDescriptor.persistent(
+            baseDirectory: workspaceBase,
+            workspace: .localOnly
+        )
+        try withRawStore(workspaceDescriptor) { context in
+            context.insert(WorkspaceMetadata(
+                workspaceKindRawValue: "local-only", opaqueWorkspaceID: nil,
+                replicaID: "ABCDEF00-0000-0000-0000-000000000004"
+            ))
+        }
+        XCTAssertThrowsError(try TildoneRepository(descriptor: workspaceDescriptor, replicaID: replica)) {
+            XCTAssertEqual($0 as? PersistenceError, .workspaceMismatch)
+        }
+
+        let outboxBase = try temporaryDirectory()
+        let outboxDescriptor = PersistenceStoreDescriptor.persistent(
+            baseDirectory: outboxBase,
+            workspace: .localOnly
+        )
+        try withRawStore(outboxDescriptor) { context in
+            context.insert(WorkspaceMetadata(
+                workspaceKindRawValue: "local-only", opaqueWorkspaceID: nil,
+                replicaID: replica.stringValue, logicalCounter: 3
+            ))
+            context.insert(try StoredDomainMapping.storedNote(from: makeNote()))
+            context.insert(PendingMutation(
+                mutationID: UUID().uuidString.lowercased(),
+                targetKindRawValue: PersistedEntityKind.task.rawValue,
+                targetStableID: noteID.stringValue,
+                sequence: 3,
+                createdAt: createdAt
+            ))
+        }
+        do {
+            _ = try TildoneRepository(descriptor: outboxDescriptor, replicaID: replica)
+            XCTFail("Expected malformed outbox metadata")
+        } catch {
+            guard case let .malformedRepresentation(_, safeID, field) = error as? PersistenceError else {
+                return XCTFail("Expected typed malformed representation, got \(error)")
+            }
+            XCTAssertEqual(safeID, "invalid")
+            XCTAssertEqual(field, "pendingMutationTarget")
+            XCTAssertFalse(String(describing: error).contains("private"))
+        }
+    }
+
+    func testMalformedSupersessionLinkIsRejected() async throws {
+        let base = try temporaryDirectory()
+        let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: base, workspace: .localOnly)
+        let firstID = UUID().uuidString.lowercased()
+        try withRawStore(descriptor) { context in
+            context.insert(WorkspaceMetadata(
+                workspaceKindRawValue: "local-only", opaqueWorkspaceID: nil,
+                replicaID: replica.stringValue, logicalCounter: 2
+            ))
+            context.insert(try StoredDomainMapping.storedNote(from: makeNote()))
+            context.insert(PendingMutation(
+                mutationID: firstID,
+                targetKindRawValue: PersistedEntityKind.note.rawValue,
+                targetStableID: noteID.stringValue,
+                sequence: 1,
+                createdAt: createdAt,
+                attemptCount: 1,
+                lastAttemptAt: createdAt,
+                supersededByMutationID: UUID().uuidString.lowercased()
+            ))
+        }
+        do {
+            _ = try TildoneRepository(descriptor: descriptor, replicaID: replica)
+            XCTFail("Expected malformed supersession")
+        } catch {
+            guard case let .malformedRepresentation(_, safeID, field) = error as? PersistenceError else {
+                return XCTFail("Expected typed malformed representation, got \(error)")
+            }
+            XCTAssertEqual(safeID, "invalid")
+            XCTAssertEqual(field, "supersession")
+        }
+    }
+
+    func testOutboxRestartRetryAndStaleAcknowledgementPreserveNewerWork() async throws {
+        let base = try temporaryDirectory()
+        let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: base, workspace: .localOnly)
+        let oldID: UUID
+        let newID: UUID
+        do {
+            let repository = try TildoneRepository(descriptor: descriptor, replicaID: replica)
+            _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: "first")
+            oldID = try await repository.pendingMutations()[0].id
+            try await repository.recordMutationAttempt(id: oldID, at: createdAt)
+            _ = try await repository.renameNote(id: noteID, to: "newer", editedAt: createdAt)
+            newID = try await repository.pendingMutations()[0].id
+        }
+
+        do {
+            let repository = try TildoneRepository(descriptor: descriptor, replicaID: ReplicaID())
+            let all = try await repository.pendingMutations(includeSuperseded: true)
+            XCTAssertEqual(all.count, 2)
+            XCTAssertEqual(all.first(where: { $0.id == oldID })?.supersededBy, newID)
+            try await repository.acknowledgeMutations(ids: [oldID])
+            let activeIDs = try await repository.pendingMutations().map(\.id)
+            XCTAssertEqual(activeIDs, [newID])
+            try await repository.recordMutationAttempt(id: newID, at: createdAt.addingTimeInterval(1))
+        }
+
+        let reopened = try TildoneRepository(descriptor: descriptor, replicaID: ReplicaID())
+        let retried = try await reopened.pendingMutations()[0]
+        XCTAssertEqual(retried.id, newID)
+        XCTAssertEqual(retried.attemptCount, 1)
+        XCTAssertEqual(retried.lastAttemptAt, createdAt.addingTimeInterval(1))
+        try await reopened.acknowledgeMutations(ids: [oldID])
+        let activeIDs = try await reopened.pendingMutations().map(\.id)
+        XCTAssertEqual(activeIDs, [newID])
+        try await reopened.acknowledgeMutations(ids: [newID])
+        let empty = try await reopened.pendingMutations(includeSuperseded: true)
+        XCTAssertTrue(empty.isEmpty)
+    }
+
+    func testAcknowledgingNewerWorkReconcilesSupersededAncestors() async throws {
+        let repository = try makeRepository()
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: "first")
+        let oldID = try await repository.pendingMutations()[0].id
+        try await repository.recordMutationAttempt(id: oldID, at: createdAt)
+        _ = try await repository.renameNote(id: noteID, to: "newer", editedAt: createdAt)
+        let newID = try await repository.pendingMutations()[0].id
+
+        try await repository.acknowledgeMutations(ids: [newID])
+        let reconciled = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertTrue(reconciled.isEmpty)
+        try await repository.acknowledgeMutations(ids: [oldID])
+        let staleAcknowledgement = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertTrue(staleAcknowledgement.isEmpty)
     }
 
     func testConcurrentDuplicateIdentityHasOneWinnerAndCountersAreMonotonic() async throws {
@@ -341,9 +662,11 @@ final class TildonePersistenceTests: XCTestCase {
         let firstResult = try await first
         let secondResult = try await second
         let versions = [firstResult.titleVersion, secondResult.titleVersion].sorted()
-        XCTAssertEqual(versions[1].logicalCounter, versions[0].logicalCounter + 1)
+        XCTAssertEqual(versions[1].logicalCounter, versions[0].logicalCounter + 2)
         let workspace = try await repository.workspaceSnapshot()
-        XCTAssertEqual(workspace.logicalCounter, versions[1].logicalCounter)
+        let finalNote = try await repository.note(id: noteID)
+        XCTAssertEqual(workspace.logicalCounter, finalNote.lastMeaningfulEditVersion.logicalCounter)
+        XCTAssertEqual(workspace.logicalCounter, versions[1].logicalCounter + 1)
     }
 
     func testSchemaAndMigrationPlanAreDeliberatelyWired() {
@@ -351,6 +674,59 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaV1.models.count, 5)
         XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 1)
         XCTAssertTrue(TildoneSchemaMigrationPlan.stages.isEmpty)
+    }
+
+    func testActualV1OnDiskFixtureOpensThroughMigrationPlan() async throws {
+        let resource = try XCTUnwrap(Bundle.module.url(
+            forResource: "TildoneSharedStoreV1",
+            withExtension: nil,
+            subdirectory: "Fixtures"
+        ))
+        let temporaryRoot = try temporaryDirectory()
+        let fixtureBase = temporaryRoot.appendingPathComponent("copied-v1", isDirectory: true)
+        try FileManager.default.copyItem(at: resource, to: fixtureBase)
+
+        let repository = try TildoneRepository(
+            descriptor: .persistent(baseDirectory: fixtureBase, workspace: .localOnly),
+            replicaID: ReplicaID()
+        )
+        let fixtureNoteID = NoteID(UUID(uuidString: "abcdef00-0000-0000-0000-000000000002")!)
+        let fixtureTaskID = TaskID(UUID(uuidString: "abcdef00-0000-0000-0000-000000000003")!)
+        let note = try await repository.note(id: fixtureNoteID)
+        let task = try await repository.task(id: fixtureTaskID)
+        let workspace = try await repository.workspaceSnapshot()
+        let outbox = try await repository.pendingMutations(includeSuperseded: true)
+        let quarantine = try await repository.quarantinedRecords()
+
+        XCTAssertEqual(note.title, "V1 fixture 📝")
+        XCTAssertEqual(task.text, "Preserved edited task café 漢字")
+        XCTAssertEqual(workspace.replicaID.stringValue, "abcdef00-0000-0000-0000-000000000001")
+        XCTAssertEqual(workspace.logicalCounter, 5)
+        XCTAssertEqual(workspace.futureSyncEngineState, Data([0x01, 0x02, 0xff]))
+        XCTAssertEqual(outbox.count, 3)
+        XCTAssertEqual(outbox.filter { $0.supersededBy != nil }.count, 1)
+        XCTAssertEqual(quarantine.count, 1)
+        XCTAssertEqual(quarantine[0].opaqueRecordID, "task-abcdef00-0000-0000-0000-000000000004")
+    }
+
+    func testReleased160LegacyFixtureRemainsByteForByteUntouched() async throws {
+        let legacyURL = try XCTUnwrap(Bundle.module.url(
+            forResource: "default",
+            withExtension: "store",
+            subdirectory: "Fixtures/TildoneLegacy160"
+        ))
+        let before = try Data(contentsOf: legacyURL)
+        XCTAssertEqual(before.count, 77_824)
+
+        let base = try temporaryDirectory()
+        let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: base, workspace: .localOnly)
+        let sharedURL = try XCTUnwrap(TildoneRepository.storeURL(for: descriptor))
+        XCTAssertNotEqual(sharedURL.standardizedFileURL, legacyURL.standardizedFileURL)
+        let repository = try TildoneRepository(descriptor: descriptor, replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: "separate shared store")
+
+        let after = try Data(contentsOf: legacyURL)
+        XCTAssertEqual(after, before)
     }
 
     // MARK: Helpers
@@ -366,7 +742,8 @@ final class TildonePersistenceTests: XCTestCase {
     private func makeNote() -> Note {
         Note(
             id: noteID, createdAt: createdAt, title: "title",
-            titleVersion: stamp(1), lifecycleVersion: stamp(1), lastMeaningfulEditAt: createdAt
+            titleVersion: stamp(1), lifecycleVersion: stamp(1), lastMeaningfulEditAt: createdAt,
+            lastMeaningfulEditVersion: stamp(1)
         )
     }
 
@@ -389,6 +766,34 @@ final class TildonePersistenceTests: XCTestCase {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
         return url
+    }
+
+    private func withRawStore(
+        _ descriptor: PersistenceStoreDescriptor,
+        body: (ModelContext) throws -> Void
+    ) throws {
+        let url = try XCTUnwrap(TildoneRepository.storeURL(for: descriptor))
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        let schema = Schema(versionedSchema: TildoneSchemaV1.self)
+        let configuration = ModelConfiguration(
+            "RawTestStore-\(UUID().uuidString)",
+            schema: schema,
+            url: url,
+            allowsSave: true,
+            cloudKitDatabase: .none
+        )
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: TildoneSchemaMigrationPlan.self,
+            configurations: [configuration]
+        )
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        try body(context)
+        try context.save()
     }
 
     private func assertMalformed<T>(_ expression: @autoclosure () throws -> T, field: String) {

@@ -16,14 +16,17 @@ public enum PersistenceError: Error, Equatable, Sendable {
     case openFailure
     case saveFailure
     case missing(PersistedEntityKind, String)
+    case missingPendingMutation(String)
     case duplicateID(PersistedEntityKind, String)
     case ownershipMismatch(taskID: String, expectedNoteID: String)
     case malformedRepresentation(PersistedEntityKind, String, field: String)
     case domainInvariant
     case unsupportedRecordSchema(PersistedEntityKind, Int)
     case workspaceMismatch
+    case workspaceInUse
     case invalidWorkspace
     case invalidStoreLocation
+    case invalidQuarantineMetadata
     case atomicMutationFailure
     case counterOverflow
 }
