@@ -1,3 +1,9 @@
+//
+//  TildoneRepository.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 7/12/26.
+//
 import Foundation
 import SwiftData
 import TildoneDomain
@@ -60,8 +66,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let rootName: String
         switch descriptor.kind {
         case .persistent: rootName = "TildoneSharedStore-v1"
-        case .preview: rootName = "TildoneSharedPreview-(descriptor.identifier.uuidString.lowercased())"
-        case .temporaryMigration: rootName = "TildoneSharedMigration-(descriptor.identifier.uuidString.lowercased())"
+        case .preview: rootName = "TildoneSharedPreview-\(descriptor.identifier.uuidString.lowercased())"
+        case .temporaryMigration: rootName = "TildoneSharedMigration-\(descriptor.identifier.uuidString.lowercased())"
         case .inMemory: return nil
         }
         var directory = base.appendingPathComponent(rootName, isDirectory: true)
@@ -82,7 +88,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let configuration: ModelConfiguration
         if descriptor.kind == .inMemory {
             configuration = ModelConfiguration(
-                "TildoneSharedMemory-(descriptor.identifier.uuidString.lowercased())",
+                "TildoneSharedMemory-\(descriptor.identifier.uuidString.lowercased())",
                 schema: schema,
                 isStoredInMemoryOnly: true,
                 allowsSave: true,
@@ -102,7 +108,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 throw PersistenceError.invalidStoreLocation
             }
             configuration = ModelConfiguration(
-                "TildoneSharedDisk-(descriptor.identifier.uuidString.lowercased())",
+                "TildoneSharedDisk-\(descriptor.identifier.uuidString.lowercased())",
                 schema: schema,
                 url: url,
                 allowsSave: true,
@@ -307,7 +313,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     public func restoreTask(id: TaskID) throws -> Task {
         let existing = try task(id: id, includingDeleted: true)
         guard existing.lifecycle == .deleted else { return existing }
-        try mutateTask(id: id, allowDeleted: true) { task, stamp in
+        return try mutateTask(id: id, allowDeleted: true) { task, stamp in
             try task.restore(version: stamp)
         }
     }
@@ -395,6 +401,44 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let context = mutationContext()
         try workspaceMetadata(in: context).futureSyncEngineState = state
         try save(context)
+    }
+
+    public func quarantine(
+        recordKind: QuarantinedRecordKind,
+        opaqueRecordID: String,
+        category: QuarantineCategory,
+        recordSchemaVersion: Int?,
+        at date: Date
+    ) throws {
+        let context = mutationContext()
+        context.insert(QuarantinedRecord(
+            recordKind: recordKind.rawValue,
+            opaqueRecordID: opaqueRecordID,
+            errorCategory: category.rawValue,
+            recordSchemaVersion: recordSchemaVersion,
+            quarantinedAt: date
+        ))
+        try save(context)
+    }
+
+    public func quarantinedRecords() throws -> [QuarantinedRecordSnapshot] {
+        try readContext().fetch(FetchDescriptor<QuarantinedRecord>()).map { row in
+            guard let id = UUID(uuidString: row.quarantineID),
+                  let kind = QuarantinedRecordKind(rawValue: row.recordKind),
+                  let category = QuarantineCategory(rawValue: row.errorCategory) else {
+                throw PersistenceError.malformedRepresentation(
+                    .note, "quarantine", field: "quarantineMetadata"
+                )
+            }
+            return QuarantinedRecordSnapshot(
+                id: id,
+                recordKind: kind,
+                opaqueRecordID: row.opaqueRecordID,
+                category: category,
+                recordSchemaVersion: row.recordSchemaVersion,
+                quarantinedAt: row.quarantinedAt
+            )
+        }.sorted { $0.quarantinedAt < $1.quarantinedAt }
     }
 
     // MARK: Internal transaction machinery

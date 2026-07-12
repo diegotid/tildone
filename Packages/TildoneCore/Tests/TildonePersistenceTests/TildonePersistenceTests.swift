@@ -1,3 +1,9 @@
+//
+//  TildonePersistenceTests.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 7/12/26.
+//
 import Foundation
 import SwiftData
 import XCTest
@@ -59,6 +65,13 @@ final class TildonePersistenceTests: XCTestCase {
         let owner = try StoredDomainMapping.storedTask(from: makeTask())
         owner.noteStableID = "not-a-uuid"
         assertMalformed(try StoredDomainMapping.task(from: owner), field: "ownership")
+
+        let otherOwner = try StoredDomainMapping.storedTask(from: makeTask())
+        XCTAssertThrowsError(try StoredDomainMapping.task(from: otherOwner, expectedNoteID: NoteID())) {
+            guard case .ownershipMismatch = $0 as? PersistenceError else {
+                return XCTFail("Expected typed ownership mismatch, got \($0)")
+            }
+        }
 
         let version = try StoredDomainMapping.storedTask(from: makeTask())
         version.textVersionCounter = -1
@@ -270,6 +283,37 @@ final class TildonePersistenceTests: XCTestCase {
         }
     }
 
+    func testPreviewAndTemporaryMigrationStoresAreIsolatedAndQuarantineIsTyped() async throws {
+        let base = try temporaryDirectory()
+        let preview = PersistenceStoreDescriptor.preview(
+            baseDirectory: base,
+            identifier: UUID(uuidString: "bbbbbbbb-0000-0000-0000-000000000001")!
+        )
+        let migration = PersistenceStoreDescriptor.temporaryMigration(
+            baseDirectory: base,
+            workspace: .account(UUID(uuidString: "cccccccc-0000-0000-0000-000000000001")!),
+            identifier: UUID(uuidString: "dddddddd-0000-0000-0000-000000000001")!
+        )
+        XCTAssertNotEqual(try TildoneRepository.storeURL(for: preview), try TildoneRepository.storeURL(for: migration))
+
+        let previewRepository = try TildoneRepository(descriptor: preview, replicaID: replica)
+        let migrationRepository = try TildoneRepository(descriptor: migration, replicaID: replica)
+        try await previewRepository.quarantine(
+            recordKind: .task,
+            opaqueRecordID: taskID.recordName,
+            category: .invalidOrderToken,
+            recordSchemaVersion: 1,
+            at: createdAt
+        )
+        let quarantined = try await previewRepository.quarantinedRecords()
+        XCTAssertEqual(quarantined.count, 1)
+        XCTAssertEqual(quarantined[0].recordKind, .task)
+        XCTAssertEqual(quarantined[0].opaqueRecordID, taskID.recordName)
+        XCTAssertEqual(quarantined[0].category, .invalidOrderToken)
+        let migrationQuarantine = try await migrationRepository.quarantinedRecords()
+        XCTAssertTrue(migrationQuarantine.isEmpty)
+    }
+
     func testConcurrentDuplicateIdentityHasOneWinnerAndCountersAreMonotonic() async throws {
         let repository = try makeRepository()
         let outcomes = await withTaskGroup(of: Bool.self, returning: [Bool].self) { group in
@@ -341,7 +385,7 @@ final class TildonePersistenceTests: XCTestCase {
 
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("TildonePersistenceTests-(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("TildonePersistenceTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
         return url
