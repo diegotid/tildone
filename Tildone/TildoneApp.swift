@@ -6,27 +6,18 @@
 //
 
 import SwiftUI
-import SwiftData
+import TildoneDomain
 
 @main
 struct TildoneApp: App {
-    @State var foregroundList: TodoList?
+    @State private var foregroundNoteID: NoteID?
+    @StateObject private var sharedStoreBootstrapper = MacSharedStoreBootstrapper()
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([Todo.self, TodoList.self])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-    
+
     var isCloseCommandDisabled: Bool {
-        if let list = self.foregroundList {
-            !list.isDeletable
+        if let noteID = foregroundNoteID, let note = sharedStoreBootstrapper.store?.note(noteID) {
+            !note.isDeletable
         } else {
             false
         }
@@ -34,10 +25,22 @@ struct TildoneApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Desktop(foregroundList: $foregroundList)
+            Group {
+                if let store = sharedStoreBootstrapper.store {
+                    Desktop(store: store, foregroundNoteID: $foregroundNoteID)
+                } else if let error = sharedStoreBootstrapper.error {
+                    VStack(spacing: 12) {
+                        Text("Tildone could not open your notes.").font(.headline)
+                        Text(error.localizedDescription).foregroundStyle(.secondary)
+                    }
+                    .padding(24)
+                } else {
+                    ProgressView()
+                        .onAppear { sharedStoreBootstrapper.start() }
+                }
+            }
         }
         .environment(\.license, .free)
-        .modelContainer(sharedModelContainer)
         .windowStyle(HiddenTitleBarWindowStyle())
         .windowResizability(.contentSize)
         .commandsRemoved()
@@ -60,7 +63,7 @@ struct TildoneApp: App {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
                 .keyboardShortcut("n")
-                Button(foregroundList != nil ? "Discard Empty Note" : "Close window") {
+                Button(foregroundNoteID != nil ? "Discard Empty Note" : "Close window") {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }
                 .disabled(isCloseCommandDisabled)
@@ -73,7 +76,11 @@ struct TildoneApp: App {
                     }
                     .keyboardShortcut("c")
                     Button("Copy whole task list") {
-                        foregroundList?.copy()
+                        if let note = foregroundNoteID.flatMap({ sharedStoreBootstrapper.store?.note($0) }) {
+                            let items = note.tasks.map { "<li>\($0.text)</li>" }.joined()
+                            let title = note.title.map { "<strong>\($0)</strong>" } ?? ""
+                            Copier.copy("\(title)<ul>\(items)</ul>", forType: .html)
+                        }
                     }
                     .keyboardShortcut("c", modifiers: [.shift, .command])
                 }

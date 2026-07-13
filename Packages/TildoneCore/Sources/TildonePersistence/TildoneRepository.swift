@@ -9,7 +9,7 @@ import SwiftData
 import TildoneDomain
 
 public actor TildoneRepository: TildoneRepositoryProtocol {
-    private let container: ModelContainer
+    let container: ModelContainer
     private let ownership: WorkspaceOwnershipLease?
     private let workspace: WorkspaceIdentity
     private let now: @Sendable () -> Date
@@ -40,11 +40,16 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 context.insert(WorkspaceMetadata(
                     workspaceKindRawValue: descriptor.workspace.kindRawValue,
                     opaqueWorkspaceID: descriptor.workspace.opaqueID,
-                    replicaID: replicaID.stringValue
+                    replicaID: replicaID.stringValue,
+                    sharedSchemaVersion: 2
                 ))
                 try context.save()
             } else {
                 guard metadata.count == 1 else { throw PersistenceError.workspaceMismatch }
+                if metadata[0].sharedSchemaVersion == 1 {
+                    metadata[0].sharedSchemaVersion = 2
+                    try context.save()
+                }
                 try Self.validateWorkspaceMetadata(
                     metadata[0],
                     expectedWorkspace: descriptor.workspace,
@@ -60,6 +65,10 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     public nonisolated static func storeURL(for descriptor: PersistenceStoreDescriptor) throws -> URL? {
         guard descriptor.kind != .inMemory else { return nil }
+        if let explicit = descriptor.explicitStoreURL {
+            guard explicit.isFileURL else { throw PersistenceError.invalidStoreLocation }
+            return explicit.standardizedFileURL
+        }
         guard let base = descriptor.baseDirectory, base.isFileURL else {
             throw PersistenceError.invalidStoreLocation
         }
@@ -85,7 +94,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     private nonisolated static func makeContainer(
         descriptor: PersistenceStoreDescriptor
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: TildoneSchemaV1.self)
+        let schema = Schema(versionedSchema: TildoneSchemaV2.self)
         let configuration: ModelConfiguration
         if descriptor.kind == .inMemory {
             configuration = ModelConfiguration(
@@ -498,20 +507,20 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     // MARK: Internal transaction machinery
 
-    private func readContext() -> ModelContext {
+    func readContext() -> ModelContext {
         let context = ModelContext(container)
         context.autosaveEnabled = false
         return context
     }
 
-    private func mutationContext() -> ModelContext { readContext() }
+    func mutationContext() -> ModelContext { readContext() }
 
     private func saveMutation(_ context: ModelContext) throws {
         do { try save(context) }
         catch { throw PersistenceError.atomicMutationFailure }
     }
 
-    private func save(_ context: ModelContext) throws {
+    func save(_ context: ModelContext) throws {
         if failNextSave {
             failNextSave = false
             throw PersistenceError.saveFailure
@@ -520,7 +529,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         catch { throw PersistenceError.saveFailure }
     }
 
-    private func workspaceMetadata(in context: ModelContext) throws -> WorkspaceMetadata {
+    func workspaceMetadata(in context: ModelContext) throws -> WorkspaceMetadata {
         let rows = try context.fetch(FetchDescriptor<WorkspaceMetadata>())
         guard rows.count == 1, let metadata = rows.first else {
             throw PersistenceError.workspaceMismatch
@@ -537,7 +546,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         guard metadata.singletonKey == "workspace",
               metadata.workspaceKindRawValue == workspace.kindRawValue,
               metadata.opaqueWorkspaceID == workspace.opaqueID,
-              metadata.sharedSchemaVersion == 1,
+              metadata.sharedSchemaVersion == 2,
               metadata.logicalCounter >= 0 else {
             throw PersistenceError.workspaceMismatch
         }

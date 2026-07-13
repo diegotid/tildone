@@ -16,6 +16,10 @@ build/
 !default.perspectivev3
 **/xcuserdata
 **/xcshareddata
+!Tildone.xcodeproj/xcshareddata/
+!Tildone.xcodeproj/xcshareddata/xcschemes/
+Tildone.xcodeproj/xcshareddata/xcschemes/*
+!Tildone.xcodeproj/xcshareddata/xcschemes/Stage6 Migration Tool.xcscheme
 *.xccheckout
 *.moved-aside
 DerivedData

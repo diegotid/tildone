@@ -63,17 +63,20 @@ public struct PersistenceStoreDescriptor: Hashable, Sendable {
     public let workspace: WorkspaceIdentity
     public let baseDirectory: URL?
     public let identifier: UUID
+    public let explicitStoreURL: URL?
 
     private init(
         kind: PersistenceStoreKind,
         workspace: WorkspaceIdentity,
         baseDirectory: URL?,
-        identifier: UUID
+        identifier: UUID,
+        explicitStoreURL: URL? = nil
     ) {
         self.kind = kind
         self.workspace = workspace
         self.baseDirectory = baseDirectory
         self.identifier = identifier
+        self.explicitStoreURL = explicitStoreURL
     }
 
     public static func persistent(baseDirectory: URL, workspace: WorkspaceIdentity) -> Self {
@@ -97,6 +100,23 @@ public struct PersistenceStoreDescriptor: Hashable, Sendable {
         identifier: UUID = UUID()
     ) -> Self {
         Self(kind: .temporaryMigration, workspace: workspace, baseDirectory: baseDirectory, identifier: identifier)
+    }
+
+    /// An explicitly located shared-schema store used by the Mac legacy
+    /// importer and its developer tool. Callers must supply the complete file
+    /// URL; there is deliberately no production-path default.
+    public static func temporaryMigration(
+        storeURL: URL,
+        workspace: WorkspaceIdentity = .localOnly,
+        identifier: UUID = UUID()
+    ) -> Self {
+        Self(
+            kind: .temporaryMigration,
+            workspace: workspace,
+            baseDirectory: storeURL.deletingLastPathComponent(),
+            identifier: identifier,
+            explicitStoreURL: storeURL
+        )
     }
 }
 
