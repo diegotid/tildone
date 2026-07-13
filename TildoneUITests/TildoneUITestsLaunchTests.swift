@@ -19,6 +19,8 @@ final class TildoneUITestsLaunchTests: XCTestCase {
 
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments.append("--tildone-ui-test")
         app.launch()
 
         // Insert steps here to perform after app launch but before taking a screenshot,

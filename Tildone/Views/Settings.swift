@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 import AppKit
 
 // MARK: Settings view
@@ -36,9 +35,6 @@ struct SettingsForm: View {
     
     @AppStorage(NoteWindowBackground.opacityStorageKey)
     private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
-
-    @StateObject
-    private var sampleNoteData = SampleNoteData()
 
     var body: some View {
         ScrollView {
@@ -197,11 +193,20 @@ private extension SettingsForm {
                     }
                     .padding(.top, 9)
                     .padding(.leading, 9)
-                    Note()
-                        .todoList(sampleNoteData.list)
-                        .previewMode()
-                        .environment(\.modelContext, sampleNoteData.container.mainContext)
-                        .allowsHitTesting(false)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Sample note")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                        Label("Done task", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                        Label("A longer task that should wrap or truncate based on settings", systemImage: "circle")
+                        Label("Another task", systemImage: "circle")
+                    }
+                    .font(.system(size: CGFloat(fontSize)))
+                    .foregroundStyle(Color(.primaryFontColor))
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .allowsHitTesting(false)
                 }
             }
             .frame(width: Layout.defaultNoteWidth, height: Layout.defaultNoteHeight)
@@ -309,48 +314,6 @@ private extension SettingsForm {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: pickerWidth, alignment: .leading)
-    }
-}
-
-// MARK: Sample note data
-
-@MainActor
-private final class SampleNoteData: ObservableObject {
-    let container: ModelContainer
-    let list: TodoList
-
-    init() {
-        let schema = Schema([Todo.self, TodoList.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        do {
-            container = try ModelContainer(for: schema, configurations: [configuration])
-        } catch {
-            fatalError("Could not create sample model container: \(error)")
-        }
-        list = SampleNoteData.makeSampleList()
-        container.mainContext.insert(list)
-        for task in list.items {
-            container.mainContext.insert(task)
-        }
-        do {
-            try container.mainContext.save()
-        } catch {
-            debugPrint(error.localizedDescription)
-        }
-    }
-
-    private static func makeSampleList() -> TodoList {
-        let list = TodoList()
-        list.topic = "Sample note"
-        let doneTask = Todo("Done task", at: 1)
-        doneTask.setDone()
-        let longTask = Todo("A longer task that should wrap or truncate based on settings", at: 2)
-        let shortTask = Todo("Another task", at: 3)
-        list.items = [doneTask, longTask, shortTask]
-        for task in list.items {
-            task.list = list
-        }
-        return list
     }
 }
 

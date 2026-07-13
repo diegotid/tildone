@@ -264,7 +264,7 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(durablePending.count, 1)
         let metadata = try await reopened.workspaceSnapshot()
         XCTAssertEqual(metadata.replicaID, replica)
-        XCTAssertEqual(metadata.sharedSchemaVersion, 1)
+        XCTAssertEqual(metadata.sharedSchemaVersion, 2)
         XCTAssertEqual(metadata.futureSyncEngineState, Data([0, 1, 255]))
     }
 
@@ -672,8 +672,10 @@ final class TildonePersistenceTests: XCTestCase {
     func testSchemaAndMigrationPlanAreDeliberatelyWired() {
         XCTAssertEqual(TildoneSchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
         XCTAssertEqual(TildoneSchemaV1.models.count, 5)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 1)
-        XCTAssertTrue(TildoneSchemaMigrationPlan.stages.isEmpty)
+        XCTAssertEqual(TildoneSchemaV2.versionIdentifier, Schema.Version(2, 0, 0))
+        XCTAssertEqual(TildoneSchemaV2.models.count, 7)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 2)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 1)
     }
 
     func testActualV1OnDiskFixtureOpensThroughMigrationPlan() async throws {
@@ -702,6 +704,7 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(task.text, "Preserved edited task café 漢字")
         XCTAssertEqual(workspace.replicaID.stringValue, "abcdef00-0000-0000-0000-000000000001")
         XCTAssertEqual(workspace.logicalCounter, 5)
+        XCTAssertEqual(workspace.sharedSchemaVersion, 2)
         XCTAssertEqual(workspace.futureSyncEngineState, Data([0x01, 0x02, 0xff]))
         XCTAssertEqual(outbox.count, 3)
         XCTAssertEqual(outbox.filter { $0.supersededBy != nil }.count, 1)
@@ -727,6 +730,214 @@ final class TildonePersistenceTests: XCTestCase {
 
         let after = try Data(contentsOf: legacyURL)
         XCTAssertEqual(after, before)
+    }
+
+    func testLegacyImportIsAtomicOutboxFreeIdempotentAndStableAcrossRestart() async throws {
+        let base = try temporaryDirectory()
+        let destination = base.appendingPathComponent("shared.sqlite")
+        let descriptor = PersistenceStoreDescriptor.temporaryMigration(storeURL: destination)
+        let fingerprint = migrationFingerprint()
+        let counts = LegacyMigrationCounts(
+            eligibleNotes: 1, eligibleTasks: 1, excludedSystemNotes: 1,
+            excludedSystemTasks: 1, excludedTransientTasks: 1
+        )
+        let noteKey = String(repeating: "1", count: 64)
+        let taskKey = String(repeating: "2", count: 64)
+        let systemKey = String(repeating: "3", count: 64)
+        let transientKey = String(repeating: "4", count: 64)
+        let noteMapping: LegacyMappingSnapshot
+        let taskMapping: LegacyMappingSnapshot
+
+        do {
+            let repository = try TildoneRepository(descriptor: descriptor, replicaID: replica)
+            _ = try await repository.prepareLegacyMigration(
+                formatVersion: 1, sourceFingerprint: fingerprint, sourceCounts: counts, at: createdAt
+            )
+            try await repository.advanceLegacyMigration(to: .sourceInspected, at: createdAt)
+            try await repository.advanceLegacyMigration(to: .destinationPrepared, at: createdAt)
+            let mappings = try await repository.prepareLegacyMappings([
+                LegacyMappingRequest(legacyKey: noteKey, entityKind: .note, classification: .userContent),
+                LegacyMappingRequest(
+                    legacyKey: taskKey, entityKind: .task, classification: .userContent,
+                    ownerLegacyKey: noteKey, visibleOrder: 0
+                ),
+                LegacyMappingRequest(
+                    legacyKey: systemKey, entityKind: .note, classification: .excludedSystemNote
+                ),
+                LegacyMappingRequest(
+                    legacyKey: transientKey, entityKind: .task,
+                    classification: .excludedTransientEmptyTask,
+                    ownerLegacyKey: noteKey, visibleOrder: 1
+                )
+            ], at: createdAt)
+            noteMapping = mappings[0]
+            taskMapping = mappings[1]
+            XCTAssertNil(mappings[2].stableID)
+            XCTAssertNil(mappings[3].stableID)
+
+            let noteImport = LegacyImportedNote(
+                legacyKey: noteKey, createdAt: createdAt, title: "", lastMeaningfulEditAt: createdAt
+            )
+            let taskImport = LegacyImportedTask(
+                legacyKey: taskKey, ownerLegacyKey: noteKey, createdAt: createdAt,
+                text: "Unicode 🧡\nCafé", completedAt: createdAt.addingTimeInterval(10),
+                orderToken: try OrderToken(rawValue: "0000000000001h")
+            )
+            try await repository.importLegacyNotes([noteImport], at: createdAt)
+            try await repository.importLegacyTasks([taskImport], at: createdAt)
+            try await repository.importLegacyNotes([noteImport], at: createdAt)
+            try await repository.importLegacyTasks([taskImport], at: createdAt)
+            let pending = try await repository.pendingMutations(includeSuperseded: true)
+            XCTAssertTrue(pending.isEmpty)
+            let audit = try await repository.legacyMigrationAudit()
+            XCTAssertEqual(audit.noteCount, 1)
+            XCTAssertEqual(audit.taskCount, 1)
+            XCTAssertEqual(audit.mappingCount, 4)
+            XCTAssertFalse(audit.duplicateMappedStableIDs)
+        }
+
+        let reopened = try TildoneRepository(descriptor: descriptor, replicaID: ReplicaID())
+        let reopenedNoteMapping = try await reopened.legacyMapping(for: noteKey)
+        let reopenedTaskMapping = try await reopened.legacyMapping(for: taskKey)
+        XCTAssertEqual(reopenedNoteMapping, noteMapping)
+        XCTAssertEqual(reopenedTaskMapping, taskMapping)
+        let note = try await reopened.note(id: NoteID(string: noteMapping.stableID!)!)
+        let task = try await reopened.task(id: TaskID(string: taskMapping.stableID!)!)
+        XCTAssertEqual(note.title, "")
+        XCTAssertEqual(note.lifecycle, .active)
+        XCTAssertEqual(task.text, "Unicode 🧡\nCafé")
+        XCTAssertEqual(task.completedAt, createdAt.addingTimeInterval(10))
+        XCTAssertEqual(task.noteID, note.id)
+        XCTAssertEqual(task.textVersion.logicalCounter, taskMapping.firstVersionCounter)
+        XCTAssertEqual(task.lifecycleVersion.logicalCounter, taskMapping.firstVersionCounter! + 3)
+        XCTAssertEqual(note.titleVersion.replicaID, replica)
+        XCTAssertEqual(task.textVersion.replicaID, replica)
+    }
+
+    func testLegacyMappingSaveFailureRollsBackMappingCounterAndContentTogether() async throws {
+        let repository = try makeRepository()
+        _ = try await repository.prepareLegacyMigration(
+            formatVersion: 1,
+            sourceFingerprint: migrationFingerprint(),
+            sourceCounts: LegacyMigrationCounts(
+                eligibleNotes: 1, eligibleTasks: 0, excludedSystemNotes: 0,
+                excludedSystemTasks: 0, excludedTransientTasks: 0
+            ),
+            at: createdAt
+        )
+        try await repository.advanceLegacyMigration(to: .sourceInspected, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .destinationPrepared, at: createdAt)
+        let before = try await repository.workspaceSnapshot().logicalCounter
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsLegacyMigrationError(.saveFailure) {
+            _ = try await repository.prepareLegacyMappings([
+                LegacyMappingRequest(
+                    legacyKey: String(repeating: "5", count: 64),
+                    entityKind: .note,
+                    classification: .userContent
+                )
+            ], at: self.createdAt)
+        }
+        let workspaceAfterFailure = try await repository.workspaceSnapshot()
+        let auditAfterFailure = try await repository.legacyMigrationAudit()
+        XCTAssertEqual(workspaceAfterFailure.logicalCounter, before)
+        XCTAssertEqual(auditAfterFailure.mappingCount, 0)
+    }
+
+    func testLegacyFailureIsDurableAndRequiresExplicitResume() async throws {
+        let repository = try makeRepository()
+        let counts = LegacyMigrationCounts.zero
+        _ = try await repository.prepareLegacyMigration(
+            formatVersion: 1, sourceFingerprint: migrationFingerprint(), sourceCounts: counts, at: createdAt
+        )
+        try await repository.advanceLegacyMigration(to: .sourceInspected, at: createdAt)
+        try await repository.recordLegacyMigrationFailure(.sourceChanged, at: createdAt.addingTimeInterval(1))
+        var failed = try await repository.legacyMigrationSnapshot()
+        XCTAssertEqual(failed.phase, .failed)
+        XCTAssertEqual(failed.lastCompletedPhase, .sourceInspected)
+        XCTAssertEqual(failed.failureCategory, .sourceChanged)
+        await XCTAssertThrowsLegacyMigrationError(.incompatibleExistingState(.priorFailedDestination)) {
+            _ = try await repository.prepareLegacyMigration(
+                formatVersion: 1,
+                sourceFingerprint: self.migrationFingerprint(),
+                sourceCounts: counts,
+                at: self.createdAt
+            )
+        }
+        try await repository.resumeFailedLegacyMigration(at: createdAt.addingTimeInterval(2))
+        failed = try await repository.legacyMigrationSnapshot()
+        XCTAssertEqual(failed.phase, .sourceInspected)
+        XCTAssertNil(failed.failureCategory)
+    }
+
+    func testOnlyVerifiedEligibleMigrationCanActivateAndActivationIsDurable() async throws {
+        let repository = try makeRepository()
+        _ = try await repository.prepareLegacyMigration(
+            formatVersion: 1,
+            sourceFingerprint: migrationFingerprint(),
+            sourceCounts: .zero,
+            at: createdAt
+        )
+        await XCTAssertThrowsLegacyMigrationError(.invalidState) {
+            _ = try await repository.activateVerifiedLegacyMigration(at: self.createdAt)
+        }
+        try await repository.advanceLegacyMigration(to: .sourceInspected, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .destinationPrepared, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .copyInProgress, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .copyCompleted, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .verificationInProgress, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .verified, at: createdAt)
+        try await repository.advanceLegacyMigration(to: .eligibleForCutover, at: createdAt)
+
+        let activated = try await repository.activateVerifiedLegacyMigration(at: createdAt.addingTimeInterval(1))
+        XCTAssertEqual(activated.phase, .eligibleForCutover)
+        XCTAssertEqual(activated.activationState, .activated)
+        XCTAssertFalse(activated.cloudSeedingEverBegun)
+        let pending = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertTrue(pending.isEmpty)
+        await XCTAssertThrowsLegacyMigrationError(.invalidState) {
+            _ = try await repository.activateVerifiedLegacyMigration(at: self.createdAt.addingTimeInterval(2))
+        }
+    }
+
+    func testLegacyStateRejectsDifferentCopiedChangedAndUpgradedSources() async throws {
+        let repository = try makeRepository()
+        _ = try await repository.prepareLegacyMigration(
+            formatVersion: 1,
+            sourceFingerprint: migrationFingerprint(),
+            sourceCounts: .zero,
+            at: createdAt
+        )
+        let differentIdentity = LegacySourceFingerprint(
+            identityDigest: String(repeating: "c", count: 64),
+            contentDigest: String(repeating: "b", count: 64),
+            fileCount: 1,
+            totalByteCount: 100
+        )
+        await XCTAssertThrowsLegacyMigrationError(.incompatibleExistingState(.differentSource)) {
+            _ = try await repository.prepareLegacyMigration(
+                formatVersion: 1, sourceFingerprint: differentIdentity, sourceCounts: .zero, at: self.createdAt
+            )
+        }
+        let changed = LegacySourceFingerprint(
+            identityDigest: String(repeating: "a", count: 64),
+            contentDigest: String(repeating: "d", count: 64),
+            fileCount: 1,
+            totalByteCount: 100
+        )
+        await XCTAssertThrowsLegacyMigrationError(.incompatibleExistingState(.sourceChanged)) {
+            _ = try await repository.prepareLegacyMigration(
+                formatVersion: 1, sourceFingerprint: changed, sourceCounts: .zero, at: self.createdAt
+            )
+        }
+        await XCTAssertThrowsLegacyMigrationError(.incompatibleExistingState(.migrationVersionMismatch)) {
+            _ = try await repository.prepareLegacyMigration(
+                formatVersion: 2,
+                sourceFingerprint: self.migrationFingerprint(),
+                sourceCounts: .zero,
+                at: self.createdAt
+            )
+        }
     }
 
     // MARK: Helpers
@@ -758,6 +969,15 @@ final class TildonePersistenceTests: XCTestCase {
 
     private func stamp(_ counter: UInt64) -> VersionStamp {
         VersionStamp(logicalCounter: counter, replicaID: replica)
+    }
+
+    private func migrationFingerprint() -> LegacySourceFingerprint {
+        LegacySourceFingerprint(
+            identityDigest: String(repeating: "a", count: 64),
+            contentDigest: String(repeating: "b", count: 64),
+            fileCount: 1,
+            totalByteCount: 100
+        )
     }
 
     private func temporaryDirectory() throws -> URL {
@@ -816,6 +1036,18 @@ private extension TildonePersistenceTests {
             XCTFail("Expected \(expected)")
         } catch {
             XCTAssertEqual(error as? PersistenceError, expected)
+        }
+    }
+
+    func XCTAssertThrowsLegacyMigrationError(
+        _ expected: LegacyMigrationPersistenceError,
+        operation: () async throws -> Void
+    ) async {
+        do {
+            try await operation()
+            XCTFail("Expected \(expected)")
+        } catch {
+            XCTAssertEqual(error as? LegacyMigrationPersistenceError, expected)
         }
     }
 }

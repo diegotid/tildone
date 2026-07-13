@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,6 +13,13 @@
 		A10000000000000000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Preview Assets.xcassets */; };
 		A10000000000000000000005 /* TildoneiOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* TildoneiOSTests.swift */; };
 		A10000000000000000000006 /* TildoneiOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* TildoneiOSUITests.swift */; };
+		B60000000000000000000001 /* LegacyStoreDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* LegacyStoreDiscovery.swift */; };
+		B60000000000000000000002 /* LegacyStoreReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000012 /* LegacyStoreReader.swift */; };
+		B60000000000000000000003 /* LegacyMigrationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000013 /* LegacyMigrationCoordinator.swift */; };
+		B60000000000000000000004 /* TildonePersistence in Frameworks */ = {isa = PBXBuildFile; productRef = B60000000000000000000030 /* TildonePersistence */; };
+		B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000014 /* LegacyMigrationTests.swift */; };
+		B60000000000000000000006 /* TildonePersistence in Frameworks */ = {isa = PBXBuildFile; productRef = B60000000000000000000030 /* TildonePersistence */; };
+		B70000000000000000000001 /* MacSharedStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70000000000000000000011 /* MacSharedStore.swift */; };
 		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
 		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
@@ -84,6 +91,11 @@
 		A10000000000000000000017 /* TildoneiOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* TildoneiOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneiOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000019 /* TildoneiOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSUITests.swift; sourceTree = "<group>"; };
+		B60000000000000000000011 /* LegacyStoreDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyStoreDiscovery.swift; sourceTree = "<group>"; };
+		B60000000000000000000012 /* LegacyStoreReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyStoreReader.swift; sourceTree = "<group>"; };
+		B60000000000000000000013 /* LegacyMigrationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyMigrationCoordinator.swift; sourceTree = "<group>"; };
+		B60000000000000000000014 /* LegacyMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyMigrationTests.swift; sourceTree = "<group>"; };
+		B70000000000000000000011 /* MacSharedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSharedStore.swift; sourceTree = "<group>"; };
 		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -118,13 +130,32 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A10000000000000000000041 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000042 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000043 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000041 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000042 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000043 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F16670402AF711EC000B76A5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B60000000000000000000004 /* TildonePersistence in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,6 +163,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B60000000000000000000006 /* TildonePersistence in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,6 +177,52 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A10000000000000000000051 /* TildoneiOS */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000011 /* TildoneiOSApp.swift */,
+				A10000000000000000000012 /* TildoneiOSRootView.swift */,
+				A10000000000000000000013 /* Assets.xcassets */,
+				A10000000000000000000015 /* TildoneiOS.entitlements */,
+				A10000000000000000000054 /* Preview Content */,
+			);
+			path = TildoneiOS;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000052 /* TildoneiOSTests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000017 /* TildoneiOSTests.swift */,
+			);
+			path = TildoneiOSTests;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000053 /* TildoneiOSUITests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000019 /* TildoneiOSUITests.swift */,
+			);
+			path = TildoneiOSUITests;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000054 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000014 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		B60000000000000000000020 /* Migration */ = {
+			isa = PBXGroup;
+			children = (
+				B60000000000000000000011 /* LegacyStoreDiscovery.swift */,
+				B60000000000000000000012 /* LegacyStoreReader.swift */,
+				B60000000000000000000013 /* LegacyMigrationCoordinator.swift */,
+			);
+			path = Migration;
+			sourceTree = "<group>";
+		};
 		F166703A2AF711EC000B76A5 = {
 			isa = PBXGroup;
 			children = (
@@ -171,13 +249,10 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A10000000000000000000051 /* TildoneiOS */ = {isa = PBXGroup; children = (A10000000000000000000011 /* TildoneiOSApp.swift */, A10000000000000000000012 /* TildoneiOSRootView.swift */, A10000000000000000000013 /* Assets.xcassets */, A10000000000000000000015 /* TildoneiOS.entitlements */, A10000000000000000000054 /* Preview Content */, ); path = TildoneiOS; sourceTree = "<group>"; };
-		A10000000000000000000052 /* TildoneiOSTests */ = {isa = PBXGroup; children = (A10000000000000000000017 /* TildoneiOSTests.swift */, ); path = TildoneiOSTests; sourceTree = "<group>"; };
-		A10000000000000000000053 /* TildoneiOSUITests */ = {isa = PBXGroup; children = (A10000000000000000000019 /* TildoneiOSUITests.swift */, ); path = TildoneiOSUITests; sourceTree = "<group>"; };
-		A10000000000000000000054 /* Preview Content */ = {isa = PBXGroup; children = (A10000000000000000000014 /* Preview Assets.xcassets */, ); path = "Preview Content"; sourceTree = "<group>"; };
 		F16670452AF711EC000B76A5 /* Tildone */ = {
 			isa = PBXGroup;
 			children = (
+				B70000000000000000000011 /* MacSharedStore.swift */,
 				F16670462AF711EC000B76A5 /* TildoneApp.swift */,
 				F19B3BF22B155711003C094A /* LicenseType.swift */,
 				F166704C2AF711ED000B76A5 /* Assets.xcassets */,
@@ -187,6 +262,7 @@
 				F16670732AF7122F000B76A5 /* Models */,
 				F16670742AF71273000B76A5 /* Views */,
 				F1D300192B51F16A00654241 /* Services */,
+				B60000000000000000000020 /* Migration */,
 				F166704E2AF711ED000B76A5 /* Preview Content */,
 				F107B17C2F0DE77800D20216 /* Info.plist */,
 			);
@@ -206,6 +282,7 @@
 			isa = PBXGroup;
 			children = (
 				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
+				B60000000000000000000014 /* LegacyMigrationTests.swift */,
 			);
 			path = TildoneTests;
 			sourceTree = "<group>";
@@ -267,9 +344,59 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A10000000000000000000031 /* TildoneiOS */ = { isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000071 /* Build configuration list for PBXNativeTarget "TildoneiOS" */; buildPhases = (A10000000000000000000044 /* Sources */, A10000000000000000000041 /* Frameworks */, A10000000000000000000047 /* Resources */, ); buildRules = (); dependencies = (); name = TildoneiOS; productName = TildoneiOS; productReference = A10000000000000000000010 /* Tildone.app */; productType = "com.apple.product-type.application"; };
-		A10000000000000000000032 /* TildoneiOSTests */ = { isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000072 /* Build configuration list for PBXNativeTarget "TildoneiOSTests" */; buildPhases = (A10000000000000000000045 /* Sources */, A10000000000000000000042 /* Frameworks */, A10000000000000000000048 /* Resources */, ); buildRules = (); dependencies = (A10000000000000000000061 /* PBXTargetDependency */, ); name = TildoneiOSTests; productName = TildoneiOSTests; productReference = A10000000000000000000016 /* TildoneiOSTests.xctest */; productType = "com.apple.product-type.bundle.unit-test"; };
-		A10000000000000000000033 /* TildoneiOSUITests */ = { isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000073 /* Build configuration list for PBXNativeTarget "TildoneiOSUITests" */; buildPhases = (A10000000000000000000046 /* Sources */, A10000000000000000000043 /* Frameworks */, A10000000000000000000049 /* Resources */, ); buildRules = (); dependencies = (A10000000000000000000062 /* PBXTargetDependency */, ); name = TildoneiOSUITests; productName = TildoneiOSUITests; productReference = A10000000000000000000018 /* TildoneiOSUITests.xctest */; productType = "com.apple.product-type.bundle.ui-testing"; };
+		A10000000000000000000031 /* TildoneiOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000071 /* Build configuration list for PBXNativeTarget "TildoneiOS" */;
+			buildPhases = (
+				A10000000000000000000044 /* Sources */,
+				A10000000000000000000041 /* Frameworks */,
+				A10000000000000000000047 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TildoneiOS;
+			productName = TildoneiOS;
+			productReference = A10000000000000000000010 /* Tildone.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10000000000000000000032 /* TildoneiOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000072 /* Build configuration list for PBXNativeTarget "TildoneiOSTests" */;
+			buildPhases = (
+				A10000000000000000000045 /* Sources */,
+				A10000000000000000000042 /* Frameworks */,
+				A10000000000000000000048 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000061 /* PBXTargetDependency */,
+			);
+			name = TildoneiOSTests;
+			productName = TildoneiOSTests;
+			productReference = A10000000000000000000016 /* TildoneiOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A10000000000000000000033 /* TildoneiOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000073 /* Build configuration list for PBXNativeTarget "TildoneiOSUITests" */;
+			buildPhases = (
+				A10000000000000000000046 /* Sources */,
+				A10000000000000000000043 /* Frameworks */,
+				A10000000000000000000049 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000062 /* PBXTargetDependency */,
+			);
+			name = TildoneiOSUITests;
+			productName = TildoneiOSUITests;
+			productReference = A10000000000000000000018 /* TildoneiOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		F16670422AF711EC000B76A5 /* Tildone */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F166706A2AF711EE000B76A5 /* Build configuration list for PBXNativeTarget "Tildone" */;
@@ -283,6 +410,9 @@
 			dependencies = (
 			);
 			name = Tildone;
+			packageProductDependencies = (
+				B60000000000000000000030 /* TildonePersistence */,
+			);
 			productName = Tildone;
 			productReference = F16670432AF711EC000B76A5 /* Tildone.app */;
 			productType = "com.apple.product-type.application";
@@ -301,6 +431,9 @@
 				F16670582AF711EE000B76A5 /* PBXTargetDependency */,
 			);
 			name = TildoneTests;
+			packageProductDependencies = (
+				B60000000000000000000030 /* TildonePersistence */,
+			);
 			productName = TildoneTests;
 			productReference = F16670562AF711EE000B76A5 /* TildoneTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -331,8 +464,19 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					A10000000000000000000031 = {
+						CreatedOnToolsVersion = 15.0.1;
+					};
+					A10000000000000000000032 = {
+						CreatedOnToolsVersion = 15.0.1;
+						TestTargetID = A10000000000000000000031;
+					};
+					A10000000000000000000033 = {
+						CreatedOnToolsVersion = 15.0.1;
+						TestTargetID = A10000000000000000000031;
+					};
 					F16670422AF711EC000B76A5 = {
 						CreatedOnToolsVersion = 15.0.1;
 					};
@@ -344,9 +488,6 @@
 						CreatedOnToolsVersion = 15.0.1;
 						TestTargetID = F16670422AF711EC000B76A5;
 					};
-					A10000000000000000000031 = { CreatedOnToolsVersion = 15.0.1; };
-					A10000000000000000000032 = { CreatedOnToolsVersion = 15.0.1; TestTargetID = A10000000000000000000031; };
-					A10000000000000000000033 = { CreatedOnToolsVersion = 15.0.1; TestTargetID = A10000000000000000000031; };
 				};
 			};
 			buildConfigurationList = F166703E2AF711EC000B76A5 /* Build configuration list for PBXProject "Tildone" */;
@@ -361,10 +502,12 @@
 				"zh-Hans",
 			);
 			mainGroup = F166703A2AF711EC000B76A5;
+			packageReferences = (
+				A10000000000000000000081 /* XCLocalSwiftPackageReference "Packages/TildoneCore" */,
+			);
 			productRefGroup = F16670442AF711EC000B76A5 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			packageReferences = (A10000000000000000000081 /* XCLocalSwiftPackageReference "Packages/TildoneCore" */, );
 			targets = (
 				F16670422AF711EC000B76A5 /* Tildone */,
 				F16670552AF711EE000B76A5 /* TildoneTests */,
@@ -377,9 +520,29 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A10000000000000000000047 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* Assets.xcassets in Resources */, A10000000000000000000004 /* Preview Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000048 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000049 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000047 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000003 /* Assets.xcassets in Resources */,
+				A10000000000000000000004 /* Preview Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000048 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000049 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F16670412AF711EC000B76A5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -409,13 +572,39 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A10000000000000000000044 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* TildoneiOSApp.swift in Sources */, A10000000000000000000002 /* TildoneiOSRootView.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000045 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* TildoneiOSTests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000046 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000006 /* TildoneiOSUITests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000044 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
+				A10000000000000000000002 /* TildoneiOSRootView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000045 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000005 /* TildoneiOSTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000046 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000006 /* TildoneiOSUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F166703F2AF711EC000B76A5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B70000000000000000000001 /* MacSharedStore.swift in Sources */,
+				B60000000000000000000001 /* LegacyStoreDiscovery.swift in Sources */,
+				B60000000000000000000002 /* LegacyStoreReader.swift in Sources */,
+				B60000000000000000000003 /* LegacyMigrationCoordinator.swift in Sources */,
 				F16670492AF711EC000B76A5 /* Note.swift in Sources */,
 				F16670792AF7167D000B76A5 /* Styler.swift in Sources */,
 				F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */,
@@ -442,6 +631,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */,
 				F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -458,8 +648,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		A10000000000000000000061 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000031 /* TildoneiOS */; targetProxy = A10000000000000000000021 /* PBXContainerItemProxy */; };
-		A10000000000000000000062 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000031 /* TildoneiOS */; targetProxy = A10000000000000000000022 /* PBXContainerItemProxy */; };
+		A10000000000000000000061 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000031 /* TildoneiOS */;
+			targetProxy = A10000000000000000000021 /* PBXContainerItemProxy */;
+		};
+		A10000000000000000000062 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000031 /* TildoneiOS */;
+			targetProxy = A10000000000000000000022 /* PBXContainerItemProxy */;
+		};
 		F16670582AF711EE000B76A5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = F16670422AF711EC000B76A5 /* Tildone */;
@@ -473,11 +671,136 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A10000000000000000000091 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\"";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios.placeholder;
+				PRODUCT_NAME = Tildone;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A10000000000000000000092 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\"";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios.placeholder;
+				PRODUCT_NAME = Tildone;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A10000000000000000000093 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios.placeholder.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tildone.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tildone";
+			};
+			name = Debug;
+		};
+		A10000000000000000000094 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios.placeholder.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tildone.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tildone";
+			};
+			name = Release;
+		};
+		A10000000000000000000095 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios.placeholder.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = TildoneiOS;
+			};
+			name = Debug;
+		};
+		A10000000000000000000096 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios.placeholder.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = TildoneiOS;
+			};
+			name = Release;
+		};
 		F16670682AF711EE000B76A5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -507,7 +830,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = F6HFAVTS49;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -531,6 +856,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -541,6 +867,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -570,7 +897,9 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = F6HFAVTS49;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -587,6 +916,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -601,8 +931,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 24;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Tildone/Preview Content\"";
-				DEVELOPMENT_TEAM = F6HFAVTS49;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -633,8 +963,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 24;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Tildone/Preview Content\"";
-				DEVELOPMENT_TEAM = F6HFAVTS49;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -658,11 +988,10 @@
 		F166706E2AF711EE000B76A5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F6HFAVTS49;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -677,11 +1006,10 @@
 		F166706F2AF711EE000B76A5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F6HFAVTS49;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -696,10 +1024,9 @@
 		F16670712AF711EE000B76A5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F6HFAVTS49;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.TildoneUITests;
@@ -713,10 +1040,9 @@
 		F16670722AF711EE000B76A5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F6HFAVTS49;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.TildoneUITests;
@@ -727,16 +1053,36 @@
 			};
 			name = Release;
 		};
-		A10000000000000000000091 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\""; DEVELOPMENT_TEAM = F6HFAVTS49; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = Tildone; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", ); MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = "studio.cuatro.tildone.ios.placeholder"; PRODUCT_NAME = Tildone; SDKROOT = iphoneos; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; }; name = Debug; };
-		A10000000000000000000092 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\""; DEVELOPMENT_TEAM = F6HFAVTS49; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = Tildone; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", ); MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = "studio.cuatro.tildone.ios.placeholder"; PRODUCT_NAME = Tildone; SDKROOT = iphoneos; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
-		A10000000000000000000093 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = F6HFAVTS49; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = "studio.cuatro.tildone.ios.placeholder.tests"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tildone.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tildone"; }; name = Debug; };
-		A10000000000000000000094 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = F6HFAVTS49; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = "studio.cuatro.tildone.ios.placeholder.tests"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tildone.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tildone"; }; name = Release; };
-		A10000000000000000000095 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = F6HFAVTS49; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = "studio.cuatro.tildone.ios.placeholder.uitests"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_TARGET_NAME = TildoneiOS; }; name = Debug; };
-		A10000000000000000000096 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = F6HFAVTS49; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = "studio.cuatro.tildone.ios.placeholder.uitests"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_TARGET_NAME = TildoneiOS; }; name = Release; };
-/* TODO(owner): Replace the iOS placeholder bundle identifier after deciding universal purchase versus a separate App Store product. */
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A10000000000000000000071 /* Build configuration list for PBXNativeTarget "TildoneiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000091 /* Debug */,
+				A10000000000000000000092 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000072 /* Build configuration list for PBXNativeTarget "TildoneiOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000093 /* Debug */,
+				A10000000000000000000094 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000073 /* Build configuration list for PBXNativeTarget "TildoneiOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000095 /* Debug */,
+				A10000000000000000000096 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F166703E2AF711EC000B76A5 /* Build configuration list for PBXProject "Tildone" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -773,14 +1119,21 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A10000000000000000000071 /* Build configuration list for PBXNativeTarget "TildoneiOS" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000091 /* Debug */, A10000000000000000000092 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		A10000000000000000000072 /* Build configuration list for PBXNativeTarget "TildoneiOSTests" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000093 /* Debug */, A10000000000000000000094 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		A10000000000000000000073 /* Build configuration list for PBXNativeTarget "TildoneiOSUITests" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000095 /* Debug */, A10000000000000000000096 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A10000000000000000000081 /* XCLocalSwiftPackageReference "Packages/TildoneCore" */ = {isa = XCLocalSwiftPackageReference; relativePath = Packages/TildoneCore; };
+		A10000000000000000000081 /* XCLocalSwiftPackageReference "Packages/TildoneCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TildoneCore;
+		};
 /* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B60000000000000000000030 /* TildonePersistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TildonePersistence;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F166703B2AF711EC000B76A5 /* Project object */;
 }

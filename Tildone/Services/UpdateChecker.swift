@@ -10,7 +10,13 @@ import StoreKit
 
 struct UpdateChecker {
     
-    static func getNewReleaseCheckList() async -> TodoList? {
+    /// Update notices are installation-local presentation, not shared user
+    /// content. The Stage 7 shared repository deliberately has no system-note
+    /// model, so this check never creates a legacy `TodoList`.
+    static func hasNewRelease() async -> Bool {
+        if UserDefaults.standard.string(forKey: Local.pendingVersionFlag) != nil {
+            return true
+        }
         do {
             let app = try await AppTransaction.shared
             if case .verified(let installed) = app {
@@ -19,36 +25,32 @@ struct UpdateChecker {
                 let isUpdated: Bool = installed.appVersion != installed.originalAppVersion
                 if isUpdated && !isKnown {
                     UserDefaults.standard.setValue(installed.appVersion, forKey: Local.knownVersionFlag)
-                    return releaseCheckList(version: installed.appVersion)
+                    UserDefaults.standard.setValue(installed.appVersion, forKey: Local.pendingVersionFlag)
+                    return true
                 }
             }
-            return nil
+            return false
         } catch {
             debugPrint(error.localizedDescription)
-            return nil
+            return false
         }
     }
-    
-    private static func releaseCheckList(version: String) -> TodoList {
-        let checkList = TodoList()
-        let checkWhatsNewTask = Todo(String(localized: "Check release notes"), at: 0)
-        checkList.topic = String(localized: "Updated to v\(version)")
-        checkList.items = [checkWhatsNewTask]
-        checkList.systemURL = URL(string: Remote.releaseNotesUrl)
-        checkList.systemContent = String(localized: """
-        New features:
-        \u{2022} Ability to change color and adjust the transparency of notes
-        \u{2022} Enhanced keyboard navigation for the task list
-        """)
-        return checkList
+
+    static var pendingVersion: String? {
+        UserDefaults.standard.string(forKey: Local.pendingVersionFlag)
+    }
+
+    static func dismissPendingReleaseNote() {
+        UserDefaults.standard.removeObject(forKey: Local.pendingVersionFlag)
     }
 }
 
 extension UpdateChecker {
     enum Local {
         static let knownVersionFlag: String = "knownAppVersion"
+        static let pendingVersionFlag: String = "pendingReleaseNoteVersion"
     }
     enum Remote {
-        static let releaseNotesUrl: String = "http://cuatro.studio/tildone/release"
+        static let releaseNotesURL = URL(string: "http://cuatro.studio/tildone/release")!
     }
 }

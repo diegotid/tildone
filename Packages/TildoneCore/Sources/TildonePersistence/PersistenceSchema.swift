@@ -16,9 +16,23 @@ public enum TildoneSchemaV1: VersionedSchema {
     }
 }
 
+/// V2 adds only local migration evidence. User-content rows and their record
+/// schema remain V1-compatible.
+public enum TildoneSchemaV2: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(2, 0, 0)
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredNote.self, StoredTask.self, PendingMutation.self, WorkspaceMetadata.self,
+            QuarantinedRecord.self, LegacyMigrationState.self, LegacyIdentityMapping.self
+        ]
+    }
+}
+
 public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
-    public static var schemas: [any VersionedSchema.Type] { [TildoneSchemaV1.self] }
-    public static var stages: [MigrationStage] { [] }
+    public static var schemas: [any VersionedSchema.Type] { [TildoneSchemaV1.self, TildoneSchemaV2.self] }
+    public static var stages: [MigrationStage] {
+        [.lightweight(fromVersion: TildoneSchemaV1.self, toVersion: TildoneSchemaV2.self)]
+    }
 }
 
 @Model
@@ -210,5 +224,98 @@ final class QuarantinedRecord {
         self.errorCategory = errorCategory
         self.recordSchemaVersion = recordSchemaVersion
         self.quarantinedAt = quarantinedAt
+    }
+}
+
+@Model
+final class LegacyMigrationState {
+    var singletonKey: String
+    var migrationFormatVersion: Int
+    var phaseRawValue: String
+    var lastCompletedPhaseRawValue: String
+    var failureCategoryRawValue: String?
+    var sourceIdentityDigest: String
+    var sourceContentDigest: String
+    var sourceFileCount: Int
+    var sourceTotalByteCount: Int64
+    var destinationSchemaVersion: Int
+    var sourceEligibleNoteCount: Int
+    var sourceEligibleTaskCount: Int
+    var sourceSystemNoteCount: Int
+    var sourceSystemTaskCount: Int
+    var sourceTransientTaskCount: Int
+    var destinationNoteCount: Int
+    var destinationTaskCount: Int
+    var migrationReplicaID: String
+    var logicalCounterProgress: Int64
+    var startedAt: Date
+    var updatedAt: Date
+    var copyCompletedAt: Date?
+    var verifiedAt: Date?
+    var eligibleAt: Date?
+    var activationStateRawValue: String
+    var cloudSeedingEverBegun: Bool
+
+    init(
+        migrationFormatVersion: Int,
+        sourceFingerprint: LegacySourceFingerprint,
+        sourceCounts: LegacyMigrationCounts,
+        migrationReplicaID: String,
+        now: Date
+    ) {
+        singletonKey = "legacy-migration"
+        self.migrationFormatVersion = migrationFormatVersion
+        phaseRawValue = LegacyMigrationPhase.notStarted.rawValue
+        lastCompletedPhaseRawValue = LegacyMigrationPhase.notStarted.rawValue
+        sourceIdentityDigest = sourceFingerprint.identityDigest
+        sourceContentDigest = sourceFingerprint.contentDigest
+        sourceFileCount = sourceFingerprint.fileCount
+        sourceTotalByteCount = Int64(sourceFingerprint.totalByteCount)
+        destinationSchemaVersion = 2
+        sourceEligibleNoteCount = sourceCounts.eligibleNotes
+        sourceEligibleTaskCount = sourceCounts.eligibleTasks
+        sourceSystemNoteCount = sourceCounts.excludedSystemNotes
+        sourceSystemTaskCount = sourceCounts.excludedSystemTasks
+        sourceTransientTaskCount = sourceCounts.excludedTransientTasks
+        destinationNoteCount = 0
+        destinationTaskCount = 0
+        self.migrationReplicaID = migrationReplicaID
+        logicalCounterProgress = 0
+        startedAt = now
+        updatedAt = now
+        activationStateRawValue = LegacyMigrationActivationState.notActivated.rawValue
+        cloudSeedingEverBegun = false
+    }
+}
+
+@Model
+final class LegacyIdentityMapping {
+    var legacyKey: String
+    var entityKindRawValue: String
+    var classificationRawValue: String
+    var stableID: String?
+    var ownerLegacyKey: String?
+    var visibleOrder: Int?
+    var firstVersionCounter: Int64?
+    var versionCount: Int
+
+    init(
+        legacyKey: String,
+        entityKindRawValue: String,
+        classificationRawValue: String,
+        stableID: String?,
+        ownerLegacyKey: String?,
+        visibleOrder: Int?,
+        firstVersionCounter: Int64?,
+        versionCount: Int
+    ) {
+        self.legacyKey = legacyKey
+        self.entityKindRawValue = entityKindRawValue
+        self.classificationRawValue = classificationRawValue
+        self.stableID = stableID
+        self.ownerLegacyKey = ownerLegacyKey
+        self.visibleOrder = visibleOrder
+        self.firstVersionCounter = firstVersionCounter
+        self.versionCount = versionCount
     }
 }
