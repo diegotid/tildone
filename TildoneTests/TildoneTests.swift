@@ -3,9 +3,11 @@
 //  TildoneTests
 //
 
+import CloudKit
 import XCTest
 import TildoneDomain
 import TildonePersistence
+import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
@@ -39,5 +41,52 @@ final class TildoneTests: XCTestCase {
         try await store.deleteNote(note.id)
         let remaining = try await repository.visibleNotes()
         XCTAssertTrue(remaining.isEmpty)
+    }
+
+    /// Opt-in smoke test hosted by the signed development Mac app so the test
+    /// inherits the real CloudKit entitlement. The normal suite is fully local.
+    func testDevelopmentCloudKitRoundTripWhenExplicitlyEnabled() async throws {
+        guard ProcessInfo.processInfo.environment["TILDONE_RUN_DEVELOPMENT_CLOUDKIT_TESTS"] == "1" else {
+            throw XCTSkip("Development CloudKit integration is explicitly opt-in")
+        }
+        let container = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
+        guard try await container.accountStatus() == .available else {
+            throw XCTSkip("A development iCloud account is required")
+        }
+
+        let database = container.privateCloudDatabase
+        let zone = CKRecordZone(zoneID: TildoneCloudSchema.zoneID)
+        let zoneResults = try await database.modifyRecordZones(saving: [zone], deleting: [])
+        _ = try zoneResults.saveResults[TildoneCloudSchema.zoneID]?.get()
+
+        let timestamp = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let stamp = VersionStamp(logicalCounter: 1, replicaID: ReplicaID())
+        let note = Note(
+            id: NoteID(),
+            createdAt: timestamp,
+            title: "Stage 8 synthetic integration record",
+            titleVersion: stamp,
+            lifecycleVersion: stamp,
+            lastMeaningfulEditAt: timestamp,
+            lastMeaningfulEditVersion: stamp
+        )
+        let mapper = CloudKitRecordMapper()
+        let record = mapper.record(from: .note(note))
+        do {
+            let saved = try await database.modifyRecords(
+                saving: [record],
+                deleting: [],
+                savePolicy: .allKeys,
+                atomically: false
+            )
+            _ = try saved.saveResults[record.recordID]?.get()
+            let fetched = try await database.records(for: [record.recordID])
+            let fetchedRecord = try XCTUnwrap(fetched[record.recordID]).get()
+            XCTAssertEqual(try mapper.syncRecord(from: fetchedRecord), .note(note))
+            _ = try await database.modifyRecords(saving: [], deleting: [record.recordID])
+        } catch {
+            _ = try? await database.modifyRecords(saving: [], deleting: [record.recordID])
+            throw error
+        }
     }
 }
