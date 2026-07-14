@@ -36,7 +36,7 @@ Each target has only the source file Swift Package Manager requires to form a mo
 
 ## Deferred owner decision
 
-`studio.cuatro.tildone.ios.placeholder` is a local, explicitly temporary bundle identifier needed for Xcode to build the scaffold. It must be replaced after the owner decides whether iOS belongs to the existing App Store product/universal purchase or a separate listing. No Apple Developer Portal resource was created.
+`studio.cuatro.tildone.ios` is a local, explicitly temporary bundle identifier needed for Xcode to build the scaffold. It must be replaced after the owner decides whether iOS belongs to the existing App Store product/universal purchase or a separate listing. No Apple Developer Portal resource was created.
 
 ## Build verification
 

@@ -21,13 +21,19 @@ let package = Package(
     targets: [
         .target(name: "TildoneDomain"),
         .target(name: "TildonePersistence", dependencies: ["TildoneDomain"]),
-        .target(name: "TildoneSync", dependencies: ["TildoneDomain"]),
+        .target(
+            name: "TildoneSync",
+            dependencies: ["TildoneDomain", "TildonePersistence"]
+        ),
         .testTarget(name: "TildoneDomainTests", dependencies: ["TildoneDomain"]),
         .testTarget(
             name: "TildonePersistenceTests",
             dependencies: ["TildonePersistence"],
             resources: [.copy("Fixtures")]
         ),
-        .testTarget(name: "TildoneSyncTests", dependencies: ["TildoneSync"])
+        .testTarget(
+            name: "TildoneSyncTests",
+            dependencies: ["TildoneSync", "TildonePersistence"]
+        )
     ]
 )
