@@ -234,6 +234,49 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertTrue(acknowledged.isEmpty)
     }
 
+    func testAdoptThenAttemptAndRapidEditsKeepOutboxSupersessionValid() async throws {
+        let local = try TildoneRepository(
+            descriptor: .inMemory(workspace: .localOnly),
+            replicaID: ReplicaID(UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!),
+            now: { self.createdAt }
+        )
+        let account = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID())),
+            replicaID: ReplicaID(UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!),
+            now: { self.createdAt.addingTimeInterval(1) }
+        )
+        _ = try await local.createNote(id: noteID, createdAt: createdAt, title: "Local")
+        _ = try await local.addTask(
+            id: taskID,
+            to: noteID,
+            createdAt: createdAt,
+            text: "Task",
+            orderToken: try OrderToken(rawValue: "h")
+        )
+        try await account.adoptSyncContent(
+            notes: local.allSyncNotes(),
+            tasks: local.allSyncTasks(),
+            at: createdAt
+        )
+
+        for mutation in try await account.pendingMutations() {
+            try await account.recordMutationAttempt(id: mutation.id, at: createdAt)
+        }
+        for index in 0..<20 {
+            _ = try await account.renameNote(
+                id: noteID,
+                to: "Title \(index)",
+                editedAt: createdAt.addingTimeInterval(Double(index + 2))
+            )
+            _ = try await account.editTask(id: taskID, text: "Task \(index)")
+            _ = try await account.pendingMutations(includeSuperseded: true)
+        }
+
+        let active = try await account.pendingMutations()
+        XCTAssertEqual(active.count, 2)
+        XCTAssertEqual(Set(active.map(\.targetKind)), [.note, .task])
+    }
+
     func testForcedSaveFailureLeavesNeitherContentNorOutboxHalf() async throws {
         let repository = try makeRepository()
         await repository.failNextSaveForTesting()
@@ -898,6 +941,38 @@ final class TildonePersistenceTests: XCTestCase {
         await XCTAssertThrowsLegacyMigrationError(.invalidState) {
             _ = try await repository.activateVerifiedLegacyMigration(at: self.createdAt.addingTimeInterval(2))
         }
+    }
+
+    func testCloudSeedingMarkerRemainsReadableAfterActivatedMigration() async throws {
+        let repository = try makeRepository()
+        _ = try await repository.prepareLegacyMigration(
+            formatVersion: 1,
+            sourceFingerprint: migrationFingerprint(),
+            sourceCounts: .zero,
+            at: createdAt
+        )
+        for phase in [
+            LegacyMigrationPhase.sourceInspected,
+            .destinationPrepared,
+            .copyInProgress,
+            .copyCompleted,
+            .verificationInProgress,
+            .verified,
+            .eligibleForCutover
+        ] {
+            try await repository.advanceLegacyMigration(to: phase, at: createdAt)
+        }
+        _ = try await repository.activateVerifiedLegacyMigration(at: createdAt)
+
+        try await repository.markCloudSeedingBegun(at: createdAt.addingTimeInterval(1))
+        let snapshot = try await repository.legacyMigrationSnapshot()
+        XCTAssertEqual(snapshot.phase, .eligibleForCutover)
+        XCTAssertEqual(snapshot.activationState, .activated)
+        XCTAssertTrue(snapshot.cloudSeedingEverBegun)
+
+        // The marker is idempotent and must not turn later launches into an
+        // invalid migration state.
+        try await repository.markCloudSeedingBegun(at: createdAt.addingTimeInterval(2))
     }
 
     func testLegacyStateRejectsDifferentCopiedChangedAndUpgradedSources() async throws {

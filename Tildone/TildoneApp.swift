@@ -28,10 +28,11 @@ struct TildoneApp: App {
             Group {
                 if let store = sharedStoreBootstrapper.store {
                     Desktop(store: store, foregroundNoteID: $foregroundNoteID)
-                } else if let error = sharedStoreBootstrapper.error {
+                } else if sharedStoreBootstrapper.error != nil {
                     VStack(spacing: 12) {
                         Text("Tildone could not open your notes.").font(.headline)
-                        Text(error.localizedDescription).foregroundStyle(.secondary)
+                        Text("Your existing notes have not been changed. Tildone needs attention before it can open this workspace.")
+                            .foregroundStyle(.secondary)
                     }
                     .padding(24)
                 } else {

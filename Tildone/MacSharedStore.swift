@@ -186,6 +186,16 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 }
 
                 let base = try Self.applicationSupportDirectory()
+                if Self.developmentAccountWorkspaceResetEnabled {
+                    // This is a deliberate development recovery operation. It
+                    // only discards the account-keyed local replica/outbox;
+                    // the local-only migration workspace is left untouched.
+                    // CloudKit records and zones are never deleted here.
+                    try Self.resetDevelopmentAccountWorkspace(
+                        baseDirectory: base,
+                        workspaceID: workspaceID
+                    )
+                }
                 let accountRepository = try TildoneRepository(descriptor: .persistent(
                     baseDirectory: base,
                     workspace: .account(workspaceID)
@@ -342,6 +352,48 @@ final class MacSharedStoreBootstrapper: ObservableObject {
 #else
         false
 #endif
+    }
+
+    /// Explicit, development-only repair hatch for a disposable account
+    /// replica whose local outbox/state can no longer be opened. It requires a
+    /// deliberately wordy value so an ordinary Debug sync run cannot erase a
+    /// local replica by accident. It never touches the local-only workspace,
+    /// the released legacy store, or CloudKit's remote custom zone.
+    private static var developmentAccountWorkspaceResetEnabled: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.environment[
+            "TILDONE_RESET_DEVELOPMENT_ACCOUNT_WORKSPACE"
+        ] == "CONFIRM_RESET"
+#else
+        false
+#endif
+    }
+
+    private static func resetDevelopmentAccountWorkspace(
+        baseDirectory: URL,
+        workspaceID: UUID
+    ) throws {
+        let descriptor = PersistenceStoreDescriptor.persistent(
+            baseDirectory: baseDirectory,
+            workspace: .account(workspaceID)
+        )
+        guard let storeURL = try TildoneRepository.storeURL(for: descriptor) else {
+            throw PersistenceError.invalidStoreLocation
+        }
+        let directory = storeURL.deletingLastPathComponent().standardizedFileURL
+        let accountsDirectory = baseDirectory
+            .appendingPathComponent("TildoneSharedStore-v1", isDirectory: true)
+            .appendingPathComponent("accounts", isDirectory: true)
+            .standardizedFileURL
+        guard directory.deletingLastPathComponent() == accountsDirectory else {
+            throw PersistenceError.invalidStoreLocation
+        }
+        guard FileManager.default.fileExists(atPath: directory.path) else { return }
+        do {
+            try FileManager.default.removeItem(at: directory)
+        } catch {
+            throw PersistenceError.invalidStoreLocation
+        }
     }
 
     private static func status(for account: CloudAccountState) -> SyncStatus {

@@ -5,6 +5,7 @@
 
 import SwiftUI
 import TildoneDomain
+import TildonePersistence
 
 /// A macOS note window backed solely by shared-domain snapshots. AppKit state
 /// (focus, fade, minimization and window styling) deliberately remains here.
@@ -43,6 +44,7 @@ struct Note: View {
     @State private var fadeAwayProgress: Float = 0 {
         didSet { updateFade() }
     }
+    @State private var mutationErrorMessage: String?
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskID: TaskID?
 
@@ -64,6 +66,14 @@ struct Note: View {
             guard newTaskText.isEmpty else { return }
             setCompletionState(complete)
         }
+        .alert("Couldn’t save this change", isPresented: Binding(
+            get: { mutationErrorMessage != nil },
+            set: { if !$0 { mutationErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { mutationErrorMessage = nil }
+        } message: {
+            Text(mutationErrorMessage ?? "Your notes remain on this Mac.")
+        }
     }
 }
 
@@ -82,7 +92,45 @@ private extension Note {
     func mutate(_ operation: @escaping () async throws -> Void, message: String) {
         Swift.Task {
             do { try await operation() }
-            catch { fatalError("\(message): \(error)") }
+            catch {
+                // Repository failures must never terminate the user's note window.
+                // In particular, a sync/outbox recovery issue must leave locally
+                // persisted content available for an explicit recovery decision.
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: message,
+                    error: error
+                )
+            }
+        }
+    }
+
+    static func mutationFailureMessage(operation: String, error: Error) -> String {
+        var result = "Your notes remain on this Mac. Synchronization needs attention before this change can be saved."
+#if DEBUG
+        result += "\n\nDevelopment detail: \(operation) / \(safePersistenceCategory(error))"
+#endif
+        return result
+    }
+
+    static func safePersistenceCategory(_ error: Error) -> String {
+        guard let error = error as? PersistenceError else { return "non-persistence-error" }
+        return switch error {
+        case .openFailure: "open-failure"
+        case .saveFailure: "save-failure"
+        case .missing: "missing-entity"
+        case .missingPendingMutation: "missing-pending-mutation"
+        case .duplicateID: "duplicate-identifier"
+        case .ownershipMismatch: "ownership-mismatch"
+        case let .malformedRepresentation(_, _, field): "malformed-\(field)"
+        case .domainInvariant: "domain-invariant"
+        case .unsupportedRecordSchema: "unsupported-schema"
+        case .workspaceMismatch: "workspace-mismatch"
+        case .workspaceInUse: "workspace-in-use"
+        case .invalidWorkspace: "invalid-workspace"
+        case .invalidStoreLocation: "invalid-store-location"
+        case .invalidQuarantineMetadata: "invalid-quarantine"
+        case .atomicMutationFailure: "atomic-mutation-failure"
+        case .counterOverflow: "counter-overflow"
         }
     }
 
