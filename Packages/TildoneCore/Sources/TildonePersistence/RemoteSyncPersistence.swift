@@ -325,11 +325,7 @@ private extension TildoneRepository {
             return
         }
         for row in active {
-            if row.attemptCount == 0 {
-                context.delete(row)
-            } else {
-                row.supersededByMutationID = newID
-            }
+            try supersedeActiveMutation(row, with: newID, in: context)
         }
         context.insert(PendingMutation(
             mutationID: newID,

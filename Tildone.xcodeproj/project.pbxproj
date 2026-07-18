@@ -91,6 +91,7 @@
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		A10000000000000000000015 /* TildoneiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TildoneiOS.entitlements; sourceTree = "<group>"; };
+		A1000000000000000000001A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000016 /* TildoneiOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneiOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000017 /* TildoneiOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* TildoneiOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneiOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -191,6 +192,7 @@
 				A10000000000000000000011 /* TildoneiOSApp.swift */,
 				A10000000000000000000012 /* TildoneiOSRootView.swift */,
 				A10000000000000000000013 /* Assets.xcassets */,
+				A1000000000000000000001A /* Info.plist */,
 				A10000000000000000000015 /* TildoneiOS.entitlements */,
 				A10000000000000000000054 /* Preview Content */,
 			);
@@ -695,10 +697,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\"";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TildoneiOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -723,10 +725,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\"";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TildoneiOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

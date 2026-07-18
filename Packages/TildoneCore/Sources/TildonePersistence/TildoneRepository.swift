@@ -633,11 +633,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         ))
         let newID = UUID().uuidString.lowercased()
         for row in active {
-            if row.attemptCount == 0 {
-                context.delete(row)
-            } else {
-                row.supersededByMutationID = newID
-            }
+            try supersedeActiveMutation(row, with: newID, in: context)
         }
         context.insert(PendingMutation(
             mutationID: newID,
@@ -646,6 +642,29 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             sequence: Int64(sequence),
             createdAt: now()
         ))
+    }
+
+    /// Replaces one active mutation while preserving the acknowledgement chain
+    /// of older in-flight mutations. An unsent active row may already be the
+    /// successor of an attempted ancestor; deleting it without retargeting that
+    /// ancestor leaves a dangling supersession link.
+    func supersedeActiveMutation(
+        _ row: PendingMutation,
+        with newMutationID: String,
+        in context: ModelContext
+    ) throws {
+        if row.attemptCount == 0 {
+            let removedID = row.mutationID
+            let predecessors = try context.fetch(FetchDescriptor<PendingMutation>(
+                predicate: #Predicate { $0.supersededByMutationID == removedID }
+            ))
+            for predecessor in predecessors {
+                predecessor.supersededByMutationID = newMutationID
+            }
+            context.delete(row)
+        } else {
+            row.supersededByMutationID = newMutationID
+        }
     }
 
     private static func snapshot(_ row: PendingMutation) throws -> PendingMutationSnapshot {

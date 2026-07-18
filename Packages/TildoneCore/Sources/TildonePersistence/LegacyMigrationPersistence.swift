@@ -435,12 +435,19 @@ private extension TildoneRepository {
               state.copyCompletedAt?.timeIntervalSinceReferenceDate.isFinite != false,
               state.verifiedAt?.timeIntervalSinceReferenceDate.isFinite != false,
               state.eligibleAt?.timeIntervalSinceReferenceDate.isFinite != false,
-              let activation = LegacyMigrationActivationState(rawValue: state.activationStateRawValue),
-              !state.cloudSeedingEverBegun else {
+              let activation = LegacyMigrationActivationState(rawValue: state.activationStateRawValue) else {
             throw LegacyMigrationPersistenceError.invalidState
         }
         let currentPhase = try phase(state.phaseRawValue)
         let lastCompleted = try phase(state.lastCompletedPhaseRawValue)
+        // Cloud seeding is an irreversible but valid post-activation state. It
+        // must not make a verified local migration unreadable on subsequent
+        // launches; it only rules out rolling that destination back.
+        if state.cloudSeedingEverBegun {
+            guard currentPhase == .eligibleForCutover, activation == .activated else {
+                throw LegacyMigrationPersistenceError.invalidState
+            }
+        }
         let failure = try state.failureCategoryRawValue.map {
             guard let value = LegacyMigrationFailureCategory(rawValue: $0) else {
                 throw LegacyMigrationPersistenceError.invalidState
