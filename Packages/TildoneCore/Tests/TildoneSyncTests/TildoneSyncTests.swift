@@ -341,6 +341,73 @@ final class TildoneSyncTests: XCTestCase {
         }
     }
 
+    func testCloudMapperAcceptsServerBooleanRepresentationButRejectsOtherCoercions() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+
+        let booleanSchema = mapper.record(from: .note(fixture.note))
+        booleanSchema["schemaVersion"] = NSNumber(value: true)
+        XCTAssertThrowsError(try mapper.syncRecord(from: booleanSchema)) { error in
+            XCTAssertEqual(
+                error as? CloudRecordMappingError,
+                .invalidField(fixture.note.id.recordName, "schemaVersion")
+            )
+        }
+
+        let fractionalCounter = mapper.record(from: .task(fixture.task))
+        fractionalCounter["textVersionCounter"] = NSNumber(value: 7.5)
+        XCTAssertThrowsError(try mapper.syncRecord(from: fractionalCounter)) { error in
+            XCTAssertEqual(
+                error as? CloudRecordMappingError,
+                .invalidField(fixture.task.id.recordName, "textVersionCounter")
+            )
+        }
+
+        let serverTrue = mapper.record(from: .task(fixture.task))
+        serverTrue["isCompleted"] = NSNumber(value: Int64(1))
+        guard case let .task(decodedTrue) = try mapper.syncRecord(from: serverTrue) else {
+            return XCTFail("Expected a task")
+        }
+        XCTAssertTrue(decodedTrue.isCompleted)
+
+        let serverFalse = mapper.record(from: .task(fixture.task))
+        serverFalse["isCompleted"] = NSNumber(value: Int64(0))
+        serverFalse["completedAt"] = nil
+        guard case let .task(decodedFalse) = try mapper.syncRecord(from: serverFalse) else {
+            return XCTFail("Expected a task")
+        }
+        XCTAssertFalse(decodedFalse.isCompleted)
+
+        for invalid in [NSNumber(value: Int64(2)), NSNumber(value: 0.5)] {
+            let invalidBoolean = mapper.record(from: .task(fixture.task))
+            invalidBoolean["isCompleted"] = invalid
+            XCTAssertThrowsError(try mapper.syncRecord(from: invalidBoolean)) { error in
+                XCTAssertEqual(
+                    error as? CloudRecordMappingError,
+                    .invalidField(fixture.task.id.recordName, "isCompleted")
+                )
+            }
+        }
+
+        let inconsistentBoolean = mapper.record(from: .task(fixture.task))
+        inconsistentBoolean["isCompleted"] = NSNumber(value: Int64(0))
+        XCTAssertThrowsError(try mapper.syncRecord(from: inconsistentBoolean)) { error in
+            XCTAssertEqual(
+                error as? CloudRecordMappingError,
+                .invalidField(fixture.task.id.recordName, "completedAt")
+            )
+        }
+    }
+
+    func testCloudKitBatchPolicyCapsEachRequestAtServerLimit() {
+        let pending = Array(0..<301)
+        let firstBatch = TildoneSyncBatchPolicy.bounded(pending)
+
+        XCTAssertEqual(firstBatch.count, 250)
+        XCTAssertEqual(Array(firstBatch), Array(0..<250))
+        XCTAssertEqual(TildoneSyncBatchPolicy.bounded([] as [Int]).count, 0)
+    }
+
     func testThreeReplicasConvergeAcrossReorderedDuplicateDeliveries() async throws {
         let replicas = try [Replica(id: 1), Replica(id: 2), Replica(id: 3)]
         let noteID = NoteID(UUID(int: 100))

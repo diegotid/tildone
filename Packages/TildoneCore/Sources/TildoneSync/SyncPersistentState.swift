@@ -40,9 +40,8 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
         engineSerialization = try PropertyListEncoder().encode(serialization)
     }
 
-    mutating func storeSystemFields(for record: CKRecord) {
-        guard let data = try? Self.encodeSystemFields(record) else { return }
-        systemFieldsByRecordName[record.recordID.recordName] = data
+    mutating func storeSystemFields(for record: CKRecord) throws {
+        systemFieldsByRecordName[record.recordID.recordName] = try Self.encodeSystemFields(record)
     }
 
     func systemRecord(named recordName: String) -> CKRecord? {
@@ -97,7 +96,7 @@ actor SyncCoordinatorState {
     }
 
     func storeSystemFields(_ record: CKRecord) async throws {
-        persistent.storeSystemFields(for: record)
+        try persistent.storeSystemFields(for: record)
         try await persist()
     }
 

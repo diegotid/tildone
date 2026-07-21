@@ -70,6 +70,36 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(model.notes.isEmpty)
     }
 
+    func testTaskOnlyRemoteDeliveryAdvancesContentRevision() async throws {
+        let workspace = UUID()
+        let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))
+        let model = try await makeModel(repository: repository)
+        let note = try await repository.createNote(id: NoteID(), createdAt: Date(), title: "Remote")
+        try await model.reloadNotes()
+        let notesBeforeTask = model.notes
+        let revisionBeforeTask = model.contentRevision
+
+        let stamp = VersionStamp(logicalCounter: 100, replicaID: ReplicaID())
+        let remoteTask = TildoneDomain.Task(
+            id: TaskID(),
+            noteID: note.id,
+            createdAt: Date(),
+            text: "Arrived separately",
+            textVersion: stamp,
+            completionVersion: stamp,
+            orderToken: try OrderToken(rawValue: "m"),
+            orderVersion: stamp,
+            lifecycleVersion: stamp
+        )
+        _ = try await repository.mergeRemoteTask(remoteTask, at: Date())
+        try await model.reloadNotes()
+
+        XCTAssertEqual(model.notes, notesBeforeTask)
+        XCTAssertGreaterThan(model.contentRevision, revisionBeforeTask)
+        let tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [remoteTask.id])
+    }
+
     func testOfflineAndAttentionStatesRemainUnderstandable() async throws {
         let model = try await makeModel()
         let note = try await model.createNote()
@@ -116,6 +146,34 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(model.notes.isEmpty)
 
         try await model.openForTesting(workspaceID: workspaceB)
+        XCTAssertTrue(model.notes.isEmpty)
+    }
+
+    func testWorkspaceResolutionRevalidatesAccountIdentity() async throws {
+        let workspaceA = UUID()
+        let workspaceB = UUID()
+        let repositoryA = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceA)))
+        let repositoryB = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceB)))
+        var account = CloudAccountSnapshot(state: .available, workspaceID: workspaceA)
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { workspace in
+                switch workspace {
+                case let .account(id) where id == workspaceA: return repositoryA
+                case let .account(id) where id == workspaceB: return repositoryB
+                default: throw PersistenceError.workspaceMismatch
+                }
+            },
+            accountResolver: { account },
+            synchronizationEnabled: false
+        )
+
+        await model.resolveAndOpenCurrentWorkspace()
+        _ = try await model.createNote(title: "Private to A")
+        XCTAssertEqual(model.notes.count, 1)
+
+        account = CloudAccountSnapshot(state: .available, workspaceID: workspaceB)
+        await model.resolveAndOpenCurrentWorkspace()
+        XCTAssertTrue(model.hasWorkspace)
         XCTAssertTrue(model.notes.isEmpty)
     }
 

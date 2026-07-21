@@ -3,6 +3,7 @@
 //  Tildone
 //
 import CloudKit
+import CoreFoundation
 import Foundation
 import TildoneDomain
 
@@ -276,17 +277,45 @@ private extension CloudKitRecordMapper {
     }
 
     func int64(_ field: String, in record: CKRecord) throws -> Int64 {
-        guard let number = record[field] as? NSNumber else {
-            throw CloudRecordMappingError.missingField(record.recordID.recordName, field)
+        let name = record.recordID.recordName
+        guard let value = record[field] else {
+            throw CloudRecordMappingError.missingField(name, field)
         }
-        return number.int64Value
+        guard let number = value as? NSNumber,
+              let result = exactInt64(number) else {
+            throw CloudRecordMappingError.invalidField(name, field)
+        }
+        return result
     }
 
     func bool(_ field: String, in record: CKRecord) throws -> Bool {
-        guard let number = record[field] as? NSNumber else {
-            throw CloudRecordMappingError.missingField(record.recordID.recordName, field)
+        let name = record.recordID.recordName
+        guard let value = record[field] else {
+            throw CloudRecordMappingError.missingField(name, field)
         }
-        return number.boolValue
+        guard let number = value as? NSNumber else {
+            throw CloudRecordMappingError.invalidField(name, field)
+        }
+        if CFGetTypeID(number) == CFBooleanGetTypeID() {
+            return number.boolValue
+        }
+        // CloudKit may return a Boolean NSNumber as its server-side INT64
+        // representation. Accept only the canonical 0/1 values; ordinary
+        // numeric coercion would also turn malformed values such as 2 or 0.5
+        // into a Boolean.
+        guard let value = exactInt64(number), value == 0 || value == 1 else {
+            throw CloudRecordMappingError.invalidField(name, field)
+        }
+        return value == 1
+    }
+
+    func exactInt64(_ number: NSNumber) -> Int64? {
+        guard CFGetTypeID(number) == CFNumberGetTypeID(),
+              !CFNumberIsFloatType(number) else { return nil }
+        var result: Int64 = 0
+        guard CFNumberGetValue(number, .sInt64Type, &result),
+              number.compare(NSNumber(value: result)) == .orderedSame else { return nil }
+        return result
     }
 
     func safeUnknownName(for record: CKRecord) -> String {
