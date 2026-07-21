@@ -7,6 +7,15 @@ import Foundation
 import TildoneDomain
 import TildonePersistence
 
+enum TildoneSyncBatchPolicy {
+    /// CloudKit's maximum combined record saves and deletes per request.
+    static let maximumRecordChanges = 250
+
+    static func bounded<T>(_ changes: [T]) -> ArraySlice<T> {
+        changes.prefix(maximumRecordChanges)
+    }
+}
+
 public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Sendable {
     public typealias AccountChangeHandler = @Sendable (SyncAccountChange) -> Void
     public typealias RemoteChangeHandler = @Sendable () async -> Void
@@ -63,6 +72,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         }
         do {
             try await refreshPendingEngineChanges()
+            SyncDiagnostics.checkpointStarted(pendingCount: try await pipeline.pendingCount())
             await refreshStatus(activity: .syncing)
             try await engine.sendChanges()
             try await engine.fetchChanges(
@@ -92,6 +102,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
         switch event {
         case let .stateUpdate(update):
+            guard !(await coordinatorState.isFrozen()) else { break }
             do {
                 try await coordinatorState.updateEngineSerialization(
                     update.stateSerialization
@@ -136,9 +147,11 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
         guard !(await coordinatorState.isFrozen()) else { return nil }
-        let pending = syncEngine.state.pendingRecordZoneChanges.filter {
-            context.options.scope.contains($0)
-        }
+        let pending = TildoneSyncBatchPolicy.bounded(
+            syncEngine.state.pendingRecordZoneChanges.filter {
+                context.options.scope.contains($0)
+            }
+        )
         var records: [CKRecord] = []
         var stale: [CKSyncEngine.PendingRecordZoneChange] = []
         for change in pending {
@@ -200,9 +213,18 @@ private extension TildoneSyncCoordinator {
     func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange.ChangeType) async {
         switch change {
         case .signIn:
-            await refreshStatus(activity: .syncing)
+            SyncDiagnostics.accountChanged(category: "signed-in")
+            do {
+                // CKSyncEngine clears its pending engine changes when the
+                // account changes. Rehydrate them from Tildone's durable
+                // outbox so an initial sign-in event cannot strand local work.
+                try await bootstrapPendingChanges()
+            } catch {
+                await apply(error: error)
+            }
             onAccountChange(.signedIn)
         case .signOut:
+            SyncDiagnostics.accountChanged(category: "signed-out")
             await coordinatorState.freeze()
             await engine?.cancelOperations()
             await refreshStatus(
@@ -212,6 +234,7 @@ private extension TildoneSyncCoordinator {
             )
             onAccountChange(.signedOut)
         case .switchAccounts:
+            SyncDiagnostics.accountChanged(category: "switched")
             await coordinatorState.freeze()
             await engine?.cancelOperations()
             await refreshStatus(
@@ -228,6 +251,10 @@ private extension TildoneSyncCoordinator {
     func handleFetchedRecordZoneChanges(
         _ event: CKSyncEngine.Event.FetchedRecordZoneChanges
     ) async {
+        SyncDiagnostics.fetched(
+            modificationCount: event.modifications.count,
+            deletionCount: event.deletions.count
+        )
         var decoded: [SyncRecord] = []
         for modification in event.modifications {
             let record = modification.record
@@ -246,7 +273,7 @@ private extension TildoneSyncCoordinator {
                 _ = try await pipeline.apply(decoded, at: now())
             }
             for deletion in event.deletions where deletion.recordID.zoneID == TildoneCloudSchema.zoneID {
-                try? await pipeline.applyPhysicalDeletion(
+                try await pipeline.applyPhysicalDeletion(
                     recordName: deletion.recordID.recordName,
                     at: now()
                 )
@@ -279,6 +306,10 @@ private extension TildoneSyncCoordinator {
         _ event: CKSyncEngine.Event.SentRecordZoneChanges,
         syncEngine: CKSyncEngine
     ) async {
+        SyncDiagnostics.sent(
+            savedCount: event.savedRecords.count,
+            failedCount: event.failedRecordSaves.count
+        )
         var acknowledgements: Set<UUID> = []
         for record in event.savedRecords where record.recordID.zoneID == TildoneCloudSchema.zoneID {
             if let mutation = await coordinatorState.takeInFlight(
@@ -368,6 +399,7 @@ private extension TildoneSyncCoordinator {
             category = .unsupportedRecordType
             schema = nil
         }
+        SyncDiagnostics.quarantined(category: category.rawValue)
         do {
             try await repository.quarantine(
                 recordKind: kind,
@@ -407,13 +439,15 @@ private extension TildoneSyncCoordinator {
 
     func markCheckpointComplete() async {
         let pending = (try? await pipeline.pendingCount()) ?? 0
-        await statusModel.set(SyncStatus(
+        let status = SyncStatus(
             availability: .available,
             activity: pending == 0 ? .idle : .syncing,
             pendingMutationCount: pending,
             lastSuccessfulSyncAt: now(),
             issue: nil
-        ))
+        )
+        await statusModel.set(status)
+        SyncDiagnostics.statusChanged(status)
     }
 
     func refreshStatus(
@@ -423,20 +457,31 @@ private extension TildoneSyncCoordinator {
     ) async {
         let current = await statusModel.snapshot()
         let pending = (try? await pipeline.pendingCount()) ?? current.pendingMutationCount
-        await statusModel.set(SyncStatus(
+        let status = SyncStatus(
             availability: availability,
             activity: activity,
             pendingMutationCount: pending,
             lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
             issue: issue
-        ))
+        )
+        guard status != current else { return }
+        await statusModel.set(status)
+        SyncDiagnostics.statusChanged(status)
     }
 
     func apply(error: Error) async {
         guard let cloudError = error as? CKError else {
+            SyncDiagnostics.failed(category: safeErrorCategory(error))
+            // A local persistence failure while processing fetched changes
+            // must not be followed by a newer serialized engine checkpoint.
+            // Freeze only this coordinator instance; relaunch restores the
+            // last durable checkpoint and can redeliver idempotently.
+            await coordinatorState.freeze()
+            await engine?.cancelOperations()
             await refreshStatus(activity: .attentionNeeded, issue: .unknown)
             return
         }
+        SyncDiagnostics.failed(category: "cloud-\(cloudError.code.rawValue)")
         switch cloudError.code {
         case .networkFailure, .networkUnavailable:
             await refreshStatus(activity: .offline, issue: .network)
@@ -456,6 +501,30 @@ private extension TildoneSyncCoordinator {
             await freezeForZoneReset()
         default:
             await refreshStatus(activity: .attentionNeeded, issue: .unknown)
+        }
+    }
+
+    func safeErrorCategory(_ error: Error) -> String {
+        guard let error = error as? PersistenceError else {
+            return "non-cloud-non-persistence"
+        }
+        return switch error {
+        case .openFailure: "persistence-open"
+        case .saveFailure: "persistence-save"
+        case .missing: "persistence-missing"
+        case .missingPendingMutation: "persistence-missing-mutation"
+        case .duplicateID: "persistence-duplicate"
+        case .ownershipMismatch: "persistence-ownership"
+        case .malformedRepresentation: "persistence-malformed"
+        case .domainInvariant: "persistence-domain"
+        case .unsupportedRecordSchema: "persistence-schema"
+        case .workspaceMismatch: "persistence-workspace"
+        case .workspaceInUse: "persistence-in-use"
+        case .invalidWorkspace: "persistence-invalid-workspace"
+        case .invalidStoreLocation: "persistence-location"
+        case .invalidQuarantineMetadata: "persistence-quarantine"
+        case .atomicMutationFailure: "persistence-atomic"
+        case .counterOverflow: "persistence-counter"
         }
     }
 }

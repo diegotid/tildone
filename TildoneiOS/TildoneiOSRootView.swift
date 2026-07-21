@@ -19,6 +19,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
     @Published private(set) var syncStatus: SyncStatus = .disabled
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
+    /// Advances for every successful repository reload, even when the note
+    /// values themselves are unchanged. A remote task can arrive in a
+    /// different CKSyncEngine batch than its owning note.
+    @Published private(set) var contentRevision: UInt64 = 0
 
     private let repositoryFactory: RepositoryFactory
     private let accountResolver: () async -> CloudAccountSnapshot
@@ -53,11 +57,11 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func applicationBecameActive() {
-        guard hasWorkspace else {
-            start()
-            return
-        }
-        syncNow()
+        // Re-resolve the account identity before resuming an existing
+        // coordinator. This independently enforces the account-workspace
+        // privacy boundary if an account-change event was delayed while the
+        // application was suspended.
+        start()
     }
 
     /// Requests an immediate transport checkpoint. Local editing never waits
@@ -82,6 +86,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
         if activeWorkspace == workspaceID, repository != nil {
             isResolvingWorkspace = false
+            syncNow()
             return
         }
 
@@ -109,6 +114,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     func reloadNotes() async throws {
         guard let repository else { return }
         notes = try await repository.visibleNotes()
+        contentRevision &+= 1
     }
 
     func tasks(in noteID: NoteID) async throws -> [Task] {
@@ -227,10 +233,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 }
             },
             onRemoteChange: { [weak self] in
-                await MainActor.run { [weak self] in
-                    guard self?.activeWorkspace == workspaceID else { return }
-                    Swift.Task { @MainActor in try? await self?.reloadNotes() }
-                }
+                await self?.reloadRemoteContent(for: workspaceID)
             }
         )
         self.coordinator = coordinator
@@ -258,6 +261,23 @@ final class TildoneiOSApplicationModel: ObservableObject {
         notes = []
         hasWorkspace = false
         syncStatus = status
+    }
+
+    private func reloadRemoteContent(for workspaceID: UUID) async {
+        guard activeWorkspace == workspaceID else { return }
+        do {
+            try await reloadNotes()
+        } catch {
+            // Keep the last complete snapshots visible. A subsequent
+            // foreground checkpoint retries the repository reload.
+            syncStatus = SyncStatus(
+                availability: .available,
+                activity: .attentionNeeded,
+                pendingMutationCount: syncStatus.pendingMutationCount,
+                lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt,
+                issue: .unknown
+            )
+        }
     }
 
     private nonisolated static func makeRepository(workspace: WorkspaceIdentity) throws -> TildoneRepository {
@@ -416,6 +436,7 @@ private struct ChecklistView: View {
     @State private var tasks: [Task] = []
     @State private var newTaskText = ""
     @State private var title = ""
+    @State private var titleBaseline: String?
     @FocusState private var focusedTask: TaskID?
     @FocusState private var isAddingTask: Bool
     @FocusState private var isEditingTitle: Bool
@@ -430,7 +451,10 @@ private struct ChecklistView: View {
                             .font(.title2.weight(.semibold))
                             .submitLabel(.done)
                             .onSubmit { saveTitle() }
-                            .onChange(of: title) { _, _ in }
+                            .onChange(of: isEditingTitle) { wasEditing, isEditing in
+                                guard wasEditing, !isEditing else { return }
+                                finishTitleEditing()
+                            }
                     }
                     Section("Checklist") {
                         ForEach(tasks, id: \.id) { task in
@@ -485,7 +509,7 @@ private struct ChecklistView: View {
             isEditingTitle = isUntitled
             isAddingTask = !isUntitled && tasks.isEmpty
         }
-        .onChange(of: appModel.notes) { _, _ in
+        .onChange(of: appModel.contentRevision) { _, _ in
             if !appModel.notes.contains(where: { $0.id == noteID }) { dismiss() }
             else { Swift.Task { await reload() } }
         }
@@ -495,12 +519,35 @@ private struct ChecklistView: View {
         note = appModel.notes.first(where: { $0.id == noteID })
         guard note != nil else { return }
         tasks = (try? await appModel.tasks(in: noteID)) ?? []
-        if !title.isEmpty || note?.title == nil { return }
-        title = note?.title ?? ""
+        if !isEditingTitle || titleBaseline == nil {
+            title = note?.title ?? ""
+            titleBaseline = Self.normalizedTitle(note?.title)
+        }
     }
 
     private func saveTitle() {
-        Swift.Task { try? await appModel.rename(noteID: noteID, title: title); await reload() }
+        let normalized = Self.normalizedTitle(title)
+        guard normalized != titleBaseline else { return }
+        titleBaseline = normalized
+        Swift.Task {
+            try? await appModel.rename(noteID: noteID, title: normalized)
+            await reload()
+        }
+    }
+
+    private func finishTitleEditing() {
+        if Self.normalizedTitle(title) == titleBaseline {
+            title = note?.title ?? ""
+            titleBaseline = Self.normalizedTitle(note?.title)
+        } else {
+            saveTitle()
+        }
+    }
+
+    private static func normalizedTitle(_ title: String?) -> String? {
+        guard let title = title?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return nil }
+        return title
     }
 
     private func addTask() {
