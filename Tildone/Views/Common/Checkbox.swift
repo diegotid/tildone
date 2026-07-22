@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct Checkbox: View {
-    @State var checked: Bool = false
+    var checked: Bool = false
 
     var disabled: Bool = false
     var onToggle: (() -> Void)?
@@ -23,7 +23,6 @@ struct Checkbox: View {
                 .onTapGesture(count: 1) {
                     if !disabled, let toggle = onToggle {
                         toggle()
-                        self.checked.toggle()
                     }
                 }
             if self.checked {
@@ -35,7 +34,6 @@ struct Checkbox: View {
                     .onTapGesture(count: 1) {
                         if let toggle = onToggle {
                             toggle()
-                            self.checked.toggle()
                         }
                     }
             }

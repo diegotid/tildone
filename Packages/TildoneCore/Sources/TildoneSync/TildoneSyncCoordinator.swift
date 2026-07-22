@@ -213,7 +213,7 @@ private extension TildoneSyncCoordinator {
     func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange.ChangeType) async {
         switch change {
         case .signIn:
-            SyncDiagnostics.accountChanged(category: "signed-in")
+            SyncDiagnostics.accountChanged(category: .signedIn)
             do {
                 // CKSyncEngine clears its pending engine changes when the
                 // account changes. Rehydrate them from Tildone's durable
@@ -224,7 +224,7 @@ private extension TildoneSyncCoordinator {
             }
             onAccountChange(.signedIn)
         case .signOut:
-            SyncDiagnostics.accountChanged(category: "signed-out")
+            SyncDiagnostics.accountChanged(category: .signedOut)
             await coordinatorState.freeze()
             await engine?.cancelOperations()
             await refreshStatus(
@@ -234,7 +234,7 @@ private extension TildoneSyncCoordinator {
             )
             onAccountChange(.signedOut)
         case .switchAccounts:
-            SyncDiagnostics.accountChanged(category: "switched")
+            SyncDiagnostics.accountChanged(category: .switched)
             await coordinatorState.freeze()
             await engine?.cancelOperations()
             await refreshStatus(
@@ -399,7 +399,7 @@ private extension TildoneSyncCoordinator {
             category = .unsupportedRecordType
             schema = nil
         }
-        SyncDiagnostics.quarantined(category: category.rawValue)
+        SyncDiagnostics.quarantined(category: category)
         do {
             try await repository.quarantine(
                 recordKind: kind,
@@ -471,7 +471,7 @@ private extension TildoneSyncCoordinator {
 
     func apply(error: Error) async {
         guard let cloudError = error as? CKError else {
-            SyncDiagnostics.failed(category: safeErrorCategory(error))
+            SyncDiagnostics.failed(category: .classify(error))
             // A local persistence failure while processing fetched changes
             // must not be followed by a newer serialized engine checkpoint.
             // Freeze only this coordinator instance; relaunch restores the
@@ -481,7 +481,7 @@ private extension TildoneSyncCoordinator {
             await refreshStatus(activity: .attentionNeeded, issue: .unknown)
             return
         }
-        SyncDiagnostics.failed(category: "cloud-\(cloudError.code.rawValue)")
+        SyncDiagnostics.failed(category: .cloud(cloudError.code.rawValue))
         switch cloudError.code {
         case .networkFailure, .networkUnavailable:
             await refreshStatus(activity: .offline, issue: .network)
@@ -504,27 +504,4 @@ private extension TildoneSyncCoordinator {
         }
     }
 
-    func safeErrorCategory(_ error: Error) -> String {
-        guard let error = error as? PersistenceError else {
-            return "non-cloud-non-persistence"
-        }
-        return switch error {
-        case .openFailure: "persistence-open"
-        case .saveFailure: "persistence-save"
-        case .missing: "persistence-missing"
-        case .missingPendingMutation: "persistence-missing-mutation"
-        case .duplicateID: "persistence-duplicate"
-        case .ownershipMismatch: "persistence-ownership"
-        case .malformedRepresentation: "persistence-malformed"
-        case .domainInvariant: "persistence-domain"
-        case .unsupportedRecordSchema: "persistence-schema"
-        case .workspaceMismatch: "persistence-workspace"
-        case .workspaceInUse: "persistence-in-use"
-        case .invalidWorkspace: "persistence-invalid-workspace"
-        case .invalidStoreLocation: "persistence-location"
-        case .invalidQuarantineMetadata: "persistence-quarantine"
-        case .atomicMutationFailure: "persistence-atomic"
-        case .counterOverflow: "persistence-counter"
-        }
-    }
 }

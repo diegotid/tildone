@@ -245,13 +245,13 @@ project owner's observations; unperformed gates remain pending.
 | Gate | Status | Evidence |
 | --- | --- | --- |
 | Development schema/zone inspection | Passed | Owner confirmed `TDNote` and `TDTask` under Development Schema → Record Types and `TildoneUserData` in the Development private-database zone selector on 2026-07-22. CloudKit Console and both devices use the same iCloud account. |
-| Signed Mac ↔ physical iPhone foreground round-trip | Partial | On 2026-07-22 both signed Debug apps opened normally and Mac-authored notes appeared on the physical iPhone. Sanitized Mac diagnostics showed `checkpoint-started pending=0`, a mutation advancing pending to 1, `sent-records saved=1 failed=0`, and return to available/idle with pending 0. The attached iPhone Xcode console then showed a checkpoint at pending 0, available/syncing transitions, and return to available/idle with no issue. iPhone→Mac delivery remains pending. |
+| Signed Mac ↔ physical iPhone foreground round-trip | Passed | On 2026-07-22 both signed Debug apps opened normally and Mac-authored notes appeared on the physical iPhone. Stage 11 added iPhone→Mac evidence: an iPhone-created note appeared, while its later rename, task reorder, and task deletion converged automatically after an uncertain owner-estimated 5–10 minutes without manual sync or relaunch. The iPhone reported successful saves with zero failures and pending returning to zero; Mac reported seven fetched modifications and no issue. The final note deletion reached Mac in about one minute and did not resurrect after relaunch; surviving notes remained. Relaunch exposed duplicate Mac windows for a couple of older notes while iPhone showed them once. A content-free inspection found unique account records but two invisible Mac desktop coordinators and excess note-sized windows. After the singleton-scene fix passed its regression and automated Mac checks, the owner launched and relaunched the corrected signed Debug build and confirmed smooth operation with each surviving note appearing once. |
 | Open-view task-only and title-refresh behavior | Passed | On 2026-07-22 a Mac note-title change updated correctly on the open physical-iPhone view, and leaving the unchanged iPhone title editor did not revert it. New Mac tasks and completion changes initially exposed an overly strict `CFBoolean` identity check. After correcting the mapper and cleanly reinstalling the physical-iPhone Debug build, the owner confirmed initial task download plus live add, edit, completion toggle, and reorder all updated correctly in the open checklist. |
-| Remote notification/background catch-up | Pending | — |
-| Offline edits, force-quit, relaunch, and reconnect | Pending | — |
-| Account sign-out/sign-in/switch isolation | Pending | — |
-| Custom-zone deletion latch and explicit recovery | Pending | — |
-| Development CloudKit opt-in smoke test | Pending | — |
+| Remote notification/background catch-up | Passed mandatory foreground catch-up; background wake inconclusive | With the physical iPhone backgrounded and locked, a Mac-created task was already present at the first foreground presentation. The owner could not distinguish a background wake from effectively immediate foreground catch-up. No manual **Sync Now**, data loss, or duplication was observed. |
+| Offline edits, force-quit, relaunch, and reconnect | Passed in both directions | During the iPhone offline gate, local mutations survived force-quit, offline relaunch, and an additional mutation. The independent Home Screen launch initially showed `icloud.slash` because it did not inherit the Xcode scheme's `TILDONE_ENABLE_CLOUDKIT_SYNC=1` process environment. No data/reset action was taken. Relaunching the existing app from Xcode with the flag restored cleared the disabled state, drained the durable outbox, and converged on Mac. The Mac-direction gate likewise retained multiple mutations through a flagged offline force-quit/relaunch plus an additional post-relaunch mutation, then drained its outbox and converged exactly on iPhone after reconnect. The owner confirmed stable final flagged relaunches without loss, duplication, or resurrection in both directions. |
+| Account sign-out/sign-in/switch isolation | Pending | The owner clarified that an iPad signed into account B is available, so no current device needs an account switch. Its model/iPadOS and signed Debug compatibility-mode launch must be confirmed before the gate. The accounts being in the same Family Sharing group does not merge their private CloudKit databases. |
+| Custom-zone deletion latch and explicit recovery | Pending | No Stage 11 destructive approval or observation yet. |
+| Development CloudKit opt-in smoke test | Passed | Owner-authorized signed Development test passed in 2.600 seconds after the opt-in variable was supplied through a temporary generated `.xctestrun`; it created, fetched, decoded, and removed one synthetic `TDNote`. |
 | Production schema promotion and production-signed build | Blocked on all prior gates | — |
 
 ### Gate 1 observations — 2026-07-22
@@ -396,8 +396,9 @@ are additive. Review the exact deployment diff before promoting.
 
 ## Remaining risks
 
-- No physical-device, APNs, background, live account-change, or live zone-loss
-  observation exists yet.
+- Physical-device foreground and offline/relaunch validation now passes in both
+  directions. APNs/background delivery remains inconclusive, and no live
+  account-change or live zone-loss observation exists yet.
 - No schema has been verified or promoted in Production.
 - Release synchronization remains disabled and Development-entitled, so the
   current Release build is a compile validation rather than a distribution
@@ -410,6 +411,61 @@ are additive. Review the exact deployment diff before promoting.
 - Debug telemetry provides lifecycle/count evidence but deliberately omits
   record-level identifiers, so CloudKit Console inspection is still needed for
   schema/zone verification.
+
+## Stage 11 status update — 2026-07-22
+
+Stage 11 began from commit `83d3817`. Its fresh local baseline passed 75 Swift
+package tests, the hosted Mac count remained 11 passed with the same two
+intentional opt-in skips, the normally signed iPhone simulator count remained
+8 passed, and all four Debug/Release generic application builds passed. Source
+plists/entitlements linted successfully, and the built iPhone plist retained
+`remote-notification`.
+
+The Stage 11 audit found that three diagnostic methods still accepted
+free-form category strings even though every existing caller supplied a safe
+constant. The APIs were narrowed to closed safe categories and a regression
+test now proves that associated persistence-error details and unrelated error
+descriptions are discarded. The final package count is 76 passed; hosted Mac
+tests remain 11 passed/2 skipped, iPhone unit tests remain 8 passed, and the
+isolated iPhone UI smoke test passed 1 test. All four generic builds passed
+again after the fix.
+
+The owner confirmed an iPhone 14 Pro on iOS 27.0, the same disposable account
+on Mac/iPhone, the Development Console environment, disposable data/zone
+permission, and authorization for the hosted test. The Development hosted
+CloudKit test passed separately in 2.600 seconds; its ordinary-suite skip is
+still intentional. The owner then clarified that an iPad signed into account B
+is available, removing the earlier account-isolation device blocker, subject to
+a signed Debug compatibility-mode launch check. The foreground row above now
+passes. See
+`stage11-development-cross-device-validation-summary.md` for the current gate
+ledger and blocker list.
+
+During the first Stage 11 iPhone→Mac continuation, the iPhone-created note
+appeared on Mac, but its rename, task reorder, and task deletion initially
+looked stale. The sending iPhone drained every mutation with zero failures; the
+Mac fetched seven modifications and returned to idle with no issue. The owner
+then reported that the Mac note updated after an estimated 5–10 minutes, while
+explicitly noting uncertainty in that estimate. A read-only
+content-free inspection confirmed that the Mac repository held the newer title
+version, remote task order, deleted-task tombstone, and no active outbox work.
+This is retained as delayed automatic convergence rather than a demonstrated
+transport or merge defect. The owner confirmed no manual sync or relaunch was
+needed for that update. Final note deletion converged in about one minute and
+did not resurrect after relaunch, while surviving notes remained.
+
+That relaunch exposed a different presentation defect: a couple of older Mac
+notes appeared in repeated windows although iPhone displayed each once. The
+account database contained 10 unique active notes with no matching-title or
+matching-content-shape duplicates, while content-free running-process metadata
+showed two zero-size desktop coordinators and 18 note-sized windows. The primary
+scene was a multi-instance SwiftUI `WindowGroup`, so each restored coordinator
+could reopen the complete manual note-window set. It is now a uniquely
+identified singleton `Window`. The new regression failed before and passes
+after the fix; the complete Mac suite passes 12 tests with 2 intentional skips,
+the UI smoke passes, and Debug/Release Mac builds pass. The owner then launched
+and relaunched the corrected signed Debug build and confirmed smooth operation
+with each surviving note appearing once. Gate 1 therefore passed.
 
 ## Recommended next stage
 
