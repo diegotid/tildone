@@ -10,6 +10,7 @@ import SwiftUI
 enum Id {
     static let appIcon: String = "AppIcon"
     static let bottomAnchor: String = "bottom"
+    static let desktopWindow: String = "tildone-desktop-coordinator"
     static let aboutWindow: String = "about-tildone"
     static let updateWindow: String = "update-tildone"
 }

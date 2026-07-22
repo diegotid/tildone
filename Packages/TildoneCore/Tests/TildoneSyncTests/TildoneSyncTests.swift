@@ -25,6 +25,32 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(TildoneCloudSchema.taskRecordType, "TDTask")
     }
 
+    func testDiagnosticFailureCategoriesDiscardContentBearingErrorDetails() {
+        let sensitiveRecordName = "note-private-record-name"
+        let sensitiveFieldName = "private-title-field"
+        let persistenceError = PersistenceError.malformedRepresentation(
+            .note,
+            sensitiveRecordName,
+            field: sensitiveFieldName
+        )
+
+        let persistenceCategory = SyncFailureDiagnosticCategory.classify(persistenceError)
+        XCTAssertEqual(persistenceCategory, .persistenceMalformed)
+        XCTAssertEqual(persistenceCategory.label, "persistence-malformed")
+        XCTAssertFalse(persistenceCategory.label.contains(sensitiveRecordName))
+        XCTAssertFalse(persistenceCategory.label.contains(sensitiveFieldName))
+
+        let unrelatedError = NSError(
+            domain: "private-note-title",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "private task text"]
+        )
+        XCTAssertEqual(
+            SyncFailureDiagnosticCategory.classify(unrelatedError).label,
+            "non-cloud-non-persistence"
+        )
+    }
+
     func testInitialUploadAndInitialFetch() async throws {
         let source = try Replica(id: 1)
         let destination = try Replica(id: 2)

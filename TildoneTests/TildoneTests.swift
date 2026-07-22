@@ -4,6 +4,7 @@
 //
 
 import CloudKit
+import SwiftUI
 import XCTest
 import TildoneDomain
 import TildonePersistence
@@ -11,6 +12,36 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    func testCheckboxDoesNotRetainParentOwnedCompletionAsLocalState() {
+        let storedPropertyNames = Set(
+            Mirror(reflecting: Checkbox(checked: false)).children.compactMap(\.label)
+        )
+
+        XCTAssertTrue(
+            storedPropertyNames.contains("checked"),
+            "Completion must remain an ordinary parent-owned view input."
+        )
+        XCTAssertFalse(
+            storedPropertyNames.contains("_checked"),
+            "Duplicating completion in @State prevents remote parent updates from redrawing the checkbox."
+        )
+    }
+
+    @MainActor
+    func testPrimarySceneUsesSingleUniqueCoordinatorWindow() {
+        let scene = TildonePrimaryScene { EmptyView() }
+        let bodyType = String(reflecting: type(of: scene.body))
+
+        XCTAssertTrue(
+            bodyType.contains("SwiftUI.Window<"),
+            "The process-wide note-window coordinator must use SwiftUI.Window."
+        )
+        XCTAssertFalse(
+            bodyType.contains("SwiftUI.WindowGroup<"),
+            "WindowGroup permits multiple coordinator instances on macOS."
+        )
+    }
+
     func testMacSharedStoreRoutesCRUDThroughDomainRepository() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),

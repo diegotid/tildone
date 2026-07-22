@@ -24,7 +24,7 @@ struct TildoneApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        TildonePrimaryScene {
             Group {
                 if let store = sharedStoreBootstrapper.store {
                     Desktop(store: store, foregroundNoteID: $foregroundNoteID)
@@ -115,6 +115,20 @@ struct TildoneApp: App {
             SettingsForm()
         }
         .commandsRemoved()
+    }
+}
+
+/// The primary scene hosts the one process-wide coordinator that owns every
+/// manually managed note window.
+struct TildonePrimaryScene<Content: View>: Scene {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some Scene {
+        Window("Tildone", id: Id.desktopWindow) { content }
     }
 }
 
