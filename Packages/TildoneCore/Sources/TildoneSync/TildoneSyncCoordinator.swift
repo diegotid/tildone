@@ -226,7 +226,7 @@ private extension TildoneSyncCoordinator {
         case .signOut:
             SyncDiagnostics.accountChanged(category: .signedOut)
             await coordinatorState.freeze()
-            await engine?.cancelOperations()
+            scheduleEngineCancellation()
             await refreshStatus(
                 availability: .accountChanged,
                 activity: .attentionNeeded,
@@ -236,7 +236,7 @@ private extension TildoneSyncCoordinator {
         case .switchAccounts:
             SyncDiagnostics.accountChanged(category: .switched)
             await coordinatorState.freeze()
-            await engine?.cancelOperations()
+            scheduleEngineCancellation()
             await refreshStatus(
                 availability: .accountChanged,
                 activity: .attentionNeeded,
@@ -415,7 +415,7 @@ private extension TildoneSyncCoordinator {
 
         if category == .unsupportedSchema {
             await coordinatorState.freeze()
-            await engine?.cancelOperations()
+            scheduleEngineCancellation()
             await refreshStatus(
                 availability: .incompatibleRemoteData,
                 activity: .attentionNeeded,
@@ -429,7 +429,7 @@ private extension TildoneSyncCoordinator {
     func freezeForZoneReset() async {
         do { try await coordinatorState.freezeForZoneReset() }
         catch { await apply(error: error) }
-        await engine?.cancelOperations()
+        scheduleEngineCancellation()
         await refreshStatus(
             availability: .zoneResetRequired,
             activity: .attentionNeeded,
@@ -477,7 +477,7 @@ private extension TildoneSyncCoordinator {
             // Freeze only this coordinator instance; relaunch restores the
             // last durable checkpoint and can redeliver idempotently.
             await coordinatorState.freeze()
-            await engine?.cancelOperations()
+            scheduleEngineCancellation()
             await refreshStatus(activity: .attentionNeeded, issue: .unknown)
             return
         }
@@ -501,6 +501,15 @@ private extension TildoneSyncCoordinator {
             await freezeForZoneReset()
         default:
             await refreshStatus(activity: .attentionNeeded, issue: .unknown)
+        }
+    }
+
+    /// CKSyncEngine forbids awaiting an operation that can re-enter its
+    /// delegate while a delegate callback is still on the stack.
+    func scheduleEngineCancellation() {
+        guard let engine else { return }
+        Swift.Task.detached {
+            await engine.cancelOperations()
         }
     }
 

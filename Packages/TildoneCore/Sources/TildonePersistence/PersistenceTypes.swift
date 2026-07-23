@@ -131,6 +131,21 @@ public struct PendingMutationSnapshot: Codable, Hashable, Sendable {
     public let supersededBy: UUID?
 }
 
+public enum PendingMutationPayload: Hashable, Sendable {
+    case note(Note)
+    case task(Task)
+}
+
+public struct PreparedPendingMutation: Hashable, Sendable {
+    public let mutationID: UUID
+    public let payload: PendingMutationPayload
+
+    public init(mutationID: UUID, payload: PendingMutationPayload) {
+        self.mutationID = mutationID
+        self.payload = payload
+    }
+}
+
 public struct WorkspaceSnapshot: Codable, Hashable, Sendable {
     public let identityKind: String
     public let opaqueWorkspaceID: String?

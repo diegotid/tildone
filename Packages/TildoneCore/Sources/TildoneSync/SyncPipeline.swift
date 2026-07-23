@@ -10,9 +10,19 @@ import TildonePersistence
 /// without CloudKit, an Apple Account, or a network.
 public actor SyncPipeline {
     private let repository: TildoneRepository
+    private let beforeOutboundClaim: @Sendable () async -> Void
 
     public init(repository: TildoneRepository) {
         self.repository = repository
+        beforeOutboundClaim = {}
+    }
+
+    init(
+        repository: TildoneRepository,
+        beforeOutboundClaim: @escaping @Sendable () async -> Void
+    ) {
+        self.repository = repository
+        self.beforeOutboundClaim = beforeOutboundClaim
     }
 
     public func pendingCount() async throws -> Int {
@@ -32,25 +42,27 @@ public actor SyncPipeline {
         recordName: String,
         at date: Date
     ) async throws -> SyncOutboundMutation? {
-        let pending = try await repository.pendingMutations()
-        let match = pending.first { mutation in
-            switch mutation.targetKind {
-            case .note: return NoteID(string: mutation.targetStableID)?.recordName == recordName
-            case .task: return TaskID(string: mutation.targetStableID)?.recordName == recordName
-            }
+        let target: (PersistedEntityKind, String)
+        if let id = NoteID(recordName: recordName) {
+            target = (.note, id.stringValue)
+        } else if let id = TaskID(recordName: recordName) {
+            target = (.task, id.stringValue)
+        } else {
+            return nil
         }
-        guard let match else { return nil }
-        let record: SyncRecord
-        switch match.targetKind {
-        case .note:
-            guard let id = NoteID(string: match.targetStableID) else { return nil }
-            record = .note(try await repository.note(id: id, includingDeleted: true))
-        case .task:
-            guard let id = TaskID(string: match.targetStableID) else { return nil }
-            record = .task(try await repository.task(id: id, includingDeleted: true))
+        await beforeOutboundClaim()
+        guard let prepared = try await repository.preparePendingMutation(
+            targetKind: target.0,
+            targetStableID: target.1,
+            at: date
+        ) else {
+            return nil
         }
-        try await repository.recordMutationAttempt(id: match.id, at: date)
-        return SyncOutboundMutation(mutationID: match.id, record: record)
+        let record: SyncRecord = switch prepared.payload {
+        case let .note(note): .note(note)
+        case let .task(task): .task(task)
+        }
+        return SyncOutboundMutation(mutationID: prepared.mutationID, record: record)
     }
 
     public func acknowledge(_ mutationIDs: Set<UUID>) async throws {

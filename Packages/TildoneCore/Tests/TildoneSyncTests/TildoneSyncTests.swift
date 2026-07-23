@@ -97,6 +97,55 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(pending[0].targetStableID, noteID.stringValue)
     }
 
+    func testOutboundPreparationSurvivesConcurrentTaskDeletion() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID(int: 92))),
+            replicaID: ReplicaID(UUID(int: 93)),
+            now: { self.date }
+        )
+        let noteID = NoteID(UUID(int: 94))
+        let taskID = TaskID(UUID(int: 95))
+        _ = try await repository.createNote(id: noteID, createdAt: date, title: nil)
+        _ = try await repository.addTask(
+            id: taskID,
+            to: noteID,
+            createdAt: date,
+            text: "Before deletion",
+            orderToken: try OrderToken(rawValue: "m")
+        )
+
+        let gate = OutboundClaimGate()
+        let pipeline = SyncPipeline(
+            repository: repository,
+            beforeOutboundClaim: { await gate.pause() }
+        )
+        let preparation = Swift.Task {
+            try await pipeline.prepareOutboundMutation(
+                recordName: taskID.recordName,
+                at: date.addingTimeInterval(1)
+            )
+        }
+
+        await gate.waitUntilPaused()
+        try await repository.deleteTask(id: taskID)
+        await gate.resume()
+
+        let prepared = try await preparation.value
+        let outbound = try XCTUnwrap(prepared)
+        guard case let .task(task) = outbound.record else {
+            return XCTFail("Expected a task mutation")
+        }
+        XCTAssertEqual(task.lifecycle, .deleted)
+        let pending = try await repository.pendingMutations()
+        let pendingTask = try XCTUnwrap(
+            pending.first { mutation in
+                mutation.targetKind == .task && mutation.targetStableID == taskID.stringValue
+            }
+        )
+        XCTAssertEqual(pendingTask.id, outbound.mutationID)
+        XCTAssertEqual(pendingTask.attemptCount, 1)
+    }
+
     func testDuplicateSendAndDuplicateDeliveryAreIdempotent() async throws {
         let source = try Replica(id: 1)
         let destination = try Replica(id: 2)
@@ -577,6 +626,33 @@ private extension TildoneSyncTests {
             at: date
         )
         XCTAssertNotNil(outbound)
+    }
+}
+
+private actor OutboundClaimGate {
+    private var isPaused = false
+    private var pausedContinuation: CheckedContinuation<Void, Never>?
+    private var resumeContinuation: CheckedContinuation<Void, Never>?
+
+    func pause() async {
+        await withCheckedContinuation { continuation in
+            resumeContinuation = continuation
+            isPaused = true
+            pausedContinuation?.resume()
+            pausedContinuation = nil
+        }
+    }
+
+    func waitUntilPaused() async {
+        if isPaused { return }
+        await withCheckedContinuation { continuation in
+            pausedContinuation = continuation
+        }
+    }
+
+    func resume() {
+        resumeContinuation?.resume()
+        resumeContinuation = nil
     }
 }
 

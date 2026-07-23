@@ -418,6 +418,53 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try save(context)
     }
 
+    /// Atomically snapshots and marks the current active mutation as in flight.
+    /// Local edits may replace an unattempted outbox row, so selecting the row,
+    /// reading its domain value, and incrementing its attempt count must not be
+    /// separated by actor reentrancy.
+    public func preparePendingMutation(
+        targetKind: PersistedEntityKind,
+        targetStableID: String,
+        at date: Date
+    ) throws -> PreparedPendingMutation? {
+        guard date.timeIntervalSinceReferenceDate.isFinite else {
+            throw PersistenceError.domainInvariant
+        }
+        let context = mutationContext()
+        let rows = try context.fetch(FetchDescriptor<PendingMutation>())
+        try Self.validatePendingMutationRows(rows, in: context)
+        guard let row = rows.first(where: {
+            $0.targetKindRawValue == targetKind.rawValue
+                && $0.targetStableID == targetStableID
+                && $0.supersededByMutationID == nil
+        }) else {
+            return nil
+        }
+        let mutation = try Self.snapshot(row)
+        let payload: PendingMutationPayload
+        switch targetKind {
+        case .note:
+            guard let id = NoteID(string: targetStableID) else {
+                throw PersistenceError.malformedRepresentation(
+                    .note, "invalid", field: "pendingMutationTarget"
+                )
+            }
+            payload = .note(try StoredDomainMapping.note(from: requireStoredNote(id: id, in: context)))
+        case .task:
+            guard let id = TaskID(string: targetStableID) else {
+                throw PersistenceError.malformedRepresentation(
+                    .task, "invalid", field: "pendingMutationTarget"
+                )
+            }
+            payload = .task(try StoredDomainMapping.task(from: requireStoredTask(id: id, in: context)))
+        }
+        guard row.attemptCount < Int64.max else { throw PersistenceError.counterOverflow }
+        row.attemptCount += 1
+        row.lastAttemptAt = date
+        try save(context)
+        return PreparedPendingMutation(mutationID: mutation.id, payload: payload)
+    }
+
     public func acknowledgeMutations(ids: Set<UUID>) throws {
         let context = mutationContext()
         let strings = Set(ids.map { $0.uuidString.lowercased() })
