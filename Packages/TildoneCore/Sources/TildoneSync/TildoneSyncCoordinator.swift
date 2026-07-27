@@ -16,6 +16,38 @@ enum TildoneSyncBatchPolicy {
     }
 }
 
+enum SyncStatusLatchPolicy {
+    static func resolve(
+        requested: SyncStatus,
+        current: SyncStatus,
+        zoneResetRequired: Bool
+    ) -> SyncStatus {
+        guard zoneResetRequired, requested.availability == .available else {
+            return requested
+        }
+        return SyncStatus(
+            availability: .zoneResetRequired,
+            activity: .attentionNeeded,
+            pendingMutationCount: requested.pendingMutationCount,
+            lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+            issue: .zoneReset
+        )
+    }
+}
+
+enum SyncZoneBootstrapPolicy {
+    static func shouldScheduleRecordChanges(
+        zoneCreated: Bool,
+        zoneResetRequired: Bool
+    ) -> Bool {
+        zoneCreated && !zoneResetRequired
+    }
+
+    static func shouldLatchMissingZone(zoneCreated: Bool) -> Bool {
+        zoneCreated
+    }
+}
+
 public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Sendable {
     public typealias AccountChangeHandler = @Sendable (SyncAccountChange) -> Void
     public typealias RemoteChangeHandler = @Sendable () async -> Void
@@ -75,9 +107,15 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             SyncDiagnostics.checkpointStarted(pendingCount: try await pipeline.pendingCount())
             await refreshStatus(activity: .syncing)
             try await engine.sendChanges()
-            try await engine.fetchChanges(
-                CKSyncEngine.FetchChangesOptions(scope: .zoneIDs([TildoneCloudSchema.zoneID]))
-            )
+            let persistent = await coordinatorState.snapshot()
+            if SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+                zoneCreated: persistent.zoneCreated,
+                zoneResetRequired: persistent.zoneResetRequired
+            ) {
+                try await engine.fetchChanges(
+                    CKSyncEngine.FetchChangesOptions(scope: .zoneIDs([TildoneCloudSchema.zoneID]))
+                )
+            }
         } catch {
             await apply(error: error)
         }
@@ -115,7 +153,10 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             await handleAccountChange(change.changeType)
 
         case let .fetchedDatabaseChanges(changes):
-            if changes.deletions.contains(where: { $0.zoneID == TildoneCloudSchema.zoneID }) {
+            let persistent = await coordinatorState.snapshot()
+            if SyncZoneBootstrapPolicy.shouldLatchMissingZone(
+                zoneCreated: persistent.zoneCreated
+            ), changes.deletions.contains(where: { $0.zoneID == TildoneCloudSchema.zoneID }) {
                 await freezeForZoneReset()
             }
 
@@ -147,6 +188,11 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
         guard !(await coordinatorState.isFrozen()) else { return nil }
+        let persistent = await coordinatorState.snapshot()
+        guard SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: persistent.zoneCreated,
+            zoneResetRequired: persistent.zoneResetRequired
+        ) else { return nil }
         let pending = TildoneSyncBatchPolicy.bounded(
             syncEngine.state.pendingRecordZoneChanges.filter {
                 context.options.scope.contains($0)
@@ -186,7 +232,7 @@ private extension TildoneSyncCoordinator {
         guard let engine else { return }
         let persistent = await coordinatorState.snapshot()
         if persistent.zoneResetRequired {
-            await statusModel.set(SyncStatus(
+            await publishStatus(SyncStatus(
                 availability: .zoneResetRequired,
                 activity: .attentionNeeded,
                 pendingMutationCount: try await pipeline.pendingCount(),
@@ -197,13 +243,19 @@ private extension TildoneSyncCoordinator {
         if !persistent.zoneCreated {
             let zone = CKRecordZone(zoneID: TildoneCloudSchema.zoneID)
             engine.state.add(pendingDatabaseChanges: [.saveZone(zone)])
+        } else {
+            try await refreshPendingEngineChanges()
         }
-        try await refreshPendingEngineChanges()
         await refreshStatus(activity: .idle)
     }
 
     func refreshPendingEngineChanges() async throws {
         guard let engine, !(await coordinatorState.isFrozen()) else { return }
+        let persistent = await coordinatorState.snapshot()
+        guard SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: persistent.zoneCreated,
+            zoneResetRequired: persistent.zoneResetRequired
+        ) else { return }
         let recordIDs = try await pipeline.pendingRecordNames().map {
             CKRecord.ID(recordName: $0, zoneID: TildoneCloudSchema.zoneID)
         }
@@ -291,8 +343,14 @@ private extension TildoneSyncCoordinator {
         _ event: CKSyncEngine.Event.SentDatabaseChanges
     ) async {
         if event.savedZones.contains(where: { $0.zoneID == TildoneCloudSchema.zoneID }) {
-            do { try await coordinatorState.markZoneCreated() }
-            catch { await apply(error: error) }
+            do {
+                if try await coordinatorState.markZoneCreated() {
+                    try await refreshPendingEngineChanges()
+                    await refreshStatus(activity: .syncing)
+                }
+            } catch {
+                await apply(error: error)
+            }
         }
         for failure in event.failedZoneSaves where failure.zone.zoneID == TildoneCloudSchema.zoneID {
             await apply(error: failure.error)
@@ -439,15 +497,13 @@ private extension TildoneSyncCoordinator {
 
     func markCheckpointComplete() async {
         let pending = (try? await pipeline.pendingCount()) ?? 0
-        let status = SyncStatus(
+        await publishStatus(SyncStatus(
             availability: .available,
             activity: pending == 0 ? .idle : .syncing,
             pendingMutationCount: pending,
             lastSuccessfulSyncAt: now(),
             issue: nil
-        )
-        await statusModel.set(status)
-        SyncDiagnostics.statusChanged(status)
+        ))
     }
 
     func refreshStatus(
@@ -463,6 +519,17 @@ private extension TildoneSyncCoordinator {
             pendingMutationCount: pending,
             lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
             issue: issue
+        )
+        await publishStatus(status)
+    }
+
+    func publishStatus(_ requested: SyncStatus) async {
+        let current = await statusModel.snapshot()
+        let persistent = await coordinatorState.snapshot()
+        let status = SyncStatusLatchPolicy.resolve(
+            requested: requested,
+            current: current,
+            zoneResetRequired: persistent.zoneResetRequired
         )
         guard status != current else { return }
         await statusModel.set(status)

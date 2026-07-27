@@ -27,3 +27,6 @@ DerivedData
 *.ipa
 *.xcuserstate
 *.xcworkspacedata
+
+# Local planning notes
+/docs/stage*.md

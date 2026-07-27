@@ -177,6 +177,19 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(model.notes.isEmpty)
     }
 
+    func testNotesListReentersExistingNotesWithoutTypedPathNavigation() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("TildoneiOS/TildoneiOSRootView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("NavigationLink {"))
+        XCTAssertTrue(source.contains(".navigationDestination(item: $createdNoteID)"))
+        XCTAssertFalse(source.contains("NavigationStack(path: $path)"))
+        XCTAssertFalse(source.contains(".navigationDestination(for: NoteID.self)"))
+    }
+
     private func makeModel(repository: TildoneRepository? = nil) async throws -> TildoneiOSApplicationModel {
         let workspace = UUID()
         let repository = try repository ?? TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))

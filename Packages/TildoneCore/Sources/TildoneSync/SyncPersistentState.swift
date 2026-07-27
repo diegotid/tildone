@@ -107,10 +107,12 @@ actor SyncCoordinatorState {
         try await persist()
     }
 
-    func markZoneCreated() async throws {
+    func markZoneCreated() async throws -> Bool {
+        guard !frozen, !persistent.zoneResetRequired else { return false }
         persistent.zoneCreated = true
         persistent.zoneResetRequired = false
         try await persist()
+        return true
     }
 
     func freezeForZoneReset() async throws {

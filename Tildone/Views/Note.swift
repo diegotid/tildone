@@ -3,9 +3,24 @@
 //  Tildone
 //
 
+import CoreTransferable
 import SwiftUI
 import TildoneDomain
 import TildonePersistence
+import UniformTypeIdentifiers
+
+struct MacTaskDragPayload: Codable, Hashable, Transferable {
+    let noteID: NoteID
+    let taskID: TaskID
+
+    func isValid(for noteID: NoteID, taskIDs: [TaskID]) -> Bool {
+        self.noteID == noteID && taskIDs.contains(taskID)
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .json)
+    }
+}
 
 /// A macOS note window backed solely by shared-domain snapshots. AppKit state
 /// (focus, fade, minimization and window styling) deliberately remains here.
@@ -45,6 +60,7 @@ struct Note: View {
         didSet { updateFade() }
     }
     @State private var mutationErrorMessage: String?
+    @State private var taskDropFeedbackResetToken = UUID()
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskID: TaskID?
 
@@ -151,6 +167,21 @@ private extension Note {
     func handleTaskToggle(_ task: TildoneDomain.Task) {
         noteWindow?.makeFirstResponder(nil)
         mutate({ try await store.setTaskCompletion(task.id, completed: !task.isCompleted) }, message: "Error on task completion")
+    }
+
+    func handleTaskDrop(_ payload: MacTaskDragPayload, at destination: Int) -> Bool {
+        guard payload.isValid(for: noteID, taskIDs: tasks.map(\.id)),
+              (0...tasks.count).contains(destination) else {
+            return false
+        }
+        mutate(
+            { _ = try await store.moveTask(payload.taskID, in: noteID, to: destination) },
+            message: "Error reordering task"
+        )
+        DispatchQueue.main.async {
+            taskDropFeedbackResetToken = UUID()
+        }
+        return true
     }
 
     func handleTopicEdit(to topic: String) {
@@ -323,10 +354,12 @@ private extension Note {
             Group {
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 6) {
+                        VStack(spacing: 0) {
                             topicListItem()
-                            ForEach(tasks, id: \.id) { task in
-                                taskRow(task)
+                            taskDropTarget(at: 0)
+                            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                                taskRow(task, at: index)
+                                taskDropTarget(at: index + 1)
                             }
                             newListItem().opacity(isDone || isTextBlurred ? 0 : 1)
                             Spacer().id(Id.bottomAnchor)
@@ -442,13 +475,16 @@ private extension Note {
             .padding(.bottom, CGFloat(fontSize - 10))
     }
 
-    func taskRow(_ task: TildoneDomain.Task) -> TaskRow {
+    func taskRow(_ task: TildoneDomain.Task, at index: Int) -> TaskRow {
         TaskRow(
             task: task,
+            dragPayload: MacTaskDragPayload(noteID: noteID, taskID: task.id),
+            rowIndex: index,
             fontSize: fontSize,
             isDark: isDark,
             truncation: taskLineTruncation,
             isFirst: task.id == tasks.first?.id,
+            feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
             onToggle: { handleTaskToggle(task) },
             onEdit: { handleTaskEdit(task, to: $0) },
@@ -457,10 +493,19 @@ private extension Note {
             onCopy: { Copier.copy(task.text, forType: .string) },
             onPaste: { paste(into: task) },
             onSubmit: handleMoveDown,
+            onDrop: { payload, destination in
+                handleTaskDrop(payload, at: destination)
+            },
             onHover: { hovering in
                 if hovering { isTopicHidden = false } else { updateTopicVisibility() }
             }
         )
+    }
+
+    func taskDropTarget(at destination: Int) -> TaskReorderDropTarget {
+        TaskReorderDropTarget(feedbackResetToken: taskDropFeedbackResetToken) { payload in
+            handleTaskDrop(payload, at: destination)
+        }
     }
 
     func doneOverlay() -> some View {
@@ -488,11 +533,16 @@ struct ScrollFrame: ViewModifier {
 
 private struct TaskRow: View {
     let task: TildoneDomain.Task
+    let dragPayload: MacTaskDragPayload
+    let rowIndex: Int
     let fontSize: Double
     let isDark: Bool
     let truncation: TaskLineTruncation
     let isFirst: Bool
+    let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
+    @State private var rowHeight: CGFloat = 0
+    @State private var dropPlacement: TaskRowDropPlacement?
     let onToggle: () -> Void
     let onEdit: (String) -> Void
     let onFocus: () -> Void
@@ -500,6 +550,7 @@ private struct TaskRow: View {
     let onCopy: () -> Void
     let onPaste: () -> Void
     let onSubmit: () -> Void
+    let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
 
     var body: some View {
@@ -554,8 +605,223 @@ private struct TaskRow: View {
             }
 
             Spacer()
+
+            TaskReorderHandle(
+                payload: dragPayload,
+                taskText: task.text,
+                isCompleted: task.isCompleted,
+                fontSize: fontSize,
+                isDark: isDark
+            )
+            .padding(.trailing, 8)
         }
         .padding(.leading, 2)
         .if(isFirst) { $0.onHover { onHover($0) } }
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { rowHeight = geometry.size.height }
+                    .onChange(of: geometry.size.height) { _, height in rowHeight = height }
+            }
+        }
+        .padding(.top, dropPlacement == .before ? TaskReorderFeedback.insertionSpacing : 0)
+        .padding(.bottom, dropPlacement == .after ? TaskReorderFeedback.insertionSpacing : 0)
+        .background(alignment: dropPlacement == .before ? .top : .bottom) {
+            TaskReorderInsertionLine()
+                .opacity(dropPlacement == nil ? 0 : 1)
+                .offset(
+                    y: dropPlacement == .before
+                        ? TaskReorderFeedback.insertionSpacing / 2
+                        : -TaskReorderFeedback.insertionSpacing / 2
+                )
+        }
+        .animation(TaskReorderFeedback.animation, value: dropPlacement)
+        .onChange(of: feedbackResetToken) { _, _ in
+            dropPlacement = nil
+        }
+        .onDrop(
+            of: [.json],
+            delegate: TaskRowDropDelegate(
+                rowIndex: rowIndex,
+                rowHeight: rowHeight,
+                placement: $dropPlacement,
+                onDrop: onDrop
+            )
+        )
+    }
+}
+
+private struct TaskReorderInsertionLine: View {
+    var body: some View {
+        Capsule()
+            .fill(Color.accentColor)
+            .frame(height: 2)
+            .padding(.horizontal, 2)
+            .allowsHitTesting(false)
+    }
+}
+
+private enum TaskReorderFeedback {
+    static let restingHeight: CGFloat = 6
+    static let insertionSpacing: CGFloat = 18
+    static let expandedHeight = restingHeight + insertionSpacing
+    static let animation = Animation.easeInOut(duration: 0.16)
+}
+
+private enum TaskRowDropPlacement {
+    case before
+    case after
+}
+
+private struct TaskRowDropDelegate: DropDelegate {
+    let rowIndex: Int
+    let rowHeight: CGFloat
+    @Binding var placement: TaskRowDropPlacement?
+    let onDrop: (MacTaskDragPayload, Int) -> Bool
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.itemProviders(for: [.json]).count == 1
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        placement = placement(at: info.location)
+        return DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        placement = nil
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let providers = info.itemProviders(for: [.json])
+        guard providers.count == 1, let provider = providers.first else {
+            placement = nil
+            return false
+        }
+
+        let destination = destination(for: placement(at: info.location))
+        placement = nil
+        provider.loadDataRepresentation(forTypeIdentifier: UTType.json.identifier) { data, _ in
+            guard let data,
+                  let payload = try? JSONDecoder().decode(MacTaskDragPayload.self, from: data) else {
+                return
+            }
+            DispatchQueue.main.async {
+                _ = onDrop(payload, destination)
+            }
+        }
+        return true
+    }
+
+    private func placement(at location: CGPoint) -> TaskRowDropPlacement {
+        let topInset = placement == .before ? TaskReorderFeedback.insertionSpacing : 0
+        return location.y - topInset < rowHeight / 2 ? .before : .after
+    }
+
+    private func destination(for placement: TaskRowDropPlacement) -> Int {
+        placement == .before ? rowIndex : rowIndex + 1
+    }
+}
+
+struct TaskReorderHandle: View {
+    let payload: MacTaskDragPayload
+    let taskText: String
+    let isCompleted: Bool
+    let fontSize: Double
+    let isDark: Bool
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(
+                (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.45)
+            )
+            .frame(width: 18, height: 18)
+            .contentShape(Rectangle())
+            .help("Drag to reorder")
+            .accessibilityLabel("Reorder task")
+            .draggable(payload) {
+                TaskReorderPreview(
+                    taskText: taskText,
+                    isCompleted: isCompleted,
+                    fontSize: fontSize,
+                    isDark: isDark
+                )
+            }
+    }
+}
+
+private struct TaskReorderPreview: View {
+    let taskText: String
+    let isCompleted: Bool
+    let fontSize: Double
+    let isDark: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Checkbox(checked: isCompleted)
+                .disabled(true)
+
+            Text(taskText.isEmpty ? "Untitled task" : taskText)
+                .font(.system(size: CGFloat(fontSize)))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(
+                    (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                        .opacity(isCompleted ? 0.6 : 1)
+                )
+                .overlay {
+                    if isCompleted {
+                        Rectangle()
+                            .fill(Color.accentColor)
+                            .frame(height: 2)
+                            .offset(y: 1)
+                    }
+                }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(
+                    (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.45)
+                )
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(width: 260, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .environment(\.colorScheme, isDark ? .dark : .light)
+    }
+}
+
+struct TaskReorderDropTarget: View {
+    let feedbackResetToken: UUID
+    let onDrop: (MacTaskDragPayload) -> Bool
+    @State private var isTargeted = false
+
+    var body: some View {
+        Rectangle()
+            .fill(.clear)
+            .frame(
+                height: isTargeted
+                    ? TaskReorderFeedback.expandedHeight
+                    : TaskReorderFeedback.restingHeight
+            )
+            .contentShape(Rectangle())
+            .background {
+                TaskReorderInsertionLine()
+                    .opacity(isTargeted ? 1 : 0)
+            }
+            .dropDestination(for: MacTaskDragPayload.self) { payloads, _ in
+                guard payloads.count == 1, let payload = payloads.first else { return false }
+                return onDrop(payload)
+            } isTargeted: {
+                isTargeted = $0
+            }
+            .animation(TaskReorderFeedback.animation, value: isTargeted)
+            .onChange(of: feedbackResetToken) { _, _ in
+                isTargeted = false
+            }
     }
 }

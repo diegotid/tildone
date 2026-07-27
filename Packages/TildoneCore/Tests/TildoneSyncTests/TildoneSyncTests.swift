@@ -352,6 +352,108 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertTrue(restored.zoneResetRequired)
     }
 
+    func testZoneResetStatusStaysLatchedAcrossCheckpointAndLocalChanges() {
+        let lastSuccessfulSyncAt = date
+        let current = SyncStatus(
+            availability: .zoneResetRequired,
+            activity: .attentionNeeded,
+            pendingMutationCount: 0,
+            lastSuccessfulSyncAt: lastSuccessfulSyncAt,
+            issue: .zoneReset
+        )
+        let requestedStatuses = [
+            SyncStatus(
+                availability: .available,
+                activity: .idle,
+                pendingMutationCount: 0,
+                lastSuccessfulSyncAt: date.addingTimeInterval(10),
+                issue: nil
+            ),
+            SyncStatus(
+                availability: .available,
+                activity: .syncing,
+                pendingMutationCount: 1,
+                lastSuccessfulSyncAt: lastSuccessfulSyncAt,
+                issue: nil
+            )
+        ]
+
+        for requested in requestedStatuses {
+            let resolved = SyncStatusLatchPolicy.resolve(
+                requested: requested,
+                current: current,
+                zoneResetRequired: true
+            )
+            XCTAssertEqual(resolved.availability, .zoneResetRequired)
+            XCTAssertEqual(resolved.activity, .attentionNeeded)
+            XCTAssertEqual(resolved.pendingMutationCount, requested.pendingMutationCount)
+            XCTAssertEqual(resolved.lastSuccessfulSyncAt, lastSuccessfulSyncAt)
+            XCTAssertEqual(resolved.issue, .zoneReset)
+        }
+    }
+
+    func testZoneBootstrapDefersRecordsAndMissingZoneLatchUntilCreation() {
+        XCTAssertFalse(SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: false,
+            zoneResetRequired: false
+        ))
+        XCTAssertFalse(SyncZoneBootstrapPolicy.shouldLatchMissingZone(
+            zoneCreated: false
+        ))
+
+        XCTAssertTrue(SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: true,
+            zoneResetRequired: false
+        ))
+        XCTAssertTrue(SyncZoneBootstrapPolicy.shouldLatchMissingZone(
+            zoneCreated: true
+        ))
+
+        XCTAssertFalse(SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: true,
+            zoneResetRequired: true
+        ))
+    }
+
+    func testLateZoneSaveCannotClearFrozenZoneReset() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID(int: 808)))
+        )
+        let state = SyncCoordinatorState(
+            persistent: SyncPersistentState(),
+            repository: repository
+        )
+
+        try await state.freezeForZoneReset()
+        let didMarkCreated = try await state.markZoneCreated()
+
+        let persistent = await state.snapshot()
+        let isFrozen = await state.isFrozen()
+        XCTAssertFalse(didMarkCreated)
+        XCTAssertFalse(persistent.zoneCreated)
+        XCTAssertTrue(persistent.zoneResetRequired)
+        XCTAssertTrue(isFrozen)
+    }
+
+    func testZoneSaveConfirmationEnablesRecordBootstrap() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID(int: 809)))
+        )
+        let state = SyncCoordinatorState(
+            persistent: SyncPersistentState(),
+            repository: repository
+        )
+
+        let didMarkCreated = try await state.markZoneCreated()
+
+        let persistent = await state.snapshot()
+        let isFrozen = await state.isFrozen()
+        XCTAssertTrue(didMarkCreated)
+        XCTAssertTrue(persistent.zoneCreated)
+        XCTAssertFalse(persistent.zoneResetRequired)
+        XCTAssertFalse(isFrozen)
+    }
+
     func testAccountSignOutAndSwitchInvalidateAndWorkspacesStayIsolated() async throws {
         XCTAssertFalse(SyncAccountChange.signedIn.requiresWorkspaceInvalidation)
         XCTAssertTrue(SyncAccountChange.signedOut.requiresWorkspaceInvalidation)

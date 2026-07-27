@@ -327,13 +327,13 @@ struct TildoneiOSRootView: View {
 
 private struct NotesListView: View {
     @ObservedObject var appModel: TildoneiOSApplicationModel
-    @State private var path: [NoteID] = []
+    @State private var createdNoteID: NoteID?
     @State private var noteToRename: Note?
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             Group {
                 if appModel.notes.isEmpty {
                     ContentUnavailableView {
@@ -346,7 +346,9 @@ private struct NotesListView: View {
                 } else {
                     List {
                         ForEach(appModel.notes, id: \.id) { note in
-                            NavigationLink(value: note.id) {
+                            NavigationLink {
+                                ChecklistView(appModel: appModel, noteID: note.id)
+                            } label: {
                                 NoteListRow(note: note)
                             }
                             .contextMenu {
@@ -372,7 +374,7 @@ private struct NotesListView: View {
                         .accessibilityLabel("Create note")
                 }
             }
-            .navigationDestination(for: NoteID.self) { noteID in
+            .navigationDestination(item: $createdNoteID) { noteID in
                 ChecklistView(appModel: appModel, noteID: noteID)
             }
         }
@@ -401,7 +403,7 @@ private struct NotesListView: View {
     private func createNote() {
         Swift.Task {
             guard let note = try? await appModel.createNote() else { return }
-            path.append(note.id)
+            createdNoteID = note.id
         }
     }
 

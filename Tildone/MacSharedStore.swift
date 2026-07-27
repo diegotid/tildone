@@ -109,6 +109,29 @@ final class MacSharedStore: ObservableObject {
         await syncCoordinator?.notifyLocalChanges()
     }
 
+    @discardableResult
+    func moveTask(_ id: TaskID, in noteID: NoteID, to destination: Int) async throws -> Bool {
+        var reordered = try await repository.orderedTasks(in: noteID)
+        guard (0...reordered.count).contains(destination),
+              let originalIndex = reordered.firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+
+        let moved = reordered.remove(at: originalIndex)
+        let adjustedDestination = destination > originalIndex ? destination - 1 : destination
+        reordered.insert(moved, at: adjustedDestination)
+        guard adjustedDestination != originalIndex else { return false }
+
+        let lower = adjustedDestination > 0 ? reordered[adjustedDestination - 1].orderToken : nil
+        let upper = adjustedDestination + 1 < reordered.count
+            ? reordered[adjustedDestination + 1].orderToken
+            : nil
+        _ = try await repository.moveTask(id: id, to: try OrderToken.between(lower, upper))
+        try await reload()
+        await syncCoordinator?.notifyLocalChanges()
+        return true
+    }
+
     func deleteTask(_ id: TaskID) async throws {
         try await repository.deleteTask(id: id)
         try await reload()
