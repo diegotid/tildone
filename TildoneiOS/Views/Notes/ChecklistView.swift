@@ -1,0 +1,167 @@
+//
+//  ChecklistView.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 8/1/26.
+//
+import SwiftUI
+import TildoneDomain
+
+struct ChecklistView: View {
+    @ObservedObject var appModel: TildoneiOSApplicationModel
+    let noteID: NoteID
+    @Environment(\.dismiss) private var dismiss
+    @State private var note: Note?
+    @State private var tasks: [Task] = []
+    @State private var newTaskText = ""
+    @State private var title = ""
+    @State private var titleBaseline: String?
+    @FocusState private var focusedTask: TaskID?
+    @FocusState private var isAddingTask: Bool
+    @FocusState private var isEditingTitle: Bool
+
+    var body: some View {
+        Group {
+            if let note {
+                List {
+                    Section {
+                        TextField("Note title", text: $title)
+                            .focused($isEditingTitle)
+                            .font(.title2.weight(.semibold))
+                            .submitLabel(.done)
+                            .onSubmit { saveTitle() }
+                            .onChange(of: isEditingTitle) { wasEditing, isEditing in
+                                guard wasEditing, !isEditing else { return }
+                                finishTitleEditing()
+                            }
+                    }
+                    Section("Checklist") {
+                        ForEach(tasks, id: \.id) { task in
+                            TaskRow(
+                                task: task,
+                                focusedTask: $focusedTask,
+                                onCommit: { value in
+                                    try? await appModel.edit(taskID: task.id, text: value)
+                                    await reload()
+                                },
+                                onToggle: {
+                                    try? await appModel.setCompletion(taskID: task.id, completed: !task.isCompleted)
+                                    await reload()
+                                },
+                                onDelete: {
+                                    try? await appModel.delete(taskID: task.id)
+                                    await reload()
+                                },
+                                onMoveUp: {
+                                    await move(taskID: task.id, by: -1)
+                                },
+                                onMoveDown: {
+                                    await move(taskID: task.id, by: 1)
+                                }
+                            )
+                            .swipeActions(edge: .trailing) {
+                                Button("Delete", role: .destructive) {
+                                    Swift.Task { await delete(taskID: task.id) }
+                                }
+                            }
+                        }
+                        .onMove(perform: move)
+
+                        TextField("New task", text: $newTaskText)
+                            .focused($isAddingTask)
+                            .submitLabel(.next)
+                            .onSubmit { addTask() }
+                            .accessibilityLabel("New task")
+                    }
+                }
+                .navigationTitle(note.title?.isEmpty == false ? note.title! : "Untitled Note")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { EditButton() }
+                .onDisappear { saveTitle() }
+            } else {
+                ContentUnavailableView("This note was deleted", systemImage: "trash")
+            }
+        }
+        .task {
+            await reload()
+            let isUntitled = note?.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+            isEditingTitle = isUntitled
+            isAddingTask = !isUntitled && tasks.isEmpty
+        }
+        .onChange(of: appModel.contentRevision) { _, _ in
+            if !appModel.notes.contains(where: { $0.id == noteID }) { dismiss() }
+            else { Swift.Task { await reload() } }
+        }
+    }
+
+    private func reload() async {
+        note = appModel.notes.first(where: { $0.id == noteID })
+        guard note != nil else { return }
+        tasks = (try? await appModel.tasks(in: noteID)) ?? []
+        if !isEditingTitle || titleBaseline == nil {
+            title = note?.title ?? ""
+            titleBaseline = Self.normalizedTitle(note?.title)
+        }
+    }
+
+    private func saveTitle() {
+        let normalized = Self.normalizedTitle(title)
+        guard normalized != titleBaseline else { return }
+        titleBaseline = normalized
+        Swift.Task {
+            try? await appModel.rename(noteID: noteID, title: normalized)
+            await reload()
+        }
+    }
+
+    private func finishTitleEditing() {
+        if Self.normalizedTitle(title) == titleBaseline {
+            title = note?.title ?? ""
+            titleBaseline = Self.normalizedTitle(note?.title)
+        } else {
+            saveTitle()
+        }
+    }
+
+    private static func normalizedTitle(_ title: String?) -> String? {
+        guard let title = title?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return nil }
+        return title
+    }
+
+    private func addTask() {
+        let text = newTaskText
+        newTaskText = ""
+        Swift.Task {
+            _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)
+            await reload()
+            isAddingTask = true
+        }
+    }
+
+    private func move(from source: IndexSet, to destination: Int) {
+        guard let task = source.first.map({ tasks[$0] }) else { return }
+        Swift.Task {
+            try? await appModel.move(taskID: task.id, in: tasks, from: source, to: destination)
+            await reload()
+        }
+    }
+
+    private func move(taskID: TaskID, by offset: Int) async {
+        guard let sourceIndex = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        let destination = sourceIndex + offset
+        guard tasks.indices.contains(destination) else { return }
+        try? await appModel.move(
+            taskID: taskID,
+            in: tasks,
+            from: IndexSet(integer: sourceIndex),
+            to: offset < 0 ? destination : destination + 1
+        )
+        await reload()
+    }
+
+    private func delete(taskID: TaskID) async {
+        try? await appModel.delete(taskID: taskID)
+        await reload()
+    }
+}

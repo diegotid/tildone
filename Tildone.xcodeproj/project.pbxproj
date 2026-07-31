@@ -8,11 +8,24 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* TildoneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* TildoneiOSApp.swift */; };
-		A10000000000000000000002 /* TildoneiOSRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* TildoneiOSRootView.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
 		A10000000000000000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Preview Assets.xcassets */; };
 		A10000000000000000000005 /* TildoneiOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* TildoneiOSTests.swift */; };
 		A10000000000000000000006 /* TildoneiOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* TildoneiOSUITests.swift */; };
+		C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* TildoneiOSAppDelegate.swift */; };
+		C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */; };
+		C10000000000000000000003 /* TildoneiOSApplicationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000013 /* TildoneiOSApplicationModel.swift */; };
+		C10000000000000000000004 /* TildoneiOSPresentationError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000014 /* TildoneiOSPresentationError.swift */; };
+		C10000000000000000000005 /* SyncStatusPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000015 /* SyncStatusPresentation.swift */; };
+		C10000000000000000000006 /* TildoneiOSRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000016 /* TildoneiOSRootView.swift */; };
+		C10000000000000000000007 /* NotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000017 /* NotesListView.swift */; };
+		C10000000000000000000008 /* NoteListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000018 /* NoteListRow.swift */; };
+		C10000000000000000000009 /* NoteCompletionGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000019 /* NoteCompletionGauge.swift */; };
+		C1000000000000000000000A /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001A /* ChecklistView.swift */; };
+		C1000000000000000000000B /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001B /* TaskRow.swift */; };
+		C1000000000000000000000C /* SyncStatusMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001C /* SyncStatusMenu.swift */; };
+		C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001D /* WorkspaceStatusView.swift */; };
+		C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */; };
 		B60000000000000000000001 /* LegacyStoreDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* LegacyStoreDiscovery.swift */; };
 		B60000000000000000000002 /* LegacyStoreReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000012 /* LegacyStoreReader.swift */; };
 		B60000000000000000000003 /* LegacyMigrationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000013 /* LegacyMigrationCoordinator.swift */; };
@@ -87,7 +100,6 @@
 /* Begin PBXFileReference section */
 		A10000000000000000000010 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* TildoneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApp.swift; sourceTree = "<group>"; };
-		A10000000000000000000012 /* TildoneiOSRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSRootView.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		A10000000000000000000015 /* TildoneiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TildoneiOS.entitlements; sourceTree = "<group>"; };
@@ -96,6 +108,20 @@
 		A10000000000000000000017 /* TildoneiOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* TildoneiOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneiOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000019 /* TildoneiOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSUITests.swift; sourceTree = "<group>"; };
+		C10000000000000000000011 /* TildoneiOSAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSAppDelegate.swift; sourceTree = "<group>"; };
+		C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSSyncBootstrapper.swift; sourceTree = "<group>"; };
+		C10000000000000000000013 /* TildoneiOSApplicationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApplicationModel.swift; sourceTree = "<group>"; };
+		C10000000000000000000014 /* TildoneiOSPresentationError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSPresentationError.swift; sourceTree = "<group>"; };
+		C10000000000000000000015 /* SyncStatusPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusPresentation.swift; sourceTree = "<group>"; };
+		C10000000000000000000016 /* TildoneiOSRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSRootView.swift; sourceTree = "<group>"; };
+		C10000000000000000000017 /* NotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListView.swift; sourceTree = "<group>"; };
+		C10000000000000000000018 /* NoteListRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListRow.swift; sourceTree = "<group>"; };
+		C10000000000000000000019 /* NoteCompletionGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCompletionGauge.swift; sourceTree = "<group>"; };
+		C1000000000000000000001A /* ChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistView.swift; sourceTree = "<group>"; };
+		C1000000000000000000001B /* TaskRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRow.swift; sourceTree = "<group>"; };
+		C1000000000000000000001C /* SyncStatusMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusMenu.swift; sourceTree = "<group>"; };
+		C1000000000000000000001D /* WorkspaceStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatusView.swift; sourceTree = "<group>"; };
+		C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteTaskSummary+Accessibility.swift"; sourceTree = "<group>"; };
 		B60000000000000000000011 /* LegacyStoreDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyStoreDiscovery.swift; sourceTree = "<group>"; };
 		B60000000000000000000012 /* LegacyStoreReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyStoreReader.swift; sourceTree = "<group>"; };
 		B60000000000000000000013 /* LegacyMigrationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyMigrationCoordinator.swift; sourceTree = "<group>"; };
@@ -189,8 +215,10 @@
 		A10000000000000000000051 /* TildoneiOS */ = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000011 /* TildoneiOSApp.swift */,
-				A10000000000000000000012 /* TildoneiOSRootView.swift */,
+				C10000000000000000000021 /* App */,
+				C10000000000000000000022 /* Models */,
+				C10000000000000000000023 /* Views */,
+				C10000000000000000000026 /* Extensions */,
 				A10000000000000000000013 /* Assets.xcassets */,
 				A1000000000000000000001A /* Info.plist */,
 				A10000000000000000000015 /* TildoneiOS.entitlements */,
@@ -221,6 +249,65 @@
 				A10000000000000000000014 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		C10000000000000000000021 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000011 /* TildoneiOSApp.swift */,
+				C10000000000000000000011 /* TildoneiOSAppDelegate.swift */,
+				C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000022 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000013 /* TildoneiOSApplicationModel.swift */,
+				C10000000000000000000014 /* TildoneiOSPresentationError.swift */,
+				C10000000000000000000015 /* SyncStatusPresentation.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000023 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000016 /* TildoneiOSRootView.swift */,
+				C10000000000000000000024 /* Notes */,
+				C10000000000000000000025 /* Sync */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000024 /* Notes */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000017 /* NotesListView.swift */,
+				C10000000000000000000018 /* NoteListRow.swift */,
+				C10000000000000000000019 /* NoteCompletionGauge.swift */,
+				C1000000000000000000001A /* ChecklistView.swift */,
+				C1000000000000000000001B /* TaskRow.swift */,
+			);
+			path = Notes;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000025 /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				C1000000000000000000001C /* SyncStatusMenu.swift */,
+				C1000000000000000000001D /* WorkspaceStatusView.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000026 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 		B60000000000000000000020 /* Migration */ = {
@@ -593,7 +680,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
-				A10000000000000000000002 /* TildoneiOSRootView.swift in Sources */,
+				C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */,
+				C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */,
+				C10000000000000000000003 /* TildoneiOSApplicationModel.swift in Sources */,
+				C10000000000000000000004 /* TildoneiOSPresentationError.swift in Sources */,
+				C10000000000000000000005 /* SyncStatusPresentation.swift in Sources */,
+				C10000000000000000000006 /* TildoneiOSRootView.swift in Sources */,
+				C10000000000000000000007 /* NotesListView.swift in Sources */,
+				C10000000000000000000008 /* NoteListRow.swift in Sources */,
+				C10000000000000000000009 /* NoteCompletionGauge.swift in Sources */,
+				C1000000000000000000000A /* ChecklistView.swift in Sources */,
+				C1000000000000000000000B /* TaskRow.swift in Sources */,
+				C1000000000000000000000C /* SyncStatusMenu.swift in Sources */,
+				C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */,
+				C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,3 +1,9 @@
+//
+//  TildoneiOSTests.swift
+//  Tildone
+//
+//  Created by Diego Rivera on 8/1/26.
+//
 import XCTest
 import TildoneDomain
 import TildonePersistence
@@ -184,16 +190,24 @@ final class TildoneiOSTests: XCTestCase {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("TildoneiOS/TildoneiOSRootView.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+            .appendingPathComponent("TildoneiOS/Views/Notes/NotesListView.swift")
+        let listSource = try String(contentsOf: sourceURL, encoding: .utf8)
+        let noteRowURL = sourceURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("NoteListRow.swift")
+        let noteRowSource = try String(contentsOf: noteRowURL, encoding: .utf8)
+        let gaugeURL = sourceURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("NoteCompletionGauge.swift")
+        let gaugeSource = try String(contentsOf: gaugeURL, encoding: .utf8)
 
-        XCTAssertTrue(source.contains("NavigationLink {"))
-        XCTAssertTrue(source.contains(".navigationDestination(item: $createdNoteID)"))
-        XCTAssertFalse(source.contains("NavigationStack(path: $path)"))
-        XCTAssertFalse(source.contains(".navigationDestination(for: NoteID.self)"))
-        XCTAssertTrue(source.contains("NoteCompletionGauge"))
-        XCTAssertTrue(source.contains(".gaugeStyle(.accessoryCircular)"))
-        XCTAssertFalse(source.contains("lastMeaningfulEditAt, style: .relative"))
+        XCTAssertTrue(listSource.contains("NavigationLink {"))
+        XCTAssertTrue(listSource.contains(".navigationDestination(item: $createdNoteID)"))
+        XCTAssertFalse(listSource.contains("NavigationStack(path: $path)"))
+        XCTAssertFalse(listSource.contains(".navigationDestination(for: NoteID.self)"))
+        XCTAssertTrue(noteRowSource.contains("NoteCompletionGauge"))
+        XCTAssertFalse(noteRowSource.contains("lastMeaningfulEditAt, style: .relative"))
+        XCTAssertTrue(gaugeSource.contains(".gaugeStyle(.accessoryCircular)"))
     }
 
     private func makeModel(repository: TildoneRepository? = nil) async throws -> TildoneiOSApplicationModel {

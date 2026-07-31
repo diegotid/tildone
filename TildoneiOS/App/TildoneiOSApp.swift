@@ -4,46 +4,9 @@
 //
 //  Created by Diego Rivera on 7/12/26.
 //
-import CloudKit
 import SwiftUI
 import TildonePersistence
 import TildoneSync
-import UIKit
-
-final class TildoneiOSAppDelegate: NSObject, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Bool {
-        if TildoneiOSSyncBootstrapper.featureEnabled {
-            application.registerForRemoteNotifications()
-        }
-        return true
-    }
-}
-
-enum TildoneiOSSyncBootstrapper {
-    static var featureEnabled: Bool {
-#if DEBUG
-        !isTestProcess && ProcessInfo.processInfo.environment["TILDONE_ENABLE_CLOUDKIT_SYNC"] == "1"
-#else
-        false
-#endif
-    }
-
-    private static var isTestProcess: Bool {
-#if DEBUG
-        let environment = ProcessInfo.processInfo.environment
-        return environment["XCTestConfigurationFilePath"] != nil ||
-            environment["XCTestBundlePath"] != nil ||
-            environment["XCInjectBundleInto"] != nil ||
-            NSClassFromString("XCTestCase") != nil
-#else
-        false
-#endif
-    }
-
-}
 
 @main
 struct TildoneiOSApp: App {
