@@ -16,6 +16,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
     typealias RepositoryFactory = (WorkspaceIdentity) throws -> TildoneRepository
 
     @Published private(set) var notes: [Note] = []
+    @Published private(set) var taskSummaries: [NoteID: NoteTaskSummary] = [:]
+    @Published private(set) var oldestTaskTexts: [NoteID: String] = [:]
     @Published private(set) var syncStatus: SyncStatus = .disabled
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
@@ -113,7 +115,22 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     func reloadNotes() async throws {
         guard let repository else { return }
-        notes = try await repository.visibleNotes()
+        let notes = try await repository.visibleNotes()
+        var taskSummaries: [NoteID: NoteTaskSummary] = [:]
+        var oldestTaskTexts: [NoteID: String] = [:]
+        taskSummaries.reserveCapacity(notes.count)
+        for note in notes {
+            let tasks = try await repository.orderedTasks(in: note.id)
+            taskSummaries[note.id] = NoteTaskSummary(noteID: note.id, tasks: tasks)
+            if let oldestTask = tasks.min(by: {
+                $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
+            }) {
+                oldestTaskTexts[note.id] = oldestTask.text
+            }
+        }
+        self.notes = notes
+        self.taskSummaries = taskSummaries
+        self.oldestTaskTexts = oldestTaskTexts
         contentRevision &+= 1
     }
 
@@ -207,7 +224,12 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     func present(status: SyncStatus) {
         syncStatus = status
-        if status.availability == .accountChanged { hasWorkspace = false; notes = [] }
+        if status.availability == .accountChanged {
+            hasWorkspace = false
+            notes = []
+            taskSummaries = [:]
+            oldestTaskTexts = [:]
+        }
     }
 
     private func didMutate() async throws {
@@ -259,6 +281,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
         repository = nil
         activeWorkspace = nil
         notes = []
+        taskSummaries = [:]
+        oldestTaskTexts = [:]
         hasWorkspace = false
         syncStatus = status
     }
@@ -349,7 +373,11 @@ private struct NotesListView: View {
                             NavigationLink {
                                 ChecklistView(appModel: appModel, noteID: note.id)
                             } label: {
-                                NoteListRow(note: note)
+                                NoteListRow(
+                                    note: note,
+                                    summary: appModel.taskSummaries[note.id],
+                                    oldestTaskText: appModel.oldestTaskTexts[note.id]
+                                )
                             }
                             .contextMenu {
                                 Button("Rename") { beginRename(note) }
@@ -415,18 +443,73 @@ private struct NotesListView: View {
 
 private struct NoteListRow: View {
     let note: Note
+    let summary: NoteTaskSummary?
+    let oldestTaskText: String?
+
+    private var title: String {
+        note.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? note.title!
+            : "Untitled Note"
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(note.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? note.title! : "Untitled Note")
-                .font(.body.weight(.medium))
-                .lineLimit(2)
-            Text(note.lastMeaningfulEditAt, style: .relative)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            NoteCompletionGauge(summary: summary)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                if let oldestTaskText, !oldestTaskText.isEmpty {
+                    Text(oldestTaskText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(note.title?.isEmpty == false ? note.title! : "Untitled Note")
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityDescription)
+    }
+
+    private var accessibilityDescription: String {
+        let completion = summary?.accessibilityDescription ?? "No tasks"
+        guard let oldestTaskText, !oldestTaskText.isEmpty else { return completion }
+        return "\(completion). Oldest task: \(oldestTaskText)"
+    }
+}
+
+private struct NoteCompletionGauge: View {
+    let summary: NoteTaskSummary?
+
+    private var completedCount: Int { summary?.completedCount ?? 0 }
+    private var totalCount: Int { summary?.totalCount ?? 0 }
+    private var tintColor: Color {
+        totalCount > 0 && completedCount == totalCount ? .green : .accentColor
+    }
+
+    var body: some View {
+        Gauge(
+            value: Double(completedCount),
+            in: 0...Double(max(totalCount, 1))
+        ) {
+            EmptyView()
+        } currentValueLabel: {
+            Text("\(completedCount)/\(totalCount)")
+                .font(.caption2.monospacedDigit().weight(.semibold))
+        }
+        .gaugeStyle(.accessoryCircular)
+        .tint(Gradient(colors: [.clear, tintColor]))
+        .frame(width: 40, height: 40)
+        .accessibilityHidden(true)
+    }
+}
+
+private extension NoteTaskSummary {
+    var accessibilityDescription: String {
+        "\(completedCount) of \(totalCount) tasks completed"
     }
 }
 

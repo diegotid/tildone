@@ -43,6 +43,9 @@ final class TildoneiOSTests: XCTestCase {
 
         try await model.edit(taskID: second.id, text: "Changed")
         try await model.setCompletion(taskID: first.id, completed: true)
+        XCTAssertEqual(model.taskSummaries[note.id]?.completedCount, 1)
+        XCTAssertEqual(model.taskSummaries[note.id]?.totalCount, 2)
+        XCTAssertEqual(model.oldestTaskTexts[note.id], "First")
         try await model.move(taskID: second.id, in: [first, second], from: IndexSet(integer: 1), to: 0)
         let reordered = try await model.tasks(in: note.id)
         XCTAssertEqual(reordered.map(\.id), [second.id, first.id])
@@ -188,6 +191,9 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(source.contains(".navigationDestination(item: $createdNoteID)"))
         XCTAssertFalse(source.contains("NavigationStack(path: $path)"))
         XCTAssertFalse(source.contains(".navigationDestination(for: NoteID.self)"))
+        XCTAssertTrue(source.contains("NoteCompletionGauge"))
+        XCTAssertTrue(source.contains(".gaugeStyle(.accessoryCircular)"))
+        XCTAssertFalse(source.contains("lastMeaningfulEditAt, style: .relative"))
     }
 
     private func makeModel(repository: TildoneRepository? = nil) async throws -> TildoneiOSApplicationModel {
