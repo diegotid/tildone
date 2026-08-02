@@ -1,55 +1,124 @@
 {
   "fill" : {
-    "linear-gradient" : [
-      "display-p3:0.99171,0.95494,0.67328,1.00000",
-      "display-p3:0.77049,0.72352,0.38883,1.00000"
-    ]
+    "solid" : "display-p3:0.99216,0.94118,0.66667,1.00000"
   },
   "groups" : [
     {
+      "hidden-specializations" : [
+        {
+          "idiom" : "macOS",
+          "value" : false
+        }
+      ],
       "layers" : [
         {
-          "blend-mode-specializations" : [
+          "glass-specializations" : [
             {
-              "appearance" : "dark",
-              "value" : "normal"
+              "value" : false
+            },
+            {
+              "appearance" : "tinted",
+              "value" : false
             }
           ],
-          "fill-specializations" : [
+          "image-name" : "tick.svg",
+          "name" : "tick",
+          "position-specializations" : [
             {
-              "appearance" : "dark",
-              "value" : "automatic"
+              "idiom" : "square",
+              "value" : {
+                "scale" : 1,
+                "translation-in-points" : [
+                  10,
+                  0
+                ]
+              }
             }
-          ],
-          "glass" : false,
-          "image-name" : "tildone-front.svg",
-          "name" : "tildone-front"
+          ]
         },
         {
           "fill-specializations" : [
             {
               "appearance" : "dark",
-              "value" : "automatic"
+              "value" : "none"
             }
           ],
-          "glass" : false,
-          "image-name" : "tildone-back.png",
-          "name" : "tildone-back"
+          "glass" : true,
+          "hidden" : false,
+          "image-name-specializations" : [
+            {
+              "value" : "front.svg"
+            },
+            {
+              "idiom" : "square",
+              "value" : "front.png"
+            }
+          ],
+          "name" : "front"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : "none"
+            }
+          ],
+          "glass-specializations" : [
+            {
+              "value" : true
+            },
+            {
+              "appearance" : "dark",
+              "value" : true
+            }
+          ],
+          "hidden" : false,
+          "image-name-specializations" : [
+            {
+              "value" : "back.svg"
+            },
+            {
+              "idiom" : "square",
+              "value" : "back.png"
+            }
+          ],
+          "name" : "back",
+          "opacity-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : 0.6
+            },
+            {
+              "appearance" : "tinted",
+              "value" : 0.6
+            }
+          ],
+          "position-specializations" : [
+            {
+              "idiom" : "square",
+              "value" : {
+                "scale" : 1,
+                "translation-in-points" : [
+                  12,
+                  0
+                ]
+              }
+            }
+          ]
         }
       ],
       "shadow" : {
-        "kind" : "neutral",
+        "kind" : "none",
         "opacity" : 0.5
       },
+      "specular" : true,
       "translucency" : {
-        "enabled" : true,
+        "enabled" : false,
         "value" : 0.5
       }
     }
   ],
   "supported-platforms" : {
-    "squares" : [
-      "macOS"
-    ]
+    "squares" : "shared"
   }
 }
