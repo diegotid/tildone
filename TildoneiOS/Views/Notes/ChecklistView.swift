@@ -6,11 +6,14 @@
 //
 import SwiftUI
 import TildoneDomain
+import TildonePersistence
+import TildoneSync
 
 struct ChecklistView: View {
     @ObservedObject var appModel: TildoneiOSApplicationModel
     let noteID: NoteID
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.editMode) private var editMode
     @State private var note: Note?
     @State private var tasks: [Task] = []
     @State private var newTaskText = ""
@@ -20,11 +23,15 @@ struct ChecklistView: View {
     @FocusState private var isAddingTask: Bool
     @FocusState private var isEditingTitle: Bool
 
+    private var isInEditMode: Bool {
+        editMode?.wrappedValue.isEditing == true
+    }
+
     var body: some View {
         Group {
             if let note {
                 List {
-                    Section {
+                    if isInEditMode || isEditingTitle {
                         TextField("Note title", text: $title)
                             .focused($isEditingTitle)
                             .font(.title2.weight(.semibold))
@@ -35,7 +42,8 @@ struct ChecklistView: View {
                                 finishTitleEditing()
                             }
                     }
-                    Section("Checklist") {
+
+                    Section {
                         ForEach(tasks, id: \.id) { task in
                             TaskRow(
                                 task: task,
@@ -72,10 +80,11 @@ struct ChecklistView: View {
                             .submitLabel(.next)
                             .onSubmit { addTask() }
                             .accessibilityLabel("New task")
+                            .frame(minHeight: 33, maxHeight: 33)
                     }
                 }
                 .navigationTitle(note.title?.isEmpty == false ? note.title! : "Untitled Note")
-                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.large)
                 .toolbar { EditButton() }
                 .onDisappear { saveTitle() }
             } else {
@@ -163,5 +172,35 @@ struct ChecklistView: View {
     private func delete(taskID: TaskID) async {
         try? await appModel.delete(taskID: taskID)
         await reload()
+    }
+}
+
+#Preview("Checklist") {
+    let workspaceID = UUID(uuidString: "00000000-0000-0000-0000-000000000010")!
+    let noteID = NoteID(UUID(uuidString: "00000000-0000-0000-0000-000000000011")!)
+    let model = TildoneiOSApplicationModel(
+        repositoryFactory: { _ in
+            try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceID)))
+        },
+        accountResolver: { CloudAccountSnapshot(state: .available, workspaceID: workspaceID) },
+        synchronizationEnabled: false
+    )
+
+    NavigationStack {
+        ChecklistView(appModel: model, noteID: noteID)
+    }
+    .task {
+        guard (try? await model.openForTesting(workspaceID: workspaceID)) != nil,
+              (try? await model.createNote(title: "Weekend plans", id: noteID)) != nil,
+              let firstTask = try? await model.addTask(
+                  noteID: noteID,
+                  text: "Book the first appointment",
+                  after: []
+              ) else { return }
+        _ = try? await model.addTask(
+            noteID: noteID,
+            text: "Pick up flowers",
+            after: [firstTask]
+        )
     }
 }

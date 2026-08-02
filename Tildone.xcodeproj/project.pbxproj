@@ -26,6 +26,7 @@
 		C1000000000000000000000C /* SyncStatusMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001C /* SyncStatusMenu.swift */; };
 		C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001D /* WorkspaceStatusView.swift */; };
 		C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */; };
+		C1000000000000000000000F /* TaskCheckbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001F /* TaskCheckbox.swift */; };
 		B60000000000000000000001 /* LegacyStoreDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000011 /* LegacyStoreDiscovery.swift */; };
 		B60000000000000000000002 /* LegacyStoreReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000012 /* LegacyStoreReader.swift */; };
 		B60000000000000000000003 /* LegacyMigrationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000000000000000000013 /* LegacyMigrationCoordinator.swift */; };
@@ -122,6 +123,7 @@
 		C1000000000000000000001C /* SyncStatusMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusMenu.swift; sourceTree = "<group>"; };
 		C1000000000000000000001D /* WorkspaceStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatusView.swift; sourceTree = "<group>"; };
 		C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteTaskSummary+Accessibility.swift"; sourceTree = "<group>"; };
+		C1000000000000000000001F /* TaskCheckbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckbox.swift; sourceTree = "<group>"; };
 		B60000000000000000000011 /* LegacyStoreDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyStoreDiscovery.swift; sourceTree = "<group>"; };
 		B60000000000000000000012 /* LegacyStoreReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyStoreReader.swift; sourceTree = "<group>"; };
 		B60000000000000000000013 /* LegacyMigrationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyMigrationCoordinator.swift; sourceTree = "<group>"; };
@@ -289,6 +291,7 @@
 				C10000000000000000000019 /* NoteCompletionGauge.swift */,
 				C1000000000000000000001A /* ChecklistView.swift */,
 				C1000000000000000000001B /* TaskRow.swift */,
+				C1000000000000000000001F /* TaskCheckbox.swift */,
 			);
 			path = Notes;
 			sourceTree = "<group>";
@@ -694,6 +697,7 @@
 				C1000000000000000000000C /* SyncStatusMenu.swift in Sources */,
 				C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */,
 				C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */,
+				C1000000000000000000000F /* TaskCheckbox.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

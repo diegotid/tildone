@@ -19,20 +19,13 @@ struct TaskRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Button {
+            TaskCheckbox(isChecked: task.isCompleted) {
                 Swift.Task { await onToggle() }
-            } label: {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(task.isCompleted ? Color.accentColor : Color.secondary)
-                    .frame(minWidth: 44, minHeight: 44)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.isCompleted ? "Mark task incomplete" : "Complete task")
 
-            TextField("Task", text: $draft, axis: .vertical)
+            TextField("Task", text: $draft, axis: .horizontal)
                 .focused(focusedTask, equals: task.id)
-                .lineLimit(1...5)
+                .lineLimit(1)
                 .strikethrough(task.isCompleted)
                 .foregroundStyle(task.isCompleted ? .secondary : .primary)
                 .submitLabel(.done)
@@ -44,6 +37,7 @@ struct TaskRow: View {
                     if focusedTask.wrappedValue != task.id { draft = remoteText }
                 }
         }
+        .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
         .onAppear { draft = task.text }
         .accessibilityElement(children: .contain)
         .accessibilityAction(named: task.isCompleted ? "Mark incomplete" : "Complete") {

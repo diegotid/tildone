@@ -14,10 +14,16 @@ struct NotesListView: View {
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
 
+    private var activeNotes: [Note] {
+        appModel.notes.filter { note in
+            appModel.taskSummaries[note.id]?.isComplete != true
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if appModel.notes.isEmpty {
+                if activeNotes.isEmpty {
                     ContentUnavailableView {
                         Label("No Notes Yet", systemImage: "checklist")
                     } description: {
@@ -27,14 +33,14 @@ struct NotesListView: View {
                     }
                 } else {
                     List {
-                        ForEach(appModel.notes, id: \.id) { note in
+                        ForEach(activeNotes, id: \.id) { note in
                             NavigationLink {
                                 ChecklistView(appModel: appModel, noteID: note.id)
                             } label: {
                                 NoteListRow(
                                     note: note,
                                     summary: appModel.taskSummaries[note.id],
-                                    oldestTaskText: appModel.oldestTaskTexts[note.id]
+                                    taskListText: appModel.taskListTexts[note.id]
                                 )
                             }
                             .contextMenu {

@@ -51,7 +51,7 @@ final class TildoneiOSTests: XCTestCase {
         try await model.setCompletion(taskID: first.id, completed: true)
         XCTAssertEqual(model.taskSummaries[note.id]?.completedCount, 1)
         XCTAssertEqual(model.taskSummaries[note.id]?.totalCount, 2)
-        XCTAssertEqual(model.oldestTaskTexts[note.id], "First")
+        XCTAssertEqual(model.taskListTexts[note.id], "First, Changed")
         try await model.move(taskID: second.id, in: [first, second], from: IndexSet(integer: 1), to: 0)
         let reordered = try await model.tasks(in: note.id)
         XCTAssertEqual(reordered.map(\.id), [second.id, first.id])

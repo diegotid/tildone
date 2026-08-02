@@ -16,7 +16,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     @Published private(set) var notes: [Note] = []
     @Published private(set) var taskSummaries: [NoteID: NoteTaskSummary] = [:]
-    @Published private(set) var oldestTaskTexts: [NoteID: String] = [:]
+    @Published private(set) var taskListTexts: [NoteID: String] = [:]
     @Published private(set) var syncStatus: SyncStatus = .disabled
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
@@ -107,22 +107,24 @@ final class TildoneiOSApplicationModel: ObservableObject {
         guard let repository else { return }
         let notes = try await repository.visibleNotes()
         var taskSummaries: [NoteID: NoteTaskSummary] = [:]
-        var oldestTaskTexts: [NoteID: String] = [:]
+        var taskListTexts: [NoteID: String] = [:]
         taskSummaries.reserveCapacity(notes.count)
 
         for note in notes {
             let tasks = try await repository.orderedTasks(in: note.id)
             taskSummaries[note.id] = NoteTaskSummary(noteID: note.id, tasks: tasks)
-            if let oldestTask = tasks.min(by: {
+            let oldestTasksFirst = tasks.sorted {
                 $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
-            }) {
-                oldestTaskTexts[note.id] = oldestTask.text
+            }
+            let taskListText = oldestTasksFirst.map(\.text).joined(separator: ", ")
+            if !taskListText.isEmpty {
+                taskListTexts[note.id] = taskListText
             }
         }
 
         self.notes = notes
         self.taskSummaries = taskSummaries
-        self.oldestTaskTexts = oldestTaskTexts
+        self.taskListTexts = taskListTexts
         contentRevision &+= 1
     }
 
@@ -132,9 +134,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     @discardableResult
-    func createNote(title: String? = nil) async throws -> Note {
+    func createNote(title: String? = nil, id: NoteID = NoteID()) async throws -> Note {
         let note = try await withRepository { repository in
-            try await repository.createNote(id: NoteID(), createdAt: Date(), title: title)
+            try await repository.createNote(id: id, createdAt: Date(), title: title)
         }
         try await didMutate()
         return note
@@ -218,7 +220,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
             hasWorkspace = false
             notes = []
             taskSummaries = [:]
-            oldestTaskTexts = [:]
+            taskListTexts = [:]
         }
     }
 
@@ -272,7 +274,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         activeWorkspace = nil
         notes = []
         taskSummaries = [:]
-        oldestTaskTexts = [:]
+        taskListTexts = [:]
         hasWorkspace = false
         syncStatus = status
     }
