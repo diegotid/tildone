@@ -40,9 +40,6 @@ struct Desktop: View {
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                Swift.Task { try? await store.deleteDeletableNotes() }
-            }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
             }

@@ -74,6 +74,81 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    func testMacSharedStoreRemovesRestoredEmptyNotesButKeepsCompletedNotesForFade() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let empty = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let completed = try await store.createNote(createdAt: Date(timeIntervalSince1970: 200))
+        let task = try await store.addTask(to: completed.id, text: "Complete me")
+        try await store.setTaskCompletion(task.id, completed: true)
+
+        try await store.prepareForPresentation()
+
+        let snapshots = await MainActor.run { store.notes }
+        XCTAssertNil(snapshots.first(where: { $0.id == empty.id }))
+        let restoredCompletion = try XCTUnwrap(snapshots.first(where: { $0.id == completed.id }))
+        XCTAssertTrue(restoredCompletion.isComplete)
+        XCTAssertNotNil(restoredCompletion.completedAt)
+    }
+
+    func testCompletionFadeLifecycleResumesUsingPersistedCompletionDate() {
+        let completedAt = Date(timeIntervalSince1970: 100)
+        var lifecycle = CompletionFadeLifecycle()
+
+        lifecycle.synchronize(completedAt: completedAt)
+
+        XCTAssertTrue(lifecycle.isFading)
+        XCTAssertTrue(lifecycle.showsCompletionOverlay)
+        XCTAssertEqual(
+            lifecycle.progress(at: Date(timeIntervalSince1970: 105), duration: 20),
+            5
+        )
+        XCTAssertNil(lifecycle.beginDeletionIfReady(
+            at: Date(timeIntervalSince1970: 119.9),
+            duration: 20
+        ))
+        XCTAssertEqual(lifecycle.beginDeletionIfReady(
+            at: Date(timeIntervalSince1970: 120),
+            duration: 20
+        ), completedAt)
+        XCTAssertFalse(lifecycle.isFading)
+        XCTAssertTrue(lifecycle.showsCompletionOverlay)
+    }
+
+    func testCompletionFadeCancellationOnlyAppliesToCurrentCompletionCycle() {
+        let firstCompletion = Date(timeIntervalSince1970: 100)
+        let secondCompletion = Date(timeIntervalSince1970: 200)
+        var lifecycle = CompletionFadeLifecycle()
+
+        lifecycle.synchronize(completedAt: firstCompletion)
+        lifecycle.cancel()
+        lifecycle.synchronize(completedAt: firstCompletion)
+
+        XCTAssertEqual(lifecycle.phase, .cancelled(completedAt: firstCompletion))
+        XCTAssertFalse(lifecycle.showsCompletionOverlay)
+
+        lifecycle.synchronize(completedAt: nil)
+        XCTAssertEqual(lifecycle.phase, .idle)
+
+        lifecycle.synchronize(completedAt: secondCompletion)
+        XCTAssertEqual(lifecycle.phase, .fading(completedAt: secondCompletion))
+        XCTAssertTrue(lifecycle.showsCompletionOverlay)
+    }
+
+    func testCompletionFadeProgressClampsAcrossSleepAndClockSkew() {
+        var lifecycle = CompletionFadeLifecycle()
+        lifecycle.synchronize(completedAt: Date(timeIntervalSince1970: 100))
+
+        XCTAssertEqual(
+            lifecycle.progress(at: Date(timeIntervalSince1970: 90), duration: 20),
+            0
+        )
+        XCTAssertEqual(
+            lifecycle.progress(at: Date(timeIntervalSince1970: 1_000), duration: 20),
+            20
+        )
+    }
+
     func testMacSharedStoreReordersBeginningMiddleAndEndWithoutChangingTaskContent() async throws {
         let baseDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("TildoneMacReorder-\(UUID().uuidString)", isDirectory: true)

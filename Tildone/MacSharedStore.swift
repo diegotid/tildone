@@ -23,6 +23,10 @@ struct MacNoteSnapshot: Identifiable {
     var isComplete: Bool { !tasks.isEmpty && tasks.allSatisfy(\.isCompleted) }
     var isDeletable: Bool { isEmpty || isComplete }
     var pendingTasks: [Task] { tasks.filter { !$0.isCompleted } }
+    var completedAt: Date? {
+        guard isComplete else { return nil }
+        return tasks.compactMap(\.completedAt).max()
+    }
 
     /// Retains the released window-autosave key for migrated notes.
     var legacyWindowKey: String { createdAt.ISO8601Format() }
@@ -51,6 +55,20 @@ final class MacSharedStore: ObservableObject {
             snapshots.append(MacNoteSnapshot(note: note, tasks: try await repository.orderedTasks(in: note.id)))
         }
         notes = snapshots
+    }
+
+    /// Removes empty windows left behind by an interrupted or forced quit before
+    /// the desktop reconciles persisted notes. Completed notes are intentionally
+    /// retained here so their visible grace period is owned by `Note`.
+    func prepareForPresentation() async throws {
+        try await reload()
+        let emptyNoteIDs = notes.lazy.filter(\.isEmpty).map(\.id)
+        guard !emptyNoteIDs.isEmpty else { return }
+        for id in emptyNoteIDs {
+            try await repository.deleteNote(id: id)
+        }
+        try await reload()
+        await syncCoordinator?.notifyLocalChanges()
     }
 
     func note(_ id: NoteID) -> MacNoteSnapshot? {
@@ -152,13 +170,6 @@ final class MacSharedStore: ObservableObject {
         await syncCoordinator?.notifyLocalChanges()
     }
 
-    func deleteDeletableNotes() async throws {
-        for note in notes where note.isDeletable {
-            try await repository.deleteNote(id: note.id)
-        }
-        try await reload()
-        await syncCoordinator?.notifyLocalChanges()
-    }
 }
 
 enum MacSharedStoreBootstrapError: Error, LocalizedError {
@@ -193,7 +204,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     : Self.openRepository())
                 if !Self.syncFeatureEnabled || Self.isTestProcess {
                     let store = MacSharedStore(repository: localRepository)
-                    try await store.reload()
+                    try await store.prepareForPresentation()
                     self.store = store
                     return
                 }
@@ -203,7 +214,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 guard account.state == .available, let workspaceID = account.workspaceID else {
                     self.syncStatus = Self.status(for: account.state)
                     let store = MacSharedStore(repository: localRepository)
-                    try await store.reload()
+                    try await store.prepareForPresentation()
                     self.store = store
                     return
                 }
@@ -237,14 +248,14 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                             activity: .idle
                         )
                         let store = MacSharedStore(repository: localRepository)
-                        try await store.reload()
+                        try await store.prepareForPresentation()
                         self.store = store
                         return
                     }
                 }
 
                 let store = MacSharedStore(repository: accountRepository)
-                try await store.reload()
+                try await store.prepareForPresentation()
                 let coordinator = try await TildoneSyncCoordinator(
                     repository: accountRepository,
                     container: container,

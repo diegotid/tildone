@@ -22,6 +22,74 @@ struct MacTaskDragPayload: Codable, Hashable, Transferable {
     }
 }
 
+/// Restart-safe presentation state for a note's destructive completion grace
+/// period. The persisted completion date identifies one completion cycle, so a
+/// restored or remotely completed note resumes the same fade instead of being
+/// treated as permanently "already done."
+struct CompletionFadeLifecycle: Equatable {
+    enum Phase: Equatable {
+        case idle
+        case fading(completedAt: Date)
+        case cancelled(completedAt: Date)
+        case deleting(completedAt: Date)
+
+        var completedAt: Date? {
+            switch self {
+            case .idle: nil
+            case let .fading(completedAt), let .cancelled(completedAt), let .deleting(completedAt):
+                completedAt
+            }
+        }
+    }
+
+    private(set) var phase: Phase = .idle
+
+    var isFading: Bool {
+        if case .fading = phase { return true }
+        return false
+    }
+
+    var showsCompletionOverlay: Bool {
+        switch phase {
+        case .fading, .deleting: true
+        case .idle, .cancelled: false
+        }
+    }
+
+    mutating func synchronize(completedAt: Date?) {
+        guard let completedAt else {
+            phase = .idle
+            return
+        }
+        guard phase.completedAt != completedAt else { return }
+        phase = .fading(completedAt: completedAt)
+    }
+
+    mutating func cancel() {
+        guard case let .fading(completedAt) = phase else { return }
+        phase = .cancelled(completedAt: completedAt)
+    }
+
+    func progress(at date: Date, duration: TimeInterval) -> TimeInterval {
+        guard case let .fading(completedAt) = phase, duration > 0 else { return 0 }
+        return min(max(date.timeIntervalSince(completedAt), 0), duration)
+    }
+
+    mutating func beginDeletionIfReady(at date: Date, duration: TimeInterval) -> Date? {
+        guard case let .fading(completedAt) = phase,
+              date.timeIntervalSince(completedAt) >= duration else {
+            return nil
+        }
+        phase = .deleting(completedAt: completedAt)
+        return completedAt
+    }
+
+    mutating func deletionFailed(completedAt: Date) {
+        guard phase == .deleting(completedAt: completedAt) else { return }
+        phase = .cancelled(completedAt: completedAt)
+    }
+}
+
 /// A macOS note window backed solely by shared-domain snapshots. AppKit state
 /// (focus, fade, minimization and window styling) deliberately remains here.
 struct Note: View {
@@ -39,6 +107,7 @@ struct Note: View {
     private var pendingTasks: [TildoneDomain.Task] { tasks.filter { !$0.isCompleted } }
     private var isDark: Bool { colorScheme == .dark && noteBackgroundOpacity < 0.5 }
     private var color: NSColor { noteColor.nsColor }
+    private var isDone: Bool { completionFade.showsCompletionOverlay }
 
     enum Field: Hashable { case topic, newTask }
 
@@ -48,17 +117,13 @@ struct Note: View {
     @State private var isTopScrolledOut = false
     @State private var isTopicHidden = false
     @State private var didSetInitialFocus = false
-    @State private var wasAlreadyDone = false
-    @State private var isDone = false
     @State private var windowAlpha = 1.0
     @State private var isMinimized = false {
         didSet { setTrafficLightsHidden(isMinimized) }
     }
     @State private var minimizedFromFrame: NSRect?
-    @State private var isFadingAway = false
-    @State private var fadeAwayProgress: Float = 0 {
-        didSet { updateFade() }
-    }
+    @State private var completionFade = CompletionFadeLifecycle()
+    @State private var fadeAwayProgress: TimeInterval = 0
     @State private var mutationErrorMessage: String?
     @State private var taskDropFeedbackResetToken = UUID()
     @FocusState private var focusedField: Field?
@@ -78,9 +143,18 @@ struct Note: View {
         }
         .onChange(of: noteColor) { _, _ in applyCurrentNoteBackground() }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
-        .onChange(of: note?.isComplete ?? false) { _, complete in
-            guard newTaskText.isEmpty else { return }
-            setCompletionState(complete)
+        .onAppear {
+            synchronizeCompletionFade(completedAt: note?.completedAt)
+        }
+        .onChange(of: note?.completedAt) { _, completedAt in
+            synchronizeCompletionFade(completedAt: completedAt)
+        }
+        .background {
+            if completionFade.isFading {
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .onReceive(timer, perform: advanceCompletionFade)
+            }
         }
         .alert("Couldn’t save this change", isPresented: Binding(
             get: { mutationErrorMessage != nil },
@@ -259,10 +333,6 @@ private extension Note {
         }, message: "Error pasting tasks")
     }
 
-    func handleDisappearance() {
-        mutate({ try await store.deleteNote(noteID) }, message: "Error deleting completed note")
-    }
-
     func handleBringUp() {
         guard let noteWindow, noteWindow.title.starts(with: "_"), let frame = minimizedFromFrame else { return }
         noteWindow.title = String(noteWindow.title.dropFirst())
@@ -279,26 +349,68 @@ private extension Note {
         mutate({ try await store.cleanEmptyTasks(in: noteID) }, message: "Error cleaning note")
     }
 
-    func setCompletionState(_ complete: Bool) {
-        isDone = complete
+    func synchronizeCompletionFade(completedAt: Date?) {
+        completionFade.synchronize(completedAt: completedAt)
         updateTopicVisibility()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            if !wasAlreadyDone { isFadingAway = complete }
+        if completionFade.isFading {
+            advanceCompletionFade(Date())
+        } else if !completionFade.showsCompletionOverlay {
+            resetFadeAppearance()
         }
     }
 
-    func updateFade() {
-        windowAlpha = 1 - Double(fadeAwayProgress / Timeout.noteFadeOutSeconds)
+    func advanceCompletionFade(_ date: Date) {
+        guard completionFade.isFading else { return }
+        fadeAwayProgress = completionFade.progress(
+            at: date,
+            duration: Timeout.noteFadeOutSeconds
+        )
+        updateFadeAppearance()
+        guard let completedAt = completionFade.beginDeletionIfReady(
+            at: date,
+            duration: Timeout.noteFadeOutSeconds
+        ) else { return }
+        deleteCompletedNote(completedAt: completedAt)
+    }
+
+    func cancelCompletionFade() {
+        completionFade.cancel()
+        updateTopicVisibility()
+        resetFadeAppearance()
+    }
+
+    func deleteCompletedNote(completedAt: Date) {
+        guard note?.completedAt == completedAt else {
+            synchronizeCompletionFade(completedAt: note?.completedAt)
+            return
+        }
+        Swift.Task {
+            do {
+                try await store.deleteNote(noteID)
+            } catch {
+                completionFade.deletionFailed(completedAt: completedAt)
+                resetFadeAppearance()
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error deleting completed note",
+                    error: error
+                )
+            }
+        }
+    }
+
+    func resetFadeAppearance() {
+        fadeAwayProgress = 0
+        updateFadeAppearance()
+    }
+
+    func updateFadeAppearance() {
+        windowAlpha = max(0, 1 - fadeAwayProgress / Timeout.noteFadeOutSeconds)
         let disappearing = windowAlpha < 1
         withAnimation {
             noteWindow?.level = disappearing ? .normal : .floating
             noteWindow?.hasShadow = !disappearing
-            setTrafficLightsHidden(disappearing)
+            setTrafficLightsHidden(disappearing || isMinimized)
             applyCurrentNoteBackground()
-        }
-        if fadeAwayProgress >= Timeout.noteFadeOutSeconds {
-            noteWindow?.close()
-            handleDisappearance()
         }
     }
 
@@ -384,12 +496,17 @@ private extension Note {
         .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
         .onAppear {
             handleKeyboard()
-            isDone = note.isComplete
-            wasAlreadyDone = note.isComplete
             convertLegacyFontSizeSettingIfNeeded()
             applyInitialFocusIfNeeded()
         }
-        .onChange(of: noteWindow) { _, _ in applyInitialFocusIfNeeded() }
+        .onChange(of: noteWindow) { _, _ in
+            applyInitialFocusIfNeeded()
+            if completionFade.isFading {
+                advanceCompletionFade(Date())
+            } else {
+                updateFadeAppearance()
+            }
+        }
         .onChange(of: note.isDeletable) { _, _ in updateWindowClosability() }
         .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
             if let (blur, normal) = notification.object as? (Bool, Bool) {
@@ -511,14 +628,13 @@ private extension Note {
     func doneOverlay() -> some View {
         VStack {
             Spacer()
-            Image(systemName: "checkmark").padding(.top, 12).padding(.leading, 12).font(.system(size: 90, weight: .bold)).foregroundColor(.accentColor).symbolEffect(.bounce, value: isFadingAway)
-            Text("Done!").padding(.leading, 6).padding(.bottom, wasAlreadyDone ? 60 : 30).font(.system(size: 30, weight: .bold)).foregroundColor(.accentColor)
+            Image(systemName: "checkmark").padding(.top, 12).padding(.leading, 12).font(.system(size: 90, weight: .bold)).foregroundColor(.accentColor).symbolEffect(.bounce, value: completionFade.isFading)
+            Text("Done!").padding(.leading, 6).padding(.bottom, completionFade.isFading ? 30 : 60).font(.system(size: 30, weight: .bold)).foregroundColor(.accentColor)
             Spacer()
-            if !wasAlreadyDone {
+            if completionFade.isFading {
                 ZStack {
                     ProgressView("Fading out...", value: fadeAwayProgress, total: Timeout.noteFadeOutSeconds).foregroundColor(.accentColor).padding(.horizontal, 20).padding(.bottom, 12)
-                        .onReceive(timer) { _ in if fadeAwayProgress < Timeout.noteFadeOutSeconds { fadeAwayProgress += 0.05 } }
-                    HStack { Spacer(); Button("Cancel") { isDone = false; fadeAwayProgress = 0 }.buttonStyle(.plain).padding(.trailing, 20).padding(.bottom, 30) }
+                    HStack { Spacer(); Button("Cancel", action: cancelCompletionFade).buttonStyle(.plain).padding(.trailing, 20).padding(.bottom, 30) }
                 }
             }
         }.opacity(windowAlpha * 0.9)
