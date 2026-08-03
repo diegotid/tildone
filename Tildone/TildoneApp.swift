@@ -227,6 +227,7 @@ final class MenuBarController: NSObject {
         guard let button = statusItem.button else { return }
         let image = NSImage(named: "MenuBarIcon")
         image?.isTemplate = true
+        image?.size = NSSize(width: 16, height: 16)
         button.image = image
         button.toolTip = "Tildone"
         statusItem.menu = makeMenu()
