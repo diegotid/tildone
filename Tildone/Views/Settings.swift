@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppKit
+import TildoneDomain
 
 // MARK: Settings view
 
@@ -460,6 +461,36 @@ extension NoteColor {
             }
         }
         return NoteColor(rawValue: rawValue) ?? .yellow
+    }
+
+    static func storageKey(for noteID: NoteID) -> String {
+        "noteColor.\(noteID.stringValue)"
+    }
+
+    static func color(for noteID: NoteID, defaults: UserDefaults = .standard) -> NoteColor {
+        let key = storageKey(for: noteID)
+        guard defaults.object(forKey: key) != nil else { return .yellow }
+        return NoteColor(rawValue: defaults.integer(forKey: key)) ?? .yellow
+    }
+
+    /// Preserves the color users had already assigned globally before color
+    /// became per-note presentation metadata.
+    static func migrateExistingNotes<S: Sequence>(
+        _ noteIDs: S,
+        defaults: UserDefaults = .standard
+    ) where S.Element == NoteID {
+        let color = current(from: defaults)
+        for noteID in noteIDs where defaults.object(forKey: storageKey(for: noteID)) == nil {
+            set(color, for: noteID, defaults: defaults)
+        }
+    }
+
+    static func set(_ color: NoteColor, for noteID: NoteID, defaults: UserDefaults = .standard) {
+        defaults.set(color.rawValue, forKey: storageKey(for: noteID))
+    }
+
+    static func removeColor(for noteID: NoteID, defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: storageKey(for: noteID))
     }
 
     var nsColor: NSColor {

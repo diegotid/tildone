@@ -62,10 +62,12 @@ final class MacSharedStore: ObservableObject {
     /// retained here so their visible grace period is owned by `Note`.
     func prepareForPresentation() async throws {
         try await reload()
+        NoteColor.migrateExistingNotes(notes.map(\.id))
         let emptyNoteIDs = notes.lazy.filter(\.isEmpty).map(\.id)
         guard !emptyNoteIDs.isEmpty else { return }
         for id in emptyNoteIDs {
             try await repository.deleteNote(id: id)
+            NoteColor.removeColor(for: id)
         }
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
@@ -78,6 +80,7 @@ final class MacSharedStore: ObservableObject {
     func createNote(createdAt: Date = Date()) async throws -> MacNoteSnapshot {
         let id = NoteID()
         _ = try await repository.createNote(id: id, createdAt: createdAt, title: nil)
+        NoteColor.set(NoteColor.current(), for: id)
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
         guard let note = note(id) else { throw PersistenceError.domainInvariant }
@@ -158,6 +161,7 @@ final class MacSharedStore: ObservableObject {
 
     func deleteNote(_ id: NoteID) async throws {
         try await repository.deleteNote(id: id)
+        NoteColor.removeColor(for: id)
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
     }

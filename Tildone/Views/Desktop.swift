@@ -170,10 +170,11 @@ private extension Desktop {
             backing: .buffered,
             defer: false
         )
-        window.setNoteStyle(noteColor: NoteColor.current())
+        window.setNoteStyle(noteColor: NoteColor.color(for: note.id))
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: note))
-        window.applyNoteBackground(isSystem: false)
+        addNoteColorPicker(to: window, noteID: note.id)
+        window.applyNoteBackgroundColor(NoteColor.color(for: note.id).nsColor)
         window.setFrameAutosaveName(note.legacyWindowKey)
         window.title = note.legacyWindowKey
         window.titleVisibility = .hidden
@@ -185,6 +186,15 @@ private extension Desktop {
         closedNoteIDs.remove(note.id)
         foregroundNoteID = note.id
         foregroundWindow = window
+    }
+
+    func addNoteColorPicker(to window: NSWindow, noteID: NoteID) {
+        let accessory = NSTitlebarAccessoryViewController()
+        let picker = NSHostingView(rootView: NoteColorPickerButton(noteID: noteID))
+        picker.frame = NSRect(x: 0, y: 0, width: 30, height: 20)
+        accessory.view = picker
+        accessory.layoutAttribute = .right
+        window.addTitlebarAccessoryViewController(accessory)
     }
 
     func openSystemReleaseNote(version: String?) {

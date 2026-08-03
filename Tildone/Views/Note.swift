@@ -99,13 +99,14 @@ struct Note: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(TaskLineTruncation.storageKey) private var taskLineTruncation: TaskLineTruncation = .single
     @AppStorage(FontSize.storageKey) private var fontSize = Double(FontSize.small.rawValue)
-    @AppStorage(NoteColor.storageKey) private var noteColor: NoteColor = .yellow
+    @AppStorage private var noteColorRawValue: Int
     @AppStorage(NoteWindowBackground.opacityStorageKey) private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
 
     private var note: MacNoteSnapshot? { store.note(noteID) }
     private var tasks: [TildoneDomain.Task] { note?.tasks ?? [] }
     private var pendingTasks: [TildoneDomain.Task] { tasks.filter { !$0.isCompleted } }
     private var isDark: Bool { colorScheme == .dark && noteBackgroundOpacity < 0.5 }
+    private var noteColor: NoteColor { NoteColor(rawValue: noteColorRawValue) ?? .yellow }
     private var color: NSColor { noteColor.nsColor }
     private var isDone: Bool { completionFade.showsCompletionOverlay }
 
@@ -131,6 +132,15 @@ struct Note: View {
 
     private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
+    init(store: MacSharedStore, noteID: NoteID) {
+        self.store = store
+        self.noteID = noteID
+        _noteColorRawValue = AppStorage(
+            wrappedValue: NoteColor.color(for: noteID).rawValue,
+            NoteColor.storageKey(for: noteID)
+        )
+    }
+
     var body: some View {
         Group {
             if let note {
@@ -141,7 +151,7 @@ struct Note: View {
                 }
             }
         }
-        .onChange(of: noteColor) { _, _ in applyCurrentNoteBackground() }
+        .onChange(of: noteColorRawValue) { _, _ in applyCurrentNoteBackground() }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
         .onAppear {
             synchronizeCompletionFade(completedAt: note?.completedAt)
@@ -642,6 +652,98 @@ private extension Note {
                 }
             }
         }.opacity(windowAlpha * 0.9)
+    }
+}
+
+struct NoteColorPickerButton: View {
+    let noteID: NoteID
+    @AppStorage private var noteColorRawValue: Int
+    @State private var isPresented = false
+
+    private var color: NoteColor { NoteColor(rawValue: noteColorRawValue) ?? .yellow }
+
+    init(noteID: NoteID) {
+        self.noteID = noteID
+        _noteColorRawValue = AppStorage(
+            wrappedValue: NoteColor.color(for: noteID).rawValue,
+            NoteColor.storageKey(for: noteID)
+        )
+    }
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            NoteColorPickerIcon(color: color)
+        }
+        .buttonStyle(.plain)
+        .help("Note color")
+        .accessibilityLabel("Note color")
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+            NoteColorPalette(selected: color) { selectedColor in
+                noteColorRawValue = selectedColor.rawValue
+                isPresented = false
+            }
+        }
+    }
+}
+
+private struct NoteColorPickerIcon: View {
+    let color: NoteColor
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(
+                    AngularGradient(
+                        colors: [.red, .orange, .yellow, .green, .blue, .purple, .pink, .red],
+                        center: .center
+                    ),
+                    lineWidth: 1.5
+                )
+            Circle()
+                .fill(Color(nsColor: color.nsColor))
+                .padding(3)
+                .overlay {
+                    Circle()
+                        .stroke(.black.opacity(0.15), lineWidth: 0.5)
+                        .padding(3)
+                }
+        }
+        .frame(width: 16, height: 16)
+    }
+}
+
+private struct NoteColorPalette: View {
+    let selected: NoteColor
+    let onSelect: (NoteColor) -> Void
+
+    private let columns = Array(repeating: GridItem(.fixed(30), spacing: 8), count: 3)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(NoteColor.allCases) { color in
+                Button {
+                    onSelect(color)
+                } label: {
+                    Circle()
+                        .fill(Color(nsColor: color.nsColor))
+                        .frame(width: 26, height: 26)
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    selected == color ? Color.accentColor : .black.opacity(0.18),
+                                    lineWidth: selected == color ? 3 : 0.75
+                                )
+                        }
+                }
+                .buttonStyle(.plain)
+                .help(color.label)
+                .accessibilityLabel(color.label)
+                .accessibilityAddTraits(selected == color ? .isSelected : [])
+            }
+        }
+        .padding(10)
     }
 }
 
