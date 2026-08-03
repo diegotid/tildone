@@ -36,18 +36,28 @@ struct SettingsForm: View {
     @AppStorage(NoteWindowBackground.opacityStorageKey)
     private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
 
+    @AppStorage(AppAppearance.showDockIconStorageKey)
+    private var showDockIcon = false
+
     var body: some View {
         ScrollView {
             Form {
                 VStack(alignment: .leading) {
                     Section {
-                        VStack(alignment: .leading) {
-                            Launcher.Toggle()
-                            Text("Start Tildone automatically when you log in.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        HStack(alignment: .top, spacing: 22) {
+                            VStack(alignment: .leading) {
+                                Launcher.Toggle()
+                                Text("Start Tildone automatically when you log in.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Toggle("Show Dock icon", isOn: $showDockIcon)
+                                .onChange(of: showDockIcon) { _, _ in
+                                    NSApplication.shared.setActivationPolicy(
+                                        showDockIcon ? .regular : .accessory
+                                    )
+                                }
                         }
-                        .padding(.top, 6)
                     } header: {
                         Text("General")
                             .bold()

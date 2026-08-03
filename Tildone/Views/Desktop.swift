@@ -10,6 +10,8 @@ import TildoneDomain
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
     @ObservedObject var store: MacSharedStore
+    @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
     @State private var noteWindows: [NoteID: NSWindow] = [:]
     @State private var closedNoteIDs: Set<NoteID> = []
     @State private var foregroundWindow: NSWindow?
@@ -34,6 +36,9 @@ struct Desktop: View {
             .frame(width: 0, height: 0)
             .onAppear {
                 setWindowOptions()
+                if store.notes.isEmpty {
+                    MenuBarController.shared.presentMenuForEmptyMenuBarOnlyWorkspace()
+                }
                 openNoteWindows()
                 createWhatsNewNoteIfNeeded()
             }
@@ -51,6 +56,10 @@ struct Desktop: View {
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
             }
             .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in handleClose() }
+            .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in openSettings() }
+            .onReceive(NotificationCenter.default.publisher(for: .openAbout)) { _ in
+                openWindow(id: Id.aboutWindow)
+            }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }

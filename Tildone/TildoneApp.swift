@@ -143,10 +143,91 @@ extension Notification.Name {
     static let minimizeAll = Notification.Name("minimizeAll")
     static let bringAllUp = Notification.Name("bringAllUp")
     static let visibility = Notification.Name("visibility")
+    static let openSettings = Notification.Name("openSettings")
+    static let openAbout = Notification.Name("openAbout")
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
+        AppAppearance.prepareDockIconPreference()
+        applyDockIconVisibility()
+        MenuBarController.shared.install()
+    }
+
+    func applyDockIconVisibility() {
+        let shouldShowDockIcon = UserDefaults.standard.bool(forKey: AppAppearance.showDockIconStorageKey)
+        NSApplication.shared.setActivationPolicy(shouldShowDockIcon ? .regular : .accessory)
+    }
+}
+
+/// AppKit exposes the status button, which lets a new empty menu-bar-only
+/// installation present its menu once without relying on private APIs.
+final class MenuBarController: NSObject {
+    static let shared = MenuBarController()
+
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private var hasPresentedInitialMenu = false
+
+    func install() {
+        guard let button = statusItem.button else { return }
+        let image = NSImage(named: "MenuBarIcon")
+        image?.isTemplate = true
+        button.image = image
+        button.toolTip = "Tildone"
+        statusItem.menu = makeMenu()
+    }
+
+    func presentMenuForEmptyMenuBarOnlyWorkspace() {
+        guard !hasPresentedInitialMenu,
+              !UserDefaults.standard.bool(forKey: AppAppearance.showDockIconStorageKey) else {
+            return
+        }
+        hasPresentedInitialMenu = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            self?.statusItem.button?.performClick(nil)
+        }
+    }
+
+    private func makeMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(item("New Note", action: #selector(createNote), keyEquivalent: "n"))
+
+        let showAllNotes = item("Show All Notes", action: #selector(showAllNotes), keyEquivalent: "u")
+        showAllNotes.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(showAllNotes)
+
+        menu.addItem(.separator())
+        let settings = item("Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.keyEquivalentModifierMask = .command
+        menu.addItem(settings)
+        menu.addItem(item("About Tildone", action: #selector(openAbout)))
+
+        menu.addItem(.separator())
+        let quit = item("Quit Tildone", action: #selector(quit), keyEquivalent: "q")
+        quit.keyEquivalentModifierMask = .command
+        menu.addItem(quit)
+        return menu
+    }
+
+    private func item(_ title: String, action: Selector, keyEquivalent: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        return item
+    }
+
+    @objc private func createNote() { sendToActiveApp(.new) }
+    @objc private func showAllNotes() { sendToActiveApp(.bringAllUp) }
+    @objc private func openSettings() { sendToActiveApp(.openSettings) }
+    @objc private func openAbout() { sendToActiveApp(.openAbout) }
+    @objc private func quit() { NSApplication.shared.terminate(nil) }
+
+    /// A status-item click doesn't activate its app. Defer SwiftUI scene work
+    /// until AppKit has closed the tracking menu and Tildone is foregrounded.
+    private func sendToActiveApp(_ name: Notification.Name) {
+        NSApplication.shared.activate()
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: name, object: nil)
+        }
     }
 }

@@ -33,3 +33,38 @@ enum Keyboard {
 enum Timeout {
     static let noteFadeOutSeconds: TimeInterval = 20
 }
+
+enum AppAppearance {
+    static let showDockIconStorageKey = "showDockIcon"
+
+    /// A new installation starts as a menu-bar app. Existing installations
+    /// retain the Dock icon users already expect until they opt out.
+    static func prepareDockIconPreference(defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: showDockIconStorageKey) == nil else { return }
+        guard isExistingInstallation(defaults: defaults) else { return }
+        defaults.set(true, forKey: showDockIconStorageKey)
+    }
+
+    private static func isExistingInstallation(defaults: UserDefaults) -> Bool {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier,
+              let domain = defaults.persistentDomain(forName: bundleIdentifier) else {
+            return false
+        }
+
+        let legacyPreferenceKeys = [
+            FontSize.storageKey,
+            TaskLineTruncation.storageKey,
+            ArrangementCorner.storageKey,
+            ArrangementAlignment.storageKey,
+            ArrangementSpacing.cornerStorageKey,
+            ArrangementSpacing.sideStorageKey,
+            NoteColor.storageKey,
+            NoteWindowBackground.opacityStorageKey,
+            UpdateChecker.Local.knownVersionFlag
+        ]
+
+        return domain.keys.contains { key in
+            legacyPreferenceKeys.contains(key) || key.hasPrefix("NSWindow Frame ")
+        }
+    }
+}
