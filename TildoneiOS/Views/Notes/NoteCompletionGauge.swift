@@ -5,7 +5,6 @@
 //  Created by Diego Rivera on 8/1/26.
 //
 import SwiftUI
-import UIKit
 import TildoneDomain
 
 struct NoteCompletionGauge: View {
@@ -18,28 +17,7 @@ struct NoteCompletionGauge: View {
         return CGFloat(completedCount) / CGFloat(totalCount)
     }
     private var tintColor: Color {
-        let accentColor = UIColor(Color.accentColor)
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        var alpha: CGFloat = 0
-
-        guard accentColor.getHue(
-            &hue,
-            saturation: &saturation,
-            brightness: &brightness,
-            alpha: &alpha
-        ) else {
-            return Color(white: 0.82)
-        }
-
-        let minimumBrightness: CGFloat = 0.82
-        return Color(
-            hue: Double(hue),
-            saturation: Double(saturation * completionFraction),
-            brightness: Double(minimumBrightness + (brightness - minimumBrightness) * completionFraction),
-            opacity: Double(alpha)
-        )
+        Color.accentColor.opacity(0.22 + Double(completionFraction) * 0.78)
     }
 
     var body: some View {

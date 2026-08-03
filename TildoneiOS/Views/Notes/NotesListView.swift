@@ -9,10 +9,18 @@ import TildoneDomain
 
 struct NotesListView: View {
     @ObservedObject var appModel: TildoneiOSApplicationModel
-    @State private var createdNoteID: NoteID?
+    @AppStorage("notesOverviewLayout") private var layoutRawValue = NotesOverviewLayout.list.rawValue
+    @State private var presentedNoteID: NoteID?
     @State private var noteToRename: Note?
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
+    @State private var deckOrder: [NoteID] = []
+    @State private var currentDeckNoteID: NoteID?
+
+    private var layout: NotesOverviewLayout {
+        get { NotesOverviewLayout(rawValue: layoutRawValue) ?? .list }
+        nonmutating set { layoutRawValue = newValue.rawValue }
+    }
 
     private var activeNotes: [Note] {
         appModel.notes.filter { note in
@@ -32,28 +40,30 @@ struct NotesListView: View {
                         Button("Create Note", action: createNote)
                     }
                 } else {
-                    List {
-                        ForEach(activeNotes, id: \.id) { note in
-                            NavigationLink {
-                                ChecklistView(appModel: appModel, noteID: note.id)
-                            } label: {
-                                NoteListRow(
-                                    note: note,
-                                    summary: appModel.taskSummaries[note.id],
-                                    taskListText: appModel.taskListTexts[note.id]
-                                )
-                            }
-                            .contextMenu {
-                                Button("Rename") { beginRename(note) }
-                                Button("Delete", role: .destructive) { noteToDelete = note }
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button("Delete", role: .destructive) { noteToDelete = note }
-                                Button("Rename") { beginRename(note) }.tint(.orange)
-                            }
-                        }
+                    switch layout {
+                    case .list:
+                        notesList
+                    case .grid:
+                        NotesGridView(
+                            notes: activeNotes,
+                            summaries: appModel.taskSummaries,
+                            taskPreviews: appModel.taskPreviews,
+                            open: open,
+                            rename: beginRename,
+                            delete: { noteToDelete = $0 }
+                        )
+                    case .deck:
+                        NotesDeckView(
+                            notes: orderedDeckNotes,
+                            currentIndex: currentDeckIndex,
+                            summaries: appModel.taskSummaries,
+                            taskPreviews: appModel.taskPreviews,
+                            open: open,
+                            rename: beginRename,
+                            delete: { noteToDelete = $0 },
+                            move: moveDeck
+                        )
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Notes")
@@ -62,14 +72,31 @@ struct NotesListView: View {
                     SyncStatusMenu(status: appModel.syncStatus, syncNow: appModel.syncNow)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Layout", selection: Binding(
+                            get: { layout }, set: { layout = $0 }
+                        )) {
+                            ForEach(NotesOverviewLayout.allCases) { layout in
+                                Label(layout.title, systemImage: layout.systemImage)
+                                    .tag(layout)
+                            }
+                        }
+                    } label: {
+                        Label("Choose layout", systemImage: layout.systemImage)
+                    }
+                    .accessibilityLabel("Choose notes layout")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: createNote) { Label("New Note", systemImage: "plus") }
                         .accessibilityLabel("Create note")
                 }
             }
-            .navigationDestination(item: $createdNoteID) { noteID in
+            .navigationDestination(item: $presentedNoteID) { noteID in
                 ChecklistView(appModel: appModel, noteID: noteID)
             }
         }
+        .onAppear { reconcileDeckOrder() }
+        .onChange(of: activeNotes.map(\.id)) { _, _ in reconcileDeckOrder() }
         .alert("Rename Note", isPresented: Binding(
             get: { noteToRename != nil }, set: { if !$0 { noteToRename = nil } }
         )) {
@@ -95,12 +122,412 @@ struct NotesListView: View {
     private func createNote() {
         Swift.Task {
             guard let note = try? await appModel.createNote() else { return }
-            createdNoteID = note.id
+            presentedNoteID = note.id
         }
     }
 
     private func beginRename(_ note: Note) {
         noteToRename = note
         renamedTitle = note.title ?? ""
+    }
+
+    private var notesList: some View {
+        List {
+            ForEach(activeNotes, id: \.id) { note in
+                NavigationLink {
+                    ChecklistView(appModel: appModel, noteID: note.id)
+                } label: {
+                    NoteListRow(
+                        note: note,
+                        summary: appModel.taskSummaries[note.id],
+                        taskListText: appModel.taskListTexts[note.id]
+                    )
+                }
+                .contextMenu { noteActions(for: note) }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button("Delete", role: .destructive) { noteToDelete = note }
+                    Button("Rename") { beginRename(note) }.tint(.orange)
+                }
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func noteActions(for note: Note) -> some View {
+        Button("Rename") { beginRename(note) }
+        Button("Delete", role: .destructive) { noteToDelete = note }
+    }
+
+    private var orderedDeckNotes: [Note] {
+        deckOrder.compactMap { noteID in activeNotes.first(where: { $0.id == noteID }) }
+    }
+
+    private var currentDeckIndex: Int {
+        guard let currentDeckNoteID,
+              let index = deckOrder.firstIndex(of: currentDeckNoteID) else { return 0 }
+        return index
+    }
+
+    private func open(_ note: Note) {
+        presentedNoteID = note.id
+    }
+
+    private func reconcileDeckOrder() {
+        let activeIDs = Set(activeNotes.map(\.id))
+        let retainedIDs = deckOrder.filter(activeIDs.contains)
+        let newIDs = activeNotes.map(\.id).filter { !retainedIDs.contains($0) }
+        deckOrder = retainedIDs + newIDs
+        if currentDeckNoteID.map(activeIDs.contains) != true {
+            currentDeckNoteID = deckOrder.first
+        }
+    }
+
+    private func moveDeck(_ direction: DeckNavigationDirection) {
+        let currentIndex = currentDeckIndex
+        let destination: Int
+        switch direction {
+        case .previous:
+            destination = currentIndex - 1
+        case .next:
+            destination = currentIndex + 1
+        }
+        guard deckOrder.indices.contains(destination) else { return }
+        currentDeckNoteID = deckOrder[destination]
+    }
+}
+
+private enum NotesOverviewLayout: String, CaseIterable, Identifiable {
+    case list
+    case grid
+    case deck
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .list: "List"
+        case .grid: "Grid"
+        case .deck: "Card Deck"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .list: "list.bullet"
+        case .grid: "square.grid.2x2"
+        case .deck: "rectangle.stack"
+        }
+    }
+}
+
+private enum DeckNavigationDirection {
+    case previous
+    case next
+}
+
+private enum NoteCardLayoutMetrics {
+    private static let deckSizeMultiplier: CGFloat = 0.86
+
+    static func gridHeight(in availableHeight: CGFloat) -> CGFloat {
+        min(260, max(170, (availableHeight - 36) / 2.35))
+    }
+
+    static func deckHeight(in availableHeight: CGFloat) -> CGFloat {
+        min(availableHeight * 0.60, 420) * deckSizeMultiplier
+    }
+
+    static func deckWidth(in availableWidth: CGFloat) -> CGFloat {
+        min(availableWidth * 0.72, 320) * deckSizeMultiplier
+    }
+}
+
+private struct NotesGridView: View {
+    let notes: [Note]
+    let summaries: [NoteID: NoteTaskSummary]
+    let taskPreviews: [NoteID: [NoteTaskPreview]]
+    let open: (Note) -> Void
+    let rename: (Note) -> Void
+    let delete: (Note) -> Void
+
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cardHeight = NoteCardLayoutMetrics.gridHeight(in: proxy.size.height)
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(notes, id: \.id) { note in
+                        NoteCard(
+                            note: note,
+                            summary: summaries[note.id],
+                            tasks: taskPreviews[note.id] ?? [],
+                            style: .grid,
+                            height: cardHeight,
+                            contentScale: 1,
+                            rename: { rename(note) },
+                            delete: { delete(note) }
+                        )
+                        .onTapGesture { open(note) }
+                    }
+                }
+                .padding(16)
+            }
+        }
+    }
+}
+
+private struct NotesDeckView: View {
+    let notes: [Note]
+    let currentIndex: Int
+    let summaries: [NoteID: NoteTaskSummary]
+    let taskPreviews: [NoteID: [NoteTaskPreview]]
+    let open: (Note) -> Void
+    let rename: (Note) -> Void
+    let delete: (Note) -> Void
+    let move: (DeckNavigationDirection) -> Void
+    @State private var transitionProgress: CGFloat = 0
+    @State private var isCompletingSwipe = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cardHeight = NoteCardLayoutMetrics.deckHeight(in: proxy.size.height)
+            let gridCardHeight = NoteCardLayoutMetrics.gridHeight(in: proxy.size.height)
+            let contentScale = cardHeight / gridCardHeight
+            ZStack {
+                ForEach(visibleCards) { item in
+                    let isCurrentCard = item.relativePosition == 0
+                    let effectivePosition = Double(item.relativePosition) - Double(transitionProgress)
+                    let transform = cardTransform(at: effectivePosition)
+                    NoteCard(
+                        note: item.note,
+                        summary: summaries[item.note.id],
+                        tasks: taskPreviews[item.note.id] ?? [],
+                        style: .deck,
+                        height: cardHeight,
+                        contentScale: contentScale,
+                        rename: { rename(item.note) },
+                        delete: { delete(item.note) }
+                    )
+                    .frame(
+                        width: NoteCardLayoutMetrics.deckWidth(in: proxy.size.width)
+                    )
+                    .scaleEffect(transform.scale, anchor: .bottom)
+                    .offset(x: transform.x, y: transform.y)
+                    .rotationEffect(.degrees(transform.rotation), anchor: .bottom)
+                    .opacity(transform.opacity)
+                    .zIndex(100 - abs(effectivePosition))
+                    .allowsHitTesting(isCurrentCard)
+                    .onTapGesture {
+                        if isCurrentCard { open(item.note) }
+                    }
+                }
+            }
+            .frame(width: proxy.size.width, height: max(0, proxy.size.height - 56), alignment: .center)
+            .padding(.top, 32)
+            .padding(.bottom, 24)
+            .contentShape(Rectangle())
+            .gesture(swipeGesture(in: proxy.size))
+            .clipped()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func swipeGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard !isCompletingSwipe else { return }
+                transitionProgress = progress(for: value.translation.width, in: size.width)
+            }
+            .onEnded { value in
+                guard !isCompletingSwipe else { return }
+                let projectedProgress = progress(for: value.predictedEndTranslation.width, in: size.width)
+                if canMoveNext,
+                   transitionProgress > 0.48 || projectedProgress > 0.72 {
+                    completeSwipe(.next, value: value, in: size)
+                } else if canMovePrevious,
+                          transitionProgress < -0.48 || projectedProgress < -0.72 {
+                    completeSwipe(.previous, value: value, in: size)
+                } else {
+                    withAnimation(.interpolatingSpring(stiffness: 280, damping: 28)) {
+                        transitionProgress = 0
+                    }
+                }
+            }
+    }
+
+    private func completeSwipe(
+        _ direction: DeckNavigationDirection,
+        value: DragGesture.Value,
+        in size: CGSize
+    ) {
+        isCompletingSwipe = true
+        let projectedVelocity = min(4, abs(value.predictedEndTranslation.width - value.translation.width) / size.width)
+        let destination: CGFloat = direction == .next ? 1 : -1
+
+        withAnimation(
+            .interpolatingSpring(stiffness: 180, damping: 22, initialVelocity: projectedVelocity),
+            completionCriteria: .logicallyComplete
+        ) {
+            transitionProgress = destination
+        } completion: {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                move(direction)
+                transitionProgress = 0
+                isCompletingSwipe = false
+            }
+        }
+    }
+
+    private var visibleCards: [DeckCardItem] {
+        guard notes.indices.contains(currentIndex) else { return [] }
+        let lowerBound = max(notes.startIndex, currentIndex - 3)
+        let upperBound = min(notes.index(before: notes.endIndex), currentIndex + 3)
+        return (lowerBound...upperBound).map { index in
+            DeckCardItem(note: notes[index], relativePosition: index - currentIndex)
+        }
+    }
+
+    private var canMovePrevious: Bool { currentIndex > notes.startIndex }
+    private var canMoveNext: Bool { currentIndex + 1 < notes.endIndex }
+
+    private func progress(for horizontalTranslation: CGFloat, in width: CGFloat) -> CGFloat {
+        var progress = -horizontalTranslation / max(width * 0.36, 1)
+        if progress > 0, !canMoveNext { progress *= 0.18 }
+        if progress < 0, !canMovePrevious { progress *= 0.18 }
+        return min(1.15, max(-1.15, progress))
+    }
+
+    private func cardTransform(at position: Double) -> DeckCardTransform {
+        let direction = position.sign == .minus ? -1.0 : 1.0
+        let magnitude = min(abs(position), 3)
+        let horizontal = 44 * magnitude - 4 * magnitude * max(0, magnitude - 1)
+        return DeckCardTransform(
+            x: CGFloat(direction * horizontal),
+            y: CGFloat(7 * magnitude + 1.5 * magnitude * magnitude),
+            scale: CGFloat(1 - 0.038 * magnitude),
+            rotation: direction * (3.2 * magnitude + 0.45 * magnitude * magnitude),
+            opacity: max(0.46, 1 - 0.17 * magnitude)
+        )
+    }
+}
+
+private struct DeckCardItem: Identifiable {
+    let note: Note
+    let relativePosition: Int
+
+    var id: NoteID { note.id }
+}
+
+private struct DeckCardTransform {
+    let x: CGFloat
+    let y: CGFloat
+    let scale: CGFloat
+    let rotation: Double
+    let opacity: Double
+}
+
+private struct NoteCard: View {
+    enum Style { case grid, deck }
+
+    let note: Note
+    let summary: NoteTaskSummary?
+    let tasks: [NoteTaskPreview]
+    let style: Style
+    let height: CGFloat
+    let contentScale: CGFloat
+    let rename: () -> Void
+    let delete: () -> Void
+    @ScaledMetric(relativeTo: .headline) private var baseTitleSize: CGFloat = 17
+    @ScaledMetric(relativeTo: .caption) private var baseChevronSize: CGFloat = 12
+
+    private var title: String {
+        guard let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
+            return "Untitled Note"
+        }
+        return title
+    }
+
+    var body: some View {
+        let gaugeSize = 24 * contentScale
+        let cornerRadius = 16 * contentScale
+
+        VStack(alignment: .leading, spacing: 12 * contentScale) {
+            HStack(alignment: .center, spacing: 8 * contentScale) {
+                Text(title)
+                    .font(.system(size: baseTitleSize * contentScale, weight: .semibold))
+                    .lineLimit(style == .deck ? 2 : 1)
+                    .multilineTextAlignment(.leading)
+                    .layoutPriority(1)
+                Spacer(minLength: 0)
+                HStack(spacing: 14 * contentScale) {
+                    NoteCompletionGauge(summary: summary)
+                        .scaleEffect(gaugeSize / 40)
+                        .frame(width: gaugeSize, height: gaugeSize)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: baseChevronSize * contentScale, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+                .fixedSize()
+            }
+
+            NoteCardTaskList(tasks: tasks, style: style, contentScale: contentScale)
+        }
+        .padding(.horizontal, 14 * contentScale)
+        .padding(.top, 14 * contentScale)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: height, alignment: .top)
+        .background(Color(red: 253 / 255, green: 240 / 255, blue: 170 / 255), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.10), radius: 6 * contentScale, y: 3 * contentScale)
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .contextMenu {
+            Button("Rename", action: rename)
+            Button("Delete", role: .destructive, action: delete)
+        }
+        .accessibilityLabel(title)
+        .accessibilityValue(summary?.accessibilityDescription ?? "No tasks")
+        .accessibilityHint("Double tap to open the full checklist")
+    }
+}
+
+private struct NoteCardTaskList: View {
+    let tasks: [NoteTaskPreview]
+    let style: NoteCard.Style
+    let contentScale: CGFloat
+    @ScaledMetric(relativeTo: .caption) private var baseTaskSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var baseCheckboxSize: CGFloat = 17
+
+    var body: some View {
+        Group {
+            if tasks.isEmpty {
+                Text("No tasks yet")
+                    .font(.system(size: baseTaskSize * contentScale))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 8 * contentScale) {
+                    ForEach(tasks) { task in
+                        HStack(alignment: .top, spacing: 7 * contentScale) {
+                            TaskCheckboxIndicator(
+                                isChecked: task.isCompleted,
+                                diameter: baseCheckboxSize * contentScale
+                            )
+                            Text(task.text)
+                                .strikethrough(task.isCompleted)
+                                .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                                .lineLimit(style == .deck ? 2 : 1)
+                        }
+                        .font(.system(size: baseTaskSize * contentScale))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .clipped()
     }
 }

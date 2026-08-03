@@ -17,6 +17,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     @Published private(set) var notes: [Note] = []
     @Published private(set) var taskSummaries: [NoteID: NoteTaskSummary] = [:]
     @Published private(set) var taskListTexts: [NoteID: String] = [:]
+    @Published private(set) var taskPreviews: [NoteID: [NoteTaskPreview]] = [:]
     @Published private(set) var syncStatus: SyncStatus = .disabled
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
@@ -108,6 +109,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         let notes = try await repository.visibleNotes()
         var taskSummaries: [NoteID: NoteTaskSummary] = [:]
         var taskListTexts: [NoteID: String] = [:]
+        var taskPreviews: [NoteID: [NoteTaskPreview]] = [:]
         taskSummaries.reserveCapacity(notes.count)
 
         for note in notes {
@@ -116,7 +118,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
             let oldestTasksFirst = tasks.sorted {
                 $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
             }
-            let taskListText = oldestTasksFirst.map(\.text).joined(separator: ", ")
+            let taskTexts = oldestTasksFirst.map(\.text)
+            taskPreviews[note.id] = oldestTasksFirst.map(NoteTaskPreview.init)
+            let taskListText = taskTexts.joined(separator: ", ")
             if !taskListText.isEmpty {
                 taskListTexts[note.id] = taskListText
             }
@@ -125,6 +129,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         self.notes = notes
         self.taskSummaries = taskSummaries
         self.taskListTexts = taskListTexts
+        self.taskPreviews = taskPreviews
         contentRevision &+= 1
     }
 
@@ -221,6 +226,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
             notes = []
             taskSummaries = [:]
             taskListTexts = [:]
+            taskPreviews = [:]
         }
     }
 
@@ -275,6 +281,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         notes = []
         taskSummaries = [:]
         taskListTexts = [:]
+        taskPreviews = [:]
         hasWorkspace = false
         syncStatus = status
     }
@@ -316,5 +323,17 @@ final class TildoneiOSApplicationModel: ObservableObject {
         case .temporarilyUnavailable, .couldNotDetermine:
             SyncStatus(availability: .temporarilyUnavailable, activity: .offline, issue: .service)
         }
+    }
+}
+
+struct NoteTaskPreview: Identifiable, Hashable {
+    let id: TaskID
+    let text: String
+    let isCompleted: Bool
+
+    init(_ task: Task) {
+        id = task.id
+        text = task.text
+        isCompleted = task.isCompleted
     }
 }
