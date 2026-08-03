@@ -158,6 +158,7 @@ public struct WorkspaceSnapshot: Codable, Hashable, Sendable {
 public enum QuarantinedRecordKind: String, Codable, Hashable, Sendable {
     case note
     case task
+    case client
     case schemaMarker
     case unknown
 }

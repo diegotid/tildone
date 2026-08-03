@@ -23,6 +23,100 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(TildoneCloudSchema.containerIdentifier, "iCloud.studio.cuatro.tildone")
         XCTAssertEqual(TildoneCloudSchema.noteRecordType, "TDNote")
         XCTAssertEqual(TildoneCloudSchema.taskRecordType, "TDTask")
+        XCTAssertEqual(TildoneCloudSchema.clientRecordType, "TDClient")
+    }
+
+    func testClientRegistrationCloudRecordIsContentFreeAndRoundTrips() throws {
+        let mapper = CloudKitRecordMapper()
+        let replicaID = ReplicaID(UUID(int: 3))
+        let observedAt = date.addingTimeInterval(10)
+        let record = mapper.clientRecord(replicaID: replicaID, platform: .iPhone)
+
+        XCTAssertEqual(record.recordType, TildoneCloudSchema.clientRecordType)
+        XCTAssertEqual(record.recordID.recordName, "client-" + replicaID.stringValue)
+        XCTAssertEqual(Set(record.allKeys()), Set(["schemaVersion", "replicaID", "platform"]))
+        XCTAssertNil(record["title"])
+        XCTAssertNil(record["text"])
+
+        let registration = try mapper.clientRegistration(
+            from: record,
+            observedAt: observedAt
+        )
+        XCTAssertEqual(registration.replicaID, replicaID)
+        XCTAssertEqual(registration.platform, .iPhone)
+        XCTAssertEqual(registration.lastSeenAt, observedAt)
+    }
+
+    func testClientActivityCountsCurrentAndRecentInstallationsOnly() {
+        let current = ReplicaID(UUID(int: 1))
+        let recent = ReplicaID(UUID(int: 2))
+        let stale = ReplicaID(UUID(int: 3))
+        let registrations = [
+            recent.stringValue: SyncClientRegistration(
+                replicaID: recent,
+                platform: .mac,
+                lastSeenAt: date.addingTimeInterval(-SyncClientActivityPolicy.activeWindow + 1)
+            ),
+            stale.stringValue: SyncClientRegistration(
+                replicaID: stale,
+                platform: .iPhone,
+                lastSeenAt: date.addingTimeInterval(-SyncClientActivityPolicy.activeWindow - 1)
+            )
+        ]
+
+        let summary = SyncClientActivityPolicy.activeDeviceSummary(
+            registrations: registrations,
+            currentReplicaID: current,
+            currentPlatform: .iPhone,
+            at: date
+        )
+        XCTAssertEqual(summary.currentPlatform, .iPhone)
+        XCTAssertEqual(summary.otherIPhoneCount, 0)
+        XCTAssertEqual(summary.otherIPadCount, 0)
+        XCTAssertEqual(summary.otherMacCount, 1)
+        XCTAssertEqual(summary.totalDeviceCount, 2)
+        XCTAssertTrue(SyncClientActivityPolicy.shouldRefresh(registration: nil, at: date))
+        let freshHeartbeat = SyncClientRegistration(
+            replicaID: current,
+            platform: .iPhone,
+            lastSeenAt: date.addingTimeInterval(-SyncClientActivityPolicy.heartbeatInterval + 1)
+        )
+        XCTAssertFalse(SyncClientActivityPolicy.shouldRefresh(
+            registration: freshHeartbeat,
+            at: date
+        ))
+        let oldHeartbeat = SyncClientRegistration(
+            replicaID: current,
+            platform: .iPhone,
+            lastSeenAt: date.addingTimeInterval(-SyncClientActivityPolicy.heartbeatInterval)
+        )
+        XCTAssertTrue(SyncClientActivityPolicy.shouldRefresh(
+            registration: oldHeartbeat,
+            at: date
+        ))
+    }
+
+    func testPersistentStateDecodesDataFromBeforeClientRegistrations() throws {
+        struct LegacyPersistentState: Codable {
+            let version: Int
+            let engineSerialization: Data?
+            let systemFieldsByRecordName: [String: Data]
+            let zoneCreated: Bool
+            let zoneResetRequired: Bool
+        }
+
+        let data = try PropertyListEncoder().encode(LegacyPersistentState(
+            version: SyncPersistentState.currentVersion,
+            engineSerialization: nil,
+            systemFieldsByRecordName: [:],
+            zoneCreated: true,
+            zoneResetRequired: false
+        ))
+        let restored = SyncPersistentState(data: data)
+
+        XCTAssertTrue(restored.zoneCreated)
+        XCTAssertFalse(restored.zoneResetRequired)
+        XCTAssertTrue(restored.clientRegistrationsByReplicaID.isEmpty)
     }
 
     func testDiagnosticFailureCategoriesDiscardContentBearingErrorDetails() {

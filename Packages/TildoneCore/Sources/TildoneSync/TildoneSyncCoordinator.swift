@@ -30,6 +30,7 @@ enum SyncStatusLatchPolicy {
             activity: .attentionNeeded,
             pendingMutationCount: requested.pendingMutationCount,
             lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+            activeDeviceSummary: requested.activeDeviceSummary ?? current.activeDeviceSummary,
             issue: .zoneReset
         )
     }
@@ -59,6 +60,8 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     private let mapper = CloudKitRecordMapper()
     private let coordinatorState: SyncCoordinatorState
     private let now: @Sendable () -> Date
+    private let clientReplicaID: ReplicaID
+    private let clientPlatform: SyncClientPlatform
     private let onAccountChange: AccountChangeHandler
     private let onRemoteChange: RemoteChangeHandler
     private var engine: CKSyncEngine?
@@ -68,6 +71,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         container: CKContainer = CKContainer(identifier: TildoneCloudSchema.containerIdentifier),
         statusModel: SyncStatusModel = SyncStatusModel(),
         now: @escaping @Sendable () -> Date = { Date() },
+        clientPlatform: SyncClientPlatform,
         onAccountChange: @escaping AccountChangeHandler = { _ in },
         onRemoteChange: @escaping RemoteChangeHandler = {}
     ) async throws {
@@ -79,6 +83,8 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         pipeline = SyncPipeline(repository: repository)
         self.statusModel = statusModel
         self.now = now
+        clientReplicaID = workspace.replicaID
+        self.clientPlatform = clientPlatform
         self.onAccountChange = onAccountChange
         self.onRemoteChange = onRemoteChange
 
@@ -203,6 +209,23 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         for change in pending {
             guard case let .saveRecord(recordID) = change,
                   recordID.zoneID == TildoneCloudSchema.zoneID else { continue }
+            if let replicaID = SyncClientRegistration.replicaID(
+                recordName: recordID.recordName
+            ) {
+                guard replicaID == clientReplicaID else {
+                    stale.append(change)
+                    continue
+                }
+                let systemRecord = await coordinatorState.systemRecord(
+                    named: recordID.recordName
+                )
+                records.append(mapper.clientRecord(
+                    replicaID: clientReplicaID,
+                    platform: clientPlatform,
+                    reusing: systemRecord
+                ))
+                continue
+            }
             do {
                 guard let mutation = try await pipeline.prepareOutboundMutation(
                     recordName: recordID.recordName,
@@ -259,7 +282,20 @@ private extension TildoneSyncCoordinator {
         let recordIDs = try await pipeline.pendingRecordNames().map {
             CKRecord.ID(recordName: $0, zoneID: TildoneCloudSchema.zoneID)
         }
-        engine.state.add(pendingRecordZoneChanges: recordIDs.map { .saveRecord($0) })
+        var changes = recordIDs.map { CKSyncEngine.PendingRecordZoneChange.saveRecord($0) }
+        let ownRegistration = persistent.clientRegistration(replicaID: clientReplicaID)
+        if SyncClientActivityPolicy.shouldRefresh(registration: ownRegistration, at: now()) {
+            let clientRecordID = CKRecord.ID(
+                recordName: SyncClientRegistration(
+                    replicaID: clientReplicaID,
+                    platform: clientPlatform,
+                    lastSeenAt: .distantPast
+                ).recordName,
+                zoneID: TildoneCloudSchema.zoneID
+            )
+            changes.append(.saveRecord(clientRecordID))
+        }
+        engine.state.add(pendingRecordZoneChanges: changes)
     }
 
     func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange.ChangeType) async {
@@ -308,12 +344,23 @@ private extension TildoneSyncCoordinator {
             deletionCount: event.deletions.count
         )
         var decoded: [SyncRecord] = []
+        var clientRegistrationsChanged = false
         for modification in event.modifications {
             let record = modification.record
             guard record.recordID.zoneID == TildoneCloudSchema.zoneID else { continue }
             do {
-                decoded.append(try mapper.syncRecord(from: record))
-                try await coordinatorState.storeSystemFields(record)
+                if record.recordType == TildoneCloudSchema.clientRecordType {
+                    let registration = try mapper.clientRegistration(
+                        from: record,
+                        observedAt: record.modificationDate ?? now()
+                    )
+                    clientRegistrationsChanged = try await coordinatorState
+                        .storeClientRegistration(registration, record: record) ||
+                        clientRegistrationsChanged
+                } else {
+                    decoded.append(try mapper.syncRecord(from: record))
+                    try await coordinatorState.storeSystemFields(record)
+                }
             } catch let error as CloudRecordMappingError {
                 await quarantine(record: record, mappingError: error)
             } catch {
@@ -325,14 +372,29 @@ private extension TildoneSyncCoordinator {
                 _ = try await pipeline.apply(decoded, at: now())
             }
             for deletion in event.deletions where deletion.recordID.zoneID == TildoneCloudSchema.zoneID {
-                try await pipeline.applyPhysicalDeletion(
-                    recordName: deletion.recordID.recordName,
-                    at: now()
-                )
+                if SyncClientRegistration.replicaID(
+                    recordName: deletion.recordID.recordName
+                ) != nil {
+                    clientRegistrationsChanged = try await coordinatorState
+                        .removeClientRegistration(recordName: deletion.recordID.recordName) ||
+                        clientRegistrationsChanged
+                } else {
+                    try await pipeline.applyPhysicalDeletion(
+                        recordName: deletion.recordID.recordName,
+                        at: now()
+                    )
+                }
             }
             if !decoded.isEmpty || !event.deletions.isEmpty {
                 try await refreshPendingEngineChanges()
-                await onRemoteChange()
+                if !decoded.isEmpty || event.deletions.contains(where: {
+                    SyncClientRegistration.replicaID(recordName: $0.recordID.recordName) == nil
+                }) {
+                    await onRemoteChange()
+                }
+            }
+            if clientRegistrationsChanged {
+                await publishStatus(await statusModel.snapshot())
             }
         } catch {
             await apply(error: error)
@@ -370,6 +432,23 @@ private extension TildoneSyncCoordinator {
         )
         var acknowledgements: Set<UUID> = []
         for record in event.savedRecords where record.recordID.zoneID == TildoneCloudSchema.zoneID {
+            if record.recordType == TildoneCloudSchema.clientRecordType {
+                do {
+                    let registration = try mapper.clientRegistration(
+                        from: record,
+                        observedAt: record.modificationDate ?? now()
+                    )
+                    _ = try await coordinatorState.storeClientRegistration(
+                        registration,
+                        record: record
+                    )
+                } catch let mappingError as CloudRecordMappingError {
+                    await quarantine(record: record, mappingError: mappingError)
+                } catch {
+                    await apply(error: error)
+                }
+                continue
+            }
             if let mutation = await coordinatorState.takeInFlight(
                 recordName: record.recordID.recordName
             ) {
@@ -388,11 +467,22 @@ private extension TildoneSyncCoordinator {
             if error.code == .serverRecordChanged,
                let serverRecord = error.userInfo[CKRecordChangedErrorServerRecordKey] as? CKRecord {
                 do {
-                    let remote = try mapper.syncRecord(from: serverRecord)
-                    _ = try await pipeline.apply([remote], at: now())
-                    try await coordinatorState.storeSystemFields(serverRecord)
+                    if serverRecord.recordType == TildoneCloudSchema.clientRecordType {
+                        let registration = try mapper.clientRegistration(
+                            from: serverRecord,
+                            observedAt: serverRecord.modificationDate ?? now()
+                        )
+                        _ = try await coordinatorState.storeClientRegistration(
+                            registration,
+                            record: serverRecord
+                        )
+                    } else {
+                        let remote = try mapper.syncRecord(from: serverRecord)
+                        _ = try await pipeline.apply([remote], at: now())
+                        try await coordinatorState.storeSystemFields(serverRecord)
+                        await onRemoteChange()
+                    }
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(serverRecord.recordID)])
-                    await onRemoteChange()
                 } catch let mappingError as CloudRecordMappingError {
                     await quarantine(record: serverRecord, mappingError: mappingError)
                 } catch {
@@ -420,6 +510,10 @@ private extension TildoneSyncCoordinator {
             identifier = record.recordID.recordName
         case TildoneCloudSchema.taskRecordType where TaskID(recordName: record.recordID.recordName) != nil:
             kind = .task
+            identifier = record.recordID.recordName
+        case TildoneCloudSchema.clientRecordType
+            where SyncClientRegistration.replicaID(recordName: record.recordID.recordName) != nil:
+            kind = .client
             identifier = record.recordID.recordName
         default:
             kind = .unknown
@@ -471,7 +565,9 @@ private extension TildoneSyncCoordinator {
             return
         }
 
-        if category == .unsupportedSchema {
+        if kind == .client {
+            await publishStatus(await statusModel.snapshot())
+        } else if category == .unsupportedSchema {
             await coordinatorState.freeze()
             scheduleEngineCancellation()
             await refreshStatus(
@@ -502,6 +598,7 @@ private extension TildoneSyncCoordinator {
             activity: pending == 0 ? .idle : .syncing,
             pendingMutationCount: pending,
             lastSuccessfulSyncAt: now(),
+            activeDeviceSummary: nil,
             issue: nil
         ))
     }
@@ -518,6 +615,7 @@ private extension TildoneSyncCoordinator {
             activity: activity,
             pendingMutationCount: pending,
             lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+            activeDeviceSummary: current.activeDeviceSummary,
             issue: issue
         )
         await publishStatus(status)
@@ -526,8 +624,22 @@ private extension TildoneSyncCoordinator {
     func publishStatus(_ requested: SyncStatus) async {
         let current = await statusModel.snapshot()
         let persistent = await coordinatorState.snapshot()
+        let activeDeviceSummary = SyncClientActivityPolicy.activeDeviceSummary(
+            registrations: persistent.clientRegistrationsByReplicaID,
+            currentReplicaID: clientReplicaID,
+            currentPlatform: clientPlatform,
+            at: now()
+        )
+        let annotated = SyncStatus(
+            availability: requested.availability,
+            activity: requested.activity,
+            pendingMutationCount: requested.pendingMutationCount,
+            lastSuccessfulSyncAt: requested.lastSuccessfulSyncAt,
+            activeDeviceSummary: activeDeviceSummary,
+            issue: requested.issue
+        )
         let status = SyncStatusLatchPolicy.resolve(
-            requested: requested,
+            requested: annotated,
             current: current,
             zoneResetRequired: persistent.zoneResetRequired
         )

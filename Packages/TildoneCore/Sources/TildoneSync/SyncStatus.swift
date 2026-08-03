@@ -41,19 +41,24 @@ public struct SyncStatus: Codable, Hashable, Sendable {
     public let activity: SyncActivity
     public let pendingMutationCount: Int
     public let lastSuccessfulSyncAt: Date?
+    public let activeDeviceSummary: SyncDeviceSummary?
     public let issue: SyncIssue?
+
+    public var activeDeviceCount: Int? { activeDeviceSummary?.totalDeviceCount }
 
     public init(
         availability: SyncAvailability,
         activity: SyncActivity,
         pendingMutationCount: Int = 0,
         lastSuccessfulSyncAt: Date? = nil,
+        activeDeviceSummary: SyncDeviceSummary? = nil,
         issue: SyncIssue? = nil
     ) {
         self.availability = availability
         self.activity = activity
         self.pendingMutationCount = pendingMutationCount
         self.lastSuccessfulSyncAt = lastSuccessfulSyncAt
+        self.activeDeviceSummary = activeDeviceSummary
         self.issue = issue
     }
 

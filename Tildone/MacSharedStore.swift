@@ -259,6 +259,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 let coordinator = try await TildoneSyncCoordinator(
                     repository: accountRepository,
                     container: container,
+                    clientPlatform: .mac,
                     onAccountChange: { [weak self] change in
                         guard change.requiresWorkspaceInvalidation else { return }
                         Swift.Task { @MainActor in

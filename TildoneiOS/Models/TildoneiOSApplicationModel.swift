@@ -243,6 +243,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private func startCoordinator(for repository: TildoneRepository, workspaceID: UUID) async throws {
         let coordinator = try await TildoneSyncCoordinator(
             repository: repository,
+            clientPlatform: .iPhone,
             onAccountChange: { [weak self] change in
                 guard change.requiresWorkspaceInvalidation else { return }
                 Swift.Task { @MainActor in

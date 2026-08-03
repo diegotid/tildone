@@ -132,6 +132,35 @@ final class TildoneiOSTests: XCTestCase {
             SyncStatusPresentation.detail(for: malformed),
             "Some synchronized data could not be read. Local editing is still available."
         )
+
+        let available = SyncStatus(
+            availability: .available,
+            activity: .idle,
+            activeDeviceSummary: SyncDeviceSummary(
+                currentPlatform: .iPhone,
+                otherMacCount: 2
+            )
+        )
+        XCTAssertEqual(available.activeDeviceCount, 3)
+        XCTAssertEqual(
+            SyncDeviceSummaryPresentation.title(
+                for: try XCTUnwrap(available.activeDeviceSummary),
+                locale: Locale(identifier: "en_US")
+            ),
+            "This iPhone and 2 Macs"
+        )
+        XCTAssertFalse(SyncDeviceSummaryPresentation.shouldShowMacUpgradeGuidance(
+            for: try XCTUnwrap(available.activeDeviceSummary)
+        ))
+
+        let noMac = SyncDeviceSummary(currentPlatform: .iPhone)
+        XCTAssertTrue(SyncDeviceSummaryPresentation.shouldShowMacUpgradeGuidance(for: noMac))
+        XCTAssertEqual(
+            SyncDeviceSummaryPresentation.macUpgradeGuidance(
+                locale: Locale(identifier: "en_US")
+            ),
+            "To see existing Mac notes here, update Tildone on your Mac to version 2.0 or later. Both devices must use the same iCloud account."
+        )
     }
 
     func testAccountChangeDropsOldWorkspaceImmediately() async throws {

@@ -801,6 +801,11 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         case .task:
             guard let id = TaskID(recordName: value) else { return false }
             return value == id.recordName
+        case .client:
+            let prefix = "client-"
+            guard value.hasPrefix(prefix),
+                  let id = UUID(uuidString: String(value.dropFirst(prefix.count))) else { return false }
+            return value == prefix + id.uuidString.lowercased()
         case .schemaMarker, .unknown:
             let prefix = kind == .schemaMarker ? "schema-" : "unknown-"
             guard value.hasPrefix(prefix),

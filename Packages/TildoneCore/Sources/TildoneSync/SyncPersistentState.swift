@@ -4,6 +4,7 @@
 //
 import CloudKit
 import Foundation
+import TildoneDomain
 import TildonePersistence
 
 struct SyncPersistentState: Codable, Hashable, Sendable {
@@ -12,10 +13,39 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
     var version = currentVersion
     var engineSerialization: Data?
     var systemFieldsByRecordName: [String: Data] = [:]
+    var clientRegistrationsByReplicaID: [String: SyncClientRegistration] = [:]
     var zoneCreated = false
     var zoneResetRequired = false
 
     init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case engineSerialization
+        case systemFieldsByRecordName
+        case clientRegistrationsByReplicaID
+        case zoneCreated
+        case zoneResetRequired
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decode(Int.self, forKey: .version)
+        engineSerialization = try container.decodeIfPresent(Data.self, forKey: .engineSerialization)
+        systemFieldsByRecordName = try container.decodeIfPresent(
+            [String: Data].self,
+            forKey: .systemFieldsByRecordName
+        ) ?? [:]
+        clientRegistrationsByReplicaID = try container.decodeIfPresent(
+            [String: SyncClientRegistration].self,
+            forKey: .clientRegistrationsByReplicaID
+        ) ?? [:]
+        zoneCreated = try container.decodeIfPresent(Bool.self, forKey: .zoneCreated) ?? false
+        zoneResetRequired = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .zoneResetRequired
+        ) ?? false
+    }
 
     init(data: Data?) {
         guard let data,
@@ -47,6 +77,10 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
     func systemRecord(named recordName: String) -> CKRecord? {
         guard let data = systemFieldsByRecordName[recordName] else { return nil }
         return try? Self.decodeSystemFields(data)
+    }
+
+    func clientRegistration(replicaID: ReplicaID) -> SyncClientRegistration? {
+        clientRegistrationsByReplicaID[replicaID.stringValue]
     }
 
     private static func encodeSystemFields(_ record: CKRecord) throws -> Data {
@@ -98,6 +132,36 @@ actor SyncCoordinatorState {
     func storeSystemFields(_ record: CKRecord) async throws {
         try persistent.storeSystemFields(for: record)
         try await persist()
+    }
+
+    @discardableResult
+    func storeClientRegistration(
+        _ registration: SyncClientRegistration,
+        record: CKRecord
+    ) async throws -> Bool {
+        let key = registration.replicaID.stringValue
+        if let existing = persistent.clientRegistrationsByReplicaID[key],
+           existing.lastSeenAt > registration.lastSeenAt {
+            return false
+        }
+        let changed = persistent.clientRegistrationsByReplicaID[key] != registration
+        persistent.clientRegistrationsByReplicaID[key] = registration
+        try persistent.storeSystemFields(for: record)
+        try await persist()
+        return changed
+    }
+
+    @discardableResult
+    func removeClientRegistration(recordName: String) async throws -> Bool {
+        guard let replicaID = SyncClientRegistration.replicaID(recordName: recordName) else {
+            return false
+        }
+        persistent.systemFieldsByRecordName[recordName] = nil
+        let removed = persistent.clientRegistrationsByReplicaID.removeValue(
+            forKey: replicaID.stringValue
+        ) != nil
+        try await persist()
+        return removed
     }
 
     func updateEngineSerialization(

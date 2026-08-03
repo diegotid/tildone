@@ -13,6 +13,7 @@ public enum TildoneCloudSchema {
     public static let subscriptionIdentifier = "tildone-private-zone-v1"
     public static let noteRecordType = "TDNote"
     public static let taskRecordType = "TDTask"
+    public static let clientRecordType = "TDClient"
 
     public static var zoneID: CKRecordZone.ID {
         CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
@@ -83,6 +84,72 @@ public struct CloudKitRecordMapper: Sendable {
             throw CloudRecordMappingError.unsupportedRecordType(safeUnknownName(for: record))
         }
     }
+
+    func clientRecord(
+        replicaID: ReplicaID,
+        platform: SyncClientPlatform,
+        reusing systemRecord: CKRecord? = nil
+    ) -> CKRecord {
+        let registration = SyncClientRegistration(
+            replicaID: replicaID,
+            platform: platform,
+            lastSeenAt: .distantPast
+        )
+        let expectedID = CKRecord.ID(
+            recordName: registration.recordName,
+            zoneID: TildoneCloudSchema.zoneID
+        )
+        let record: CKRecord
+        if let systemRecord,
+           systemRecord.recordID == expectedID,
+           systemRecord.recordType == TildoneCloudSchema.clientRecordType {
+            record = systemRecord
+        } else {
+            record = CKRecord(
+                recordType: TildoneCloudSchema.clientRecordType,
+                recordID: expectedID
+            )
+        }
+        clearClientFields(on: record)
+        record[Field.schemaVersion] = NSNumber(value: SyncClientRegistration.currentSchemaVersion)
+        record[Field.clientReplicaID] = replicaID.stringValue as NSString
+        record[Field.clientPlatform] = platform.rawValue as NSString
+        return record
+    }
+
+    func clientRegistration(
+        from record: CKRecord,
+        observedAt: Date
+    ) throws -> SyncClientRegistration {
+        let name = record.recordID.recordName
+        guard record.recordID.zoneID == TildoneCloudSchema.zoneID else {
+            throw CloudRecordMappingError.wrongZone(name)
+        }
+        guard record.recordType == TildoneCloudSchema.clientRecordType else {
+            throw CloudRecordMappingError.unsupportedRecordType(safeUnknownName(for: record))
+        }
+        guard let replicaID = SyncClientRegistration.replicaID(recordName: name) else {
+            throw CloudRecordMappingError.malformedIdentifier(name)
+        }
+        let schema = try int(Field.schemaVersion, in: record)
+        guard schema == SyncClientRegistration.currentSchemaVersion else {
+            throw CloudRecordMappingError.unsupportedSchema(name, schema)
+        }
+        guard try string(Field.clientReplicaID, in: record) == replicaID.stringValue else {
+            throw CloudRecordMappingError.invalidField(name, Field.clientReplicaID)
+        }
+        guard let platform = SyncClientPlatform(
+            rawValue: try string(Field.clientPlatform, in: record)
+        ), observedAt.timeIntervalSinceReferenceDate.isFinite else {
+            throw CloudRecordMappingError.invalidField(name, Field.clientPlatform)
+        }
+        return SyncClientRegistration(
+            replicaID: replicaID,
+            platform: platform,
+            lastSeenAt: observedAt,
+            schemaVersion: schema
+        )
+    }
 }
 
 private extension CloudKitRecordMapper {
@@ -109,6 +176,8 @@ private extension CloudKitRecordMapper {
         static let orderToken = "orderToken"
         static let orderCounter = "orderVersionCounter"
         static let orderReplica = "orderVersionReplicaID"
+        static let clientReplicaID = "replicaID"
+        static let clientPlatform = "platform"
 
         static let all = [
             schemaVersion, createdAt, title, titleCounter, titleReplica,
@@ -122,6 +191,12 @@ private extension CloudKitRecordMapper {
 
     func clearKnownFields(on record: CKRecord) {
         for field in Field.all { record[field] = nil }
+    }
+
+    func clearClientFields(on record: CKRecord) {
+        for field in [Field.schemaVersion, Field.clientReplicaID, Field.clientPlatform] {
+            record[field] = nil
+        }
     }
 
     func encode(_ note: Note, into record: CKRecord) {
@@ -320,7 +395,8 @@ private extension CloudKitRecordMapper {
 
     func safeUnknownName(for record: CKRecord) -> String {
         if NoteID(recordName: record.recordID.recordName) != nil ||
-            TaskID(recordName: record.recordID.recordName) != nil {
+            TaskID(recordName: record.recordID.recordName) != nil ||
+            SyncClientRegistration.replicaID(recordName: record.recordID.recordName) != nil {
             return record.recordID.recordName
         }
         return "unknown-" + UUID().uuidString.lowercased()

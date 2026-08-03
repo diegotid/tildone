@@ -38,6 +38,7 @@
 		C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001D /* WorkspaceStatusView.swift */; };
 		C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */; };
 		C1000000000000000000000F /* TaskCheckbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001F /* TaskCheckbox.swift */; };
+		C10000000000000000000040 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000041 /* Localizable.xcstrings */; };
 		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
 		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
@@ -130,6 +131,7 @@
 		C1000000000000000000001D /* WorkspaceStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStatusView.swift; sourceTree = "<group>"; };
 		C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteTaskSummary+Accessibility.swift"; sourceTree = "<group>"; };
 		C1000000000000000000001F /* TaskCheckbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckbox.swift; sourceTree = "<group>"; };
+		C10000000000000000000041 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -223,6 +225,7 @@
 				C10000000000000000000023 /* Views */,
 				C10000000000000000000026 /* Extensions */,
 				A10000000000000000000013 /* Assets.xcassets */,
+				C10000000000000000000041 /* Localizable.xcstrings */,
 				A1000000000000000000001A /* Info.plist */,
 				A10000000000000000000015 /* TildoneiOS.entitlements */,
 				A10000000000000000000054 /* Preview Content */,
@@ -632,6 +635,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000003 /* Assets.xcassets in Resources */,
+				C10000000000000000000040 /* Localizable.xcstrings in Resources */,
 				F18A88B2301EC9FB002DF4C2 /* TildoneIcon.icon in Resources */,
 				A10000000000000000000004 /* Preview Assets.xcassets in Resources */,
 			);
