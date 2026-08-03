@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TildoneDomain
 
 enum NoteWindowBackground {
     static let defaultAlpha: CGFloat = 0.6
@@ -65,7 +66,7 @@ extension NSWindow {
     }
 
     func applyNoteBackground(isSystem: Bool, alpha: CGFloat = NoteWindowBackground.currentAlpha()) {
-        let baseColor = isSystem ? NSColor.systemNoteBackground : NoteColor.current().nsColor
+        let baseColor = isSystem ? NSColor.systemNoteBackground : NoteColor.yellow.nsColor
         applyNoteBackgroundColor(baseColor, alpha: alpha)
     }
 
@@ -117,28 +118,6 @@ extension NSWindow {
         tintView.wantsLayer = true
         themeFrame.addSubview(tintView, positioned: .below, relativeTo: contentView)
         return tintView
-    }
-}
-
-enum NoteColor: Int, CaseIterable, Identifiable {
-    case yellow = 0
-    case green
-    case blue
-    case pink
-    case purple
-    case orange
-
-    var id: Int { rawValue }
-
-    var label: String {
-        switch self {
-        case .yellow: "Yellow"
-        case .green: "Green"
-        case .blue: "Blue"
-        case .pink: "Pink"
-        case .purple: "Purple"
-        case .orange: "Orange"
-        }
     }
 }
 

@@ -159,6 +159,9 @@ private extension CloudKitRecordMapper {
         static let title = "title"
         static let titleCounter = "titleVersionCounter"
         static let titleReplica = "titleVersionReplicaID"
+        static let color = "color"
+        static let colorCounter = "colorVersionCounter"
+        static let colorReplica = "colorVersionReplicaID"
         static let lifecycle = "lifecycle"
         static let lifecycleCounter = "lifecycleVersionCounter"
         static let lifecycleReplica = "lifecycleVersionReplicaID"
@@ -180,7 +183,8 @@ private extension CloudKitRecordMapper {
         static let clientPlatform = "platform"
 
         static let all = [
-            schemaVersion, createdAt, title, titleCounter, titleReplica,
+            schemaVersion, createdAt, title, titleCounter, titleReplica, color,
+            colorCounter, colorReplica,
             lifecycle, lifecycleCounter, lifecycleReplica, meaningfulEditAt,
             meaningfulEditCounter, meaningfulEditReplica, noteID, text,
             textCounter, textReplica, isCompleted, completedAt,
@@ -204,6 +208,15 @@ private extension CloudKitRecordMapper {
         record[Field.createdAt] = note.createdAt as NSDate
         record[Field.title] = note.title as NSString?
         encode(note.titleVersion, prefixCounter: Field.titleCounter, replica: Field.titleReplica, into: record)
+        if note.schemaVersion >= 2 {
+            record[Field.color] = note.color.rawValue as NSString
+            encode(
+                note.colorVersion,
+                prefixCounter: Field.colorCounter,
+                replica: Field.colorReplica,
+                into: record
+            )
+        }
         record[Field.lifecycle] = note.lifecycle.rawValue as NSString
         encode(note.lifecycleVersion, prefixCounter: Field.lifecycleCounter, replica: Field.lifecycleReplica, into: record)
         record[Field.meaningfulEditAt] = note.lastMeaningfulEditAt as NSDate
@@ -241,14 +254,29 @@ private extension CloudKitRecordMapper {
             throw CloudRecordMappingError.malformedIdentifier(name)
         }
         let schema = try int(Field.schemaVersion, in: record)
-        guard schema == Note.currentSchemaVersion else {
+        guard (Note.oldestSupportedSchemaVersion...Note.currentSchemaVersion).contains(schema) else {
             throw CloudRecordMappingError.unsupportedSchema(name, schema)
+        }
+        let titleVersion = try stamp(Field.titleCounter, Field.titleReplica, in: record)
+        let color: NoteColor
+        let colorVersion: VersionStamp
+        if schema >= 2 {
+            guard let decodedColor = NoteColor(rawValue: try string(Field.color, in: record)) else {
+                throw CloudRecordMappingError.invalidField(name, Field.color)
+            }
+            color = decodedColor
+            colorVersion = try stamp(Field.colorCounter, Field.colorReplica, in: record)
+        } else {
+            color = .yellow
+            colorVersion = titleVersion
         }
         return Note(
             id: id,
             createdAt: try date(Field.createdAt, in: record),
             title: try optionalString(Field.title, in: record),
-            titleVersion: try stamp(Field.titleCounter, Field.titleReplica, in: record),
+            titleVersion: titleVersion,
+            color: color,
+            colorVersion: colorVersion,
             lifecycle: try lifecycle(in: record),
             lifecycleVersion: try stamp(Field.lifecycleCounter, Field.lifecycleReplica, in: record),
             lastMeaningfulEditAt: try date(Field.meaningfulEditAt, in: record),

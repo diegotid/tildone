@@ -155,6 +155,19 @@ struct NotesListView: View {
 
     @ViewBuilder
     private func noteActions(for note: Note) -> some View {
+        Menu("Note color") {
+            ForEach(NoteColor.allCases) { color in
+                Button {
+                    Swift.Task { try? await appModel.setColor(noteID: note.id, color: color) }
+                } label: {
+                    if note.color == color {
+                        Label(color.localizedLabel, systemImage: "checkmark")
+                    } else {
+                        Text(color.localizedLabel)
+                    }
+                }
+            }
+        }
         Button("Rename") { beginRename(note) }
         Button("Delete", role: .destructive) { noteToDelete = note }
     }
@@ -480,7 +493,10 @@ private struct NoteCard: View {
         .padding(.top, 14 * contentScale)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(height: height, alignment: .top)
-        .background(Color(red: 253 / 255, green: 240 / 255, blue: 170 / 255), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .background(
+            note.color.swiftUIColor,
+            in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        )
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 6 * contentScale, y: 3 * contentScale)
         .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))

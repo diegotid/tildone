@@ -170,11 +170,11 @@ private extension Desktop {
             backing: .buffered,
             defer: false
         )
-        window.setNoteStyle(noteColor: NoteColor.color(for: note.id))
+        window.setNoteStyle(noteColor: note.color)
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: note))
         addNoteColorPicker(to: window, noteID: note.id)
-        window.applyNoteBackgroundColor(NoteColor.color(for: note.id).nsColor)
+        window.applyNoteBackgroundColor(note.color.nsColor)
         window.setFrameAutosaveName(note.legacyWindowKey)
         window.title = note.legacyWindowKey
         window.titleVisibility = .hidden
@@ -190,7 +190,7 @@ private extension Desktop {
 
     func addNoteColorPicker(to window: NSWindow, noteID: NoteID) {
         let accessory = NSTitlebarAccessoryViewController()
-        let picker = NSHostingView(rootView: NoteColorPickerButton(noteID: noteID))
+        let picker = NSHostingView(rootView: NoteColorPickerButton(store: store, noteID: noteID))
         picker.frame = NSRect(x: 0, y: 0, width: 30, height: 20)
         accessory.view = picker
         accessory.layoutAttribute = .right

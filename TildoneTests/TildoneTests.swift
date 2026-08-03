@@ -52,6 +52,7 @@ final class TildoneTests: XCTestCase {
 
         let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
         try await store.renameNote(note.id, to: "Title")
+        try await store.setColor(.purple, for: note.id)
         let last = try await store.addTask(to: note.id, text: "Last")
         let first = try await store.addTask(to: note.id, text: "First", insertingAt: 0)
         try await store.setTaskCompletion(first.id, completed: true)
@@ -60,6 +61,7 @@ final class TildoneTests: XCTestCase {
         let loadedSnapshot = await MainActor.run { store.note(note.id) }
         let snapshot = try XCTUnwrap(loadedSnapshot)
         XCTAssertEqual(snapshot.title, "Title")
+        XCTAssertEqual(snapshot.color, .purple)
         XCTAssertEqual(snapshot.tasks.map(\.text), ["First", "Changed"])
         XCTAssertEqual(snapshot.pendingTasks.map(\.id), [last.id])
 
@@ -72,6 +74,23 @@ final class TildoneTests: XCTestCase {
         try await store.deleteNote(note.id)
         let remaining = try await repository.visibleNotes()
         XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func testLegacyMacColorLookupPrefersPerNoteValueAndPreservesGlobalFallback() throws {
+        let suiteName = "TildoneColorMigrationTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        addTeardownBlock { defaults.removePersistentDomain(forName: suiteName) }
+        let coloredNote = NoteID()
+        let fallbackNote = NoteID()
+        defaults.set(NoteColor.orange.legacyRawValue, forKey: NoteColor.storageKey)
+        defaults.set(
+            NoteColor.pink.legacyRawValue,
+            forKey: NoteColor.storageKey(for: coloredNote)
+        )
+
+        XCTAssertEqual(NoteColor.legacyLocalColor(for: coloredNote, defaults: defaults), .pink)
+        XCTAssertNil(NoteColor.legacyLocalColor(for: fallbackNote, defaults: defaults))
+        XCTAssertEqual(NoteColor.current(from: defaults), .orange)
     }
 
     func testMacSharedStoreRemovesRestoredEmptyNotesButKeepsCompletedNotesForFade() async throws {

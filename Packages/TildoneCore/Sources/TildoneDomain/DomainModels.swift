@@ -30,13 +30,29 @@ public enum DomainMutationError: Error, Equatable, Sendable {
     case versionMustAdvance
 }
 
+/// A stable, transport-neutral palette shared by every Tildone client.
+/// Platform targets own the concrete AppKit/UIKit/SwiftUI color conversion.
+public enum NoteColor: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
+    case yellow
+    case green
+    case blue
+    case pink
+    case purple
+    case orange
+
+    public var id: Self { self }
+}
+
 public struct Note: Codable, Hashable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
+    public static let oldestSupportedSchemaVersion = 1
 
     public let id: NoteID
     public let createdAt: Date
     public private(set) var title: String?
     public private(set) var titleVersion: VersionStamp
+    public private(set) var color: NoteColor
+    public private(set) var colorVersion: VersionStamp
     public private(set) var lifecycle: LifecycleState
     public private(set) var lifecycleVersion: VersionStamp
     /// Display/sort metadata only. This date is not a conflict authority.
@@ -49,6 +65,8 @@ public struct Note: Codable, Hashable, Sendable {
         createdAt: Date,
         title: String?,
         titleVersion: VersionStamp,
+        color: NoteColor = .yellow,
+        colorVersion: VersionStamp? = nil,
         lifecycle: LifecycleState = .active,
         lifecycleVersion: VersionStamp,
         lastMeaningfulEditAt: Date,
@@ -59,6 +77,8 @@ public struct Note: Codable, Hashable, Sendable {
         self.createdAt = createdAt
         self.title = title
         self.titleVersion = titleVersion
+        self.color = color
+        self.colorVersion = colorVersion ?? titleVersion
         self.lifecycle = lifecycle
         self.lifecycleVersion = lifecycleVersion
         self.lastMeaningfulEditAt = lastMeaningfulEditAt
@@ -80,6 +100,12 @@ public struct Note: Codable, Hashable, Sendable {
         titleVersion = version
         lastMeaningfulEditAt = editedAt
         lastMeaningfulEditVersion = meaningfulEditVersion
+    }
+
+    public mutating func setColor(_ color: NoteColor, version: VersionStamp) throws {
+        guard version > colorVersion else { throw DomainMutationError.versionMustAdvance }
+        self.color = color
+        colorVersion = version
     }
 
     public mutating func delete(version: VersionStamp) throws {
@@ -105,6 +131,50 @@ public struct Note: Codable, Hashable, Sendable {
         guard version > lifecycleVersion else { throw DomainMutationError.versionMustAdvance }
         lifecycle = state
         lifecycleVersion = version
+    }
+
+
+    private enum CodingKeys: String, CodingKey {
+        case id, createdAt, title, titleVersion, color, colorVersion, lifecycle,
+             lifecycleVersion, lastMeaningfulEditAt, lastMeaningfulEditVersion,
+             schemaVersion
+    }
+
+    /// Domain payloads written before note colors existed remain readable. A
+    /// V1 payload deterministically starts as yellow at its title version; the
+    /// first explicit color mutation necessarily advances beyond that stamp.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(NoteID.self, forKey: .id)
+        createdAt = try values.decode(Date.self, forKey: .createdAt)
+        title = try values.decodeIfPresent(String.self, forKey: .title)
+        titleVersion = try values.decode(VersionStamp.self, forKey: .titleVersion)
+        color = try values.decodeIfPresent(NoteColor.self, forKey: .color) ?? .yellow
+        colorVersion = try values.decodeIfPresent(VersionStamp.self, forKey: .colorVersion)
+            ?? titleVersion
+        lifecycle = try values.decode(LifecycleState.self, forKey: .lifecycle)
+        lifecycleVersion = try values.decode(VersionStamp.self, forKey: .lifecycleVersion)
+        lastMeaningfulEditAt = try values.decode(Date.self, forKey: .lastMeaningfulEditAt)
+        lastMeaningfulEditVersion = try values.decode(
+            VersionStamp.self,
+            forKey: .lastMeaningfulEditVersion
+        )
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(createdAt, forKey: .createdAt)
+        try values.encodeIfPresent(title, forKey: .title)
+        try values.encode(titleVersion, forKey: .titleVersion)
+        try values.encode(color, forKey: .color)
+        try values.encode(colorVersion, forKey: .colorVersion)
+        try values.encode(lifecycle, forKey: .lifecycle)
+        try values.encode(lifecycleVersion, forKey: .lifecycleVersion)
+        try values.encode(lastMeaningfulEditAt, forKey: .lastMeaningfulEditAt)
+        try values.encode(lastMeaningfulEditVersion, forKey: .lastMeaningfulEditVersion)
+        try values.encode(schemaVersion, forKey: .schemaVersion)
     }
 }
 

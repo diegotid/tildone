@@ -8,7 +8,7 @@ import Foundation
 import TildoneDomain
 
 enum StoredDomainMapping {
-    static func note(from stored: StoredNote) throws -> Note {
+    static func note(from stored: StoredNote, color storedColor: StoredNoteColor? = nil) throws -> Note {
         guard let id = NoteID(string: stored.stableID), stored.stableID == id.stringValue else {
             throw malformed(.note, "invalid", "stableID")
         }
@@ -19,6 +19,36 @@ enum StoredDomainMapping {
         try validateSchema(stored.recordSchemaVersion, kind: .note)
         guard let lifecycle = LifecycleState(rawValue: stored.lifecycleRawValue) else {
             throw malformed(.note, id.stringValue, "lifecycle")
+        }
+        let color: NoteColor
+        let colorVersion: VersionStamp
+        if let storedColor {
+            guard storedColor.noteStableID == id.stringValue else {
+                throw malformed(.note, id.stringValue, "colorOwnership")
+            }
+            guard let mappedColor = NoteColor(rawValue: storedColor.colorRawValue) else {
+                throw malformed(.note, id.stringValue, "color")
+            }
+            color = mappedColor
+            colorVersion = try stamp(
+                counter: storedColor.colorVersionCounter,
+                replica: storedColor.colorVersionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "colorVersion"
+            )
+        } else {
+            // V1/V2 stores and an in-progress Stage 6 import have no sidecar.
+            // Yellow at titleVersion is deterministic until the explicit V3
+            // backfill assigns the Mac-local/default color with a newer stamp.
+            color = .yellow
+            colorVersion = try stamp(
+                counter: stored.titleVersionCounter,
+                replica: stored.titleVersionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "titleVersion"
+            )
         }
         return Note(
             id: id,
@@ -31,6 +61,8 @@ enum StoredDomainMapping {
                 stableID: id.stringValue,
                 field: "titleVersion"
             ),
+            color: color,
+            colorVersion: colorVersion,
             lifecycle: lifecycle,
             lifecycleVersion: try stamp(
                 counter: stored.lifecycleVersionCounter,
@@ -147,6 +179,16 @@ enum StoredDomainMapping {
         )
     }
 
+    static func storedNoteColor(from note: Note) throws -> StoredNoteColor {
+        let color = try parts(note.colorVersion)
+        return StoredNoteColor(
+            noteStableID: note.id.stringValue,
+            colorRawValue: note.color.rawValue,
+            colorVersionCounter: color.counter,
+            colorVersionReplicaID: color.replica
+        )
+    }
+
     static func update(_ stored: StoredNote, from note: Note) throws {
         let title = try parts(note.titleVersion)
         let lifecycle = try parts(note.lifecycleVersion)
@@ -161,6 +203,16 @@ enum StoredDomainMapping {
         stored.lastMeaningfulEditVersionCounter = meaningfulEdit.counter
         stored.lastMeaningfulEditVersionReplicaID = meaningfulEdit.replica
         stored.recordSchemaVersion = note.schemaVersion
+    }
+
+    static func update(_ stored: StoredNoteColor, from note: Note) throws {
+        guard stored.noteStableID == note.id.stringValue else {
+            throw malformed(.note, note.id.stringValue, "colorOwnership")
+        }
+        let color = try parts(note.colorVersion)
+        stored.colorRawValue = note.color.rawValue
+        stored.colorVersionCounter = color.counter
+        stored.colorVersionReplicaID = color.replica
     }
 
     static func storedTask(from task: Task) throws -> StoredTask {
@@ -220,8 +272,9 @@ enum StoredDomainMapping {
         guard version > 0 else {
             throw PersistenceError.malformedRepresentation(kind, "unknown", field: "schemaVersion")
         }
+        let oldest = kind == .note ? Note.oldestSupportedSchemaVersion : 1
         let current = kind == .note ? Note.currentSchemaVersion : Task.currentSchemaVersion
-        guard version <= current else {
+        guard version >= oldest, version <= current else {
             throw PersistenceError.unsupportedRecordSchema(kind, version)
         }
     }

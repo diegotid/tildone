@@ -22,6 +22,10 @@ public extension Note {
             (title, titleVersion),
             (other.title, other.titleVersion)
         )
+        let winningColor = try mergeVersioned(
+            (color, colorVersion),
+            (other.color, other.colorVersion)
+        )
         let winningLifecycle = try mergeVersioned(
             (lifecycle, lifecycleVersion),
             (other.lifecycle, other.lifecycleVersion)
@@ -36,6 +40,8 @@ public extension Note {
             createdAt: createdAt,
             title: winningTitle.value,
             titleVersion: winningTitle.version,
+            color: winningColor.value,
+            colorVersion: winningColor.version,
             lifecycle: winningLifecycle.value,
             lifecycleVersion: winningLifecycle.version,
             lastMeaningfulEditAt: winningMeaningfulEdit.value,

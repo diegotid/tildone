@@ -37,7 +37,12 @@ struct NoteListRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.leading, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            note.color.swiftUIColor.opacity(0.32),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityDescription)
@@ -47,6 +52,30 @@ struct NoteListRow: View {
         let completion = summary?.accessibilityDescription ?? "No tasks"
         guard let taskListText, !taskListText.isEmpty else { return completion }
         return "\(completion). Tasks: \(taskListText)"
+    }
+}
+
+extension NoteColor {
+    var swiftUIColor: Color {
+        switch self {
+        case .yellow: Color(red: 1.00, green: 0.94, blue: 0.63)
+        case .green: Color(red: 0.73, green: 1.00, blue: 0.72)
+        case .blue: Color(red: 0.68, green: 0.82, blue: 0.95)
+        case .pink: Color(red: 0.98, green: 0.78, blue: 0.86)
+        case .purple: Color(red: 0.84, green: 0.76, blue: 0.96)
+        case .orange: Color(red: 0.99, green: 0.84, blue: 0.70)
+        }
+    }
+
+    var localizedLabel: LocalizedStringResource {
+        switch self {
+        case .yellow: "Yellow"
+        case .green: "Green"
+        case .blue: "Blue"
+        case .pink: "Pink"
+        case .purple: "Purple"
+        case .orange: "Orange"
+        }
     }
 }
 

@@ -24,12 +24,20 @@ final class TildonePersistenceTests: XCTestCase {
             createdAt: createdAt,
             title: "📝 Café\n漢字",
             titleVersion: titleStamp,
+            color: .purple,
+            colorVersion: stamp(5),
             lifecycle: .deleted,
             lifecycleVersion: lifecycleStamp,
             lastMeaningfulEditAt: createdAt.addingTimeInterval(10),
             lastMeaningfulEditVersion: stamp(4)
         )
-        XCTAssertEqual(try StoredDomainMapping.note(from: StoredDomainMapping.storedNote(from: note)), note)
+        XCTAssertEqual(
+            try StoredDomainMapping.note(
+                from: StoredDomainMapping.storedNote(from: note),
+                color: StoredDomainMapping.storedNoteColor(from: note)
+            ),
+            note
+        )
 
         let task = Task(
             id: taskID,
@@ -98,7 +106,7 @@ final class TildonePersistenceTests: XCTestCase {
         let future = try StoredDomainMapping.storedNote(from: makeNote())
         future.recordSchemaVersion = Note.currentSchemaVersion + 1
         XCTAssertThrowsError(try StoredDomainMapping.note(from: future)) {
-            XCTAssertEqual($0 as? PersistenceError, .unsupportedRecordSchema(.note, 2))
+            XCTAssertEqual($0 as? PersistenceError, .unsupportedRecordSchema(.note, 3))
         }
     }
 
@@ -144,6 +152,31 @@ final class TildonePersistenceTests: XCTestCase {
         )
         XCTAssertEqual(summary.completedCount, 1)
         XCTAssertEqual(meaningfullyEdited.map(\.id), [noteID])
+    }
+
+    func testNoteColorMutationIsVersionedAndAtomicallyQueued() async throws {
+        let repository = try makeRepository()
+        let original = try await repository.createNote(
+            id: noteID,
+            createdAt: createdAt,
+            title: "Color",
+            color: .blue
+        )
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+
+        let changed = try await repository.setNoteColor(id: noteID, color: .orange)
+        let pending = try await repository.pendingMutations()
+
+        XCTAssertEqual(changed.color, .orange)
+        XCTAssertGreaterThan(changed.colorVersion, original.colorVersion)
+        XCTAssertEqual(changed.titleVersion, original.titleVersion)
+        XCTAssertEqual(changed.lastMeaningfulEditVersion, original.lastMeaningfulEditVersion)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending[0].targetKind, .note)
+        XCTAssertEqual(pending[0].targetStableID, noteID.stringValue)
+        XCTAssertEqual(pending[0].sequence, changed.colorVersion.logicalCounter)
     }
 
     func testDeletedParentHidesAndTombstonesChildrenAndExplicitRestoreDoesNotRestoreChildren() async throws {
@@ -307,7 +340,7 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(durablePending.count, 1)
         let metadata = try await reopened.workspaceSnapshot()
         XCTAssertEqual(metadata.replicaID, replica)
-        XCTAssertEqual(metadata.sharedSchemaVersion, 2)
+        XCTAssertEqual(metadata.sharedSchemaVersion, 3)
         XCTAssertEqual(metadata.futureSyncEngineState, Data([0, 1, 255]))
     }
 
@@ -717,8 +750,10 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaV1.models.count, 5)
         XCTAssertEqual(TildoneSchemaV2.versionIdentifier, Schema.Version(2, 0, 0))
         XCTAssertEqual(TildoneSchemaV2.models.count, 7)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 2)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 1)
+        XCTAssertEqual(TildoneSchemaV3.versionIdentifier, Schema.Version(3, 0, 0))
+        XCTAssertEqual(TildoneSchemaV3.models.count, 8)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 3)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 2)
     }
 
     func testActualV1OnDiskFixtureOpensThroughMigrationPlan() async throws {
@@ -747,12 +782,36 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(task.text, "Preserved edited task café 漢字")
         XCTAssertEqual(workspace.replicaID.stringValue, "abcdef00-0000-0000-0000-000000000001")
         XCTAssertEqual(workspace.logicalCounter, 5)
-        XCTAssertEqual(workspace.sharedSchemaVersion, 2)
+        XCTAssertEqual(workspace.sharedSchemaVersion, 3)
         XCTAssertEqual(workspace.futureSyncEngineState, Data([0x01, 0x02, 0xff]))
         XCTAssertEqual(outbox.count, 3)
         XCTAssertEqual(outbox.filter { $0.supersededBy != nil }.count, 1)
         XCTAssertEqual(quarantine.count, 1)
         XCTAssertEqual(quarantine[0].opaqueRecordID, "task-abcdef00-0000-0000-0000-000000000004")
+
+        try await repository.migrateMissingNoteColors(
+            colorsByNoteID: [fixtureNoteID: .pink],
+            defaultColor: .green
+        )
+        let migrated = try await repository.note(id: fixtureNoteID)
+        let migratedWorkspace = try await repository.workspaceSnapshot()
+        XCTAssertEqual(migrated.color, .pink)
+        XCTAssertEqual(migrated.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertGreaterThan(migrated.colorVersion.logicalCounter, workspace.logicalCounter)
+        XCTAssertGreaterThanOrEqual(
+            migratedWorkspace.logicalCounter,
+            migrated.colorVersion.logicalCounter
+        )
+
+        let counterAfterMigration = migratedWorkspace.logicalCounter
+        try await repository.migrateMissingNoteColors(
+            colorsByNoteID: [fixtureNoteID: .orange],
+            defaultColor: .purple
+        )
+        let noteAfterRetry = try await repository.note(id: fixtureNoteID)
+        let workspaceAfterRetry = try await repository.workspaceSnapshot()
+        XCTAssertEqual(noteAfterRetry.color, .pink)
+        XCTAssertEqual(workspaceAfterRetry.logicalCounter, counterAfterMigration)
     }
 
     func testReleased160LegacyFixtureRemainsByteForByteUntouched() async throws {

@@ -9,7 +9,7 @@ import SwiftData
 import TildoneDomain
 
 public extension TildoneRepository {
-    static let currentSharedSchemaVersion = 2
+    static let currentSharedSchemaVersion = 3
 
     func prepareLegacyMigration(
         formatVersion: Int,
@@ -284,7 +284,7 @@ public extension TildoneRepository {
             let existing = try storedNotes(stableID: stableID, in: context)
             guard existing.count <= 1 else { throw PersistenceError.duplicateID(.note, stableID) }
             if let existing = existing.first {
-                guard try StoredDomainMapping.note(from: existing) == note else {
+                guard try mappedNote(from: existing, in: context) == note else {
                     throw LegacyMigrationPersistenceError.importedValueMismatch(imported.legacyKey)
                 }
             } else {

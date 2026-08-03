@@ -21,8 +21,9 @@ public struct RemoteMergeResult: Hashable, Sendable {
 public extension TildoneRepository {
     /// Returns every syncable note, including lifecycle tombstones.
     func allSyncNotes() throws -> [Note] {
-        try readContext().fetch(FetchDescriptor<StoredNote>()).map {
-            try StoredDomainMapping.note(from: $0)
+        let context = readContext()
+        return try context.fetch(FetchDescriptor<StoredNote>()).map {
+            try mappedNote(from: $0, in: context)
         }.sorted { $0.id < $1.id }
     }
 
@@ -44,7 +45,9 @@ public extension TildoneRepository {
     /// is deleted, active children are tombstoned locally and those new child
     /// tombstones are queued so every replica eventually observes them.
     func mergeRemoteNote(_ remote: Note, at date: Date) throws -> RemoteMergeResult {
-        guard remote.schemaVersion == Note.currentSchemaVersion,
+        guard (Note.oldestSupportedSchemaVersion...Note.currentSchemaVersion).contains(
+            remote.schemaVersion
+        ),
               date.timeIntervalSinceReferenceDate.isFinite else {
             throw PersistenceError.unsupportedRecordSchema(.note, remote.schemaVersion)
         }
@@ -60,15 +63,27 @@ public extension TildoneRepository {
         let merged: Note
         let changed: Bool
         if let row = rows.first {
-            let local = try StoredDomainMapping.note(from: row)
+            let local = try mappedNote(from: row, in: context)
             do { merged = try local.merged(with: remote) }
             catch { throw PersistenceError.domainInvariant }
             changed = merged != local
-            if changed { try StoredDomainMapping.update(row, from: merged) }
+            if changed {
+                try StoredDomainMapping.update(row, from: merged)
+                if merged.schemaVersion >= 2 {
+                    if let color = try storedNoteColor(noteID: merged.id, in: context) {
+                        try StoredDomainMapping.update(color, from: merged)
+                    } else {
+                        context.insert(try StoredDomainMapping.storedNoteColor(from: merged))
+                    }
+                }
+            }
         } else {
             merged = remote
             changed = true
             context.insert(try StoredDomainMapping.storedNote(from: remote))
+            if remote.schemaVersion >= 2 {
+                context.insert(try StoredDomainMapping.storedNoteColor(from: remote))
+            }
         }
 
         var generated = 0
@@ -130,7 +145,7 @@ public extension TildoneRepository {
         ))
         guard parents.count <= 1 else { throw PersistenceError.duplicateID(.note, noteID) }
         if let parent = parents.first,
-           try StoredDomainMapping.note(from: parent).lifecycle == .deleted,
+           try mappedNote(from: parent, in: context).lifecycle == .deleted,
            merged.lifecycle == .active {
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: merged))
             do { try merged.delete(version: stamp) }
@@ -157,7 +172,7 @@ public extension TildoneRepository {
         let context = mutationContext()
         let metadata = try workspaceMetadata(in: context)
         for note in try context.fetch(FetchDescriptor<StoredNote>()) {
-            let domain = try StoredDomainMapping.note(from: note)
+            let domain = try mappedNote(from: note, in: context)
             let sequence = maxVersion(in: domain).logicalCounter
             try enqueueSyncMutation(.note, stableID: domain.id.stringValue, sequence: sequence, at: date, in: context)
         }
@@ -213,7 +228,7 @@ public extension TildoneRepository {
             ))
             guard rows.count <= 1 else { throw PersistenceError.duplicateID(.note, id) }
             guard let row = rows.first else { return }
-            var note = try StoredDomainMapping.note(from: row)
+            var note = try mappedNote(from: row, in: context)
             guard note.lifecycle == .active else { return }
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: note))
             do { try note.delete(version: stamp) }
@@ -265,7 +280,8 @@ public extension TildoneRepository {
 private extension TildoneRepository {
     func observeRemoteVersions(in note: Note, metadata: WorkspaceMetadata) throws {
         try observe([
-            note.titleVersion, note.lifecycleVersion, note.lastMeaningfulEditVersion
+            note.titleVersion, note.colorVersion, note.lifecycleVersion,
+            note.lastMeaningfulEditVersion
         ], metadata: metadata)
     }
 
@@ -292,14 +308,6 @@ private extension TildoneRepository {
         guard current < UInt64(Int64.max) else { throw PersistenceError.counterOverflow }
         metadata.logicalCounter = Int64(current + 1)
         return VersionStamp(logicalCounter: current + 1, replicaID: replica)
-    }
-
-    func maxVersion(in note: Note) -> VersionStamp {
-        max(max(note.titleVersion, note.lifecycleVersion), note.lastMeaningfulEditVersion)
-    }
-
-    func maxVersion(in task: Task) -> VersionStamp {
-        max(max(task.textVersion, task.completionVersion), max(task.orderVersion, task.lifecycleVersion))
     }
 
     func enqueueSyncMutation(

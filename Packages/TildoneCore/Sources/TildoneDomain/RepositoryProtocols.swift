@@ -9,13 +9,25 @@ import Foundation
 /// Persistence-independent note operations. Implementations own version
 /// generation and must return immutable domain snapshots across isolation.
 public protocol NoteRepository: Sendable {
-    func createNote(id: NoteID, createdAt: Date, title: String?) async throws -> Note
+    func createNote(
+        id: NoteID,
+        createdAt: Date,
+        title: String?,
+        color: NoteColor
+    ) async throws -> Note
     func note(id: NoteID, includingDeleted: Bool) async throws -> Note
     func visibleNotes() async throws -> [Note]
     func notesMeaningfullyEdited(since date: Date) async throws -> [Note]
     func renameNote(id: NoteID, to title: String?, editedAt: Date) async throws -> Note
+    func setNoteColor(id: NoteID, color: NoteColor) async throws -> Note
     func deleteNote(id: NoteID) async throws
     func restoreNote(id: NoteID) async throws -> Note
+}
+
+public extension NoteRepository {
+    func createNote(id: NoteID, createdAt: Date, title: String?) async throws -> Note {
+        try await createNote(id: id, createdAt: createdAt, title: title, color: .yellow)
+    }
 }
 
 /// Persistence-independent task operations. Implementations enforce immutable

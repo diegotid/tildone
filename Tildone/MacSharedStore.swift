@@ -19,6 +19,7 @@ struct MacNoteSnapshot: Identifiable {
     var id: NoteID { note.id }
     var createdAt: Date { note.createdAt }
     var title: String? { note.title }
+    var color: NoteColor { note.color }
     var isEmpty: Bool { tasks.isEmpty && title == nil }
     var isComplete: Bool { !tasks.isEmpty && tasks.allSatisfy(\.isCompleted) }
     var isDeletable: Bool { isEmpty || isComplete }
@@ -62,12 +63,10 @@ final class MacSharedStore: ObservableObject {
     /// retained here so their visible grace period is owned by `Note`.
     func prepareForPresentation() async throws {
         try await reload()
-        NoteColor.migrateExistingNotes(notes.map(\.id))
         let emptyNoteIDs = notes.lazy.filter(\.isEmpty).map(\.id)
         guard !emptyNoteIDs.isEmpty else { return }
         for id in emptyNoteIDs {
             try await repository.deleteNote(id: id)
-            NoteColor.removeColor(for: id)
         }
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
@@ -79,8 +78,12 @@ final class MacSharedStore: ObservableObject {
 
     func createNote(createdAt: Date = Date()) async throws -> MacNoteSnapshot {
         let id = NoteID()
-        _ = try await repository.createNote(id: id, createdAt: createdAt, title: nil)
-        NoteColor.set(NoteColor.current(), for: id)
+        _ = try await repository.createNote(
+            id: id,
+            createdAt: createdAt,
+            title: nil,
+            color: NoteColor.current()
+        )
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
         guard let note = note(id) else { throw PersistenceError.domainInvariant }
@@ -89,6 +92,12 @@ final class MacSharedStore: ObservableObject {
 
     func renameNote(_ id: NoteID, to title: String?) async throws {
         _ = try await repository.renameNote(id: id, to: title, editedAt: Date())
+        try await reload()
+        await syncCoordinator?.notifyLocalChanges()
+    }
+
+    func setColor(_ color: NoteColor, for id: NoteID) async throws {
+        _ = try await repository.setNoteColor(id: id, color: color)
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
     }
@@ -161,7 +170,6 @@ final class MacSharedStore: ObservableObject {
 
     func deleteNote(_ id: NoteID) async throws {
         try await repository.deleteNote(id: id)
-        NoteColor.removeColor(for: id)
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
     }
@@ -238,6 +246,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     baseDirectory: base,
                     workspace: .account(workspaceID)
                 ))
+                try await Self.migrateSharedNoteColors(in: accountRepository)
                 if try await localRepository.hasSyncContent() {
                     if Self.localWorkspaceAdoptionEnabled {
                         try await accountRepository.adoptSyncContent(
@@ -271,7 +280,8 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                             self?.error = MacSharedStoreBootstrapError.cloudAccountChanged
                         }
                     },
-                    onRemoteChange: { [weak store] in
+                    onRemoteChange: { [weak store, accountRepository] in
+                        try? await Self.migrateSharedNoteColors(in: accountRepository)
                         try? await store?.reload()
                     }
                 )
@@ -292,6 +302,18 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     static func openRepository(
         baseDirectory: URL? = nil,
         legacySourceURL: URL? = nil
+    ) async throws -> TildoneRepository {
+        let repository = try await openRepositoryBeforeColorMigration(
+            baseDirectory: baseDirectory,
+            legacySourceURL: legacySourceURL
+        )
+        try await migrateSharedNoteColors(in: repository)
+        return repository
+    }
+
+    private static func openRepositoryBeforeColorMigration(
+        baseDirectory: URL?,
+        legacySourceURL: URL?
     ) async throws -> TildoneRepository {
         let base = try (baseDirectory ?? applicationSupportDirectory())
         let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: base, workspace: .localOnly)
@@ -324,6 +346,17 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             repository = nil
             return try await migrateAndActivate(descriptor: descriptor, sourceURL: sourceURL)
         }
+    }
+
+    private static func migrateSharedNoteColors(in repository: TildoneRepository) async throws {
+        let notes = try await repository.allSyncNotes()
+        let localColors = Dictionary(uniqueKeysWithValues: notes.compactMap { note in
+            NoteColor.legacyLocalColor(for: note.id).map { (note.id, $0) }
+        })
+        try await repository.migrateMissingNoteColors(
+            colorsByNoteID: localColors,
+            defaultColor: NoteColor.current()
+        )
     }
 
     private static func migrateAndActivate(

@@ -112,6 +112,26 @@ final class DomainMergeTests: XCTestCase {
         XCTAssertEqual(merged.lastMeaningfulEditVersion, Fixtures.stamp(6))
     }
 
+    func testNoteColorMergesIndependentlyFromTitleAndMeaningfulEditDate() throws {
+        let base = Fixtures.note()
+        var colorEdit = base
+        var titleEdit = base
+        try colorEdit.setColor(.purple, version: Fixtures.stamp(4))
+        try titleEdit.rename(
+            to: "Renamed",
+            version: Fixtures.stamp(5),
+            editedAt: Date(timeIntervalSince1970: 30),
+            meaningfulEditVersion: Fixtures.stamp(6)
+        )
+
+        let merged = try colorEdit.merged(with: titleEdit)
+
+        XCTAssertEqual(merged.color, .purple)
+        XCTAssertEqual(merged.colorVersion, Fixtures.stamp(4))
+        XCTAssertEqual(merged.title, "Renamed")
+        XCTAssertEqual(merged.lastMeaningfulEditAt, Date(timeIntervalSince1970: 30))
+    }
+
     func testInvalidImmutableOrSameVersionDivergenceIsRejectedSymmetrically() throws {
         let task = try Fixtures.task()
         let otherID = try Fixtures.task(id: Fixtures.taskID(2))

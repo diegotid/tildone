@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TildoneDomain
 
 enum Id {
     static let appIcon: String = "AppIcon"

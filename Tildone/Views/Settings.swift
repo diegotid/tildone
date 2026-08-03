@@ -32,7 +32,11 @@ struct SettingsForm: View {
     private var selectedArrangementSpacing: ArrangementSpacing = .minimum
     
     @AppStorage(NoteColor.storageKey)
-    private var noteColor: NoteColor = .yellow
+    private var noteColorRawValue = NoteColor.yellow.legacyRawValue
+
+    private var noteColor: NoteColor {
+        NoteColor(legacyRawValue: noteColorRawValue) ?? .yellow
+    }
     
     @AppStorage(NoteWindowBackground.opacityStorageKey)
     private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
@@ -177,9 +181,9 @@ private extension SettingsForm {
             )
             .contentShape(Rectangle())
             .onTapGesture {
-                noteColor = option
+                noteColorRawValue = option.legacyRawValue
             }
-            .help(option.label)
+            .help(option.localizedLabel)
     }
     
     @ViewBuilder
@@ -452,45 +456,62 @@ extension NoteColor {
     static let storageKey = "noteColor"
     private static let legacyTranslucentRawValue = 6
 
+    var legacyRawValue: Int {
+        switch self {
+        case .yellow: 0
+        case .green: 1
+        case .blue: 2
+        case .pink: 3
+        case .purple: 4
+        case .orange: 5
+        }
+    }
+
+    init?(legacyRawValue: Int) {
+        switch legacyRawValue {
+        case 0: self = .yellow
+        case 1: self = .green
+        case 2: self = .blue
+        case 3: self = .pink
+        case 4: self = .purple
+        case 5: self = .orange
+        default: return nil
+        }
+    }
+
     static func current(from defaults: UserDefaults = .standard) -> NoteColor {
         let rawValue = defaults.integer(forKey: storageKey)
         if rawValue == legacyTranslucentRawValue {
-            defaults.set(NoteColor.yellow.rawValue, forKey: storageKey)
+            defaults.set(NoteColor.yellow.legacyRawValue, forKey: storageKey)
             if defaults.object(forKey: NoteWindowBackground.opacityStorageKey) == nil {
                 defaults.set(0.0, forKey: NoteWindowBackground.opacityStorageKey)
             }
         }
-        return NoteColor(rawValue: rawValue) ?? .yellow
+        return NoteColor(legacyRawValue: rawValue) ?? .yellow
     }
 
     static func storageKey(for noteID: NoteID) -> String {
         "noteColor.\(noteID.stringValue)"
     }
 
-    static func color(for noteID: NoteID, defaults: UserDefaults = .standard) -> NoteColor {
-        let key = storageKey(for: noteID)
-        guard defaults.object(forKey: key) != nil else { return .yellow }
-        return NoteColor(rawValue: defaults.integer(forKey: key)) ?? .yellow
-    }
-
-    /// Preserves the color users had already assigned globally before color
-    /// became per-note presentation metadata.
-    static func migrateExistingNotes<S: Sequence>(
-        _ noteIDs: S,
+    static func legacyLocalColor(
+        for noteID: NoteID,
         defaults: UserDefaults = .standard
-    ) where S.Element == NoteID {
-        let color = current(from: defaults)
-        for noteID in noteIDs where defaults.object(forKey: storageKey(for: noteID)) == nil {
-            set(color, for: noteID, defaults: defaults)
+    ) -> NoteColor? {
+        let key = storageKey(for: noteID)
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return NoteColor(legacyRawValue: defaults.integer(forKey: key))
+    }
+
+    var localizedLabel: String {
+        switch self {
+        case .yellow: String(localized: "Yellow")
+        case .green: String(localized: "Green")
+        case .blue: String(localized: "Blue")
+        case .pink: String(localized: "Pink")
+        case .purple: String(localized: "Purple")
+        case .orange: String(localized: "Orange")
         }
-    }
-
-    static func set(_ color: NoteColor, for noteID: NoteID, defaults: UserDefaults = .standard) {
-        defaults.set(color.rawValue, forKey: storageKey(for: noteID))
-    }
-
-    static func removeColor(for noteID: NoteID, defaults: UserDefaults = .standard) {
-        defaults.removeObject(forKey: storageKey(for: noteID))
     }
 
     var nsColor: NSColor {

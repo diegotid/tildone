@@ -28,10 +28,29 @@ public enum TildoneSchemaV2: VersionedSchema {
     }
 }
 
+/// V3 adds shared per-note color as a sidecar keyed by stable note ID. Keeping
+/// `StoredNote` unchanged preserves the finalized V1/V2 model hashes and makes
+/// migration additive for existing shared stores.
+public enum TildoneSchemaV3: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(3, 0, 0)
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredNote.self, StoredNoteColor.self, StoredTask.self, PendingMutation.self,
+            WorkspaceMetadata.self, QuarantinedRecord.self, LegacyMigrationState.self,
+            LegacyIdentityMapping.self
+        ]
+    }
+}
+
 public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
-    public static var schemas: [any VersionedSchema.Type] { [TildoneSchemaV1.self, TildoneSchemaV2.self] }
+    public static var schemas: [any VersionedSchema.Type] {
+        [TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self]
+    }
     public static var stages: [MigrationStage] {
-        [.lightweight(fromVersion: TildoneSchemaV1.self, toVersion: TildoneSchemaV2.self)]
+        [
+            .lightweight(fromVersion: TildoneSchemaV1.self, toVersion: TildoneSchemaV2.self),
+            .lightweight(fromVersion: TildoneSchemaV2.self, toVersion: TildoneSchemaV3.self)
+        ]
     }
 }
 
@@ -76,6 +95,28 @@ final class StoredNote {
         self.lastMeaningfulEditVersionCounter = lastMeaningfulEditVersionCounter
         self.lastMeaningfulEditVersionReplicaID = lastMeaningfulEditVersionReplicaID
         self.recordSchemaVersion = recordSchemaVersion
+    }
+}
+
+@Model
+final class StoredNoteColor {
+    /// Stable sidecar ownership; no SwiftData relationship can alter note
+    /// deletion semantics or the finalized V1/V2 schemas.
+    var noteStableID: String
+    var colorRawValue: String
+    var colorVersionCounter: Int64
+    var colorVersionReplicaID: String
+
+    init(
+        noteStableID: String,
+        colorRawValue: String,
+        colorVersionCounter: Int64,
+        colorVersionReplicaID: String
+    ) {
+        self.noteStableID = noteStableID
+        self.colorRawValue = colorRawValue
+        self.colorVersionCounter = colorVersionCounter
+        self.colorVersionReplicaID = colorVersionReplicaID
     }
 }
 
@@ -271,7 +312,7 @@ final class LegacyMigrationState {
         sourceContentDigest = sourceFingerprint.contentDigest
         sourceFileCount = sourceFingerprint.fileCount
         sourceTotalByteCount = Int64(sourceFingerprint.totalByteCount)
-        destinationSchemaVersion = 2
+        destinationSchemaVersion = 3
         sourceEligibleNoteCount = sourceCounts.eligibleNotes
         sourceEligibleTaskCount = sourceCounts.eligibleTasks
         sourceSystemNoteCount = sourceCounts.excludedSystemNotes

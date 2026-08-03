@@ -35,6 +35,9 @@ final class TildoneiOSTests: XCTestCase {
         try await model.rename(noteID: note.id, title: "  Groceries  ")
         XCTAssertEqual(model.notes.first?.title, "Groceries")
 
+        try await model.setColor(noteID: note.id, color: .blue)
+        XCTAssertEqual(model.notes.first?.color, .blue)
+
         try await model.delete(noteID: note.id)
         XCTAssertTrue(model.notes.isEmpty)
     }

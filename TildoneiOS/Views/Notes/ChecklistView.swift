@@ -83,9 +83,33 @@ struct ChecklistView: View {
                             .frame(minHeight: 33, maxHeight: 33)
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(note.color.swiftUIColor.opacity(0.22))
                 .navigationTitle(note.title?.isEmpty == false ? note.title! : "Untitled Note")
                 .navigationBarTitleDisplayMode(.large)
-                .toolbar { EditButton() }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            Picker("Note color", selection: Binding(
+                                get: { note.color },
+                                set: { color in
+                                    Swift.Task {
+                                        try? await appModel.setColor(noteID: noteID, color: color)
+                                        await reload()
+                                    }
+                                }
+                            )) {
+                                ForEach(NoteColor.allCases) { color in
+                                    Text(color.localizedLabel).tag(color)
+                                }
+                            }
+                        } label: {
+                            Label("Note color", systemImage: "paintpalette.fill")
+                        }
+                        .accessibilityLabel("Note color")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) { EditButton() }
+                }
                 .onDisappear { saveTitle() }
             } else {
                 ContentUnavailableView("This note was deleted", systemImage: "trash")

@@ -24,6 +24,62 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(TildoneCloudSchema.noteRecordType, "TDNote")
         XCTAssertEqual(TildoneCloudSchema.taskRecordType, "TDTask")
         XCTAssertEqual(TildoneCloudSchema.clientRecordType, "TDClient")
+        let noteRecord = mapper.record(from: .note(fixture.note))
+        XCTAssertEqual(noteRecord["color"] as? String, fixture.note.color.rawValue)
+        XCTAssertNotNil(noteRecord["colorVersionCounter"])
+    }
+
+    func testCloudMapperReadsV1NotesWithoutColorAndUsesDeterministicFallback() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        let record = mapper.record(from: .note(fixture.note))
+        record["schemaVersion"] = NSNumber(value: 1)
+        record["color"] = nil
+        record["colorVersionCounter"] = nil
+        record["colorVersionReplicaID"] = nil
+
+        guard case let .note(note) = try mapper.syncRecord(from: record) else {
+            return XCTFail("Expected a note")
+        }
+        XCTAssertEqual(note.schemaVersion, 1)
+        XCTAssertEqual(note.color, .yellow)
+        XCTAssertEqual(note.colorVersion, note.titleVersion)
+    }
+
+    func testLateV1CloudNoteIsBackfilledAndQueuedAsCurrentSchema() async throws {
+        let replica = try Replica(id: 90)
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        let record = mapper.record(from: .note(fixture.note))
+        record["schemaVersion"] = NSNumber(value: 1)
+        record["color"] = nil
+        record["colorVersionCounter"] = nil
+        record["colorVersionReplicaID"] = nil
+
+        let legacy = try mapper.syncRecord(from: record)
+        _ = try await replica.pipeline.apply([legacy], at: date)
+        let pendingBeforeMigration = try await replica.pipeline.pendingCount()
+        XCTAssertEqual(pendingBeforeMigration, 0)
+
+        try await replica.repository.migrateMissingNoteColors(
+            colorsByNoteID: [fixture.note.id: .purple],
+            defaultColor: .green
+        )
+
+        let migrated = try await replica.repository.note(id: fixture.note.id)
+        XCTAssertEqual(migrated.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertEqual(migrated.color, .purple)
+        let pendingAfterMigration = try await replica.pipeline.pendingCount()
+        XCTAssertEqual(pendingAfterMigration, 1)
+        let outbound = try await replica.pipeline.prepareOutboundMutation(
+            recordName: fixture.note.id.recordName,
+            at: date
+        )
+        guard case let .note(note)? = outbound?.record else {
+            return XCTFail("Expected a queued note mutation")
+        }
+        XCTAssertEqual(note.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertEqual(note.color, .purple)
     }
 
     func testClientRegistrationCloudRecordIsContentFreeAndRoundTrips() throws {
@@ -741,6 +797,8 @@ private extension TildoneSyncTests {
                 createdAt: date,
                 title: "Secret title",
                 titleVersion: stamp,
+                color: .purple,
+                colorVersion: stamp,
                 lifecycleVersion: stamp,
                 lastMeaningfulEditAt: date,
                 lastMeaningfulEditVersion: stamp

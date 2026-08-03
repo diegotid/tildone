@@ -1,6 +1,48 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Blue" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Azul" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Bleu" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "蓝色" } }
+      }
+    },
+    "Green" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Verde" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vert" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "绿色" } }
+      }
+    },
+    "Orange" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Naranja" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Orange" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "橙色" } }
+      }
+    },
+    "Pink" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rosa" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rose" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粉色" } }
+      }
+    },
+    "Purple" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Morado" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Violet" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "紫色" } }
+      }
+    },
+    "Yellow" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Amarillo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Jaune" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "黄色" } }
+      }
+    },
     "" : {
       "localizations" : {
         "en" : {

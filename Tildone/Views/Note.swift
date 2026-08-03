@@ -99,14 +99,13 @@ struct Note: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(TaskLineTruncation.storageKey) private var taskLineTruncation: TaskLineTruncation = .single
     @AppStorage(FontSize.storageKey) private var fontSize = Double(FontSize.small.rawValue)
-    @AppStorage private var noteColorRawValue: Int
     @AppStorage(NoteWindowBackground.opacityStorageKey) private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
 
     private var note: MacNoteSnapshot? { store.note(noteID) }
     private var tasks: [TildoneDomain.Task] { note?.tasks ?? [] }
     private var pendingTasks: [TildoneDomain.Task] { tasks.filter { !$0.isCompleted } }
     private var isDark: Bool { colorScheme == .dark && noteBackgroundOpacity < 0.5 }
-    private var noteColor: NoteColor { NoteColor(rawValue: noteColorRawValue) ?? .yellow }
+    private var noteColor: NoteColor { note?.color ?? .yellow }
     private var color: NSColor { noteColor.nsColor }
     private var isDone: Bool { completionFade.showsCompletionOverlay }
 
@@ -135,10 +134,6 @@ struct Note: View {
     init(store: MacSharedStore, noteID: NoteID) {
         self.store = store
         self.noteID = noteID
-        _noteColorRawValue = AppStorage(
-            wrappedValue: NoteColor.color(for: noteID).rawValue,
-            NoteColor.storageKey(for: noteID)
-        )
     }
 
     var body: some View {
@@ -151,7 +146,7 @@ struct Note: View {
                 }
             }
         }
-        .onChange(of: noteColorRawValue) { _, _ in applyCurrentNoteBackground() }
+        .onChange(of: note?.color) { _, _ in applyCurrentNoteBackground() }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
         .onAppear {
             synchronizeCompletionFade(completedAt: note?.completedAt)
@@ -656,19 +651,11 @@ private extension Note {
 }
 
 struct NoteColorPickerButton: View {
+    @ObservedObject var store: MacSharedStore
     let noteID: NoteID
-    @AppStorage private var noteColorRawValue: Int
     @State private var isPresented = false
 
-    private var color: NoteColor { NoteColor(rawValue: noteColorRawValue) ?? .yellow }
-
-    init(noteID: NoteID) {
-        self.noteID = noteID
-        _noteColorRawValue = AppStorage(
-            wrappedValue: NoteColor.color(for: noteID).rawValue,
-            NoteColor.storageKey(for: noteID)
-        )
-    }
+    private var color: NoteColor { store.note(noteID)?.color ?? .yellow }
 
     var body: some View {
         Button {
@@ -681,7 +668,7 @@ struct NoteColorPickerButton: View {
         .accessibilityLabel("Note color")
         .popover(isPresented: $isPresented, arrowEdge: .top) {
             NoteColorPalette(selected: color) { selectedColor in
-                noteColorRawValue = selectedColor.rawValue
+                Swift.Task { try? await store.setColor(selectedColor, for: noteID) }
                 isPresented = false
             }
         }
@@ -738,8 +725,8 @@ private struct NoteColorPalette: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .help(color.label)
-                .accessibilityLabel(color.label)
+                .help(color.localizedLabel)
+                .accessibilityLabel(color.localizedLabel)
                 .accessibilityAddTraits(selected == color ? .isSelected : [])
             }
         }

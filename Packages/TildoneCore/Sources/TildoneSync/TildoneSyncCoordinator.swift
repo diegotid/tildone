@@ -386,12 +386,16 @@ private extension TildoneSyncCoordinator {
                 }
             }
             if !decoded.isEmpty || !event.deletions.isEmpty {
-                try await refreshPendingEngineChanges()
                 if !decoded.isEmpty || event.deletions.contains(where: {
                     SyncClientRegistration.replicaID(recordName: $0.recordID.recordName) == nil
                 }) {
                     await onRemoteChange()
                 }
+                // The presentation callback may perform an idempotent local
+                // schema backfill for a legacy record. Refresh afterwards so
+                // any outbox work created by that backfill is scheduled in
+                // this same checkpoint.
+                try await refreshPendingEngineChanges()
             }
             if clientRegistrationsChanged {
                 await publishStatus(await statusModel.snapshot())
