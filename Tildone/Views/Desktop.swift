@@ -60,6 +60,9 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: .openAbout)) { _ in
                 openWindow(id: Id.aboutWindow)
             }
+            .onReceive(NotificationCenter.default.publisher(for: .openFocusFilterHelp)) { _ in
+                openWindow(id: Id.focusFilterHelpWindow)
+            }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }

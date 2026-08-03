@@ -12,6 +12,7 @@ enum Id {
     static let bottomAnchor: String = "bottom"
     static let desktopWindow: String = "tildone-desktop-coordinator"
     static let aboutWindow: String = "about-tildone"
+    static let focusFilterHelpWindow: String = "focus-filter-help"
     static let updateWindow: String = "update-tildone"
 }
 
