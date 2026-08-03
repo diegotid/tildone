@@ -245,6 +245,9 @@ final class MenuBarController: NSObject {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.addItem(item("About Tildone", action: #selector(openAbout)))
+        menu.addItem(.separator())
+
         menu.addItem(item("New Note", action: #selector(createNote), keyEquivalent: "n"))
 
         let showAllNotes = item("Show All Notes", action: #selector(showAllNotes), keyEquivalent: "u")
@@ -255,7 +258,6 @@ final class MenuBarController: NSObject {
         let settings = item("Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.keyEquivalentModifierMask = .command
         menu.addItem(settings)
-        menu.addItem(item("About Tildone", action: #selector(openAbout)))
         menu.addItem(item(String(localized: "How to Use Focus Filters…"), action: #selector(openFocusFilterHelp)))
 
         menu.addItem(.separator())

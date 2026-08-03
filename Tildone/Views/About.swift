@@ -8,14 +8,6 @@
 import SwiftUI
 
 struct About: View {
-    
-    private var appIconImage: Image? = {
-        guard let image = NSImage(named: Id.appIcon) else {
-            return nil
-        }
-        return Image(nsImage: image)
-    }()
-
     private var appVersionLabel: Text? = {
         guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
             return nil
@@ -25,11 +17,13 @@ struct About: View {
     
     var body: some View {
         VStack {
-            if appIconImage != nil {
-                appIconImage!
-                    .resizable()
-                    .frame(maxWidth: Frame.aboutIconSize, maxHeight: Frame.aboutIconSize)
-            }
+            // This is the compiled Icon Composer app icon, rather than the
+            // template status-bar asset. AppKit provides its default bundled
+            // representation for use outside the Dock.
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: Frame.aboutIconSize, height: Frame.aboutIconSize)
             Text("Tildone")
                 .font(.title)
                 .bold()
