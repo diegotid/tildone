@@ -562,9 +562,13 @@ private extension Note {
     func scrollingHeader() -> some View {
         VStack {
             ZStack {
-                Rectangle().fill(Color(nsColor: color.withAlphaComponent(windowAlpha))).frame(height: 30).shadow(color: .black.opacity(0.2), radius: 1.5, x: 0, y: 1)
+                Color.clear
+                    .frame(height: 30)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(.black.opacity(0.2)).frame(height: 1)
+                    }
                 if let title = note?.title {
-                    HStack { Text(title).lineLimit(1).font(.system(size: 14, weight: .bold, design: .rounded)).padding(.leading, 70); Spacer() }
+                    HStack { Text(title).lineLimit(1).font(.system(size: 14, weight: .bold, design: .rounded)).padding(.leading, 78).offset(y: -1); Spacer() }
                 }
             }
             Spacer()
