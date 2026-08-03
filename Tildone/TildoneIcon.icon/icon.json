@@ -47,10 +47,6 @@
           "hidden" : false,
           "image-name-specializations" : [
             {
-              "value" : "front.svg"
-            },
-            {
-              "idiom" : "square",
               "value" : "front.png"
             }
           ],
@@ -75,10 +71,6 @@
           "hidden" : false,
           "image-name-specializations" : [
             {
-              "value" : "back.svg"
-            },
-            {
-              "idiom" : "square",
               "value" : "back.png"
             }
           ],
