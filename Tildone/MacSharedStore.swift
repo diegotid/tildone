@@ -372,7 +372,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
 
     private static var syncFeatureEnabled: Bool {
 #if DEBUG
-        ProcessInfo.processInfo.environment["TILDONE_ENABLE_CLOUDKIT_SYNC"] == "1"
+        true
 #else
         false
 #endif

@@ -9,7 +9,7 @@ import Foundation
 enum TildoneiOSSyncBootstrapper {
     static var featureEnabled: Bool {
 #if DEBUG
-        !isTestProcess && ProcessInfo.processInfo.environment["TILDONE_ENABLE_CLOUDKIT_SYNC"] == "1"
+        !isTestProcess
 #else
         false
 #endif
