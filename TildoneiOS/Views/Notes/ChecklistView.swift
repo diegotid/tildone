@@ -28,11 +28,19 @@ struct ChecklistView: View {
         editMode?.wrappedValue.isEditing == true
     }
 
+    private var isUntitled: Bool {
+        note?.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+    }
+
+    private var canEditTasks: Bool {
+        Self.normalizedTitle(title) != nil || !tasks.isEmpty
+    }
+
     var body: some View {
         Group {
             if let note {
                 List {
-                    if isInEditMode || isEditingTitle {
+                    if isInEditMode || isEditingTitle || isUntitled {
                         TextField("Note title", text: $title)
                             .focused($isEditingTitle)
                             .font(.title2.weight(.semibold))
@@ -86,8 +94,8 @@ struct ChecklistView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(note.color.swiftUIColor.opacity(0.22))
-                .navigationTitle(note.title?.isEmpty == false ? note.title! : String(localized: "Untitled Note"))
-                .navigationBarTitleDisplayMode(.large)
+                .navigationTitle(isUntitled ? "" : note.title!)
+                .navigationBarTitleDisplayMode(isUntitled ? .inline : .large)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
@@ -115,16 +123,20 @@ struct ChecklistView: View {
                         }
                         .accessibilityLabel("Note color")
                     }
-                    ToolbarItem(placement: .topBarTrailing) { EditButton() }
+                    if canEditTasks {
+                        ToolbarItem(placement: .topBarTrailing) { EditButton() }
+                    }
                 }
-                .onDisappear { saveTitle() }
+                .onDisappear {
+                    saveTitle()
+                    saveNewTaskIfNeeded()
+                }
             } else {
                 ContentUnavailableView("This note was deleted", systemImage: "trash")
             }
         }
         .task {
             await reload()
-            let isUntitled = note?.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
             isEditingTitle = isUntitled
             isAddingTask = !isUntitled && tasks.isEmpty
         }
@@ -176,6 +188,16 @@ struct ChecklistView: View {
             _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)
             await reload()
             isAddingTask = true
+        }
+    }
+
+    private func saveNewTaskIfNeeded() {
+        let text = newTaskText
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        newTaskText = ""
+        Swift.Task {
+            _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)
+            await reload()
         }
     }
 
