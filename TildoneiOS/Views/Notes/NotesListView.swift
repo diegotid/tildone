@@ -5,6 +5,7 @@
 //  Created by Diego Rivera on 8/1/26.
 //
 import SwiftUI
+import UIKit
 import TildoneDomain
 
 struct NotesListView: View {
@@ -15,7 +16,6 @@ struct NotesListView: View {
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
     @State private var deckOrder: [NoteID] = []
-    @State private var currentDeckNoteID: NoteID?
 
     private var layout: NotesOverviewLayout {
         get { NotesOverviewLayout(rawValue: layoutRawValue) ?? .list }
@@ -55,13 +55,11 @@ struct NotesListView: View {
                     case .deck:
                         NotesDeckView(
                             notes: orderedDeckNotes,
-                            currentIndex: currentDeckIndex,
                             summaries: appModel.taskSummaries,
                             taskPreviews: appModel.taskPreviews,
                             open: open,
                             rename: beginRename,
-                            delete: { noteToDelete = $0 },
-                            move: moveDeck
+                            delete: { noteToDelete = $0 }
                         )
                     }
                 }
@@ -176,12 +174,6 @@ struct NotesListView: View {
         deckOrder.compactMap { noteID in activeNotes.first(where: { $0.id == noteID }) }
     }
 
-    private var currentDeckIndex: Int {
-        guard let currentDeckNoteID,
-              let index = deckOrder.firstIndex(of: currentDeckNoteID) else { return 0 }
-        return index
-    }
-
     private func open(_ note: Note) {
         presentedNoteID = note.id
     }
@@ -191,22 +183,6 @@ struct NotesListView: View {
         let retainedIDs = deckOrder.filter(activeIDs.contains)
         let newIDs = activeNotes.map(\.id).filter { !retainedIDs.contains($0) }
         deckOrder = retainedIDs + newIDs
-        if currentDeckNoteID.map(activeIDs.contains) != true {
-            currentDeckNoteID = deckOrder.first
-        }
-    }
-
-    private func moveDeck(_ direction: DeckNavigationDirection) {
-        let currentIndex = currentDeckIndex
-        let destination: Int
-        switch direction {
-        case .previous:
-            destination = currentIndex - 1
-        case .next:
-            destination = currentIndex + 1
-        }
-        guard deckOrder.indices.contains(destination) else { return }
-        currentDeckNoteID = deckOrder[destination]
     }
 }
 
@@ -292,21 +268,80 @@ private struct NotesGridView: View {
 
 private struct NotesDeckView: View {
     let notes: [Note]
-    let currentIndex: Int
     let summaries: [NoteID: NoteTaskSummary]
     let taskPreviews: [NoteID: [NoteTaskPreview]]
     let open: (Note) -> Void
     let rename: (Note) -> Void
     let delete: (Note) -> Void
-    let move: (DeckNavigationDirection) -> Void
-    @State private var transitionProgress: CGFloat = 0
-    @State private var isCompletingSwipe = false
+
+    private var carouselGroups: [DeckCarouselGroup] {
+        let notesByColor = Dictionary(grouping: notes, by: \.color)
+        var groups = NoteColor.allCases.compactMap { color -> DeckCarouselGroup? in
+            guard let colorNotes = notesByColor[color], colorNotes.count > 1 else { return nil }
+            return DeckCarouselGroup(id: .color(color), notes: colorNotes)
+        }
+
+        let singletonNotes = notes.filter { notesByColor[$0.color]?.count == 1 }
+        if !singletonNotes.isEmpty {
+            groups.append(DeckCarouselGroup(id: .singleNoteColors, notes: singletonNotes))
+        }
+        return groups
+    }
 
     var body: some View {
         GeometryReader { proxy in
             let cardHeight = NoteCardLayoutMetrics.deckHeight(in: proxy.size.height)
             let gridCardHeight = NoteCardLayoutMetrics.gridHeight(in: proxy.size.height)
             let contentScale = cardHeight / gridCardHeight
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(carouselGroups) { group in
+                        DeckCarousel(
+                            notes: group.notes,
+                            summaries: summaries,
+                            taskPreviews: taskPreviews,
+                            cardHeight: cardHeight,
+                            contentScale: contentScale,
+                            open: open,
+                            rename: rename,
+                            delete: delete
+                        )
+                    }
+                }
+                .padding(.vertical, 24)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+}
+
+private struct DeckCarouselGroup: Identifiable {
+    enum ID: Hashable {
+        case color(NoteColor)
+        case singleNoteColors
+    }
+
+    let id: ID
+    let notes: [Note]
+}
+
+private struct DeckCarousel: View {
+    let notes: [Note]
+    let summaries: [NoteID: NoteTaskSummary]
+    let taskPreviews: [NoteID: [NoteTaskPreview]]
+    let cardHeight: CGFloat
+    let contentScale: CGFloat
+    let open: (Note) -> Void
+    let rename: (Note) -> Void
+    let delete: (Note) -> Void
+    @State private var currentNoteID: NoteID?
+    @State private var transitionProgress: CGFloat = 0
+    @State private var isCompletingSwipe = false
+
+    var body: some View {
+        GeometryReader { proxy in
             ZStack(alignment: .top) {
                 ForEach(visibleCards) { item in
                     let isCurrentCard = item.relativePosition == 0
@@ -322,9 +357,7 @@ private struct NotesDeckView: View {
                         rename: { rename(item.note) },
                         delete: { delete(item.note) }
                     )
-                    .frame(
-                        width: NoteCardLayoutMetrics.deckWidth(in: proxy.size.width)
-                    )
+                    .frame(width: NoteCardLayoutMetrics.deckWidth(in: proxy.size.width))
                     .scaleEffect(transform.scale, anchor: .bottom)
                     .offset(x: transform.x, y: transform.y)
                     .rotationEffect(.degrees(transform.rotation), anchor: .bottom)
@@ -336,46 +369,55 @@ private struct NotesDeckView: View {
                     }
                 }
             }
-            .frame(width: proxy.size.width, height: max(0, proxy.size.height - 56), alignment: .top)
-            .padding(.top, 32)
-            .padding(.bottom, 24)
-            .contentShape(Rectangle())
-            .gesture(swipeGesture(in: proxy.size))
-            .clipped()
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+            .background {
+                DeckHorizontalPanRecognizer(
+                    canMove: canMove,
+                    changed: { translation, _ in handlePanChanged(translation, in: proxy.size) },
+                    ended: { translation, velocity in
+                        handlePanEnded(translation, velocity: velocity, in: proxy.size)
+                    },
+                    cancelled: cancelPan
+                )
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(height: cardHeight + 52)
+        .onAppear(perform: reconcileCurrentNote)
+        .onChange(of: notes.map(\.id)) { _, _ in reconcileCurrentNote() }
     }
 
-    private func swipeGesture(in size: CGSize) -> some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { value in
-                guard !isCompletingSwipe else { return }
-                transitionProgress = progress(for: value.translation.width, in: size.width)
-            }
-            .onEnded { value in
-                guard !isCompletingSwipe else { return }
-                let projectedProgress = progress(for: value.predictedEndTranslation.width, in: size.width)
-                if canMoveNext,
-                   transitionProgress > 0.48 || projectedProgress > 0.72 {
-                    completeSwipe(.next, value: value, in: size)
-                } else if canMovePrevious,
-                          transitionProgress < -0.48 || projectedProgress < -0.72 {
-                    completeSwipe(.previous, value: value, in: size)
-                } else {
-                    withAnimation(.interpolatingSpring(stiffness: 280, damping: 28)) {
-                        transitionProgress = 0
-                    }
-                }
-            }
+    private func handlePanChanged(_ translation: CGFloat, in size: CGSize) {
+        guard !isCompletingSwipe else { return }
+        transitionProgress = progress(for: translation, in: size.width)
+    }
+
+    private func handlePanEnded(_ translation: CGFloat, velocity: CGFloat, in size: CGSize) {
+        guard !isCompletingSwipe else { return }
+        let projectedProgress = progress(for: translation + velocity * 0.18, in: size.width)
+        if canMoveNext,
+           transitionProgress > 0.48 || projectedProgress > 0.72 {
+            completeSwipe(.next, velocity: velocity, in: size)
+        } else if canMovePrevious,
+                  transitionProgress < -0.48 || projectedProgress < -0.72 {
+            completeSwipe(.previous, velocity: velocity, in: size)
+        } else {
+            cancelPan()
+        }
+    }
+
+    private func cancelPan() {
+        withAnimation(.interpolatingSpring(stiffness: 280, damping: 28)) {
+            transitionProgress = 0
+        }
     }
 
     private func completeSwipe(
         _ direction: DeckNavigationDirection,
-        value: DragGesture.Value,
+        velocity: CGFloat,
         in size: CGSize
     ) {
         isCompletingSwipe = true
-        let projectedVelocity = min(4, abs(value.predictedEndTranslation.width - value.translation.width) / size.width)
+        let projectedVelocity = min(4, abs(velocity) / max(size.width, 1))
         let destination: CGFloat = direction == .next ? 1 : -1
 
         withAnimation(
@@ -387,7 +429,7 @@ private struct NotesDeckView: View {
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
-                move(direction)
+                currentNoteID = notes[destinationIndex(for: direction)].id
                 transitionProgress = 0
                 isCompletingSwipe = false
             }
@@ -403,8 +445,35 @@ private struct NotesDeckView: View {
         }
     }
 
+    private var currentIndex: Int {
+        guard let currentNoteID,
+              let index = notes.firstIndex(where: { $0.id == currentNoteID }) else { return 0 }
+        return index
+    }
+
     private var canMovePrevious: Bool { currentIndex > notes.startIndex }
     private var canMoveNext: Bool { currentIndex + 1 < notes.endIndex }
+
+    private func canMove(_ direction: DeckNavigationDirection) -> Bool {
+        switch direction {
+        case .previous: canMovePrevious
+        case .next: canMoveNext
+        }
+    }
+
+    private func destinationIndex(for direction: DeckNavigationDirection) -> Int {
+        switch direction {
+        case .previous: currentIndex - 1
+        case .next: currentIndex + 1
+        }
+    }
+
+    private func reconcileCurrentNote() {
+        let activeIDs = Set(notes.map(\.id))
+        if currentNoteID.map(activeIDs.contains) != true {
+            currentNoteID = notes.first?.id
+        }
+    }
 
     private func progress(for horizontalTranslation: CGFloat, in width: CGFloat) -> CGFloat {
         var progress = -horizontalTranslation / max(width * 0.36, 1)
@@ -425,6 +494,116 @@ private struct NotesDeckView: View {
             opacity: max(0.46, 1 - 0.17 * magnitude)
         )
     }
+}
+
+private struct DeckHorizontalPanRecognizer: UIViewRepresentable {
+    let canMove: (DeckNavigationDirection) -> Bool
+    let changed: (CGFloat, CGFloat) -> Void
+    let ended: (CGFloat, CGFloat) -> Void
+    let cancelled: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(canMove: canMove, changed: changed, ended: ended, cancelled: cancelled)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        DispatchQueue.main.async { context.coordinator.attach(to: view) }
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        context.coordinator.canMove = canMove
+        context.coordinator.changed = changed
+        context.coordinator.ended = ended
+        context.coordinator.cancelled = cancelled
+        context.coordinator.attach(to: view)
+    }
+
+    static func dismantleUIView(_ view: UIView, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var canMove: (DeckNavigationDirection) -> Bool
+        var changed: (CGFloat, CGFloat) -> Void
+        var ended: (CGFloat, CGFloat) -> Void
+        var cancelled: () -> Void
+        private let panGesture: UIPanGestureRecognizer
+        private weak var trackingView: UIView?
+        private weak var scrollView: UIScrollView?
+
+        init(
+            canMove: @escaping (DeckNavigationDirection) -> Bool,
+            changed: @escaping (CGFloat, CGFloat) -> Void,
+            ended: @escaping (CGFloat, CGFloat) -> Void,
+            cancelled: @escaping () -> Void
+        ) {
+            self.canMove = canMove
+            self.changed = changed
+            self.ended = ended
+            self.cancelled = cancelled
+            panGesture = UIPanGestureRecognizer()
+            super.init()
+            panGesture.addTarget(self, action: #selector(handlePan))
+            panGesture.delegate = self
+            panGesture.cancelsTouchesInView = false
+        }
+
+        func attach(to view: UIView) {
+            trackingView = view
+            guard scrollView == nil, let enclosingScrollView = enclosingScrollView(from: view) else { return }
+            enclosingScrollView.addGestureRecognizer(panGesture)
+            enclosingScrollView.panGestureRecognizer.require(toFail: panGesture)
+            scrollView = enclosingScrollView
+        }
+
+        func detach() {
+            panGesture.view?.removeGestureRecognizer(panGesture)
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            let velocity = panGesture.velocity(in: scrollView)
+            guard abs(velocity.x) > abs(velocity.y) * 1.35 else { return false }
+            return canMove(velocity.x < 0 ? .next : .previous)
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let trackingView, let scrollView else { return false }
+            let carouselFrame = trackingView.convert(trackingView.bounds, to: scrollView)
+            return carouselFrame.contains(touch.location(in: scrollView))
+        }
+
+        @objc private func handlePan() {
+            let translation = panGesture.translation(in: scrollView)
+            let velocity = panGesture.velocity(in: scrollView)
+            switch panGesture.state {
+            case .began, .changed:
+                changed(translation.x, velocity.x)
+            case .ended:
+                ended(translation.x, velocity.x)
+            case .cancelled, .failed:
+                cancelled()
+            default:
+                break
+            }
+        }
+    }
+}
+
+private func enclosingScrollView(from view: UIView) -> UIScrollView? {
+    var candidate = view.superview
+    while let current = candidate {
+        if let scrollView = current as? UIScrollView { return scrollView }
+        candidate = current.superview
+    }
+    var responder: UIResponder? = view.next
+    while let current = responder {
+        if let scrollView = current as? UIScrollView { return scrollView }
+        responder = current.next
+    }
+    return nil
 }
 
 private struct DeckCardItem: Identifiable {
