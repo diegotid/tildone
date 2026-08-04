@@ -18,7 +18,7 @@ struct WorkspaceStatusView: View {
                 systemImage: SyncStatusPresentation.symbol(for: status)
             )
         } description: {
-            Text(SyncStatusPresentation.detail(for: status) ?? "Tildone cannot open a workspace right now.")
+            Text(SyncStatusPresentation.detail(for: status) ?? String(localized: "Tildone cannot open a workspace right now."))
         } actions: {
             if status.availability == .temporarilyUnavailable {
                 Button("Try Again", action: retry)

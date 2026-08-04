@@ -8,6 +8,6 @@ import TildoneDomain
 
 extension NoteTaskSummary {
     var accessibilityDescription: String {
-        "\(completedCount) of \(totalCount) tasks completed"
+        String(localized: "\(completedCount) of \(totalCount) tasks completed")
     }
 }

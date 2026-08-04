@@ -219,9 +219,9 @@ private enum NotesOverviewLayout: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .list: "List"
-        case .grid: "Grid"
-        case .deck: "Card Deck"
+        case .list: String(localized: "List")
+        case .grid: String(localized: "Grid")
+        case .deck: String(localized: "Deck")
         }
     }
 
@@ -458,7 +458,7 @@ private struct NoteCard: View {
 
     private var title: String {
         guard let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
-            return "Untitled Note"
+            return String(localized: "Untitled Note")
         }
         return title
     }
@@ -512,7 +512,7 @@ private struct NoteCard: View {
             Button("Delete", role: .destructive, action: delete)
         }
         .accessibilityLabel(title)
-        .accessibilityValue(summary?.accessibilityDescription ?? "No tasks")
+        .accessibilityValue(summary?.accessibilityDescription ?? String(localized: "No tasks"))
         .accessibilityHint("Double tap to open the full checklist")
     }
 }

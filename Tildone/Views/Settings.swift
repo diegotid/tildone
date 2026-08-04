@@ -141,7 +141,7 @@ private extension SettingsForm {
     
     @ViewBuilder
     func noteColorSettings() -> some View {
-        Text("Note color")
+        Text("Default note color")
             .foregroundColor(.secondary)
             .padding(.top, 8)
         HStack(spacing: 9) {

@@ -15,7 +15,7 @@ struct NoteListRow: View {
     private var title: String {
         note.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
             ? note.title!
-            : "Untitled Note"
+            : String(localized: "Untitled Note")
     }
 
     var body: some View {
@@ -50,9 +50,9 @@ struct NoteListRow: View {
     }
 
     private var accessibilityDescription: String {
-        let completion = summary?.accessibilityDescription ?? "No tasks"
+        let completion = summary?.accessibilityDescription ?? String(localized: "No tasks")
         guard let taskListText, !taskListText.isEmpty else { return completion }
-        return "\(completion). Tasks: \(taskListText)"
+        return String(localized: "\(completion). Tasks: \(taskListText)")
     }
 }
 

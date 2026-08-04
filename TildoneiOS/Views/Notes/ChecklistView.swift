@@ -86,7 +86,7 @@ struct ChecklistView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(note.color.swiftUIColor.opacity(0.22))
-                .navigationTitle(note.title?.isEmpty == false ? note.title! : "Untitled Note")
+                .navigationTitle(note.title?.isEmpty == false ? note.title! : String(localized: "Untitled Note"))
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

@@ -309,7 +309,7 @@ private struct MacSystemReleaseNote: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(version.map { "Updated to v\($0)" } ?? "Updated")
+            Text(version.map { String(localized: "Updated to v\($0)") } ?? String(localized: "Updated"))
                 .font(.system(size: 20, weight: .bold, design: .rounded))
             Text("New features:\n• Ability to change color and adjust the transparency of notes\n• Enhanced keyboard navigation for the task list")
                 .fixedSize(horizontal: false, vertical: true)

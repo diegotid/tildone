@@ -167,7 +167,7 @@ struct Note: View {
         )) {
             Button("OK", role: .cancel) { mutationErrorMessage = nil }
         } message: {
-            Text(mutationErrorMessage ?? "Your notes remain on this Mac.")
+            Text(mutationErrorMessage ?? String(localized: "Your notes remain on this Mac."))
         }
     }
 }
@@ -534,7 +534,7 @@ private extension Note {
                     .padding(.top, -32).padding(.horizontal, 8).frame(maxWidth: .infinity, alignment: .leading)
             }
             Gauge(value: total == 0 ? 0 : Float(total - pending), in: 0...Float(max(total, 1))) {
-                Text(complete ? "all done" : total == 0 ? "no tasks" : "pending").font(.system(size: 10)).foregroundStyle(foreground)
+                Text(statusText(complete: complete, total: total)).font(.system(size: 10)).foregroundStyle(foreground)
             } currentValueLabel: {
                 Text("\(pending)").bold().font(.system(size: 30)).foregroundStyle(foreground)
             }
@@ -544,6 +544,12 @@ private extension Note {
         .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
         .onTapGesture(perform: handleBringUp)
         .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
+    }
+
+    private func statusText(complete: Bool, total: Int) -> String {
+        if complete { return String(localized: "all done") }
+        if total == 0 { return String(localized: "no tasks") }
+        return String(localized: "pending")
     }
 
     func listTopic() -> some View {
@@ -1031,7 +1037,7 @@ private struct TaskReorderPreview: View {
             Checkbox(checked: isCompleted)
                 .disabled(true)
 
-            Text(taskText.isEmpty ? "Untitled task" : taskText)
+            Text(taskText.isEmpty ? String(localized: "Untitled task") : taskText)
                 .font(.system(size: CGFloat(fontSize)))
                 .lineLimit(1)
                 .truncationMode(.tail)
