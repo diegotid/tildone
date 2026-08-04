@@ -214,7 +214,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 let localRepository = try await (Self.isTestProcess
                     ? TildoneRepository(descriptor: .inMemory())
                     : Self.openRepository())
-                if !Self.syncFeatureEnabled || Self.isTestProcess {
+                if Self.isTestProcess {
                     let store = MacSharedStore(repository: localRepository)
                     try await store.prepareForPresentation()
                     self.store = store
@@ -405,16 +405,6 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         false
 #endif
     }
-
-
-    private static var syncFeatureEnabled: Bool {
-#if DEBUG
-        true
-#else
-        false
-#endif
-    }
-
     /// Explicit development-only approval for the unresolved local-only to
     /// account-workspace adoption policy. Merely signing into iCloud never
     /// uploads local-only notes.
