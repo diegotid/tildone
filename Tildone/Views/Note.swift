@@ -650,27 +650,87 @@ private extension Note {
     }
 }
 
-struct NoteColorPickerButton: View {
+final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitlebarIcon> {
+    private let store: MacSharedStore
+    private let noteID: NoteID
+    private let popover = NSPopover()
+
+    required init(rootView: NoteColorPickerTitlebarIcon) {
+        store = rootView.store
+        noteID = rootView.noteID
+        super.init(rootView: rootView)
+        toolTip = "Note color"
+        setAccessibilityLabel("Note color")
+        setAccessibilityRole(.button)
+        popover.behavior = .transient
+    }
+
+    convenience init(store: MacSharedStore, noteID: NoteID) {
+        self.init(rootView: NoteColorPickerTitlebarIcon(store: store, noteID: noteID))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        togglePopover()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        togglePopover()
+        return true
+    }
+
+    private func togglePopover() {
+        if popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+
+        let controller = NSViewController()
+        let paletteView = NSHostingView(
+            rootView: NoteColorPickerTitlebarPalette(store: store, noteID: noteID) { [weak self] in
+                self?.popover.performClose(nil)
+            }
+            .fixedSize()
+        )
+        let paletteSize = NSSize(width: 126, height: 80)
+        paletteView.frame = NSRect(origin: .zero, size: paletteSize)
+        controller.view = paletteView
+        popover.contentViewController = controller
+        popover.contentSize = paletteSize
+
+        popover.show(relativeTo: bounds, of: self, preferredEdge: .maxY)
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+}
+
+struct NoteColorPickerTitlebarIcon: View {
     @ObservedObject var store: MacSharedStore
     let noteID: NoteID
-    @State private var isPresented = false
-
-    private var color: NoteColor { store.note(noteID)?.color ?? .yellow }
 
     var body: some View {
-        Button {
-            isPresented.toggle()
-        } label: {
-            NoteColorPickerIcon(color: color)
-        }
-        .buttonStyle(.plain)
-        .help("Note color")
-        .accessibilityLabel("Note color")
-        .popover(isPresented: $isPresented, arrowEdge: .top) {
-            NoteColorPalette(selected: color) { selectedColor in
-                Swift.Task { try? await store.setColor(selectedColor, for: noteID) }
-                isPresented = false
-            }
+        NoteColorPickerIcon(color: store.note(noteID)?.color ?? .yellow)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .ignoresSafeArea()
+    }
+}
+
+private struct NoteColorPickerTitlebarPalette: View {
+    @ObservedObject var store: MacSharedStore
+    let noteID: NoteID
+    let dismiss: () -> Void
+
+    var body: some View {
+        NoteColorPalette(selected: store.note(noteID)?.color ?? .yellow) { selectedColor in
+            Swift.Task { try? await store.setColor(selectedColor, for: noteID) }
+            dismiss()
         }
     }
 }

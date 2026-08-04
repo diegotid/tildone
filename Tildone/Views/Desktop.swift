@@ -189,12 +189,23 @@ private extension Desktop {
     }
 
     func addNoteColorPicker(to window: NSWindow, noteID: NoteID) {
-        let accessory = NSTitlebarAccessoryViewController()
-        let picker = NSHostingView(rootView: NoteColorPickerButton(store: store, noteID: noteID))
-        picker.frame = NSRect(x: 0, y: 0, width: 30, height: 20)
-        accessory.view = picker
-        accessory.layoutAttribute = .right
-        window.addTitlebarAccessoryViewController(accessory)
+        guard let contentView = window.contentView,
+              let themeFrame = contentView.superview,
+              let closeButton = window.standardWindowButton(.closeButton) else {
+            return
+        }
+
+        let picker = NoteColorPickerTitlebarControl(store: store, noteID: noteID)
+        let pickerSize = NSSize(width: 26, height: 22)
+        let closeButtonFrame = closeButton.convert(closeButton.bounds, to: themeFrame)
+        picker.frame = NSRect(
+            x: themeFrame.bounds.maxX - pickerSize.width - 2,
+            y: closeButtonFrame.midY - pickerSize.height / 2 - 4,
+            width: pickerSize.width,
+            height: pickerSize.height
+        )
+        picker.autoresizingMask = [.minXMargin, .minYMargin]
+        themeFrame.addSubview(picker, positioned: .above, relativeTo: nil)
     }
 
     func openSystemReleaseNote(version: String?) {
