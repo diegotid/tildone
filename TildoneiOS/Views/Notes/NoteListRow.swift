@@ -19,30 +19,31 @@ struct NoteListRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 21) {
-            NoteCompletionGauge(summary: summary)
-                .scaleEffect(0.8, anchor: .center)
+        HStack(spacing: 16) {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(note.color.swiftUIColor)
+                .frame(width: 12, height: 40)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body.weight(.medium))
-                    .lineLimit(1)
-                if let taskListText, !taskListText.isEmpty {
-                    Text(taskListText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            HStack(spacing: 13) {
+                NoteCompletionGauge(summary: summary)
+                    .scaleEffect(0.8, anchor: .center)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.body.weight(.medium))
                         .lineLimit(1)
-                        .truncationMode(.tail)
+                    if let taskListText, !taskListText.isEmpty {
+                        Text(taskListText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            note.color.swiftUIColor.opacity(0.32),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
+        .padding(.leading, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityDescription)

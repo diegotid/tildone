@@ -307,7 +307,7 @@ private struct NotesDeckView: View {
             let cardHeight = NoteCardLayoutMetrics.deckHeight(in: proxy.size.height)
             let gridCardHeight = NoteCardLayoutMetrics.gridHeight(in: proxy.size.height)
             let contentScale = cardHeight / gridCardHeight
-            ZStack {
+            ZStack(alignment: .top) {
                 ForEach(visibleCards) { item in
                     let isCurrentCard = item.relativePosition == 0
                     let effectivePosition = Double(item.relativePosition) - Double(transitionProgress)
@@ -336,7 +336,7 @@ private struct NotesDeckView: View {
                     }
                 }
             }
-            .frame(width: proxy.size.width, height: max(0, proxy.size.height - 56), alignment: .center)
+            .frame(width: proxy.size.width, height: max(0, proxy.size.height - 56), alignment: .top)
             .padding(.top, 32)
             .padding(.bottom, 24)
             .contentShape(Rectangle())
@@ -464,19 +464,22 @@ private struct NoteCard: View {
     }
 
     var body: some View {
-        let gaugeSize = 24 * contentScale
+        let gaugeSize = 24 * contentScale * 0.8
         let cornerRadius = 16 * contentScale
 
         VStack(alignment: .leading, spacing: 12 * contentScale) {
             HStack(alignment: .center, spacing: 8 * contentScale) {
                 Text(title)
                     .font(.system(size: baseTitleSize * contentScale, weight: .semibold))
-                    .lineLimit(style == .deck ? 2 : 1)
+                    .foregroundStyle(.black)
+                    .lineLimit(2)
                     .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     .layoutPriority(1)
                 Spacer(minLength: 0)
-                HStack(spacing: 14 * contentScale) {
+                HStack(alignment: .center, spacing: 14 * contentScale) {
                     NoteCompletionGauge(summary: summary)
+                        .foregroundStyle(.black)
                         .scaleEffect(gaugeSize / 40)
                         .frame(width: gaugeSize, height: gaugeSize)
                     Image(systemName: "chevron.right")
@@ -493,10 +496,14 @@ private struct NoteCard: View {
         .padding(.top, 14 * contentScale)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(height: height, alignment: .top)
-        .background(
-            note.color.swiftUIColor,
-            in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        )
+        .background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(note.color.swiftUIColor)
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(.white.opacity(0.20))
+                }
+        }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 6 * contentScale, y: 3 * contentScale)
         .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -522,7 +529,7 @@ private struct NoteCardTaskList: View {
             if tasks.isEmpty {
                 Text("No tasks yet")
                     .font(.system(size: baseTaskSize * contentScale))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.black)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 LazyVStack(alignment: .leading, spacing: 8 * contentScale) {
@@ -534,7 +541,7 @@ private struct NoteCardTaskList: View {
                             )
                             Text(task.text)
                                 .strikethrough(task.isCompleted)
-                                .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                                .foregroundStyle(.black)
                                 .lineLimit(style == .deck ? 2 : 1)
                         }
                         .font(.system(size: baseTaskSize * contentScale))

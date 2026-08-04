@@ -8,6 +8,7 @@ import SwiftUI
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
+import UIKit
 
 struct ChecklistView: View {
     @ObservedObject var appModel: TildoneiOSApplicationModel
@@ -100,11 +101,17 @@ struct ChecklistView: View {
                                 }
                             )) {
                                 ForEach(NoteColor.allCases) { color in
-                                    Text(color.localizedLabel).tag(color)
+                                    Label {
+                                        Text(color.localizedLabel)
+                                    } icon: {
+                                        Image(uiImage: NoteColorMenuSwatch.image(for: color))
+                                            .renderingMode(.original)
+                                    }
+                                    .tag(color)
                                 }
                             }
                         } label: {
-                            Label("Note color", systemImage: "paintpalette.fill")
+                            NoteColorPickerSymbol(color: note.color)
                         }
                         .accessibilityLabel("Note color")
                     }
@@ -196,6 +203,47 @@ struct ChecklistView: View {
     private func delete(taskID: TaskID) async {
         try? await appModel.delete(taskID: taskID)
         await reload()
+    }
+}
+
+private struct NoteColorPickerSymbol: View {
+    let color: NoteColor
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(
+                    AngularGradient(
+                        colors: [.red, .orange, .yellow, .green, .blue, .purple, .pink, .red],
+                        center: .center
+                    ),
+                    lineWidth: 2.5
+                )
+            Circle()
+                .fill(color.swiftUIColor)
+                .padding(5)
+                .overlay {
+                    Circle()
+                        .stroke(.black.opacity(0.18), lineWidth: 0.5)
+                        .padding(5)
+                }
+        }
+        .frame(width: 24, height: 24)
+    }
+}
+
+private enum NoteColorMenuSwatch {
+    static func image(for color: NoteColor) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 14, height: 14))
+        return renderer.image { context in
+            let circle = CGRect(x: 1, y: 1, width: 12, height: 12)
+            context.cgContext.setFillColor(UIColor(color.swiftUIColor).cgColor)
+            context.cgContext.fillEllipse(in: circle)
+            context.cgContext.setStrokeColor(UIColor.black.withAlphaComponent(0.18).cgColor)
+            context.cgContext.setLineWidth(1)
+            context.cgContext.strokeEllipse(in: circle.insetBy(dx: 0.5, dy: 0.5))
+        }
+        .withRenderingMode(.alwaysOriginal)
     }
 }
 
