@@ -25,13 +25,26 @@ struct TildoneApp: App {
         }
     }
 
+    private var noteSyncIndicatorState: MacNoteSyncIndicatorState {
+        let displayState = MacSyncPresentation.state(
+            status: sharedStoreBootstrapper.syncStatus,
+            transportState: sharedStoreBootstrapper.transportState,
+            enabledByDefault: MacSharedStoreBootstrapper.transportEnabledByDefault,
+            hasUnadoptedLocalWorkspace: sharedStoreBootstrapper.hasUnadoptedLocalWorkspace
+        )
+        return MacNoteSyncIndicatorState.resolve(
+            isUsingNotesOnMacByChoice: sharedStoreBootstrapper.isUsingNotesOnMacByChoice,
+            syncNeedsAttention: displayState == .attentionNeeded
+        )
+    }
+
     var body: some Scene {
         TildonePrimaryScene {
             Group {
                 if let store = sharedStoreBootstrapper.store {
                     Desktop(
                         store: store,
-                        showsMacOnlySyncIndicator: sharedStoreBootstrapper.isUsingNotesOnMacByChoice,
+                        noteSyncIndicatorState: noteSyncIndicatorState,
                         foregroundNoteID: $foregroundNoteID
                     )
                         .id(ObjectIdentifier(store))

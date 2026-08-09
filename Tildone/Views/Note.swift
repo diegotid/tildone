@@ -22,6 +22,22 @@ struct MacTaskDragPayload: Codable, Hashable, Transferable {
     }
 }
 
+enum MacNoteTitlebarLayout {
+    static let titleLeadingInset: CGFloat = 78
+    static let trailingMargin: CGFloat = 2
+    static let colorPickerWidth: CGFloat = 26
+    static let syncIndicatorWidth: CGFloat = 24
+    static let controlHeight: CGFloat = 22
+    static let controlSpacing: CGFloat = 2
+    static let titleControlSpacing: CGFloat = 6
+
+    /// Reserve the maximum title-bar control width so the title neither
+    /// overlaps nor jumps when the sync indicator appears or changes state.
+    static var titleTrailingInset: CGFloat {
+        trailingMargin + colorPickerWidth + controlSpacing + syncIndicatorWidth + titleControlSpacing
+    }
+}
+
 /// Restart-safe presentation state for a note's destructive completion grace
 /// period. The persisted completion date identifies one completion cycle, so a
 /// restored or remotely completed note resumes the same fade instead of being
@@ -656,19 +672,69 @@ private extension Note {
     }
 }
 
-final class MacOnlyNotesTitlebarControl: NSHostingView<MacOnlyNotesTitlebarIcon> {
-    required init(rootView: MacOnlyNotesTitlebarIcon) {
+enum MacNoteSyncIndicatorState: Equatable {
+    case hidden
+    case onlyOnThisMac
+    case attentionNeeded
+
+    static func resolve(
+        isUsingNotesOnMacByChoice: Bool,
+        syncNeedsAttention: Bool
+    ) -> MacNoteSyncIndicatorState {
+        if syncNeedsAttention { return .attentionNeeded }
+        return isUsingNotesOnMacByChoice ? .onlyOnThisMac : .hidden
+    }
+
+    var symbolName: String {
+        switch self {
+        case .hidden: "icloud"
+        case .onlyOnThisMac: "icloud.slash"
+        case .attentionNeeded: "exclamationmark.icloud"
+        }
+    }
+
+    var status: String {
+        switch self {
+        case .hidden: ""
+        case .onlyOnThisMac:
+            String(localized: "Only on this Mac — not syncing with iPhone or iCloud.")
+        case .attentionNeeded:
+            String(localized: "Not syncing with iCloud right now. Your notes are safe on this Mac.")
+        }
+    }
+
+    var accessibilityHelp: String {
+        switch self {
+        case .hidden: ""
+        case .onlyOnThisMac: String(localized: "Review Options…")
+        case .attentionNeeded: String(localized: "Sync Status…")
+        }
+    }
+
+    var actionNotification: Notification.Name? {
+        switch self {
+        case .hidden: nil
+        case .onlyOnThisMac: .openSyncResolutionOptions
+        case .attentionNeeded: .openSyncStatus
+        }
+    }
+}
+
+final class MacNoteSyncTitlebarControl: NSHostingView<MacNoteSyncTitlebarIcon> {
+    private let state: MacNoteSyncIndicatorState
+
+    required init(rootView: MacNoteSyncTitlebarIcon) {
+        state = rootView.state
         super.init(rootView: rootView)
-        let status = String(localized: "Only on this Mac — not syncing with iPhone or iCloud.")
-        toolTip = status
+        toolTip = state.status
         setAccessibilityElement(true)
-        setAccessibilityLabel(status)
-        setAccessibilityHelp(String(localized: "Review Options…"))
+        setAccessibilityLabel(state.status)
+        setAccessibilityHelp(state.accessibilityHelp)
         setAccessibilityRole(.button)
     }
 
-    convenience init() {
-        self.init(rootView: MacOnlyNotesTitlebarIcon())
+    convenience init(state: MacNoteSyncIndicatorState) {
+        self.init(rootView: MacNoteSyncTitlebarIcon(state: state))
     }
 
     @available(*, unavailable)
@@ -690,7 +756,8 @@ final class MacOnlyNotesTitlebarControl: NSHostingView<MacOnlyNotesTitlebarIcon>
     }
 
     private func openOptions() {
-        NotificationCenter.default.post(name: .openSyncResolutionOptions, object: nil)
+        guard let actionNotification = state.actionNotification else { return }
+        NotificationCenter.default.post(name: actionNotification, object: nil)
     }
 
     override func resetCursorRects() {
@@ -698,11 +765,15 @@ final class MacOnlyNotesTitlebarControl: NSHostingView<MacOnlyNotesTitlebarIcon>
     }
 }
 
-struct MacOnlyNotesTitlebarIcon: View {
+struct MacNoteSyncTitlebarIcon: View {
+    let state: MacNoteSyncIndicatorState
+
     var body: some View {
-        Image(systemName: "icloud.slash")
+        Image(systemName: state.symbolName)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(state == .attentionNeeded
+                ? Color(nsColor: .systemOrange)
+                : Color(nsColor: .secondaryLabelColor))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .ignoresSafeArea()

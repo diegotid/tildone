@@ -36,20 +36,47 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
-    func testMacOnlyNotesIndicatorIsAccessibleAndActionable() {
-        let control = MacOnlyNotesTitlebarControl()
-        let status = String(localized: "Only on this Mac — not syncing with iPhone or iCloud.")
+    func testMacNoteSyncIndicatorDistinguishesLocalChoiceAndAttention() {
+        XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
+            isUsingNotesOnMacByChoice: false,
+            syncNeedsAttention: false
+        ), .hidden)
+        XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
+            isUsingNotesOnMacByChoice: true,
+            syncNeedsAttention: false
+        ), .onlyOnThisMac)
+        XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
+            isUsingNotesOnMacByChoice: true,
+            syncNeedsAttention: true
+        ), .attentionNeeded)
 
-        XCTAssertEqual(control.toolTip, status)
-        XCTAssertEqual(control.accessibilityLabel(), status)
-        XCTAssertEqual(control.accessibilityRole(), .button)
+        let localControl = MacNoteSyncTitlebarControl(state: .onlyOnThisMac)
+        let localStatus = String(localized: "Only on this Mac — not syncing with iPhone or iCloud.")
+        XCTAssertEqual(localControl.toolTip, localStatus)
+        XCTAssertEqual(localControl.accessibilityLabel(), localStatus)
+        XCTAssertEqual(localControl.accessibilityRole(), .button)
 
         let opensOptions = expectation(
             forNotification: .openSyncResolutionOptions,
             object: nil
         )
-        XCTAssertTrue(control.accessibilityPerformPress())
+        XCTAssertTrue(localControl.accessibilityPerformPress())
         wait(for: [opensOptions], timeout: 1)
+
+        let attentionControl = MacNoteSyncTitlebarControl(state: .attentionNeeded)
+        let attentionStatus = String(localized: "Not syncing with iCloud right now. Your notes are safe on this Mac.")
+        XCTAssertEqual(MacNoteSyncIndicatorState.attentionNeeded.symbolName, "exclamationmark.icloud")
+        XCTAssertNotNil(NSImage(
+            systemSymbolName: MacNoteSyncIndicatorState.attentionNeeded.symbolName,
+            accessibilityDescription: attentionStatus
+        ))
+        XCTAssertEqual(attentionControl.toolTip, attentionStatus)
+        XCTAssertEqual(attentionControl.accessibilityLabel(), attentionStatus)
+        XCTAssertEqual(attentionControl.accessibilityRole(), .button)
+
+        let opensStatus = expectation(forNotification: .openSyncStatus, object: nil)
+        XCTAssertTrue(attentionControl.accessibilityPerformPress())
+        wait(for: [opensStatus], timeout: 1)
     }
 
     func testMacRemoteRefreshPropagatesMigrationAndReloadFailures() async {
@@ -187,7 +214,6 @@ final class TildoneTests: XCTestCase {
             contentsOf: sourceURL.appendingPathComponent("Tildone/Views/Desktop.swift"),
             encoding: .utf8
         )
-
         XCTAssertTrue(appSource.contains(".alert(\"Copy notes to iCloud?\""))
         XCTAssertTrue(appSource.contains("Review Options…"))
         XCTAssertTrue(appSource.contains("Combine Notes — Recommended"))
@@ -196,13 +222,14 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(appSource.contains("resolveNotesAfterConfirmation(action)"))
         XCTAssertFalse(appSource.contains(".sheet(isPresented: $showsResolutionOptions)"))
         XCTAssertTrue(appSource.contains(".id(ObjectIdentifier(store))"))
-        XCTAssertTrue(appSource.contains("showsMacOnlySyncIndicator: sharedStoreBootstrapper.isUsingNotesOnMacByChoice"))
+        XCTAssertTrue(appSource.contains("noteSyncIndicatorState: noteSyncIndicatorState"))
+        XCTAssertTrue(appSource.contains("syncNeedsAttention: displayState == .attentionNeeded"))
         XCTAssertTrue(appSource.contains("publisher(for: .openSyncResolutionOptions)"))
         XCTAssertTrue(appSource.contains("These notes won’t appear on your iPhone or in iCloud. You can combine them later."))
-        XCTAssertTrue(desktopSource.contains("guard showsMacOnlySyncIndicator else { return }"))
-        XCTAssertTrue(desktopSource.contains("x: picker.frame.minX - indicatorSize.width - 2"))
-        XCTAssertTrue(desktopSource.contains(".onChange(of: showsMacOnlySyncIndicator)"))
-        XCTAssertTrue(desktopSource.contains("setMacOnlySyncIndicatorVisibility(isVisible)"))
+        XCTAssertTrue(desktopSource.contains("guard noteSyncIndicatorState != .hidden else { return }"))
+        XCTAssertTrue(desktopSource.contains("picker.frame.minX - indicatorSize.width - MacNoteTitlebarLayout.controlSpacing"))
+        XCTAssertTrue(desktopSource.contains(".onChange(of: noteSyncIndicatorState)"))
+        XCTAssertTrue(desktopSource.contains("setNoteSyncIndicatorState(state)"))
         XCTAssertTrue(storeSource.contains("revalidateAccount(workspaceID:"))
         XCTAssertTrue(storeSource.contains("didJustChooseNotesOnMac = true"))
         XCTAssertTrue(storeSource.contains("func dismissNotesOnMacNotice()"))

@@ -10,7 +10,7 @@ import TildoneDomain
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
     @ObservedObject var store: MacSharedStore
-    let showsMacOnlySyncIndicator: Bool
+    let noteSyncIndicatorState: MacNoteSyncIndicatorState
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
     @State private var noteWindows: [NoteID: NSWindow] = [:]
@@ -46,8 +46,8 @@ struct Desktop: View {
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
             }
-            .onChange(of: showsMacOnlySyncIndicator) { _, isVisible in
-                setMacOnlySyncIndicatorVisibility(isVisible)
+            .onChange(of: noteSyncIndicatorState) { _, state in
+                setNoteSyncIndicatorState(state)
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
@@ -209,10 +209,13 @@ private extension Desktop {
         }
 
         let picker = NoteColorPickerTitlebarControl(store: store, noteID: noteID)
-        let pickerSize = NSSize(width: 26, height: 22)
+        let pickerSize = NSSize(
+            width: MacNoteTitlebarLayout.colorPickerWidth,
+            height: MacNoteTitlebarLayout.controlHeight
+        )
         let closeButtonFrame = closeButton.convert(closeButton.bounds, to: themeFrame)
         picker.frame = NSRect(
-            x: themeFrame.bounds.maxX - pickerSize.width - 2,
+            x: themeFrame.bounds.maxX - pickerSize.width - MacNoteTitlebarLayout.trailingMargin,
             y: closeButtonFrame.midY - pickerSize.height / 2 - 4,
             width: pickerSize.width,
             height: pickerSize.height
@@ -220,15 +223,22 @@ private extension Desktop {
         picker.autoresizingMask = [.minXMargin, .minYMargin]
         themeFrame.addSubview(picker, positioned: .above, relativeTo: nil)
 
-        guard showsMacOnlySyncIndicator else { return }
-        addMacOnlySyncIndicator(to: themeFrame, beside: picker)
+        guard noteSyncIndicatorState != .hidden else { return }
+        addNoteSyncIndicator(to: themeFrame, beside: picker, state: noteSyncIndicatorState)
     }
 
-    func addMacOnlySyncIndicator(to themeFrame: NSView, beside picker: NSView) {
-        let indicator = MacOnlyNotesTitlebarControl()
-        let indicatorSize = NSSize(width: 24, height: 22)
+    func addNoteSyncIndicator(
+        to themeFrame: NSView,
+        beside picker: NSView,
+        state: MacNoteSyncIndicatorState
+    ) {
+        let indicator = MacNoteSyncTitlebarControl(state: state)
+        let indicatorSize = NSSize(
+            width: MacNoteTitlebarLayout.syncIndicatorWidth,
+            height: MacNoteTitlebarLayout.controlHeight
+        )
         indicator.frame = NSRect(
-            x: picker.frame.minX - indicatorSize.width - 2,
+            x: picker.frame.minX - indicatorSize.width - MacNoteTitlebarLayout.controlSpacing,
             y: picker.frame.minY,
             width: indicatorSize.width,
             height: indicatorSize.height
@@ -237,16 +247,17 @@ private extension Desktop {
         themeFrame.addSubview(indicator, positioned: .above, relativeTo: nil)
     }
 
-    func setMacOnlySyncIndicatorVisibility(_ isVisible: Bool) {
+    func setNoteSyncIndicatorState(_ state: MacNoteSyncIndicatorState) {
         for window in noteWindows.values {
             guard let themeFrame = window.contentView?.superview else { continue }
-            let indicators = themeFrame.subviews.compactMap { $0 as? MacOnlyNotesTitlebarControl }
-            if !isVisible {
-                indicators.forEach { $0.removeFromSuperview() }
-            } else if indicators.isEmpty,
-                      let picker = themeFrame.subviews.first(where: { $0 is NoteColorPickerTitlebarControl }) {
-                addMacOnlySyncIndicator(to: themeFrame, beside: picker)
+            themeFrame.subviews
+                .compactMap { $0 as? MacNoteSyncTitlebarControl }
+                .forEach { $0.removeFromSuperview() }
+            guard state != .hidden,
+                  let picker = themeFrame.subviews.first(where: { $0 is NoteColorPickerTitlebarControl }) else {
+                continue
             }
+            addNoteSyncIndicator(to: themeFrame, beside: picker, state: state)
         }
     }
 
