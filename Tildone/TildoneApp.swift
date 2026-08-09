@@ -746,12 +746,12 @@ final class MenuBarController: NSObject {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item("About Tildone", action: #selector(openAbout)))
+        menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout)))
         menu.addItem(.separator())
 
-        menu.addItem(item("New Note", action: #selector(createNote), keyEquivalent: "n"))
+        menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), keyEquivalent: "n"))
 
-        let showAllNotes = item("Show All Notes", action: #selector(showAllNotes), keyEquivalent: "u")
+        let showAllNotes = item(String(localized: "Show All Notes"), action: #selector(showAllNotes), keyEquivalent: "u")
         showAllNotes.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(showAllNotes)
 
@@ -772,13 +772,13 @@ final class MenuBarController: NSObject {
         menu.addItem(item(String(localized: "Sync Status…"), action: #selector(openSyncStatus)))
 
         menu.addItem(.separator())
-        let settings = item("Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.keyEquivalentModifierMask = .command
         menu.addItem(settings)
         menu.addItem(item(String(localized: "How to Use Focus Filters…"), action: #selector(openFocusFilterHelp)))
 
         menu.addItem(.separator())
-        let quit = item("Quit Tildone", action: #selector(quit), keyEquivalent: "q")
+        let quit = item(String(localized: "Quit Tildone"), action: #selector(quit), keyEquivalent: "q")
         quit.keyEquivalentModifierMask = .command
         menu.addItem(quit)
         return menu
