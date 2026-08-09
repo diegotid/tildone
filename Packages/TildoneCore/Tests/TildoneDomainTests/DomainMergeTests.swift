@@ -132,6 +132,64 @@ final class DomainMergeTests: XCTestCase {
         XCTAssertEqual(merged.lastMeaningfulEditAt, Date(timeIntervalSince1970: 30))
     }
 
+    func testColorMigrationAuthorityIsIndependentOfUpgradeAndDeliveryOrder() throws {
+        let base = Fixtures.note()
+        let macReplica = NoteColorMigrationAuthority.legacyMac.migrationReplicaID(
+            sourceReplicaID: ReplicaID(testUUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+        )
+        let phoneReplica = NoteColorMigrationAuthority.platformDefault.migrationReplicaID(
+            sourceReplicaID: ReplicaID(testUUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
+        )
+        let legacyV1 = Note(
+            id: base.id, createdAt: base.createdAt, title: base.title,
+            titleVersion: VersionStamp(logicalCounter: 900, replicaID: Fixtures.replicaID),
+            color: .yellow,
+            colorVersion: VersionStamp(logicalCounter: 900, replicaID: Fixtures.replicaID),
+            lifecycle: base.lifecycle,
+            lifecycleVersion: base.lifecycleVersion,
+            lastMeaningfulEditAt: base.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: base.lastMeaningfulEditVersion,
+            schemaVersion: 1
+        )
+        let phoneBackfill = Note(
+            id: base.id, createdAt: base.createdAt, title: base.title,
+            titleVersion: base.titleVersion, color: .yellow,
+            colorVersion: VersionStamp(logicalCounter: 700, replicaID: phoneReplica),
+            lifecycle: base.lifecycle, lifecycleVersion: base.lifecycleVersion,
+            lastMeaningfulEditAt: base.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: base.lastMeaningfulEditVersion,
+            schemaVersion: 2
+        )
+        let macBackfill = Note(
+            id: base.id, createdAt: base.createdAt, title: base.title,
+            titleVersion: base.titleVersion, color: .pink,
+            colorVersion: VersionStamp(logicalCounter: 2, replicaID: macReplica),
+            lifecycle: base.lifecycle, lifecycleVersion: base.lifecycleVersion,
+            lastMeaningfulEditAt: base.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: base.lastMeaningfulEditVersion,
+            schemaVersion: 2
+        )
+        let existingV2Winner = Note(
+            id: base.id, createdAt: base.createdAt, title: base.title,
+            titleVersion: base.titleVersion, color: .purple,
+            colorVersion: VersionStamp(logicalCounter: 1, replicaID: Fixtures.replicaID),
+            lifecycle: base.lifecycle, lifecycleVersion: base.lifecycleVersion,
+            lastMeaningfulEditAt: base.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: base.lastMeaningfulEditVersion,
+            schemaVersion: 2
+        )
+
+        for pair in [(macBackfill, phoneBackfill), (phoneBackfill, macBackfill)] {
+            XCTAssertEqual(try pair.0.merged(with: pair.1).color, .pink)
+        }
+        XCTAssertEqual(try phoneBackfill.merged(with: legacyV1).color, .yellow)
+        XCTAssertEqual(try macBackfill.merged(with: legacyV1).color, .pink)
+        for value in [legacyV1, phoneBackfill, macBackfill] {
+            XCTAssertEqual(try value.merged(with: existingV2Winner).color, .purple)
+            XCTAssertEqual(try existingV2Winner.merged(with: value).color, .purple)
+        }
+    }
+
     func testInvalidImmutableOrSameVersionDivergenceIsRejectedSymmetrically() throws {
         let task = try Fixtures.task()
         let otherID = try Fixtures.task(id: Fixtures.taskID(2))

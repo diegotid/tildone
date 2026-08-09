@@ -22,9 +22,9 @@ public extension Note {
             (title, titleVersion),
             (other.title, other.titleVersion)
         )
-        let winningColor = try mergeVersioned(
-            (color, colorVersion),
-            (other.color, other.colorVersion)
+        let winningColor = try mergeColorVersioned(
+            (color, colorVersion, schemaVersion),
+            (other.color, other.colorVersion, other.schemaVersion)
         )
         let winningLifecycle = try mergeVersioned(
             (lifecycle, lifecycleVersion),
@@ -49,6 +49,32 @@ public extension Note {
             schemaVersion: max(schemaVersion, other.schemaVersion)
         )
     }
+}
+
+/// Color backfill is the only field whose conflict order carries migration
+/// authority. Explicit V2 colors beat synthesized values, a legacy Mac value
+/// beats a platform default, and an implicit V1 yellow loses to either. Values
+/// in the same class retain ordinary Lamport ordering.
+private func mergeColorVersioned(
+    _ lhs: (value: NoteColor, version: VersionStamp, schemaVersion: Int),
+    _ rhs: (value: NoteColor, version: VersionStamp, schemaVersion: Int)
+) throws -> (value: NoteColor, version: VersionStamp) {
+    func priority(_ value: (NoteColor, VersionStamp, Int)) -> Int {
+        guard value.2 >= 2 else { return 0 }
+        return NoteColorMigrationAuthority.authority(for: value.1.replicaID)?.rawValue ?? 3
+    }
+
+    let lhsPriority = priority(lhs)
+    let rhsPriority = priority(rhs)
+    if lhsPriority != rhsPriority {
+        return lhsPriority > rhsPriority
+            ? (lhs.value, lhs.version)
+            : (rhs.value, rhs.version)
+    }
+    return try mergeVersioned(
+        (lhs.value, lhs.version),
+        (rhs.value, rhs.version)
+    )
 }
 
 public extension Task {

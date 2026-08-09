@@ -16,6 +16,20 @@ This fixture proves V1 shared-store compatibility through
 `TildoneSchemaMigrationPlan`. It is distinct from the released Tildone 1.6.0
 legacy-store fixture, whose provenance is recorded in the Stage 5 summary.
 
+`TildoneSharedStoreV2` is a real `TildoneSchemaV2` account workspace generated
+on 2026-08-07 with the opt-in fixture helper in
+`TildonePersistenceTests.testGenerateV2FixtureOnlyWhenExplicitlyRequested`.
+It contains two V1-compatible stored notes (active and tombstoned), one task,
+activated legacy-migration/fingerprint/mapping evidence, account workspace
+metadata at shared schema 2, a serialized sync envelope with zone-created
+state, active/attempted/superseded outbox evidence, and a content-free
+quarantine row. By construction it has no `StoredNoteColor` model/table or V3
+sidecars. The test copies it before opening through the V2-to-V3 migration,
+injects an atomic-save interruption, retries, and reopens it offline.
+
+The V2 SQLite file SHA-256 is
+`e034619f0701283acfbc62f9817ac7f25149eb4061a1a98b7712980e03b6bb25`.
+
 `TildoneLegacy160/default.store` is an authentic test-only legacy store
 generated from the exact persisted `Todo` and `TodoList` declarations at Git
 tag `1.6.0`. Their source SHA-256 values are respectively

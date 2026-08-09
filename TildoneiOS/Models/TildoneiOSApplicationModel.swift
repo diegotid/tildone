@@ -86,7 +86,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
         await closeWorkspace(status: .disabled)
         do {
             let repository = try repositoryFactory(.account(workspaceID))
-            try await repository.migrateMissingNoteColors(colorsByNoteID: [:])
+            try await repository.migrateMissingNoteColors(
+                colorsByNoteID: [:],
+                authority: .platformDefault
+            )
             self.repository = repository
             activeWorkspace = workspaceID
             hasWorkspace = true
@@ -221,7 +224,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
     func openForTesting(workspaceID: UUID) async throws {
         await closeWorkspace(status: .disabled)
         repository = try repositoryFactory(.account(workspaceID))
-        try await repository?.migrateMissingNoteColors(colorsByNoteID: [:])
+        try await repository?.migrateMissingNoteColors(
+            colorsByNoteID: [:],
+            authority: .platformDefault
+        )
         activeWorkspace = workspaceID
         hasWorkspace = true
         isResolvingWorkspace = false
@@ -299,7 +305,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private func reloadRemoteContent(for workspaceID: UUID) async {
         guard activeWorkspace == workspaceID, let repository else { return }
         do {
-            try await repository.migrateMissingNoteColors(colorsByNoteID: [:])
+            try await repository.migrateMissingNoteColors(
+                colorsByNoteID: [:],
+                authority: .platformDefault
+            )
             try await reloadNotes()
         } catch {
             syncStatus = SyncStatus(

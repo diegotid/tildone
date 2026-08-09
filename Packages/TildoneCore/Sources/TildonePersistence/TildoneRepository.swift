@@ -258,27 +258,54 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     /// same transaction, making interruption safe and retries idempotent.
     public func migrateMissingNoteColors(
         colorsByNoteID: [NoteID: NoteColor],
-        defaultColor: NoteColor = .yellow
+        defaultColor: NoteColor = .yellow,
+        authority: NoteColorMigrationAuthority = .platformDefault
     ) throws {
         let context = mutationContext()
         let notes = try context.fetch(FetchDescriptor<StoredNote>())
         let metadata = try workspaceMetadata(in: context)
+        var storedColorsByNoteID: [String: StoredNoteColor] = [:]
+        for color in try context.fetch(FetchDescriptor<StoredNoteColor>()) {
+            guard storedColorsByNoteID.updateValue(color, forKey: color.noteStableID) == nil else {
+                throw PersistenceError.duplicateID(.note, color.noteStableID)
+            }
+        }
         for stored in notes {
             guard let id = NoteID(string: stored.stableID) else {
                 throw PersistenceError.malformedRepresentation(
                     .note, "invalid", field: "stableID"
                 )
             }
-            guard try storedNoteColor(noteID: id, in: context) == nil else { continue }
-            var note = try StoredDomainMapping.note(from: stored)
-            let stamp = try nextStamp(metadata, observing: maxVersion(in: note))
+            let storedColor = storedColorsByNoteID[id.stringValue]
+            var note = try StoredDomainMapping.note(from: stored, color: storedColor)
+            if storedColor != nil {
+                // A platform-default migration may arrive before this Mac
+                // reopens its legacy preferences. Permit only the stronger
+                // legacy-Mac migration to replace that synthesized value.
+                // Ordinary V2 colors and equal/stronger migration values are
+                // already authoritative and must remain untouched.
+                guard let existingAuthority = NoteColorMigrationAuthority.authority(
+                    for: note.colorVersion.replicaID
+                ), existingAuthority.rawValue < authority.rawValue else { continue }
+            }
+            let stamp = try nextColorMigrationStamp(
+                metadata,
+                observing: maxVersion(in: note),
+                authority: authority
+            )
             do {
                 try note.setColor(colorsByNoteID[id] ?? defaultColor, version: stamp)
             } catch {
                 throw PersistenceError.domainInvariant
             }
             stored.recordSchemaVersion = Note.currentSchemaVersion
-            context.insert(try StoredDomainMapping.storedNoteColor(from: note))
+            if let storedColor {
+                try StoredDomainMapping.update(storedColor, from: note)
+            } else {
+                let inserted = try StoredDomainMapping.storedNoteColor(from: note)
+                context.insert(inserted)
+                storedColorsByNoteID[id.stringValue] = inserted
+            }
             try enqueue(
                 .note,
                 id: id.stringValue,
@@ -751,6 +778,19 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let next = current + 1
         metadata.logicalCounter = Int64(next)
         return VersionStamp(logicalCounter: next, replicaID: replica)
+    }
+
+    private func nextColorMigrationStamp(
+        _ metadata: WorkspaceMetadata,
+        observing stamp: VersionStamp,
+        authority: NoteColorMigrationAuthority
+    ) throws -> VersionStamp {
+        let sourceReplica = try Self.validatedReplica(in: metadata)
+        let ordinary = try nextStamp(metadata, observing: stamp)
+        return VersionStamp(
+            logicalCounter: ordinary.logicalCounter,
+            replicaID: authority.migrationReplicaID(sourceReplicaID: sourceReplica)
+        )
     }
 
     private func enqueue(

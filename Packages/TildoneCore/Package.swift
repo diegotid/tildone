@@ -16,7 +16,11 @@ let package = Package(
     products: [
         .library(name: "TildoneDomain", targets: ["TildoneDomain"]),
         .library(name: "TildonePersistence", targets: ["TildonePersistence"]),
-        .library(name: "TildoneSync", targets: ["TildoneSync"])
+        .library(name: "TildoneSync", targets: ["TildoneSync"]),
+        .executable(
+            name: "TildoneCloudContractManifestGenerator",
+            targets: ["TildoneCloudContractManifestGenerator"]
+        )
     ],
     targets: [
         .target(name: "TildoneDomain"),
@@ -24,6 +28,10 @@ let package = Package(
         .target(
             name: "TildoneSync",
             dependencies: ["TildoneDomain", "TildonePersistence"]
+        ),
+        .executableTarget(
+            name: "TildoneCloudContractManifestGenerator",
+            dependencies: ["TildoneSync"]
         ),
         .testTarget(name: "TildoneDomainTests", dependencies: ["TildoneDomain"]),
         .testTarget(

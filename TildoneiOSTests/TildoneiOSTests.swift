@@ -5,6 +5,7 @@
 //  Created by Diego Rivera on 8/1/26.
 //
 import XCTest
+import CloudKit
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
@@ -12,6 +13,10 @@ import TildoneSync
 
 @MainActor
 final class TildoneiOSTests: XCTestCase {
+    func testIPhoneTransportIsDisabledUnderTests() {
+        XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
+    }
+
     func testNotesArePresentedInMeaningfulEditOrderWithUntitledFallback() async throws {
         let workspace = UUID()
         let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))
@@ -234,12 +239,55 @@ final class TildoneiOSTests: XCTestCase {
         let gaugeSource = try String(contentsOf: gaugeURL, encoding: .utf8)
 
         XCTAssertTrue(listSource.contains("NavigationLink {"))
-        XCTAssertTrue(listSource.contains(".navigationDestination(item: $createdNoteID)"))
+        XCTAssertTrue(listSource.contains(".navigationDestination(item: $presentedNoteID)"))
         XCTAssertFalse(listSource.contains("NavigationStack(path: $path)"))
         XCTAssertFalse(listSource.contains(".navigationDestination(for: NoteID.self)"))
         XCTAssertTrue(noteRowSource.contains("NoteCompletionGauge"))
         XCTAssertFalse(noteRowSource.contains("lastMeaningfulEditAt, style: .relative"))
         XCTAssertTrue(gaugeSource.contains(".gaugeStyle(.accessoryCircular)"))
+    }
+
+    /// Opt-in, read-only Development diagnostic hosted by the signed-in iOS
+    /// simulator. Exact record lookup avoids requiring a queryable CloudKit
+    /// index and never modifies the frozen Development schema or record data.
+    func testDevelopmentCloudKitNoteLookupWhenExplicitlyEnabled() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["TILDONE_RUN_DEVELOPMENT_CLOUDKIT_LOOKUP"] == "1" else {
+            throw XCTSkip("Development CloudKit lookup is explicitly opt-in")
+        }
+        let recordName = try XCTUnwrap(
+            environment["TILDONE_DEVELOPMENT_RECORD_NAME"],
+            "Set the exact Development TDNote record name, including its note- prefix"
+        )
+        let container = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
+        guard try await container.accountStatus() == .available else {
+            throw XCTSkip("A Development iCloud account is required")
+        }
+
+        let recordID = CKRecord.ID(
+            recordName: recordName,
+            zoneID: TildoneCloudSchema.zoneID
+        )
+        let results = try await container.privateCloudDatabase.records(for: [recordID])
+        let record = try XCTUnwrap(results[recordID]).get()
+        let decoded = try CloudKitRecordMapper().syncRecord(from: record)
+        guard case let .note(note) = decoded else {
+            return XCTFail("Expected a TDNote record")
+        }
+
+        let displayedTitle = note.title ?? "<nil>"
+        print(
+            "Development TDNote: title=\(displayedTitle) " +
+            "color=\(note.color.rawValue) " +
+            "titleCounter=\(note.titleVersion.logicalCounter) " +
+            "colorCounter=\(note.colorVersion.logicalCounter)"
+        )
+        if let expectedTitle = environment["TILDONE_DEVELOPMENT_EXPECTED_TITLE"] {
+            XCTAssertEqual(note.title, expectedTitle)
+        }
+        if let expectedColor = environment["TILDONE_DEVELOPMENT_EXPECTED_COLOR"] {
+            XCTAssertEqual(note.color.rawValue, expectedColor)
+        }
     }
 
     private func makeModel(repository: TildoneRepository? = nil) async throws -> TildoneiOSApplicationModel {

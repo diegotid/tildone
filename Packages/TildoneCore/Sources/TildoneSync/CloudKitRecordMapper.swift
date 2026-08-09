@@ -152,7 +152,7 @@ public struct CloudKitRecordMapper: Sendable {
     }
 }
 
-private extension CloudKitRecordMapper {
+extension CloudKitRecordMapper {
     enum Field {
         static let schemaVersion = "schemaVersion"
         static let createdAt = "createdAt"

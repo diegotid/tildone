@@ -12,6 +12,36 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    @MainActor
+    func testMacTransportIsDisabledUnderTests() {
+        XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)
+    }
+
+    func testMacRemoteRefreshPropagatesMigrationAndReloadFailures() async {
+        enum FixtureError: Error, Equatable { case migration, reload }
+        var reloadAttempted = false
+        do {
+            try await MacRemoteRefreshHandler.run(
+                migrateColors: { throw FixtureError.migration },
+                reloadSnapshots: { reloadAttempted = true }
+            )
+            XCTFail("Expected migration failure")
+        } catch {
+            XCTAssertEqual(error as? FixtureError, .migration)
+            XCTAssertFalse(reloadAttempted)
+        }
+
+        do {
+            try await MacRemoteRefreshHandler.run(
+                migrateColors: {},
+                reloadSnapshots: { throw FixtureError.reload }
+            )
+            XCTFail("Expected reload failure")
+        } catch {
+            XCTAssertEqual(error as? FixtureError, .reload)
+        }
+    }
+
     func testCheckboxDoesNotRetainParentOwnedCompletionAsLocalState() {
         let storedPropertyNames = Set(
             Mirror(reflecting: Checkbox(checked: false)).children.compactMap(\.label)
@@ -315,7 +345,9 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(source.contains("CodableRepresentation(contentType: .json)"))
         XCTAssertTrue(source.contains("TaskReorderPreview("))
         XCTAssertTrue(source.contains("Checkbox(checked: isCompleted)"))
-        XCTAssertTrue(source.contains("Text(taskText.isEmpty ? \"Untitled task\" : taskText)"))
+        XCTAssertTrue(source.contains(
+            "Text(taskText.isEmpty ? String(localized: \"Untitled task\") : taskText)"
+        ))
         XCTAssertTrue(source.contains(".padding(.top, dropPlacement == .before"))
         XCTAssertTrue(source.contains(".padding(.bottom, dropPlacement == .after"))
         XCTAssertTrue(source.contains("? TaskReorderFeedback.expandedHeight"))

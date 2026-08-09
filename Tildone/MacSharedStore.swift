@@ -201,11 +201,28 @@ enum MacSharedStoreBootstrapError: Error, LocalizedError {
     }
 }
 
+enum MacRemoteRefreshHandler {
+    static func run(
+        migrateColors: () async throws -> Void,
+        reloadSnapshots: () async throws -> Void
+    ) async throws {
+        try await migrateColors()
+        try await reloadSnapshots()
+    }
+}
+
 @MainActor
 final class MacSharedStoreBootstrapper: ObservableObject {
     @Published private(set) var store: MacSharedStore?
     @Published private(set) var error: Error?
     @Published private(set) var syncStatus: SyncStatus = .disabled
+
+    static var transportEnabledByDefault: Bool {
+        TransportDefaultPolicy.isEnabled(
+            buildMode: compiledBuildMode,
+            isTestProcess: isTestProcess
+        )
+    }
 
     func start() {
         guard store == nil, error == nil else { return }
@@ -247,8 +264,10 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     workspace: .account(workspaceID)
                 ))
                 try await Self.migrateSharedNoteColors(in: accountRepository)
+                var selectedRepository = accountRepository
                 if try await localRepository.hasSyncContent() {
-                    if Self.localWorkspaceAdoptionEnabled {
+                    if Self.transportEnabledByDefault,
+                       Self.localWorkspaceAdoptionEnabled {
                         try await accountRepository.adoptSyncContent(
                             notes: try await localRepository.allSyncNotes(),
                             tasks: try await localRepository.allSyncTasks(),
@@ -256,19 +275,27 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                         )
                         try await localRepository.markCloudSeedingBegun(at: Date())
                     } else if !(try await accountRepository.hasSyncContent()) {
-                        self.syncStatus = SyncStatus(
-                            availability: .adoptionRequired,
-                            activity: .idle
-                        )
-                        let store = MacSharedStore(repository: localRepository)
-                        try await store.prepareForPresentation()
-                        self.store = store
-                        return
+                        selectedRepository = localRepository
+                        if Self.transportEnabledByDefault {
+                            self.syncStatus = SyncStatus(
+                                availability: .adoptionRequired,
+                                activity: .idle
+                            )
+                        }
                     }
                 }
 
-                let store = MacSharedStore(repository: accountRepository)
+                let store = MacSharedStore(repository: selectedRepository)
                 try await store.prepareForPresentation()
+                guard Self.transportEnabledByDefault else {
+                    self.syncStatus = .disabled
+                    self.store = store
+                    return
+                }
+                guard selectedRepository === accountRepository else {
+                    self.store = store
+                    return
+                }
                 let coordinator = try await TildoneSyncCoordinator(
                     repository: accountRepository,
                     container: container,
@@ -281,8 +308,14 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                         }
                     },
                     onRemoteChange: { [weak store, accountRepository] in
-                        try? await Self.migrateSharedNoteColors(in: accountRepository)
-                        try? await store?.reload()
+                        try await MacRemoteRefreshHandler.run(
+                            migrateColors: {
+                                try await Self.migrateSharedNoteColors(in: accountRepository)
+                            },
+                            reloadSnapshots: {
+                                try await store?.reload()
+                            }
+                        )
                     }
                 )
                 store.attachSyncCoordinator(coordinator)
@@ -355,7 +388,8 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         })
         try await repository.migrateMissingNoteColors(
             colorsByNoteID: localColors,
-            defaultColor: NoteColor.current()
+            defaultColor: NoteColor.current(),
+            authority: .legacyMac
         )
     }
 
@@ -403,6 +437,14 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             NSClassFromString("XCTestCase") != nil
 #else
         false
+#endif
+    }
+
+    private static var compiledBuildMode: TransportBuildMode {
+#if DEBUG
+        .debug
+#else
+        .release
 #endif
     }
     /// Explicit development-only approval for the unresolved local-only to

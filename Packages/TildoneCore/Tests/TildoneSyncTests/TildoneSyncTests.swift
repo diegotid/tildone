@@ -11,6 +11,53 @@ import TildonePersistence
 final class TildoneSyncTests: XCTestCase {
     private let date = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
+    func testTransportDefaultsAreAutomaticOnlyForNonTestDebugBuilds() {
+        XCTAssertTrue(TransportDefaultPolicy.isEnabled(
+            buildMode: .debug,
+            isTestProcess: false
+        ))
+        XCTAssertFalse(TransportDefaultPolicy.isEnabled(
+            buildMode: .debug,
+            isTestProcess: true
+        ))
+        XCTAssertFalse(TransportDefaultPolicy.isEnabled(
+            buildMode: .release,
+            isTestProcess: false
+        ))
+        XCTAssertFalse(TransportDefaultPolicy.isEnabled(
+            buildMode: .release,
+            isTestProcess: true
+        ))
+    }
+
+    func testFrozenLocalRefreshFailureCannotReturnToHealthyCheckpointStatus() {
+        let failure = SyncStatus(
+            availability: .available,
+            activity: .attentionNeeded,
+            pendingMutationCount: 2,
+            lastSuccessfulSyncAt: date.addingTimeInterval(-10),
+            issue: .unknown
+        )
+        let laterCheckpoint = SyncStatus(
+            availability: .available,
+            activity: .idle,
+            pendingMutationCount: 0,
+            lastSuccessfulSyncAt: date,
+            issue: nil
+        )
+
+        let resolved = SyncStatusLatchPolicy.resolve(
+            requested: laterCheckpoint,
+            current: failure,
+            zoneResetRequired: false,
+            coordinatorFrozen: true
+        )
+
+        XCTAssertEqual(resolved.activity, .attentionNeeded)
+        XCTAssertEqual(resolved.issue, .unknown)
+        XCTAssertEqual(resolved.lastSuccessfulSyncAt, failure.lastSuccessfulSyncAt)
+    }
+
     func testDomainToCloudRecordRoundTrips() throws {
         let fixture = Fixture()
         let mapper = CloudKitRecordMapper()
@@ -27,6 +74,52 @@ final class TildoneSyncTests: XCTestCase {
         let noteRecord = mapper.record(from: .note(fixture.note))
         XCTAssertEqual(noteRecord["color"] as? String, fixture.note.color.rawValue)
         XCTAssertNotNil(noteRecord["colorVersionCounter"])
+    }
+
+    func testDevelopmentContractManifestMatchesEveryEncodedMapperField() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        let contracts = Dictionary(
+            uniqueKeysWithValues: DevelopmentCloudKitContractManifest.records.map {
+                ("\($0.recordType)-\($0.schemaVersion)", $0)
+            }
+        )
+        XCTAssertEqual(Set(contracts.keys), Set(["TDNote-1", "TDNote-2", "TDTask-1", "TDClient-1"]))
+
+        let v1Note = Note(
+            id: fixture.note.id, createdAt: fixture.note.createdAt,
+            title: fixture.note.title, titleVersion: fixture.note.titleVersion,
+            lifecycle: fixture.note.lifecycle, lifecycleVersion: fixture.note.lifecycleVersion,
+            lastMeaningfulEditAt: fixture.note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: fixture.note.lastMeaningfulEditVersion,
+            schemaVersion: 1
+        )
+        let records: [(String, CKRecord)] = [
+            ("TDNote-1", mapper.record(from: .note(v1Note))),
+            ("TDNote-2", mapper.record(from: .note(fixture.note))),
+            ("TDTask-1", mapper.record(from: .task(fixture.task))),
+            ("TDClient-1", mapper.clientRecord(replicaID: ReplicaID(UUID(int: 601)), platform: .mac))
+        ]
+        for (key, record) in records {
+            let contract = try XCTUnwrap(contracts[key])
+            XCTAssertEqual(Set(record.allKeys()), Set(contract.fields.map(\.name)), key)
+        }
+
+        let contentManifestFields = Set(
+            try XCTUnwrap(contracts["TDNote-2"]).fields.map(\.name) +
+            (try XCTUnwrap(contracts["TDTask-1"])).fields.map(\.name)
+        )
+        XCTAssertEqual(contentManifestFields, Set(CloudKitRecordMapper.Field.all))
+        XCTAssertEqual(DevelopmentCloudKitContractManifest.database, "private")
+        XCTAssertEqual(DevelopmentCloudKitContractManifest.zoneOwner, "CKCurrentUserDefaultName")
+
+        let optionalByRecord = contracts.mapValues { contract in
+            Set(contract.fields.filter(\.optional).map(\.name))
+        }
+        XCTAssertEqual(optionalByRecord["TDNote-1"], Set(["title"]))
+        XCTAssertEqual(optionalByRecord["TDNote-2"], Set(["title"]))
+        XCTAssertEqual(optionalByRecord["TDTask-1"], Set(["completedAt"]))
+        XCTAssertEqual(optionalByRecord["TDClient-1"], Set<String>())
     }
 
     func testCloudMapperReadsV1NotesWithoutColorAndUsesDeterministicFallback() throws {
@@ -80,6 +173,113 @@ final class TildoneSyncTests: XCTestCase {
         }
         XCTAssertEqual(note.schemaVersion, Note.currentSchemaVersion)
         XCTAssertEqual(note.color, .purple)
+    }
+
+    func testMacColorBackfillConvergesOverPhoneDefaultInBothUpgradeOrders() async throws {
+        for macUploadsFirst in [true, false] {
+            let mac = try Replica(id: macUploadsFirst ? 101 : 103)
+            let phone = try Replica(id: macUploadsFirst ? 102 : 104)
+            let noteID = NoteID(UUID(int: macUploadsFirst ? 110 : 120))
+            let legacyReplica = ReplicaID(UUID(int: 99))
+            let legacyStamp = VersionStamp(logicalCounter: 7, replicaID: legacyReplica)
+            let v1 = Note(
+                id: noteID,
+                createdAt: date,
+                title: "V1",
+                titleVersion: legacyStamp,
+                color: .yellow,
+                colorVersion: legacyStamp,
+                lifecycleVersion: legacyStamp,
+                lastMeaningfulEditAt: date,
+                lastMeaningfulEditVersion: legacyStamp,
+                schemaVersion: 1
+            )
+            _ = try await mac.pipeline.apply([.note(v1)], at: date)
+            _ = try await phone.pipeline.apply([.note(v1)], at: date)
+            var server: [String: SyncRecord] = [:]
+            if macUploadsFirst {
+                try await mac.repository.migrateMissingNoteColors(
+                    colorsByNoteID: [noteID: .orange],
+                    authority: .legacyMac
+                )
+                try await upload(mac, server: &server)
+                try await deliver(server, to: phone)
+                try await phone.repository.migrateMissingNoteColors(
+                    colorsByNoteID: [:],
+                    authority: .platformDefault
+                )
+                try await upload(phone, server: &server)
+            } else {
+                try await phone.repository.migrateMissingNoteColors(
+                    colorsByNoteID: [:],
+                    authority: .platformDefault
+                )
+                try await upload(phone, server: &server)
+                try await deliver(server, to: mac)
+                let deliveredBeforeMacUpgrade = try await mac.repository.note(id: noteID)
+                XCTAssertEqual(deliveredBeforeMacUpgrade.color, .yellow)
+                XCTAssertEqual(
+                    NoteColorMigrationAuthority.authority(
+                        for: deliveredBeforeMacUpgrade.colorVersion.replicaID
+                    ),
+                    .platformDefault
+                )
+                try await mac.repository.migrateMissingNoteColors(
+                    colorsByNoteID: [noteID: .orange],
+                    authority: .legacyMac
+                )
+                try await upload(mac, server: &server)
+            }
+            try await converge([phone, mac], server: &server)
+
+            for replica in [mac, phone] {
+                let note = try await replica.repository.note(id: noteID)
+                XCTAssertEqual(note.color, .orange)
+                XCTAssertEqual(
+                    NoteColorMigrationAuthority.authority(for: note.colorVersion.replicaID),
+                    .legacyMac
+                )
+                let pendingCount = try await replica.pipeline.pendingCount()
+                XCTAssertEqual(pendingCount, 0)
+            }
+        }
+    }
+
+    func testExistingV2RemoteColorBeatsBackfillDuringServerConflictRetry() async throws {
+        let replica = try Replica(id: 130)
+        let noteID = NoteID(UUID(int: 131))
+        let baseStamp = VersionStamp(logicalCounter: 5, replicaID: ReplicaID(UUID(int: 132)))
+        let v1 = Note(
+            id: noteID, createdAt: date, title: nil, titleVersion: baseStamp,
+            lifecycleVersion: baseStamp, lastMeaningfulEditAt: date,
+            lastMeaningfulEditVersion: baseStamp, schemaVersion: 1
+        )
+        _ = try await replica.pipeline.apply([.note(v1)], at: date)
+        try await replica.repository.migrateMissingNoteColors(
+            colorsByNoteID: [noteID: .green],
+            authority: .legacyMac
+        )
+
+        let remoteStamp = VersionStamp(logicalCounter: 1, replicaID: ReplicaID(UUID(int: 133)))
+        let existingV2 = Note(
+            id: noteID, createdAt: date, title: nil, titleVersion: baseStamp,
+            color: .purple, colorVersion: remoteStamp,
+            lifecycleVersion: baseStamp, lastMeaningfulEditAt: date,
+            lastMeaningfulEditVersion: baseStamp, schemaVersion: 2
+        )
+        _ = try await replica.pipeline.apply([.note(existingV2)], at: date)
+        let merged = try await replica.repository.note(id: noteID)
+        XCTAssertEqual(merged.color, .purple)
+
+        let outbound = try await replica.pipeline.prepareOutboundMutation(
+            recordName: noteID.recordName,
+            at: date
+        )
+        guard case let .note(retry)? = outbound?.record else {
+            return XCTFail("Expected retry payload")
+        }
+        XCTAssertEqual(retry.color, .purple)
+        XCTAssertEqual(retry.colorVersion, remoteStamp)
     }
 
     func testClientRegistrationCloudRecordIsContentFreeAndRoundTrips() throws {

@@ -756,6 +756,151 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 2)
     }
 
+    /// Opt-in provenance helper for the frozen V2 artifact. Ordinary test runs
+    /// never write fixtures; generation requires an explicit destination.
+    func testGenerateV2FixtureOnlyWhenExplicitlyRequested() throws {
+        guard let outputPath = ProcessInfo.processInfo.environment[
+            "TILDONE_GENERATE_V2_FIXTURE_PATH"
+        ] else { return }
+        let output = URL(fileURLWithPath: outputPath).standardizedFileURL
+        try FileManager.default.createDirectory(
+            at: output.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        if FileManager.default.fileExists(atPath: output.path) {
+            try FileManager.default.removeItem(at: output)
+        }
+
+        let schema = Schema(versionedSchema: TildoneSchemaV2.self)
+        let configuration = ModelConfiguration(
+            "FrozenTildoneSharedV2",
+            schema: schema,
+            url: output,
+            allowsSave: true,
+            cloudKitDatabase: .none
+        )
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+
+        let accountID = "abcdef00-0000-0000-0000-000000000010"
+        let replicaID = "abcdef00-0000-0000-0000-000000000011"
+        let noteID = "abcdef00-0000-0000-0000-000000000012"
+        let deletedNoteID = "abcdef00-0000-0000-0000-000000000013"
+        let taskID = "abcdef00-0000-0000-0000-000000000014"
+        let baseDate = Date(timeIntervalSinceReferenceDate: 750_000_000)
+        let envelope = try PropertyListEncoder().encode(FrozenV2SyncEnvelope(
+            version: 1,
+            engineSerialization: Data([0x62, 0x32, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65]),
+            systemFieldsByRecordName: [:],
+            clientRegistrationsByReplicaID: [:],
+            zoneCreated: true,
+            zoneResetRequired: false
+        ))
+        context.insert(WorkspaceMetadata(
+            workspaceKindRawValue: "account",
+            opaqueWorkspaceID: accountID,
+            replicaID: replicaID,
+            logicalCounter: 12,
+            sharedSchemaVersion: 2,
+            futureSyncEngineState: envelope
+        ))
+        context.insert(StoredNote(
+            stableID: noteID, createdAt: baseDate, title: "Frozen V2 note 📝",
+            titleVersionCounter: 3, titleVersionReplicaID: replicaID,
+            lifecycleRawValue: "active", lifecycleVersionCounter: 1,
+            lifecycleVersionReplicaID: replicaID,
+            lastMeaningfulEditAt: baseDate.addingTimeInterval(20),
+            lastMeaningfulEditVersionCounter: 6,
+            lastMeaningfulEditVersionReplicaID: replicaID,
+            recordSchemaVersion: 1
+        ))
+        context.insert(StoredNote(
+            stableID: deletedNoteID, createdAt: baseDate.addingTimeInterval(30),
+            title: "Deleted fixture note", titleVersionCounter: 7,
+            titleVersionReplicaID: replicaID, lifecycleRawValue: "deleted",
+            lifecycleVersionCounter: 9, lifecycleVersionReplicaID: replicaID,
+            lastMeaningfulEditAt: baseDate.addingTimeInterval(30),
+            lastMeaningfulEditVersionCounter: 7,
+            lastMeaningfulEditVersionReplicaID: replicaID,
+            recordSchemaVersion: 1
+        ))
+        context.insert(StoredTask(
+            stableID: taskID, noteStableID: noteID, createdAt: baseDate.addingTimeInterval(10),
+            text: "Preserved V2 task café 漢字", textVersionCounter: 4,
+            textVersionReplicaID: replicaID, isCompleted: false, completedAt: nil,
+            completionVersionCounter: 2, completionVersionReplicaID: replicaID,
+            orderTokenRawValue: "m", orderVersionCounter: 2,
+            orderVersionReplicaID: replicaID, lifecycleRawValue: "active",
+            lifecycleVersionCounter: 2, lifecycleVersionReplicaID: replicaID,
+            recordSchemaVersion: 1
+        ))
+        let superseded = "abcdef00-0000-0000-0000-000000000020"
+        let successor = "abcdef00-0000-0000-0000-000000000021"
+        context.insert(PendingMutation(
+            mutationID: superseded, targetKindRawValue: "note", targetStableID: noteID,
+            sequence: 3, createdAt: baseDate.addingTimeInterval(40), attemptCount: 1,
+            lastAttemptAt: baseDate.addingTimeInterval(50), supersededByMutationID: successor
+        ))
+        context.insert(PendingMutation(
+            mutationID: successor, targetKindRawValue: "note", targetStableID: noteID,
+            sequence: 6, createdAt: baseDate.addingTimeInterval(60)
+        ))
+        context.insert(PendingMutation(
+            mutationID: "abcdef00-0000-0000-0000-000000000022",
+            targetKindRawValue: "task", targetStableID: taskID, sequence: 4,
+            createdAt: baseDate.addingTimeInterval(70)
+        ))
+        context.insert(QuarantinedRecord(
+            quarantineID: "abcdef00-0000-0000-0000-000000000023",
+            recordKind: "task", opaqueRecordID: "task-abcdef00-0000-0000-0000-000000000099",
+            errorCategory: "invalidOrderToken", recordSchemaVersion: 1,
+            quarantinedAt: baseDate.addingTimeInterval(80)
+        ))
+
+        let fingerprint = LegacySourceFingerprint(
+            identityDigest: String(repeating: "a", count: 64),
+            contentDigest: String(repeating: "b", count: 64),
+            fileCount: 1,
+            totalByteCount: 77_824
+        )
+        let migration = LegacyMigrationState(
+            migrationFormatVersion: 1,
+            sourceFingerprint: fingerprint,
+            sourceCounts: LegacyMigrationCounts(
+                eligibleNotes: 2, eligibleTasks: 1, excludedSystemNotes: 1,
+                excludedSystemTasks: 1, excludedTransientTasks: 1
+            ),
+            migrationReplicaID: replicaID,
+            now: baseDate
+        )
+        migration.phaseRawValue = "eligible-for-cutover"
+        migration.lastCompletedPhaseRawValue = "eligible-for-cutover"
+        migration.destinationSchemaVersion = 2
+        migration.destinationNoteCount = 2
+        migration.destinationTaskCount = 1
+        migration.logicalCounterProgress = 12
+        migration.copyCompletedAt = baseDate.addingTimeInterval(90)
+        migration.verifiedAt = baseDate.addingTimeInterval(100)
+        migration.eligibleAt = baseDate.addingTimeInterval(110)
+        migration.updatedAt = baseDate.addingTimeInterval(120)
+        migration.activationStateRawValue = "activated"
+        migration.cloudSeedingEverBegun = true
+        context.insert(migration)
+        context.insert(LegacyIdentityMapping(
+            legacyKey: String(repeating: "c", count: 64), entityKindRawValue: "note",
+            classificationRawValue: "user-content", stableID: noteID, ownerLegacyKey: nil,
+            visibleOrder: 0, firstVersionCounter: 1, versionCount: 3
+        ))
+        context.insert(LegacyIdentityMapping(
+            legacyKey: String(repeating: "d", count: 64), entityKindRawValue: "task",
+            classificationRawValue: "user-content", stableID: taskID,
+            ownerLegacyKey: String(repeating: "c", count: 64), visibleOrder: 0,
+            firstVersionCounter: 2, versionCount: 3
+        ))
+        try context.save()
+    }
+
     func testActualV1OnDiskFixtureOpensThroughMigrationPlan() async throws {
         let resource = try XCTUnwrap(Bundle.module.url(
             forResource: "TildoneSharedStoreV1",
@@ -812,6 +957,105 @@ final class TildonePersistenceTests: XCTestCase {
         let workspaceAfterRetry = try await repository.workspaceSnapshot()
         XCTAssertEqual(noteAfterRetry.color, .pink)
         XCTAssertEqual(workspaceAfterRetry.logicalCounter, counterAfterMigration)
+    }
+
+    func testActualV2FixtureMigratesAtomicallyAndSurvivesOfflineRelaunch() async throws {
+        let fixture = try XCTUnwrap(Bundle.module.url(
+            forResource: "TildoneSharedStoreV2",
+            withExtension: nil,
+            subdirectory: "Fixtures"
+        ))
+        let accountID = try XCTUnwrap(UUID(
+            uuidString: "abcdef00-0000-0000-0000-000000000010"
+        ))
+        let noteID = NoteID(UUID(uuidString: "abcdef00-0000-0000-0000-000000000012")!)
+
+        func copiedFixture(named name: String) throws -> URL {
+            let root = try temporaryDirectory().appendingPathComponent(name, isDirectory: true)
+            try FileManager.default.copyItem(at: fixture, to: root)
+            return root
+        }
+
+        let interruptedBase = try copiedFixture(named: "interrupted-v2")
+        var interrupted: TildoneRepository? = try TildoneRepository(
+            descriptor: .persistent(baseDirectory: interruptedBase, workspace: .account(accountID))
+        )
+        let before = try await interrupted!.note(id: noteID)
+        XCTAssertEqual(before.schemaVersion, 1)
+        XCTAssertEqual(before.color, .yellow)
+        let evidenceBefore = try await interrupted!.legacyMigrationSnapshot()
+        XCTAssertEqual(evidenceBefore.activationState, .activated)
+        XCTAssertTrue(evidenceBefore.cloudSeedingEverBegun)
+        let outboxBefore = try await interrupted!.pendingMutations(includeSuperseded: true)
+        XCTAssertEqual(outboxBefore.count, 3)
+        XCTAssertEqual(outboxBefore.filter { $0.supersededBy != nil }.count, 1)
+
+        await interrupted!.failNextSaveForTesting()
+        do {
+            try await interrupted!.migrateMissingNoteColors(
+                colorsByNoteID: [noteID: .pink],
+                authority: .legacyMac
+            )
+            XCTFail("Expected the atomic fixture migration to fail")
+        } catch {
+            XCTAssertEqual(error as? PersistenceError, .atomicMutationFailure)
+        }
+        interrupted = nil
+
+        let retry = try TildoneRepository(
+            descriptor: .persistent(baseDirectory: interruptedBase, workspace: .account(accountID))
+        )
+        let retryBeforeMigration = try await retry.note(id: noteID)
+        let retryOutboxBeforeMigration = try await retry.pendingMutations(includeSuperseded: true)
+        XCTAssertEqual(retryBeforeMigration.schemaVersion, 1)
+        XCTAssertEqual(retryOutboxBeforeMigration, outboxBefore)
+        try await retry.migrateMissingNoteColors(
+            colorsByNoteID: [noteID: .pink],
+            authority: .legacyMac
+        )
+        let migrated = try await retry.note(id: noteID)
+        XCTAssertEqual(migrated.color, .pink)
+        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertEqual(
+            NoteColorMigrationAuthority.authority(for: migrated.colorVersion.replicaID),
+            .legacyMac
+        )
+        let migratedOutbox = try await retry.pendingMutations(includeSuperseded: true)
+        XCTAssertEqual(migratedOutbox.count, 4)
+        XCTAssertEqual(migratedOutbox.filter { $0.supersededBy != nil }.count, 1)
+        XCTAssertEqual(
+            migratedOutbox.filter {
+                $0.targetKind == .note && $0.supersededBy == nil
+            }.count,
+            2
+        )
+
+        let relaunchBase = try copiedFixture(named: "offline-relaunch-v2")
+        var firstLaunch: TildoneRepository? = try TildoneRepository(
+            descriptor: .persistent(baseDirectory: relaunchBase, workspace: .account(accountID))
+        )
+        try await firstLaunch!.migrateMissingNoteColors(
+            colorsByNoteID: [noteID: .orange],
+            authority: .legacyMac
+        )
+        let counterAfterMigration = try await firstLaunch!.workspaceSnapshot().logicalCounter
+        firstLaunch = nil
+
+        let relaunched = try TildoneRepository(
+            descriptor: .persistent(baseDirectory: relaunchBase, workspace: .account(accountID))
+        )
+        let afterRelaunch = try await relaunched.note(id: noteID)
+        let relaunchedCounter = try await relaunched.workspaceSnapshot().logicalCounter
+        XCTAssertEqual(afterRelaunch.color, .orange)
+        XCTAssertEqual(relaunchedCounter, counterAfterMigration)
+        try await relaunched.migrateMissingNoteColors(
+            colorsByNoteID: [noteID: .blue],
+            authority: .legacyMac
+        )
+        let afterRetry = try await relaunched.note(id: noteID)
+        let counterAfterRetry = try await relaunched.workspaceSnapshot().logicalCounter
+        XCTAssertEqual(afterRetry.color, .orange)
+        XCTAssertEqual(counterAfterRetry, counterAfterMigration)
     }
 
     func testReleased160LegacyFixtureRemainsByteForByteUntouched() async throws {
@@ -1159,6 +1403,17 @@ final class TildonePersistenceTests: XCTestCase {
         }
     }
 }
+
+private struct FrozenV2SyncEnvelope: Codable {
+    let version: Int
+    let engineSerialization: Data?
+    let systemFieldsByRecordName: [String: Data]
+    let clientRegistrationsByReplicaID: [String: FrozenV2ClientRegistration]
+    let zoneCreated: Bool
+    let zoneResetRequired: Bool
+}
+
+private struct FrozenV2ClientRegistration: Codable {}
 
 private extension TildonePersistenceTests {
     func XCTAssertThrowsPersistenceError(

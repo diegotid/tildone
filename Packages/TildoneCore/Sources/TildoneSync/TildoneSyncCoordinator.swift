@@ -20,18 +20,27 @@ enum SyncStatusLatchPolicy {
     static func resolve(
         requested: SyncStatus,
         current: SyncStatus,
-        zoneResetRequired: Bool
+        zoneResetRequired: Bool,
+        coordinatorFrozen: Bool = false
     ) -> SyncStatus {
-        guard zoneResetRequired, requested.availability == .available else {
-            return requested
+        if zoneResetRequired, requested.availability == .available {
+            return SyncStatus(
+                availability: .zoneResetRequired,
+                activity: .attentionNeeded,
+                pendingMutationCount: requested.pendingMutationCount,
+                lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+                activeDeviceSummary: requested.activeDeviceSummary ?? current.activeDeviceSummary,
+                issue: .zoneReset
+            )
         }
+        guard coordinatorFrozen, current.activity == .attentionNeeded else { return requested }
         return SyncStatus(
-            availability: .zoneResetRequired,
+            availability: current.availability,
             activity: .attentionNeeded,
             pendingMutationCount: requested.pendingMutationCount,
             lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
             activeDeviceSummary: requested.activeDeviceSummary ?? current.activeDeviceSummary,
-            issue: .zoneReset
+            issue: current.issue ?? .unknown
         )
     }
 }
@@ -51,7 +60,7 @@ enum SyncZoneBootstrapPolicy {
 
 public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Sendable {
     public typealias AccountChangeHandler = @Sendable (SyncAccountChange) -> Void
-    public typealias RemoteChangeHandler = @Sendable () async -> Void
+    public typealias RemoteChangeHandler = @Sendable () async throws -> Void
 
     public let statusModel: SyncStatusModel
 
@@ -389,7 +398,7 @@ private extension TildoneSyncCoordinator {
                 if !decoded.isEmpty || event.deletions.contains(where: {
                     SyncClientRegistration.replicaID(recordName: $0.recordID.recordName) == nil
                 }) {
-                    await onRemoteChange()
+                    try await onRemoteChange()
                 }
                 // The presentation callback may perform an idempotent local
                 // schema backfill for a legacy record. Refresh afterwards so
@@ -484,7 +493,7 @@ private extension TildoneSyncCoordinator {
                         let remote = try mapper.syncRecord(from: serverRecord)
                         _ = try await pipeline.apply([remote], at: now())
                         try await coordinatorState.storeSystemFields(serverRecord)
-                        await onRemoteChange()
+                        try await onRemoteChange()
                     }
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(serverRecord.recordID)])
                 } catch let mappingError as CloudRecordMappingError {
@@ -596,6 +605,10 @@ private extension TildoneSyncCoordinator {
     }
 
     func markCheckpointComplete() async {
+        // A local persistence/presentation refresh failure freezes this
+        // coordinator so a later CKSyncEngine completion callback cannot
+        // overwrite attention with a healthy checkpoint.
+        guard !(await coordinatorState.isFrozen()) else { return }
         let pending = (try? await pipeline.pendingCount()) ?? 0
         await publishStatus(SyncStatus(
             availability: .available,
@@ -645,7 +658,8 @@ private extension TildoneSyncCoordinator {
         let status = SyncStatusLatchPolicy.resolve(
             requested: annotated,
             current: current,
-            zoneResetRequired: persistent.zoneResetRequired
+            zoneResetRequired: persistent.zoneResetRequired,
+            coordinatorFrozen: await coordinatorState.isFrozen()
         )
         guard status != current else { return }
         await statusModel.set(status)
