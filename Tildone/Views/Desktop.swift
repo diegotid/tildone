@@ -10,6 +10,7 @@ import TildoneDomain
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
     @ObservedObject var store: MacSharedStore
+    let showsMacOnlySyncIndicator: Bool
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
     @State private var noteWindows: [NoteID: NSWindow] = [:]
@@ -44,6 +45,9 @@ struct Desktop: View {
             }
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
+            }
+            .onChange(of: showsMacOnlySyncIndicator) { _, isVisible in
+                setMacOnlySyncIndicatorVisibility(isVisible)
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
@@ -215,6 +219,35 @@ private extension Desktop {
         )
         picker.autoresizingMask = [.minXMargin, .minYMargin]
         themeFrame.addSubview(picker, positioned: .above, relativeTo: nil)
+
+        guard showsMacOnlySyncIndicator else { return }
+        addMacOnlySyncIndicator(to: themeFrame, beside: picker)
+    }
+
+    func addMacOnlySyncIndicator(to themeFrame: NSView, beside picker: NSView) {
+        let indicator = MacOnlyNotesTitlebarControl()
+        let indicatorSize = NSSize(width: 24, height: 22)
+        indicator.frame = NSRect(
+            x: picker.frame.minX - indicatorSize.width - 2,
+            y: picker.frame.minY,
+            width: indicatorSize.width,
+            height: indicatorSize.height
+        )
+        indicator.autoresizingMask = [.minXMargin, .minYMargin]
+        themeFrame.addSubview(indicator, positioned: .above, relativeTo: nil)
+    }
+
+    func setMacOnlySyncIndicatorVisibility(_ isVisible: Bool) {
+        for window in noteWindows.values {
+            guard let themeFrame = window.contentView?.superview else { continue }
+            let indicators = themeFrame.subviews.compactMap { $0 as? MacOnlyNotesTitlebarControl }
+            if !isVisible {
+                indicators.forEach { $0.removeFromSuperview() }
+            } else if indicators.isEmpty,
+                      let picker = themeFrame.subviews.first(where: { $0 is NoteColorPickerTitlebarControl }) {
+                addMacOnlySyncIndicator(to: themeFrame, beside: picker)
+            }
+        }
     }
 
     func openSystemReleaseNote(version: String?) {

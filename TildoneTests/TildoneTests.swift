@@ -35,6 +35,23 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(attention.isTemplate)
     }
 
+    @MainActor
+    func testMacOnlyNotesIndicatorIsAccessibleAndActionable() {
+        let control = MacOnlyNotesTitlebarControl()
+        let status = String(localized: "Only on this Mac — not syncing with iPhone or iCloud.")
+
+        XCTAssertEqual(control.toolTip, status)
+        XCTAssertEqual(control.accessibilityLabel(), status)
+        XCTAssertEqual(control.accessibilityRole(), .button)
+
+        let opensOptions = expectation(
+            forNotification: .openSyncResolutionOptions,
+            object: nil
+        )
+        XCTAssertTrue(control.accessibilityPerformPress())
+        wait(for: [opensOptions], timeout: 1)
+    }
+
     func testMacRemoteRefreshPropagatesMigrationAndReloadFailures() async {
         enum FixtureError: Error, Equatable { case migration, reload }
         var reloadAttempted = false
@@ -166,6 +183,10 @@ final class TildoneTests: XCTestCase {
             contentsOf: sourceURL.appendingPathComponent("Tildone/MacSharedStore.swift"),
             encoding: .utf8
         )
+        let desktopSource = try String(
+            contentsOf: sourceURL.appendingPathComponent("Tildone/Views/Desktop.swift"),
+            encoding: .utf8
+        )
 
         XCTAssertTrue(appSource.contains(".alert(\"Copy notes to iCloud?\""))
         XCTAssertTrue(appSource.contains("Review Options…"))
@@ -175,7 +196,16 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(appSource.contains("resolveNotesAfterConfirmation(action)"))
         XCTAssertFalse(appSource.contains(".sheet(isPresented: $showsResolutionOptions)"))
         XCTAssertTrue(appSource.contains(".id(ObjectIdentifier(store))"))
+        XCTAssertTrue(appSource.contains("showsMacOnlySyncIndicator: sharedStoreBootstrapper.isUsingNotesOnMacByChoice"))
+        XCTAssertTrue(appSource.contains("publisher(for: .openSyncResolutionOptions)"))
+        XCTAssertTrue(appSource.contains("These notes won’t appear on your iPhone or in iCloud. You can combine them later."))
+        XCTAssertTrue(desktopSource.contains("guard showsMacOnlySyncIndicator else { return }"))
+        XCTAssertTrue(desktopSource.contains("x: picker.frame.minX - indicatorSize.width - 2"))
+        XCTAssertTrue(desktopSource.contains(".onChange(of: showsMacOnlySyncIndicator)"))
+        XCTAssertTrue(desktopSource.contains("setMacOnlySyncIndicatorVisibility(isVisible)"))
         XCTAssertTrue(storeSource.contains("revalidateAccount(workspaceID:"))
+        XCTAssertTrue(storeSource.contains("didJustChooseNotesOnMac = true"))
+        XCTAssertTrue(storeSource.contains("func dismissNotesOnMacNotice()"))
         XCTAssertTrue(appSource.contains("setAccessibilityValue(title)"))
         XCTAssertTrue(appSource.contains("button.image = Self.menuBarImage(for: state"))
         XCTAssertFalse(storeSource.contains("TILDONE_ALLOW_LOCAL_WORKSPACE_ADOPTION"))

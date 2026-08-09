@@ -2,7 +2,7 @@
 
 ## Scope of this guide
 
-This file guides AI-assisted work on the Tildone macOS app, iPhone companion, shared local store, and Development-only CloudKit transport. It reflects the post-Stage-12B architecture while retaining released macOS 1.6.0 (build 24) compatibility. Keep statements labelled **Unresolved** or **Uncertain** as decisions, not requirements.
+This file guides AI-assisted work on the Tildone macOS app, iPhone companion, shared local store, and Development-only CloudKit transport. It reflects the post-Stage-12C architecture while retaining released macOS 1.6.0 (build 24) compatibility. Keep statements labelled **Unresolved** or **Uncertain** as decisions, not requirements.
 
 Before changing code, inspect the working tree. This repository may contain in-progress Xcode or asset changes; preserve unrelated work. When asked to commit, commit all uncommitted changes separately, with one well-named commit per feature or user request.
 
@@ -24,6 +24,7 @@ Before changing code, inspect the working tree. This repository may contain in-p
 - Never auto-upload a local-only workspace or auto-reseed a deleted custom zone. Both operations require an explicit approved recovery/adoption policy.
 - Keep titles and task text out of record names, logs, diagnostics, sync status, and notification payloads.
 - Debug transport starts automatically outside tests. XCTest/UI-test launches are transport-off, and both macOS and iOS Release builds are explicitly transport-off until a later authorized stage. Workspace selection and local persistence must not be changed merely to pause transport.
+- Active/paused transport intent is an installation-local preference keyed by the opaque account workspace UUID. Pausing retains that account repository, outbox, tombstones, and serialized engine state and performs no CloudKit send/fetch; resuming revalidates the account before reconstructing the coordinator and draining durable work.
 - The Development contract is exactly `TDNote` V1/V2, `TDTask` V1, and advisory `TDClient` V1 in the private custom zone. Reconcile field changes with `docs/development-cloudkit-contract-manifest.md` and its source generator/tests.
 - V2-to-V3 note-color backfill authority is fixed: an existing explicit V2 color wins; otherwise the legacy Mac per-note/global color wins over platform-default backfill, and implicit V1 yellow is lowest. Preserve the reserved migration-stamp encoding and atomic outbox write.
 - Production CloudKit inspection, schema deployment, entitlements, provisioning, records, zones, signing, archives, uploads, TestFlight, and App Store actions require separate explicit authorization. Development/local evidence never proves Production behavior.
@@ -45,7 +46,7 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 
 ## Repository map
 
-- `Tildone.xcodeproj/`: Xcode project and shared `Tildone` scheme.
+- `Tildone.xcodeproj/`: Xcode project and tracked shared `Tildone` and `Tildone iOS` schemes.
 - `Tildone.xcodeproj/project.pbxproj`: macOS and iOS app, unit-test, and UI-test targets; deployment and signing settings live here.
 - `Tildone/TildoneApp.swift`: SwiftUI app entry point, shared-store bootstrap scene, menu commands, notification names, and `AppDelegate`.
 - `Tildone/MacSharedStore.swift`: process-wide shared-store bootstrap, durable activation gate, repository-backed macOS snapshots, and typed CRUD adapter.
@@ -269,8 +270,8 @@ Synchronization is implemented as a local-first SwiftData replica plus a durable
 Current Development-only constraints:
 
 1. Debug transport is automatic outside test processes. Release transport is off on both platforms; enabling shipping transport is not authorized by source entitlement presence.
-2. Local-only Mac adoption and zone-reset recovery are unresolved shipping policies. The existing reset/adoption hatches are Debug-only and require explicit disposable-Development approval.
-3. Transport pause while retaining the selected account workspace and the compact Mac attention UI are Stage 12C work. Do not substitute `local-only` after an account workspace has been selected.
+2. Mac local-only adoption and note-location changes are explicit and confirmation-gated. An empty account can receive a retained-source copy. When both locations contain notes, the user may combine them through the established stable-ID field merge, show iCloud notes, or keep showing Mac notes; all three retain both repositories. The account is revalidated before any account operation, and no choice may auto-delete, reset, or overwrite either repository.
+3. Transport pause retains the selected account workspace. The compact Mac status surface exposes active, paused, and attention states without user content. Note-location review and confirmation replace the status window's content in place rather than opening a second window. When the user explicitly chooses Mac notes, each note shows a neutral slashed-cloud button beside the color picker; it states that the note is only on this Mac and opens the existing note-location choices. This indicator is not used for transport pause. The menu-bar item retains the Tildone icon and overlays an attention badge when needed. Zone-reset and incompatible-data states provide preservation guidance only; no automatic or owner-approved destructive recovery action is defined.
 4. Release/update system notes, window geometry, minimized state, opacity, arrangement, launch-at-login, and Mac Focus behavior remain installation-local.
 5. Titles/tasks are private user content. They may enter the approved private CloudKit fields only, never record names, diagnostics, status, notifications, device-registration records, or logs.
 6. The exact Development schema is generated in `docs/development-cloudkit-contract-manifest.md`. Any encoder/decoder field change must update the manifest generator and exact-key regression test together.
@@ -289,6 +290,9 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 - `noteBackgroundOpacity`: global background opacity, default 0.6.
 - `knownAppVersion`: last App Store version for which the local update note was generated.
 - `NSFullScreenMenuItemEverywhere`: set false during desktop setup.
+- `syncTransportState.<account-workspace-uuid>`: `active` or `paused`; missing state preserves the Debug default and malformed state fails safe to paused.
+- `localWorkspaceAdoptionFingerprint.<account-workspace-uuid>`: SHA-256 of the last explicitly copied local workspace snapshot; this is adoption evidence, not content or sync-engine state.
+- `noteLocationChoice.<account-workspace-uuid>`: `thisMac` or `iCloud`; the explicit presentation choice is isolated per account and a missing or malformed value leaves an unadopted local workspace selected for review.
 
 Launch at login comes from `SMAppService` state, not `UserDefaults`. Preserve raw values and storage keys unless shipping a tested conversion. Note that Settings currently labels two sections “General”; treat whether that is intentional as uncertain.
 
@@ -324,7 +328,7 @@ Follow the codebase’s existing Swift style unless a scoped refactor establishe
 ### Localization
 
 - Source language is English. Maintain English, Spanish (`es`), French (`fr`), and Simplified Chinese (`zh-Hans`) in `Localizable.xcstrings`.
-- The catalog currently contains 65 keys. Most English source values are implicit while the three translations are explicit; do not mistake the missing `en` localization object for an untranslated key.
+- Most English source values are implicit while the three translations are explicit; do not mistake the missing `en` localization object for an untranslated key.
 - Preserve interpolation placeholders such as `Updated to v%@` and numeric placeholders.
 - Focus Filter parameter titles/descriptions/display representations, menus, Settings, overlays, gauges, system notes, links, and iOS-only strings all require localization.
 - `NoteColor.label` returns English strings used by Settings help and currently has no catalog entries for the color names. Treat this as an existing localization gap.
@@ -332,7 +336,7 @@ Follow the codebase’s existing Swift style unless a scoped refactor establishe
 
 ### Accessibility
 
-The repository has no explicit `.accessibility*` modifiers and no accessibility tests. Do not interpret native SwiftUI usage as proof of complete accessibility.
+The sync status surfaces and some controls have explicit accessibility modifiers, but coverage remains incomplete. Do not interpret native SwiftUI usage as proof of complete accessibility.
 
 - Give the custom `Checkbox` an accessible label/value/trait and a sufficiently large interactive region; disabled placeholder checkboxes should not create confusing VoiceOver stops.
 - Ensure minimized progress communicates note topic, pending count, and restoration action without relying on the gauge or color alone.
@@ -397,9 +401,15 @@ Run the shared scheme’s unit and UI tests on the current Mac:
 xcodebuild -project Tildone.xcodeproj -scheme Tildone -configuration Debug -destination 'platform=macOS' -derivedDataPath /tmp/TildoneDerivedData CODE_SIGNING_ALLOWED=NO test
 ```
 
-Run the build command on the current tree before claiming application compilation. Stage 12B's shared Debug/Release package suites, four fresh generic Debug/Release platform builds, Mac/iPhone hosted tests, and isolated UI smokes passed on 2026-08-07/08. These local results are not signed physical-device or live CloudKit evidence. Existing compiler warnings include explicit specialization of `getNestedSubviews()` in `Note.swift` and two never-mutated variables in `Desktop.clampedOrigin`; do not hide new warnings among them.
+Assert that both tracked app schemes use Debug launch/Release archive configuration and that the Release bundle IDs, entitlements, deployment targets, and compilation conditions remain deterministic:
 
-There is no repository-defined lint or formatting command. There is no documented automated release command. The shared scheme supports Archive in Release configuration, and the project uses automatic signing, but App Store archive/upload steps and release-note/version policy are **Unresolved**; do not invent or automate them without owner confirmation.
+```sh
+./Scripts/verify-release-configuration.sh
+```
+
+Run the build command on the current tree before claiming application compilation. Stage 12C's shared Debug/Release package suites, four fresh generic Debug/Release platform builds, and Mac/iPhone hosted tests passed on 2026-08-09. These local results are not signed physical-device or live CloudKit evidence. Existing compiler warnings include explicit specialization of `getNestedSubviews()` in `Note.swift` and two never-mutated variables in `Desktop.clampedOrigin`; do not hide new warnings among them.
+
+There is no repository-defined lint or formatting command. The repository has deterministic Release configuration assertions but no authorized archive/upload command. The shared schemes support Archive in Release configuration, and the project uses automatic signing, but App Store archive/upload steps and release-note/version policy are **Unresolved**; do not invent or automate them without owner confirmation.
 
 The iOS scheme is `Tildone iOS`. Use an available simulator destination for hosted/unit/UI tests and `generic/platform=iOS` for unsigned Debug/Release compilation. Record the exact resolved simulator/device and command in the stage evidence.
 
@@ -442,7 +452,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 ## Known technical debt and risks
 
 - The released legacy models still use dates/indexes internally, but shared notes/tasks have stable UUIDs, versioned schemas, fractional order, tombstones, and frozen released/V1/V2 fixtures.
-- Shipping account adoption, transport pause/containment, Production zone-reset recovery, and a compact Mac sync-attention surface remain unresolved Stage 12C blockers.
+- Any action that recreates or reseeds a reset Production zone remains an unresolved policy decision. Stage 12C intentionally supplies preservation guidance, not that action.
 - Production schema/signing/provisioning/privacy/distribution behavior is unverified and unauthorized.
 - The legacy Mac view/model implementation still contains direct persistence and `fatalError` paths outside the shared repository boundary.
 - `Note.swift` and `Desktop.swift` mix presentation, domain operations, persistence, timers, event routing, and AppKit lifecycle.

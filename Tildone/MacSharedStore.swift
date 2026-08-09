@@ -349,6 +349,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     @Published private(set) var canAdoptLocalWorkspace = false
     @Published private(set) var hasNotesOnMacAndICloud = false
     @Published private(set) var isUsingNotesOnMacByChoice = false
+    @Published private(set) var didJustChooseNotesOnMac = false
     @Published private(set) var resolutionActionFailed = false
     @Published private(set) var isTransportActionInProgress = false
 
@@ -556,6 +557,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
               let accountWorkspaceID,
               let container = cloudContainer else { return }
         isTransportActionInProgress = true
+        didJustChooseNotesOnMac = false
         resolutionActionFailed = false
         let wasUsingAccountWorkspace = isUsingAccountWorkspace
         Swift.Task {
@@ -569,6 +571,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                         container: container
                     )
                     noteLocationChoiceStore.set(.thisMac, for: accountWorkspaceID)
+                    didJustChooseNotesOnMac = true
                 case .useICloud:
                     guard await revalidateAccount(workspaceID: accountWorkspaceID, container: container) else {
                         isTransportActionInProgress = false
@@ -629,6 +632,10 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             }
             isTransportActionInProgress = false
         }
+    }
+
+    func dismissNotesOnMacNotice() {
+        didJustChooseNotesOnMac = false
     }
 
     static func openRepository(

@@ -656,6 +656,59 @@ private extension Note {
     }
 }
 
+final class MacOnlyNotesTitlebarControl: NSHostingView<MacOnlyNotesTitlebarIcon> {
+    required init(rootView: MacOnlyNotesTitlebarIcon) {
+        super.init(rootView: rootView)
+        let status = String(localized: "Only on this Mac — not syncing with iPhone or iCloud.")
+        toolTip = status
+        setAccessibilityElement(true)
+        setAccessibilityLabel(status)
+        setAccessibilityHelp(String(localized: "Review Options…"))
+        setAccessibilityRole(.button)
+    }
+
+    convenience init() {
+        self.init(rootView: MacOnlyNotesTitlebarIcon())
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        openOptions()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        openOptions()
+        return true
+    }
+
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        .button
+    }
+
+    private func openOptions() {
+        NotificationCenter.default.post(name: .openSyncResolutionOptions, object: nil)
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+}
+
+struct MacOnlyNotesTitlebarIcon: View {
+    var body: some View {
+        Image(systemName: "icloud.slash")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .ignoresSafeArea()
+    }
+}
+
 final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitlebarIcon> {
     private let store: MacSharedStore
     private let noteID: NoteID

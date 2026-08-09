@@ -12,6 +12,7 @@ import TildoneSync
 @main
 struct TildoneApp: App {
     @State private var foregroundNoteID: NoteID?
+    @State private var showsSyncResolutionOptions = false
     @StateObject private var sharedStoreBootstrapper = MacSharedStoreBootstrapper()
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -28,7 +29,11 @@ struct TildoneApp: App {
         TildonePrimaryScene {
             Group {
                 if let store = sharedStoreBootstrapper.store {
-                    Desktop(store: store, foregroundNoteID: $foregroundNoteID)
+                    Desktop(
+                        store: store,
+                        showsMacOnlySyncIndicator: sharedStoreBootstrapper.isUsingNotesOnMacByChoice,
+                        foregroundNoteID: $foregroundNoteID
+                    )
                         .id(ObjectIdentifier(store))
                 } else if sharedStoreBootstrapper.error != nil {
                     VStack(spacing: 12) {
@@ -68,6 +73,11 @@ struct TildoneApp: App {
                 sharedStoreBootstrapper.syncNow()
             }
             .onReceive(NotificationCenter.default.publisher(for: .openSyncStatus)) { _ in
+                showsSyncResolutionOptions = false
+                openWindow(id: Id.syncStatusWindow)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openSyncResolutionOptions)) { _ in
+                showsSyncResolutionOptions = true
                 openWindow(id: Id.syncStatusWindow)
             }
         }
@@ -147,7 +157,10 @@ struct TildoneApp: App {
         .windowResizability(.contentSize)
         .commandsRemoved()
         Window("iCloud Sync", id: Id.syncStatusWindow) {
-            MacSyncStatusView(bootstrapper: sharedStoreBootstrapper)
+            MacSyncStatusView(
+                bootstrapper: sharedStoreBootstrapper,
+                showsResolutionOptions: $showsSyncResolutionOptions
+            )
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
@@ -317,8 +330,8 @@ enum MacSyncPresentation {
 
 private struct MacSyncStatusView: View {
     @ObservedObject var bootstrapper: MacSharedStoreBootstrapper
+    @Binding var showsResolutionOptions: Bool
     @State private var confirmsAdoption = false
-    @State private var showsResolutionOptions = false
 
     private var displayState: MacSyncDisplayState {
         MacSyncPresentation.state(
@@ -384,6 +397,24 @@ private struct MacSyncStatusView: View {
                     .font(.callout)
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if bootstrapper.didJustChooseNotesOnMac {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("These notes won’t appear on your iPhone or in iCloud. You can combine them later.")
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Spacer()
+                        Button("OK") { bootstrapper.dismissNotesOnMacNotice() }
+                            .keyboardShortcut(.defaultAction)
+                    }
+                }
+                .font(.callout)
+                .padding(12)
+                .background {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.08))
+                }
             }
 
             if bootstrapper.hasNotesOnMacAndICloud {
@@ -580,6 +611,7 @@ extension Notification.Name {
     static let openAbout = Notification.Name("openAbout")
     static let openFocusFilterHelp = Notification.Name("openFocusFilterHelp")
     static let openSyncStatus = Notification.Name("openSyncStatus")
+    static let openSyncResolutionOptions = Notification.Name("openSyncResolutionOptions")
     static let pauseSync = Notification.Name("pauseSync")
     static let resumeSync = Notification.Name("resumeSync")
     static let syncNow = Notification.Name("syncNow")
