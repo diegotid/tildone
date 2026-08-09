@@ -657,13 +657,13 @@ private struct NoteCard: View {
                     .layoutPriority(1)
                 Spacer(minLength: 0)
                 HStack(alignment: .center, spacing: 14 * contentScale) {
-                    NoteCompletionGauge(summary: summary)
+                    NoteCompletionGauge(summary: summary, labelColor: .black)
                         .foregroundStyle(.black)
                         .scaleEffect(gaugeSize / 40)
                         .frame(width: gaugeSize, height: gaugeSize)
                     Image(systemName: "chevron.right")
                         .font(.system(size: baseChevronSize * contentScale, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.black)
                         .accessibilityHidden(true)
                 }
                 .fixedSize()

@@ -9,6 +9,7 @@ import TildoneDomain
 
 struct NoteCompletionGauge: View {
     let summary: NoteTaskSummary?
+    var labelColor: Color = .primary
 
     private var completedCount: Int { summary?.completedCount ?? 0 }
     private var totalCount: Int { summary?.totalCount ?? 0 }
@@ -29,6 +30,7 @@ struct NoteCompletionGauge: View {
         } currentValueLabel: {
             Text("\(completedCount)/\(totalCount)")
                 .font(.callout.monospacedDigit().weight(.light))
+                .foregroundStyle(labelColor)
         }
         .gaugeStyle(.accessoryCircular)
         .tint(tintColor)
