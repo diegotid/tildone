@@ -42,6 +42,106 @@ final class TildoneTests: XCTestCase {
         }
     }
 
+    func testMacSyncPresentationDistinguishesActivePausedAndAttention() {
+        let active = SyncStatus(availability: .available, activity: .idle)
+        XCTAssertEqual(MacSyncPresentation.state(
+            status: active,
+            transportState: .active,
+            enabledByDefault: true,
+            hasUnadoptedLocalWorkspace: false
+        ), .active)
+        XCTAssertEqual(MacSyncPresentation.state(
+            status: active,
+            transportState: .paused,
+            enabledByDefault: true,
+            hasUnadoptedLocalWorkspace: false
+        ), .paused)
+
+        let zoneReset = SyncStatus(
+            availability: .zoneResetRequired,
+            activity: .attentionNeeded,
+            issue: .zoneReset
+        )
+        XCTAssertEqual(MacSyncPresentation.state(
+            status: zoneReset,
+            transportState: .paused,
+            enabledByDefault: true,
+            hasUnadoptedLocalWorkspace: false
+        ), .attentionNeeded)
+        XCTAssertEqual(
+            MacSyncPresentation.symbol(for: .attentionNeeded),
+            "exclamationmark.triangle.fill"
+        )
+        let resetDetail = MacSyncPresentation.detail(
+            status: zoneReset,
+            state: .attentionNeeded,
+            hasUnadoptedLocalWorkspace: false,
+            canAdoptLocalWorkspace: false,
+            adoptionCompletedAwaitingRelaunch: false
+        )
+        XCTAssertTrue(resetDetail.contains("will not rebuild or upload"))
+
+        let conflictDetail = MacSyncPresentation.detail(
+            status: active,
+            state: .attentionNeeded,
+            hasUnadoptedLocalWorkspace: true,
+            canAdoptLocalWorkspace: false,
+            adoptionCompletedAwaitingRelaunch: false
+        )
+        for detail in [resetDetail, conflictDetail] {
+            for jargon in ["workspace", "zone", "reseed", "CloudKit", "transport"] {
+                XCTAssertFalse(detail.localizedCaseInsensitiveContains(jargon), detail)
+            }
+        }
+    }
+
+    func testMacRecoveryUIRequiresAdoptionConfirmationAndHasNoAutomaticResetHatch() throws {
+        XCTAssertFalse(MacWorkspaceSelectionPolicy.usesAccountWorkspace(localNeedsAdoption: true))
+        XCTAssertTrue(MacWorkspaceSelectionPolicy.usesAccountWorkspace(localNeedsAdoption: false))
+        XCTAssertTrue(MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
+            localNeedsAdoption: true,
+            accountHasContent: false
+        ))
+        XCTAssertFalse(MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
+            localNeedsAdoption: true,
+            accountHasContent: true
+        ))
+
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let appSource = try String(
+            contentsOf: sourceURL.appendingPathComponent("Tildone/TildoneApp.swift"),
+            encoding: .utf8
+        )
+        let storeSource = try String(
+            contentsOf: sourceURL.appendingPathComponent("Tildone/MacSharedStore.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(appSource.contains(".alert(\"Copy notes to iCloud?\""))
+        XCTAssertTrue(appSource.contains("adoptLocalWorkspaceAfterConfirmation()"))
+        XCTAssertTrue(appSource.contains("setAccessibilityValue(title)"))
+        XCTAssertFalse(storeSource.contains("TILDONE_ALLOW_LOCAL_WORKSPACE_ADOPTION"))
+        XCTAssertFalse(storeSource.contains("TILDONE_RESET_DEVELOPMENT_ACCOUNT_WORKSPACE"))
+        XCTAssertFalse(storeSource.contains("resetDevelopmentAccountWorkspace"))
+    }
+
+    func testTrackedAppSchemesUseDeterministicDebugLaunchAndReleaseArchiveConfigurations() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for name in ["Tildone", "Tildone iOS"] {
+            let schemeURL = repositoryRoot
+                .appendingPathComponent("Tildone.xcodeproj/xcshareddata/xcschemes")
+                .appendingPathComponent("\(name).xcscheme")
+            let source = try String(contentsOf: schemeURL, encoding: .utf8)
+            XCTAssertTrue(source.contains("<LaunchAction\n      buildConfiguration = \"Debug\""), name)
+            XCTAssertTrue(source.contains("<ArchiveAction\n      buildConfiguration = \"Release\""), name)
+            XCTAssertFalse(source.contains("language ="), name)
+        }
+    }
+
     func testCheckboxDoesNotRetainParentOwnedCompletionAsLocalState() {
         let storedPropertyNames = Set(
             Mirror(reflecting: Checkbox(checked: false)).children.compactMap(\.label)

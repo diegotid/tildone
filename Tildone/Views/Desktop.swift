@@ -29,7 +29,7 @@ struct Desktop: View {
     @AppStorage(ArrangementSpacing.sideStorageKey)
     private var selectedArrangementSpacing: ArrangementSpacing = .minimum
 
-    private static let appWindowIDs = [Id.aboutWindow, Id.updateWindow]
+    private static let appWindowIDs = [Id.aboutWindow, Id.syncStatusWindow, Id.updateWindow]
 
     var body: some View {
         Color.clear

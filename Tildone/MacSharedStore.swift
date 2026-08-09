@@ -6,6 +6,7 @@
 //
 
 import CloudKit
+import CryptoKit
 import Foundation
 import SwiftUI
 import TildoneDomain
@@ -44,7 +45,7 @@ final class MacSharedStore: ObservableObject {
         self.repository = repository
     }
 
-    func attachSyncCoordinator(_ coordinator: TildoneSyncCoordinator) {
+    func attachSyncCoordinator(_ coordinator: TildoneSyncCoordinator?) {
         syncCoordinator = coordinator
     }
 
@@ -196,7 +197,7 @@ enum MacSharedStoreBootstrapError: Error, LocalizedError {
         case .unverifiedSharedStore:
             "The shared Tildone store is not eligible for activation."
         case .cloudAccountChanged:
-            "The iCloud account changed. Relaunch Tildone to open the correct private workspace."
+            "The iCloud account changed. Reopen Tildone to show the notes for the right account."
         }
     }
 }
@@ -211,17 +212,78 @@ enum MacRemoteRefreshHandler {
     }
 }
 
+private struct MacLocalAdoptionStateStore {
+    private static let keyPrefix = "localWorkspaceAdoptionFingerprint."
+
+    let defaults: UserDefaults
+
+    func fingerprint(for workspaceID: UUID) -> String? {
+        defaults.string(forKey: Self.keyPrefix + workspaceID.uuidString.lowercased())
+    }
+
+    func setFingerprint(_ fingerprint: String, for workspaceID: UUID) {
+        defaults.set(fingerprint, forKey: Self.keyPrefix + workspaceID.uuidString.lowercased())
+    }
+}
+
+enum MacWorkspaceSelectionPolicy {
+    /// An unadopted local workspace remains active even when the account
+    /// workspace already contains data. A workspace-mode change follows only
+    /// an explicit, eligible adoption confirmation.
+    static func usesAccountWorkspace(localNeedsAdoption: Bool) -> Bool {
+        !localNeedsAdoption
+    }
+
+    static func canAdoptLocalWorkspace(
+        localNeedsAdoption: Bool,
+        accountHasContent: Bool
+    ) -> Bool {
+        localNeedsAdoption && !accountHasContent
+    }
+}
+
 @MainActor
 final class MacSharedStoreBootstrapper: ObservableObject {
     @Published private(set) var store: MacSharedStore?
     @Published private(set) var error: Error?
     @Published private(set) var syncStatus: SyncStatus = .disabled
+    @Published private(set) var transportState: SyncTransportState = .active
+    @Published private(set) var hasResolvedAccountWorkspace = false
+    @Published private(set) var isUsingAccountWorkspace = false
+    @Published private(set) var hasUnadoptedLocalWorkspace = false
+    @Published private(set) var canAdoptLocalWorkspace = false
+    @Published private(set) var adoptionCompletedAwaitingRelaunch = false
+    @Published private(set) var isTransportActionInProgress = false
+
+    private let transportStateStore: SyncTransportStateStore
+    private let localAdoptionStateStore: MacLocalAdoptionStateStore
+    private var localRepository: TildoneRepository?
+    private var accountRepository: TildoneRepository?
+    private var selectedRepository: TildoneRepository?
+    private var accountWorkspaceID: UUID?
+    private var cloudContainer: CKContainer?
+    private var syncCoordinator: TildoneSyncCoordinator?
+    private var statusTask: Swift.Task<Void, Never>?
+
+    init(
+        transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
+        defaults: UserDefaults = .standard
+    ) {
+        self.transportStateStore = transportStateStore
+        self.localAdoptionStateStore = MacLocalAdoptionStateStore(defaults: defaults)
+    }
+
+    deinit { statusTask?.cancel() }
 
     static var transportEnabledByDefault: Bool {
         TransportDefaultPolicy.isEnabled(
             buildMode: compiledBuildMode,
             isTestProcess: isTestProcess
         )
+    }
+
+    var canControlTransport: Bool {
+        Self.transportEnabledByDefault && hasResolvedAccountWorkspace && isUsingAccountWorkspace
     }
 
     func start() {
@@ -231,105 +293,205 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 let localRepository = try await (Self.isTestProcess
                     ? TildoneRepository(descriptor: .inMemory())
                     : Self.openRepository())
+                self.localRepository = localRepository
                 if Self.isTestProcess {
                     let store = MacSharedStore(repository: localRepository)
                     try await store.prepareForPresentation()
+                    self.selectedRepository = localRepository
                     self.store = store
                     return
                 }
 
                 let container = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
+                self.cloudContainer = container
                 let account = await CloudAccountResolver().resolve(container: container)
                 guard account.state == .available, let workspaceID = account.workspaceID else {
                     self.syncStatus = Self.status(for: account.state)
                     let store = MacSharedStore(repository: localRepository)
                     try await store.prepareForPresentation()
+                    self.selectedRepository = localRepository
                     self.store = store
                     return
                 }
 
                 let base = try Self.applicationSupportDirectory()
-                if Self.developmentAccountWorkspaceResetEnabled {
-                    // This is a deliberate development recovery operation. It
-                    // only discards the account-keyed local replica/outbox;
-                    // the local-only migration workspace is left untouched.
-                    // CloudKit records and zones are never deleted here.
-                    try Self.resetDevelopmentAccountWorkspace(
-                        baseDirectory: base,
-                        workspaceID: workspaceID
-                    )
-                }
                 let accountRepository = try TildoneRepository(descriptor: .persistent(
                     baseDirectory: base,
                     workspace: .account(workspaceID)
                 ))
                 try await Self.migrateSharedNoteColors(in: accountRepository)
-                var selectedRepository = accountRepository
-                if try await localRepository.hasSyncContent() {
-                    if Self.transportEnabledByDefault,
-                       Self.localWorkspaceAdoptionEnabled {
-                        try await accountRepository.adoptSyncContent(
-                            notes: try await localRepository.allSyncNotes(),
-                            tasks: try await localRepository.allSyncTasks(),
-                            at: Date()
-                        )
-                        try await localRepository.markCloudSeedingBegun(at: Date())
-                    } else if !(try await accountRepository.hasSyncContent()) {
-                        selectedRepository = localRepository
-                        if Self.transportEnabledByDefault {
-                            self.syncStatus = SyncStatus(
-                                availability: .adoptionRequired,
-                                activity: .idle
-                            )
-                        }
-                    }
-                }
+                self.accountRepository = accountRepository
+                self.accountWorkspaceID = workspaceID
+                self.hasResolvedAccountWorkspace = true
+                self.transportState = transportStateStore.state(for: workspaceID)
+
+                let localHasContent = try await localRepository.hasSyncContent()
+                let accountHasContent = try await accountRepository.hasSyncContent()
+                let localFingerprint = localHasContent
+                    ? try await Self.contentFingerprint(repository: localRepository)
+                    : nil
+                let localNeedsAdoption = localFingerprint.map {
+                    localAdoptionStateStore.fingerprint(for: workspaceID) != $0
+                } ?? false
+                self.hasUnadoptedLocalWorkspace = localNeedsAdoption
+                self.canAdoptLocalWorkspace = MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
+                    localNeedsAdoption: localNeedsAdoption,
+                    accountHasContent: accountHasContent
+                )
+                let selectedRepository = MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+                    localNeedsAdoption: localNeedsAdoption
+                ) ? accountRepository : localRepository
+                self.selectedRepository = selectedRepository
+                self.isUsingAccountWorkspace = selectedRepository === accountRepository
 
                 let store = MacSharedStore(repository: selectedRepository)
                 try await store.prepareForPresentation()
+                self.store = store
                 guard Self.transportEnabledByDefault else {
                     self.syncStatus = .disabled
-                    self.store = store
                     return
                 }
                 guard selectedRepository === accountRepository else {
-                    self.store = store
+                    self.syncStatus = SyncStatus(
+                        availability: .adoptionRequired,
+                        activity: .attentionNeeded
+                    )
                     return
                 }
-                let coordinator = try await TildoneSyncCoordinator(
-                    repository: accountRepository,
-                    container: container,
-                    clientPlatform: .mac,
-                    onAccountChange: { [weak self] change in
-                        guard change.requiresWorkspaceInvalidation else { return }
-                        Swift.Task { @MainActor in
-                            self?.store = nil
-                            self?.error = MacSharedStoreBootstrapError.cloudAccountChanged
-                        }
-                    },
-                    onRemoteChange: { [weak store, accountRepository] in
-                        try await MacRemoteRefreshHandler.run(
-                            migrateColors: {
-                                try await Self.migrateSharedNoteColors(in: accountRepository)
-                            },
-                            reloadSnapshots: {
-                                try await store?.reload()
-                            }
-                        )
-                    }
-                )
-                store.attachSyncCoordinator(coordinator)
-                self.store = store
-                Swift.Task { [weak self] in
-                    for await status in await coordinator.statusModel.updates() {
-                        self?.syncStatus = status
-                    }
+                guard SyncTransportActivationPolicy.shouldActivate(
+                    enabledByDefault: Self.transportEnabledByDefault,
+                    persistedState: transportState
+                ) else {
+                    self.syncStatus = await pausedStatus(repository: accountRepository)
+                    return
                 }
-                await coordinator.start()
+                try await startCoordinator(
+                    repository: accountRepository,
+                    workspaceID: workspaceID,
+                    container: container,
+                    store: store
+                )
             } catch {
                 self.error = error
             }
         }
+    }
+
+    func pauseTransport() {
+        guard canControlTransport,
+              transportState == .active,
+              let workspaceID = accountWorkspaceID,
+              let repository = accountRepository else { return }
+        transportStateStore.set(.paused, for: workspaceID)
+        transportState = .paused
+        isTransportActionInProgress = true
+        statusTask?.cancel()
+        statusTask = nil
+        store?.attachSyncCoordinator(nil)
+        let coordinator = syncCoordinator
+        syncCoordinator = nil
+        Swift.Task {
+            await coordinator?.pause()
+            let paused = await pausedStatus(repository: repository)
+            if !Self.requiresAttention(syncStatus) { syncStatus = paused }
+            isTransportActionInProgress = false
+        }
+    }
+
+    func resumeTransport() {
+        guard canControlTransport,
+              transportState == .paused,
+              let workspaceID = accountWorkspaceID,
+              let repository = accountRepository,
+              let container = cloudContainer,
+              let store else { return }
+        isTransportActionInProgress = true
+        Swift.Task {
+            let account = await CloudAccountResolver().resolve(container: container)
+            guard account.state == .available, account.workspaceID == workspaceID else {
+                invalidateForAccountChange()
+                isTransportActionInProgress = false
+                return
+            }
+            transportStateStore.set(.active, for: workspaceID)
+            transportState = .active
+            do {
+                try await startCoordinator(
+                    repository: repository,
+                    workspaceID: workspaceID,
+                    container: container,
+                    store: store
+                )
+            } catch {
+                syncStatus = SyncStatus(
+                    availability: .available,
+                    activity: .attentionNeeded,
+                    pendingMutationCount: (try? await repository.pendingMutations().count) ?? 0,
+                    lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt,
+                    issue: .unknown
+                )
+            }
+            isTransportActionInProgress = false
+        }
+    }
+
+    func syncNow() {
+        guard transportState == .active, let syncCoordinator else { return }
+        Swift.Task { await syncCoordinator.start() }
+    }
+
+    /// Confirmation is owned by the calling UI. This operation only copies an
+    /// existing local-only workspace into an empty account workspace, retains
+    /// the source, and waits for relaunch before selecting the account mode.
+    func adoptLocalWorkspaceAfterConfirmation() {
+        guard canAdoptLocalWorkspace,
+              !isTransportActionInProgress,
+              let localRepository,
+              let accountRepository,
+              let accountWorkspaceID else { return }
+        isTransportActionInProgress = true
+        Swift.Task {
+            do {
+                guard !(try await accountRepository.hasSyncContent()) else {
+                    canAdoptLocalWorkspace = false
+                    throw PersistenceError.workspaceMismatch
+                }
+                try await accountRepository.adoptSyncContent(
+                    notes: try await localRepository.allSyncNotes(),
+                    tasks: try await localRepository.allSyncTasks(),
+                    at: Date()
+                )
+                try await localRepository.markCloudSeedingBegun(at: Date())
+                let fingerprint = try await Self.contentFingerprint(repository: localRepository)
+                localAdoptionStateStore.setFingerprint(fingerprint, for: accountWorkspaceID)
+                canAdoptLocalWorkspace = false
+                hasUnadoptedLocalWorkspace = false
+                adoptionCompletedAwaitingRelaunch = true
+            } catch {
+                syncStatus = SyncStatus(
+                    availability: .adoptionRequired,
+                    activity: .attentionNeeded,
+                    issue: .unknown
+                )
+            }
+            isTransportActionInProgress = false
+        }
+    }
+
+    private static func contentFingerprint(repository: TildoneRepository) async throws -> String {
+        struct Snapshot: Encodable {
+            let notes: [TildoneDomain.Note]
+            let tasks: [TildoneDomain.Task]
+        }
+
+        let snapshot = Snapshot(
+            notes: try await repository.allSyncNotes().sorted { $0.id < $1.id },
+            tasks: try await repository.allSyncTasks().sorted { $0.id < $1.id }
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let digest = SHA256.hash(data: try encoder.encode(snapshot))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     static func openRepository(
@@ -447,57 +609,81 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         .release
 #endif
     }
-    /// Explicit development-only approval for the unresolved local-only to
-    /// account-workspace adoption policy. Merely signing into iCloud never
-    /// uploads local-only notes.
-    private static var localWorkspaceAdoptionEnabled: Bool {
-#if DEBUG
-        ProcessInfo.processInfo.environment["TILDONE_ALLOW_LOCAL_WORKSPACE_ADOPTION"] == "1"
-#else
-        false
-#endif
-    }
 
-    /// Explicit, development-only repair hatch for a disposable account
-    /// replica whose local outbox/state can no longer be opened. It requires a
-    /// deliberately wordy value so an ordinary Debug sync run cannot erase a
-    /// local replica by accident. It never touches the local-only workspace,
-    /// the released legacy store, or CloudKit's remote custom zone.
-    private static var developmentAccountWorkspaceResetEnabled: Bool {
-#if DEBUG
-        ProcessInfo.processInfo.environment[
-            "TILDONE_RESET_DEVELOPMENT_ACCOUNT_WORKSPACE"
-        ] == "CONFIRM_RESET"
-#else
-        false
-#endif
-    }
-
-    private static func resetDevelopmentAccountWorkspace(
-        baseDirectory: URL,
-        workspaceID: UUID
-    ) throws {
-        let descriptor = PersistenceStoreDescriptor.persistent(
-            baseDirectory: baseDirectory,
-            workspace: .account(workspaceID)
+    private func startCoordinator(
+        repository: TildoneRepository,
+        workspaceID: UUID,
+        container: CKContainer,
+        store: MacSharedStore
+    ) async throws {
+        statusTask?.cancel()
+        let coordinator = try await TildoneSyncCoordinator(
+            repository: repository,
+            container: container,
+            clientPlatform: .mac,
+            onAccountChange: { [weak self] change in
+                guard change.requiresWorkspaceInvalidation else { return }
+                Swift.Task { @MainActor in self?.invalidateForAccountChange() }
+            },
+            onRemoteChange: { [weak store, repository] in
+                try await MacRemoteRefreshHandler.run(
+                    migrateColors: {
+                        try await Self.migrateSharedNoteColors(in: repository)
+                    },
+                    reloadSnapshots: {
+                        try await store?.reload()
+                    }
+                )
+            }
         )
-        guard let storeURL = try TildoneRepository.storeURL(for: descriptor) else {
-            throw PersistenceError.invalidStoreLocation
+        syncCoordinator = coordinator
+        store.attachSyncCoordinator(coordinator)
+        statusTask = Swift.Task { [weak self, weak coordinator] in
+            guard let coordinator else { return }
+            for await status in await coordinator.statusModel.updates() {
+                guard !Swift.Task.isCancelled else { return }
+                guard self?.accountWorkspaceID == workspaceID,
+                      self?.transportState == .active else { return }
+                self?.syncStatus = status
+            }
         }
-        let directory = storeURL.deletingLastPathComponent().standardizedFileURL
-        let accountsDirectory = baseDirectory
-            .appendingPathComponent("TildoneSharedStore-v1", isDirectory: true)
-            .appendingPathComponent("accounts", isDirectory: true)
-            .standardizedFileURL
-        guard directory.deletingLastPathComponent() == accountsDirectory else {
-            throw PersistenceError.invalidStoreLocation
-        }
-        guard FileManager.default.fileExists(atPath: directory.path) else { return }
-        do {
-            try FileManager.default.removeItem(at: directory)
-        } catch {
-            throw PersistenceError.invalidStoreLocation
-        }
+        await coordinator.start()
+    }
+
+    private func pausedStatus(repository: TildoneRepository) async -> SyncStatus {
+        SyncStatus(
+            availability: .available,
+            activity: .paused,
+            pendingMutationCount: (try? await repository.pendingMutations().count) ?? 0,
+            lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt,
+            activeDeviceSummary: syncStatus.activeDeviceSummary,
+            issue: nil
+        )
+    }
+
+    private func invalidateForAccountChange() {
+        statusTask?.cancel()
+        statusTask = nil
+        store?.attachSyncCoordinator(nil)
+        syncCoordinator = nil
+        selectedRepository = nil
+        isUsingAccountWorkspace = false
+        store = nil
+        syncStatus = SyncStatus(
+            availability: .accountChanged,
+            activity: .attentionNeeded,
+            issue: .accountChanged
+        )
+        error = MacSharedStoreBootstrapError.cloudAccountChanged
+    }
+
+    private static func requiresAttention(_ status: SyncStatus) -> Bool {
+        status.activity == .attentionNeeded || [
+            .adoptionRequired,
+            .accountChanged,
+            .zoneResetRequired,
+            .incompatibleRemoteData
+        ].contains(status.availability)
     }
 
     private static func status(for account: CloudAccountState) -> SyncStatus {

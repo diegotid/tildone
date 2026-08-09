@@ -30,6 +30,112 @@ final class TildoneSyncTests: XCTestCase {
         ))
     }
 
+    func testTransportPreferencePersistsPerAccountAndCannotEnableRelease() throws {
+        let suiteName = "TildoneTransportStateTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let workspaceA = UUID(int: 701)
+        let workspaceB = UUID(int: 702)
+
+        var store = SyncTransportStateStore(defaults: defaults)
+        XCTAssertEqual(store.state(for: workspaceA), .active)
+        XCTAssertEqual(store.state(for: workspaceB), .active)
+
+        store.set(.paused, for: workspaceA)
+        store = SyncTransportStateStore(defaults: defaults) // Relaunch.
+        XCTAssertEqual(store.state(for: workspaceA), .paused)
+        XCTAssertEqual(store.state(for: workspaceB), .active)
+        XCTAssertFalse(SyncTransportActivationPolicy.shouldActivate(
+            enabledByDefault: true,
+            persistedState: store.state(for: workspaceA)
+        ))
+        XCTAssertTrue(SyncTransportActivationPolicy.shouldActivate(
+            enabledByDefault: true,
+            persistedState: store.state(for: workspaceB)
+        ))
+        XCTAssertFalse(SyncTransportActivationPolicy.shouldActivate(
+            enabledByDefault: false,
+            persistedState: .active
+        ))
+
+        defaults.set(17, forKey: SyncTransportStateStore.storageKey(for: workspaceB))
+        XCTAssertEqual(store.state(for: workspaceB), .paused)
+    }
+
+    func testPausedRelaunchPreservesWorkspaceOutboxTombstonesAndEngineStateThenDrains() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TildonePausedTransport-\(UUID().uuidString)", isDirectory: true)
+        let suiteName = "TildonePausedTransportTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            try? FileManager.default.removeItem(at: root)
+        }
+        let workspaceID = UUID(int: 703)
+        let descriptor = PersistenceStoreDescriptor.persistent(
+            baseDirectory: root,
+            workspace: .account(workspaceID)
+        )
+        let noteID = NoteID(UUID(int: 704))
+        let taskID = TaskID(UUID(int: 705))
+        let transportStore = SyncTransportStateStore(defaults: defaults)
+        var repository: TildoneRepository? = try TildoneRepository(descriptor: descriptor)
+
+        _ = try await repository!.createNote(id: noteID, createdAt: date, title: "Local")
+        _ = try await repository!.addTask(
+            id: taskID,
+            to: noteID,
+            createdAt: date,
+            text: "Queued",
+            orderToken: try OrderToken(rawValue: "m")
+        )
+        try await repository!.acknowledgeMutations(
+            ids: Set(try await repository!.pendingMutations().map(\.id))
+        )
+        var persistent = SyncPersistentState()
+        persistent.zoneCreated = true
+        let serializedState = try persistent.encoded()
+        try await repository!.storeFutureSyncEngineState(serializedState)
+
+        transportStore.set(.paused, for: workspaceID)
+        try await repository!.deleteNote(id: noteID)
+        let pendingBeforeRelaunch = try await repository!.pendingMutations()
+        XCTAssertEqual(pendingBeforeRelaunch.count, 2)
+        XCTAssertTrue(pendingBeforeRelaunch.allSatisfy { $0.attemptCount == 0 })
+
+        repository = nil
+        try await Swift.Task.sleep(nanoseconds: 20_000_000)
+
+        let relaunchedTransportStore = SyncTransportStateStore(defaults: defaults)
+        XCTAssertEqual(relaunchedTransportStore.state(for: workspaceID), .paused)
+        let reopened = try TildoneRepository(descriptor: descriptor)
+        let workspace = try await reopened.workspaceSnapshot()
+        let pendingAfterRelaunch = try await reopened.pendingMutations()
+        let deletedNote = try await reopened.note(id: noteID, includingDeleted: true)
+        let deletedTask = try await reopened.task(id: taskID, includingDeleted: true)
+        XCTAssertEqual(workspace.opaqueWorkspaceID, workspaceID.uuidString.lowercased())
+        XCTAssertEqual(workspace.futureSyncEngineState, serializedState)
+        XCTAssertEqual(pendingAfterRelaunch, pendingBeforeRelaunch)
+        XCTAssertEqual(deletedNote.lifecycle, .deleted)
+        XCTAssertEqual(deletedTask.lifecycle, .deleted)
+
+        relaunchedTransportStore.set(.active, for: workspaceID)
+        XCTAssertTrue(SyncTransportActivationPolicy.shouldActivate(
+            enabledByDefault: true,
+            persistedState: relaunchedTransportStore.state(for: workspaceID)
+        ))
+        let pipeline = SyncPipeline(repository: reopened)
+        for recordName in try await pipeline.pendingRecordNames() {
+            let outbound = try await pipeline.prepareOutboundMutation(recordName: recordName, at: date)
+            let mutationID = try XCTUnwrap(outbound?.mutationID)
+            try await pipeline.acknowledge([mutationID])
+        }
+        let pendingAfterResume = try await pipeline.pendingCount()
+        let stateAfterResume = try await reopened.workspaceSnapshot().futureSyncEngineState
+        XCTAssertEqual(pendingAfterResume, 0)
+        XCTAssertEqual(stateAfterResume, serializedState)
+    }
+
     func testFrozenLocalRefreshFailureCannotReturnToHealthyCheckpointStatus() {
         let failure = SyncStatus(
             availability: .available,

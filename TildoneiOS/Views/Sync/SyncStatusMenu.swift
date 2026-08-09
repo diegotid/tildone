@@ -10,26 +10,44 @@ import TildoneSync
 
 struct SyncStatusMenu: View {
     let status: SyncStatus
+    let transportState: SyncTransportState
+    let canControlTransport: Bool
     let syncNow: () -> Void
+    let pause: () -> Void
+    let resume: () -> Void
 
     var body: some View {
         Menu {
             Text(SyncStatusPresentation.title(for: status))
             if let detail = SyncStatusPresentation.detail(for: status) { Text(detail) }
-            if status.pendingMutationCount > 0 { Text("\(status.pendingMutationCount) local changes waiting") }
+            if status.pendingMutationCount > 0 { Text("\(status.pendingMutationCount) changes waiting to sync") }
             if status.availability == .available, let summary = status.activeDeviceSummary {
                 Text(SyncDeviceSummaryPresentation.title(for: summary))
                 if SyncDeviceSummaryPresentation.shouldShowMacUpgradeGuidance(for: summary) {
                     Text(SyncDeviceSummaryPresentation.macUpgradeGuidance())
                 }
             }
-            if status.availability == .available {
+            if status.availability == .available || canControlTransport {
                 Divider()
-                Button("Sync Now", systemImage: "arrow.triangle.2.circlepath", action: syncNow)
+                if canControlTransport, transportState == .paused {
+                    Button("Resume Sync", systemImage: "play.fill", action: resume)
+                } else {
+                    if status.availability == .available {
+                        Button("Sync Now", systemImage: "arrow.triangle.2.circlepath", action: syncNow)
+                    }
+                    if canControlTransport {
+                        Button("Pause Sync", systemImage: "pause.fill", action: pause)
+                    }
+                }
             }
         } label: {
             Image(systemName: SyncStatusPresentation.symbol(for: status))
                 .accessibilityLabel(SyncStatusPresentation.title(for: status))
+                .accessibilityValue(
+                    transportState == .paused
+                        ? String(localized: "Sync is paused")
+                        : SyncStatusPresentation.title(for: status)
+                )
         }
     }
 }

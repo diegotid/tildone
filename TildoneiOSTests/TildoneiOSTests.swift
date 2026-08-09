@@ -138,8 +138,14 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(SyncStatusPresentation.title(for: malformed), "iCloud needs attention")
         XCTAssertEqual(
             SyncStatusPresentation.detail(for: malformed),
-            "Some synchronized data could not be read. Local editing is still available."
+            "Some notes from iCloud could not be read. You can keep editing."
         )
+
+        let paused = SyncStatus(availability: .available, activity: .paused)
+        XCTAssertEqual(SyncStatusPresentation.title(for: paused), "Sync is paused")
+        XCTAssertEqual(SyncStatusPresentation.symbol(for: paused), "pause.circle")
+        let pausedDetail = try XCTUnwrap(SyncStatusPresentation.detail(for: paused))
+        XCTAssertFalse(pausedDetail.localizedCaseInsensitiveContains("workspace"))
 
         let available = SyncStatus(
             availability: .available,
@@ -193,6 +199,50 @@ final class TildoneiOSTests: XCTestCase {
 
         try await model.openForTesting(workspaceID: workspaceB)
         XCTAssertTrue(model.notes.isEmpty)
+    }
+
+    func testPausedTransportKeepsWorkspaceCRUDAndIsolatesAccountPreference() async throws {
+        let suiteName = "TildoneiOSTransportTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let transportStore = SyncTransportStateStore(defaults: defaults)
+        let workspaceA = UUID()
+        let workspaceB = UUID()
+        let repositoryA = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(workspaceA))
+        )
+        let repositoryB = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(workspaceB))
+        )
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { workspace in
+                switch workspace {
+                case let .account(id) where id == workspaceA: return repositoryA
+                case let .account(id) where id == workspaceB: return repositoryB
+                default: throw PersistenceError.workspaceMismatch
+                }
+            },
+            synchronizationEnabled: true,
+            transportStateStore: transportStore
+        )
+
+        try await model.openForTesting(workspaceID: workspaceA)
+        model.pauseTransport()
+        XCTAssertEqual(model.transportState, .paused)
+        XCTAssertEqual(model.syncStatus.activity, .paused)
+        XCTAssertTrue(model.hasWorkspace)
+        _ = try await model.createNote(title: "Stays local while paused")
+        let pendingA = try await repositoryA.pendingMutations()
+        XCTAssertEqual(model.notes.count, 1)
+        XCTAssertFalse(pendingA.isEmpty)
+
+        try await model.openForTesting(workspaceID: workspaceB)
+        XCTAssertEqual(model.transportState, .active)
+        XCTAssertTrue(model.notes.isEmpty)
+
+        try await model.openForTesting(workspaceID: workspaceA)
+        XCTAssertEqual(model.transportState, .paused)
+        XCTAssertEqual(model.notes.count, 1)
     }
 
     func testWorkspaceResolutionRevalidatesAccountIdentity() async throws {

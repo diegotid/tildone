@@ -19,6 +19,7 @@ public enum SyncAvailability: String, Codable, Hashable, Sendable {
 public enum SyncActivity: String, Codable, Hashable, Sendable {
     case idle
     case syncing
+    case paused
     case offline
     case attentionNeeded
 }

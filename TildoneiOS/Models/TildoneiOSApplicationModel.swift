@@ -19,6 +19,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     @Published private(set) var taskListTexts: [NoteID: String] = [:]
     @Published private(set) var taskPreviews: [NoteID: [NoteTaskPreview]] = [:]
     @Published private(set) var syncStatus: SyncStatus = .disabled
+    @Published private(set) var transportState: SyncTransportState = .active
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
     @Published private(set) var contentRevision: UInt64 = 0
@@ -26,6 +27,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private let repositoryFactory: RepositoryFactory
     private let accountResolver: () async -> CloudAccountSnapshot
     private let synchronizationEnabled: Bool
+    private let transportStateStore: SyncTransportStateStore
     private var repository: TildoneRepository?
     private var coordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
@@ -37,11 +39,13 @@ final class TildoneiOSApplicationModel: ObservableObject {
         accountResolver: @escaping () async -> CloudAccountSnapshot = {
             await CloudAccountResolver().resolve()
         },
-        synchronizationEnabled: Bool = TildoneiOSSyncBootstrapper.featureEnabled
+        synchronizationEnabled: Bool = TildoneiOSSyncBootstrapper.featureEnabled,
+        transportStateStore: SyncTransportStateStore = SyncTransportStateStore()
     ) {
         self.repositoryFactory = repositoryFactory
         self.accountResolver = accountResolver
         self.synchronizationEnabled = synchronizationEnabled
+        self.transportStateStore = transportStateStore
     }
 
     deinit { statusTask?.cancel() }
@@ -60,7 +64,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func syncNow() {
-        guard let coordinator else { return }
+        guard transportState == .active, let coordinator else { return }
         Swift.Task { [weak self, weak coordinator] in
             guard let self, let coordinator else { return }
             await coordinator.start()
@@ -93,11 +97,25 @@ final class TildoneiOSApplicationModel: ObservableObject {
             self.repository = repository
             activeWorkspace = workspaceID
             hasWorkspace = true
-            syncStatus = synchronizationEnabled
-                ? SyncStatus(availability: .available, activity: .idle)
-                : .disabled
+            transportState = transportStateStore.state(for: workspaceID)
+            if !synchronizationEnabled {
+                syncStatus = .disabled
+            } else if transportState == .paused {
+                syncStatus = SyncStatus(
+                    availability: .available,
+                    activity: .paused,
+                    pendingMutationCount: try await repository.pendingMutations().count
+                )
+            } else {
+                syncStatus = SyncStatus(availability: .available, activity: .idle)
+            }
             try await reloadNotes()
-            if synchronizationEnabled { try await startCoordinator(for: repository, workspaceID: workspaceID) }
+            if SyncTransportActivationPolicy.shouldActivate(
+                enabledByDefault: synchronizationEnabled,
+                persistedState: transportState
+            ) {
+                try await startCoordinator(for: repository, workspaceID: workspaceID)
+            }
         } catch {
             await closeWorkspace(status: SyncStatus(
                 availability: .temporarilyUnavailable,
@@ -229,9 +247,59 @@ final class TildoneiOSApplicationModel: ObservableObject {
             authority: .platformDefault
         )
         activeWorkspace = workspaceID
+        transportState = transportStateStore.state(for: workspaceID)
         hasWorkspace = true
         isResolvingWorkspace = false
         try await reloadNotes()
+    }
+
+    var canControlTransport: Bool {
+        synchronizationEnabled && activeWorkspace != nil
+    }
+
+    func pauseTransport() {
+        guard canControlTransport,
+              transportState == .active,
+              let workspaceID = activeWorkspace,
+              let repository else { return }
+        transportStateStore.set(.paused, for: workspaceID)
+        transportState = .paused
+        statusTask?.cancel()
+        statusTask = nil
+        let coordinator = coordinator
+        self.coordinator = nil
+        let previousStatus = syncStatus
+        let retainsAttention = Self.requiresAttention(previousStatus)
+        if !retainsAttention {
+            syncStatus = SyncStatus(
+                availability: .available,
+                activity: .paused,
+                pendingMutationCount: previousStatus.pendingMutationCount,
+                lastSuccessfulSyncAt: previousStatus.lastSuccessfulSyncAt,
+                activeDeviceSummary: previousStatus.activeDeviceSummary,
+                issue: previousStatus.issue
+            )
+        }
+        Swift.Task { [weak self] in
+            await coordinator?.pause()
+            guard let self, self.activeWorkspace == workspaceID, self.transportState == .paused else {
+                return
+            }
+            let pending = (try? await repository.pendingMutations().count) ?? syncStatus.pendingMutationCount
+            syncStatus = SyncStatus(
+                availability: retainsAttention ? previousStatus.availability : .available,
+                activity: retainsAttention ? previousStatus.activity : .paused,
+                pendingMutationCount: pending,
+                lastSuccessfulSyncAt: previousStatus.lastSuccessfulSyncAt,
+                activeDeviceSummary: previousStatus.activeDeviceSummary,
+                issue: previousStatus.issue
+            )
+        }
+    }
+
+    func resumeTransport() {
+        guard canControlTransport, transportState == .paused else { return }
+        Swift.Task { [weak self] in await self?.resumeTransportNow() }
     }
 
     func present(status: SyncStatus) {
@@ -248,6 +316,35 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private func didMutate() async throws {
         try await reloadNotes()
         await coordinator?.notifyLocalChanges()
+    }
+
+    private func resumeTransportNow() async {
+        guard synchronizationEnabled,
+              transportState == .paused,
+              let workspaceID = activeWorkspace,
+              let repository else { return }
+        let account = await accountResolver()
+        guard account.state == .available, account.workspaceID == workspaceID else {
+            await closeWorkspace(status: SyncStatus(
+                availability: .accountChanged,
+                activity: .attentionNeeded,
+                issue: .accountChanged
+            ))
+            return
+        }
+        transportStateStore.set(.active, for: workspaceID)
+        transportState = .active
+        do {
+            try await startCoordinator(for: repository, workspaceID: workspaceID)
+        } catch {
+            syncStatus = SyncStatus(
+                availability: .available,
+                activity: .attentionNeeded,
+                pendingMutationCount: (try? await repository.pendingMutations().count) ?? 0,
+                lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt,
+                issue: .unknown
+            )
+        }
     }
 
     private func withRepository<T>(_ operation: (TildoneRepository) async throws -> T) async throws -> T {
@@ -294,6 +391,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         coordinator = nil
         repository = nil
         activeWorkspace = nil
+        transportState = .active
         notes = []
         taskSummaries = [:]
         taskListTexts = [:]
@@ -334,6 +432,15 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     private func initialOrderUpperBound() throws -> OrderToken { try OrderToken(rawValue: "z") }
+
+    private static func requiresAttention(_ status: SyncStatus) -> Bool {
+        status.activity == .attentionNeeded || [
+            .adoptionRequired,
+            .accountChanged,
+            .zoneResetRequired,
+            .incompatibleRemoteData
+        ].contains(status.availability)
+    }
 
     private static func status(for account: CloudAccountState) -> SyncStatus {
         switch account {

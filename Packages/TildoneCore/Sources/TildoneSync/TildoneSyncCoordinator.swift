@@ -141,6 +141,31 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         await engine?.cancelOperations()
     }
 
+    /// Freezes this coordinator instance and cancels its CloudKit operations.
+    /// The repository, durable outbox, tombstones, system fields, and serialized
+    /// engine envelope are intentionally left untouched. Resume constructs a
+    /// new coordinator from that same workspace state.
+    public func pause() async {
+        await coordinatorState.freeze()
+        await engine?.cancelOperations()
+        let current = await statusModel.snapshot()
+        let pending = (try? await pipeline.pendingCount()) ?? current.pendingMutationCount
+        let retainsAttention = current.activity == .attentionNeeded || [
+            .adoptionRequired,
+            .accountChanged,
+            .zoneResetRequired,
+            .incompatibleRemoteData
+        ].contains(current.availability)
+        await statusModel.set(SyncStatus(
+            availability: retainsAttention ? current.availability : .available,
+            activity: retainsAttention ? .attentionNeeded : .paused,
+            pendingMutationCount: pending,
+            lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+            activeDeviceSummary: current.activeDeviceSummary,
+            issue: current.issue
+        ))
+    }
+
     /// Call after a local repository mutation. Duplicate additions are harmless
     /// because CKSyncEngine pending changes are value-deduplicated.
     public func notifyLocalChanges() async {
@@ -153,6 +178,18 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     }
 
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
+        // Cancellation can race an already-delivered engine callback. Once
+        // frozen, ignore every data/checkpoint event so pausing cannot apply a
+        // fetch, serialize a newer checkpoint, or acknowledge durable outbox
+        // work. Account changes still propagate to preserve account isolation.
+        if await coordinatorState.isFrozen() {
+            switch event {
+            case .accountChange:
+                break
+            default:
+                return
+            }
+        }
         switch event {
         case let .stateUpdate(update):
             guard !(await coordinatorState.isFrozen()) else { break }

@@ -67,7 +67,14 @@ struct NotesListView: View {
             .navigationTitle("Notes")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    SyncStatusMenu(status: appModel.syncStatus, syncNow: appModel.syncNow)
+                    SyncStatusMenu(
+                        status: appModel.syncStatus,
+                        transportState: appModel.transportState,
+                        canControlTransport: appModel.canControlTransport,
+                        syncNow: appModel.syncNow,
+                        pause: appModel.pauseTransport,
+                        resume: appModel.resumeTransport
+                    )
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
