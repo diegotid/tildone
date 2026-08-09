@@ -37,6 +37,14 @@ final class TildoneTests: XCTestCase {
 
     @MainActor
     func testMacNoteSyncIndicatorDistinguishesLocalChoiceAndAttention() {
+        XCTAssertEqual(MacNoteTitlebarLayout.titleTrailingInset, 60)
+        XCTAssertGreaterThan(
+            MacNoteTitlebarLayout.titleTrailingInset,
+            MacNoteTitlebarLayout.trailingMargin
+                + MacNoteTitlebarLayout.colorPickerWidth
+                + MacNoteTitlebarLayout.controlSpacing
+                + MacNoteTitlebarLayout.syncIndicatorWidth
+        )
         XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
             isUsingNotesOnMacByChoice: false,
             syncNeedsAttention: false
@@ -214,6 +222,10 @@ final class TildoneTests: XCTestCase {
             contentsOf: sourceURL.appendingPathComponent("Tildone/Views/Desktop.swift"),
             encoding: .utf8
         )
+        let noteSource = try String(
+            contentsOf: sourceURL.appendingPathComponent("Tildone/Views/Note.swift"),
+            encoding: .utf8
+        )
         XCTAssertTrue(appSource.contains(".alert(\"Copy notes to iCloud?\""))
         XCTAssertTrue(appSource.contains("Review Options…"))
         XCTAssertTrue(appSource.contains("Combine Notes — Recommended"))
@@ -230,6 +242,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(desktopSource.contains("picker.frame.minX - indicatorSize.width - MacNoteTitlebarLayout.controlSpacing"))
         XCTAssertTrue(desktopSource.contains(".onChange(of: noteSyncIndicatorState)"))
         XCTAssertTrue(desktopSource.contains("setNoteSyncIndicatorState(state)"))
+        XCTAssertTrue(noteSource.contains(".padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)"))
         XCTAssertTrue(storeSource.contains("revalidateAccount(workspaceID:"))
         XCTAssertTrue(storeSource.contains("didJustChooseNotesOnMac = true"))
         XCTAssertTrue(storeSource.contains("func dismissNotesOnMacNotice()"))

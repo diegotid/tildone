@@ -595,7 +595,16 @@ private extension Note {
                         Rectangle().fill(.black.opacity(0.2)).frame(height: 1)
                     }
                 if let title = note?.title {
-                    HStack { Text(title).lineLimit(1).font(.system(size: 14, weight: .bold, design: .rounded)).padding(.leading, 78).offset(y: -1); Spacer() }
+                    HStack(spacing: 0) {
+                        Text(title)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
+                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
+                    .offset(y: -1)
                 }
             }
             Spacer()
