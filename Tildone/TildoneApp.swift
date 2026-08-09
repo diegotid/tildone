@@ -29,6 +29,7 @@ struct TildoneApp: App {
             Group {
                 if let store = sharedStoreBootstrapper.store {
                     Desktop(store: store, foregroundNoteID: $foregroundNoteID)
+                        .id(ObjectIdentifier(store))
                 } else if sharedStoreBootstrapper.error != nil {
                     VStack(spacing: 12) {
                         Text("Tildone could not open your notes.").font(.headline)
@@ -263,20 +264,24 @@ enum MacSyncPresentation {
         }
     }
 
+    static func menuBarBadgeSymbol(for state: MacSyncDisplayState) -> String? {
+        state == .attentionNeeded ? "exclamationmark.circle.fill" : nil
+    }
+
     static func detail(
         status: SyncStatus,
         state: MacSyncDisplayState,
         hasUnadoptedLocalWorkspace: Bool,
         canAdoptLocalWorkspace: Bool,
-        adoptionCompletedAwaitingRelaunch: Bool
+        isUsingNotesOnMacByChoice: Bool
     ) -> String {
-        if adoptionCompletedAwaitingRelaunch {
-            return String(localized: "Your notes on this Mac were copied to iCloud. Reopen Tildone to use the iCloud copy. The originals remain saved on this Mac.")
-        }
         if hasUnadoptedLocalWorkspace {
             return canAdoptLocalWorkspace
                 ? String(localized: "Your notes remain on this Mac. You can choose to copy them to iCloud. Nothing will be deleted.")
                 : String(localized: "Your notes remain safe on this Mac. There are also notes in iCloud, so Tildone will not combine or replace either set automatically.")
+        }
+        if isUsingNotesOnMacByChoice {
+            return String(localized: "Tildone is using the notes saved on this Mac. Notes in iCloud are unchanged, and you can switch at any time.")
         }
         switch status.availability {
         case .zoneResetRequired:
@@ -313,6 +318,7 @@ enum MacSyncPresentation {
 private struct MacSyncStatusView: View {
     @ObservedObject var bootstrapper: MacSharedStoreBootstrapper
     @State private var confirmsAdoption = false
+    @State private var showsResolutionOptions = false
 
     private var displayState: MacSyncDisplayState {
         MacSyncPresentation.state(
@@ -324,6 +330,30 @@ private struct MacSyncStatusView: View {
     }
 
     var body: some View {
+        Group {
+            if showsResolutionOptions {
+                MacNoteResolutionOptions(
+                    bootstrapper: bootstrapper,
+                    onClose: { showsResolutionOptions = false }
+                )
+            } else {
+                statusContent
+            }
+        }
+        .padding(24)
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
+        .alert("Copy notes to iCloud?", isPresented: $confirmsAdoption) {
+            Button("Cancel", role: .cancel) {}
+            Button("Copy Notes") {
+                bootstrapper.resolveNotesAfterConfirmation(.combine, requiresEmptyAccount: true)
+            }
+        } message: {
+            Text("Tildone will copy the notes saved on this Mac to iCloud. This is available because there are no Tildone notes in iCloud. The originals will remain on this Mac, and nothing will be deleted.")
+        }
+    }
+
+    private var statusContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label(
                 MacSyncPresentation.title(for: displayState),
@@ -336,7 +366,7 @@ private struct MacSyncStatusView: View {
                 state: displayState,
                 hasUnadoptedLocalWorkspace: bootstrapper.hasUnadoptedLocalWorkspace,
                 canAdoptLocalWorkspace: bootstrapper.canAdoptLocalWorkspace,
-                adoptionCompletedAwaitingRelaunch: bootstrapper.adoptionCompletedAwaitingRelaunch
+                isUsingNotesOnMacByChoice: bootstrapper.isUsingNotesOnMacByChoice
             ))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -348,6 +378,23 @@ private struct MacSyncStatusView: View {
             }
 
             if bootstrapper.isTransportActionInProgress { ProgressView() }
+
+            if bootstrapper.resolutionActionFailed {
+                Text("Tildone could not finish that change. Nothing was deleted. Please try again.")
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if bootstrapper.hasNotesOnMacAndICloud {
+                Button(
+                    bootstrapper.hasUnadoptedLocalWorkspace
+                        ? "Review Options…"
+                        : "Change Which Notes Tildone Uses…"
+                ) {
+                    showsResolutionOptions = true
+                }
+            }
 
             HStack {
                 if bootstrapper.canAdoptLocalWorkspace {
@@ -366,15 +413,141 @@ private struct MacSyncStatusView: View {
             }
             .disabled(bootstrapper.isTransportActionInProgress)
         }
-        .padding(24)
-        .frame(width: 430)
-        .fixedSize(horizontal: false, vertical: true)
-        .alert("Copy notes to iCloud?", isPresented: $confirmsAdoption) {
-            Button("Cancel", role: .cancel) {}
-            Button("Copy Notes") { bootstrapper.adoptLocalWorkspaceAfterConfirmation() }
-        } message: {
-            Text("Tildone will copy the notes saved on this Mac to iCloud. This is available because there are no Tildone notes in iCloud. The originals will remain on this Mac, and nothing will be deleted.")
+    }
+}
+
+private struct MacNoteResolutionOptions: View {
+    @ObservedObject var bootstrapper: MacSharedStoreBootstrapper
+    let onClose: () -> Void
+    @State private var pendingAction: MacNoteResolutionAction?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if let pendingAction {
+                confirmation(for: pendingAction)
+            } else {
+                Text("Choose which notes Tildone should use")
+                    .font(.title2.bold())
+                Text("Your notes on this Mac and in iCloud will remain saved whichever option you choose.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                resolutionOption(
+                    title: String(localized: "Combine Notes — Recommended"),
+                    detail: String(localized: "Add the notes from this Mac to the notes in iCloud, then use the combined set."),
+                    action: .combine
+                )
+                resolutionOption(
+                    title: String(localized: "Use iCloud Notes"),
+                    detail: String(localized: "Show the notes already in iCloud. The notes on this Mac stay saved."),
+                    action: .useICloud
+                )
+                resolutionOption(
+                    title: String(localized: "Use Notes on This Mac"),
+                    detail: String(localized: "Keep showing the notes saved on this Mac. The notes in iCloud stay unchanged."),
+                    action: .useThisMac
+                )
+
+                HStack {
+                    Spacer()
+                    Button("Decide Later", action: onClose)
+                        .keyboardShortcut(.cancelAction)
+                }
+            }
         }
+    }
+
+    private func resolutionOption(
+        title: String,
+        detail: String,
+        action: MacNoteResolutionAction
+    ) -> some View {
+        Button {
+            pendingAction = action
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .multilineTextAlignment(.leading)
+                Text(detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(MacNoteResolutionOptionButtonStyle())
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func confirmation(for action: MacNoteResolutionAction) -> some View {
+        Text(confirmationTitle(for: action))
+            .font(.title2.bold())
+        Text(confirmationMessage(for: action))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        HStack {
+            Spacer()
+            Button("Cancel") { pendingAction = nil }
+                .keyboardShortcut(.cancelAction)
+            Button(confirmationButtonTitle(for: action)) {
+                bootstrapper.resolveNotesAfterConfirmation(action)
+                pendingAction = nil
+                onClose()
+            }
+            .keyboardShortcut(.defaultAction)
+        }
+        .disabled(bootstrapper.isTransportActionInProgress)
+    }
+
+    private func confirmationTitle(for action: MacNoteResolutionAction) -> String {
+        switch action {
+        case .combine: String(localized: "Combine notes from this Mac and iCloud?")
+        case .useThisMac: String(localized: "Use the notes on this Mac?")
+        case .useICloud: String(localized: "Use the notes in iCloud?")
+        }
+    }
+
+    private func confirmationButtonTitle(for action: MacNoteResolutionAction) -> String {
+        switch action {
+        case .combine: String(localized: "Combine Notes")
+        case .useThisMac: String(localized: "Use This Mac")
+        case .useICloud: String(localized: "Use iCloud")
+        }
+    }
+
+    private func confirmationMessage(for action: MacNoteResolutionAction) -> String {
+        switch action {
+        case .combine:
+            String(localized: "Tildone will add the notes from this Mac to iCloud. If the same note exists in both places, Tildone will combine it the same way it handles edits made on two devices. The notes saved on this Mac will remain available.")
+        case .useThisMac:
+            String(localized: "Tildone will keep showing the notes saved on this Mac. The notes in iCloud will not be changed, and you can switch later.")
+        case .useICloud:
+            String(localized: "Tildone will show the notes in iCloud. The notes saved on this Mac will not be changed, and you can switch back later.")
+        }
+    }
+}
+
+private struct MacNoteResolutionOptionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(configuration.isPressed
+                        ? Color.accentColor.opacity(0.12)
+                        : Color(nsColor: .controlBackgroundColor))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -439,10 +612,7 @@ final class MenuBarController: NSObject {
 
     func install() {
         guard let button = statusItem.button else { return }
-        let image = NSImage(named: "MenuBarIcon")
-        image?.isTemplate = true
-        image?.size = NSSize(width: 16, height: 16)
-        button.image = image
+        button.image = Self.menuBarImage(for: .active, accessibilityDescription: "Tildone")
         button.toolTip = "Tildone"
         button.setAccessibilityLabel("Tildone")
         button.setAccessibilityHelp(String(localized: "Open Tildone and review iCloud sync status"))
@@ -486,17 +656,36 @@ final class MenuBarController: NSObject {
         }
 
         guard let button = statusItem.button else { return }
-        let image = state == .active
-            ? NSImage(named: "MenuBarIcon")
-            : NSImage(
-                systemSymbolName: MacSyncPresentation.symbol(for: state),
-                accessibilityDescription: title
-            )
-        image?.isTemplate = true
-        image?.size = NSSize(width: 16, height: 16)
-        button.image = image
+        button.image = Self.menuBarImage(for: state, accessibilityDescription: title)
         button.toolTip = title
         button.setAccessibilityValue(title)
+    }
+
+    static func menuBarImage(
+        for state: MacSyncDisplayState,
+        accessibilityDescription: String
+    ) -> NSImage? {
+        guard let source = NSImage(named: "MenuBarIcon"),
+              let base = source.copy() as? NSImage else {
+            return nil
+        }
+        base.isTemplate = true
+        base.size = NSSize(width: 16, height: 16)
+        guard let badgeName = MacSyncPresentation.menuBarBadgeSymbol(for: state),
+              let badge = NSImage(
+                systemSymbolName: badgeName,
+                accessibilityDescription: accessibilityDescription
+              )?.withSymbolConfiguration(.init(pointSize: 8, weight: .bold)) else {
+            return base
+        }
+
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+            base.draw(in: NSRect(x: 1, y: 1, width: 16, height: 16))
+            badge.draw(in: NSRect(x: 10, y: 10, width: 8, height: 8))
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 
     func presentMenuForEmptyMenuBarOnlyWorkspace() {

@@ -226,12 +226,107 @@ private struct MacLocalAdoptionStateStore {
     }
 }
 
+enum MacNoteLocationChoice: String, Hashable, Sendable {
+    case thisMac
+    case iCloud
+}
+
+struct MacNoteLocationChoiceStore {
+    private static let keyPrefix = "noteLocationChoice."
+
+    let defaults: UserDefaults
+
+    func choice(for workspaceID: UUID) -> MacNoteLocationChoice? {
+        guard let rawValue = defaults.string(
+            forKey: Self.keyPrefix + workspaceID.uuidString.lowercased()
+        ) else { return nil }
+        return MacNoteLocationChoice(rawValue: rawValue)
+    }
+
+    func set(_ choice: MacNoteLocationChoice, for workspaceID: UUID) {
+        defaults.set(choice.rawValue, forKey: Self.keyPrefix + workspaceID.uuidString.lowercased())
+    }
+}
+
+enum MacNoteResolutionAction: Hashable, Sendable {
+    case combine
+    case useThisMac
+    case useICloud
+}
+
+enum MacNoteResolutionError: Error {
+    case accountNoLongerEmpty
+    case sourceChangedDuringCopy
+}
+
+private struct MacSyncContentSnapshot {
+    let notes: [TildoneDomain.Note]
+    let tasks: [TildoneDomain.Task]
+    let fingerprint: String
+}
+
+enum MacNoteResolutionService {
+    /// Combines a stable snapshot into the account repository using the same
+    /// deterministic field-level merge rules as normal sync. The local source
+    /// remains intact. If it changes during the copy, the caller must leave the
+    /// Mac selected and offer a safe retry instead of hiding uncopied edits.
+    static func combine(
+        localRepository: TildoneRepository,
+        accountRepository: TildoneRepository,
+        at date: Date
+    ) async throws -> String {
+        let source = try await snapshot(repository: localRepository)
+        try await accountRepository.adoptSyncContent(
+            notes: source.notes,
+            tasks: source.tasks,
+            at: date
+        )
+        try await localRepository.markCloudSeedingBegun(at: date)
+        guard try await fingerprint(repository: localRepository) == source.fingerprint else {
+            throw MacNoteResolutionError.sourceChangedDuringCopy
+        }
+        return source.fingerprint
+    }
+
+    static func fingerprint(repository: TildoneRepository) async throws -> String {
+        try await snapshot(repository: repository).fingerprint
+    }
+
+    private static func snapshot(repository: TildoneRepository) async throws -> MacSyncContentSnapshot {
+        struct EncodableSnapshot: Encodable {
+            let notes: [TildoneDomain.Note]
+            let tasks: [TildoneDomain.Task]
+        }
+
+        let notes = try await repository.allSyncNotes().sorted { $0.id < $1.id }
+        let tasks = try await repository.allSyncTasks().sorted { $0.id < $1.id }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let digest = SHA256.hash(data: try encoder.encode(EncodableSnapshot(
+            notes: notes,
+            tasks: tasks
+        )))
+        return MacSyncContentSnapshot(
+            notes: notes,
+            tasks: tasks,
+            fingerprint: digest.map { String(format: "%02x", $0) }.joined()
+        )
+    }
+}
+
 enum MacWorkspaceSelectionPolicy {
     /// An unadopted local workspace remains active even when the account
     /// workspace already contains data. A workspace-mode change follows only
     /// an explicit, eligible adoption confirmation.
-    static func usesAccountWorkspace(localNeedsAdoption: Bool) -> Bool {
-        !localNeedsAdoption
+    static func usesAccountWorkspace(
+        localNeedsAdoption: Bool,
+        explicitChoice: MacNoteLocationChoice?
+    ) -> Bool {
+        switch explicitChoice {
+        case .thisMac: false
+        case .iCloud: true
+        case nil: !localNeedsAdoption
+        }
     }
 
     static func canAdoptLocalWorkspace(
@@ -252,11 +347,14 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     @Published private(set) var isUsingAccountWorkspace = false
     @Published private(set) var hasUnadoptedLocalWorkspace = false
     @Published private(set) var canAdoptLocalWorkspace = false
-    @Published private(set) var adoptionCompletedAwaitingRelaunch = false
+    @Published private(set) var hasNotesOnMacAndICloud = false
+    @Published private(set) var isUsingNotesOnMacByChoice = false
+    @Published private(set) var resolutionActionFailed = false
     @Published private(set) var isTransportActionInProgress = false
 
     private let transportStateStore: SyncTransportStateStore
     private let localAdoptionStateStore: MacLocalAdoptionStateStore
+    private let noteLocationChoiceStore: MacNoteLocationChoiceStore
     private var localRepository: TildoneRepository?
     private var accountRepository: TildoneRepository?
     private var selectedRepository: TildoneRepository?
@@ -271,6 +369,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     ) {
         self.transportStateStore = transportStateStore
         self.localAdoptionStateStore = MacLocalAdoptionStateStore(defaults: defaults)
+        self.noteLocationChoiceStore = MacNoteLocationChoiceStore(defaults: defaults)
     }
 
     deinit { statusTask?.cancel() }
@@ -328,21 +427,26 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 let localHasContent = try await localRepository.hasSyncContent()
                 let accountHasContent = try await accountRepository.hasSyncContent()
                 let localFingerprint = localHasContent
-                    ? try await Self.contentFingerprint(repository: localRepository)
+                    ? try await MacNoteResolutionService.fingerprint(repository: localRepository)
                     : nil
                 let localNeedsAdoption = localFingerprint.map {
                     localAdoptionStateStore.fingerprint(for: workspaceID) != $0
                 } ?? false
-                self.hasUnadoptedLocalWorkspace = localNeedsAdoption
+                let explicitChoice = noteLocationChoiceStore.choice(for: workspaceID)
+                self.hasUnadoptedLocalWorkspace = localNeedsAdoption && explicitChoice == nil
                 self.canAdoptLocalWorkspace = MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
-                    localNeedsAdoption: localNeedsAdoption,
+                    localNeedsAdoption: hasUnadoptedLocalWorkspace,
                     accountHasContent: accountHasContent
                 )
+                self.hasNotesOnMacAndICloud = localHasContent && accountHasContent
                 let selectedRepository = MacWorkspaceSelectionPolicy.usesAccountWorkspace(
-                    localNeedsAdoption: localNeedsAdoption
+                    localNeedsAdoption: localNeedsAdoption,
+                    explicitChoice: explicitChoice
                 ) ? accountRepository : localRepository
                 self.selectedRepository = selectedRepository
                 self.isUsingAccountWorkspace = selectedRepository === accountRepository
+                self.isUsingNotesOnMacByChoice = selectedRepository === localRepository &&
+                    explicitChoice == .thisMac
 
                 let store = MacSharedStore(repository: selectedRepository)
                 try await store.prepareForPresentation()
@@ -352,10 +456,9 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     return
                 }
                 guard selectedRepository === accountRepository else {
-                    self.syncStatus = SyncStatus(
-                        availability: .adoptionRequired,
-                        activity: .attentionNeeded
-                    )
+                    self.syncStatus = hasUnadoptedLocalWorkspace
+                        ? SyncStatus(availability: .adoptionRequired, activity: .attentionNeeded)
+                        : .disabled
                     return
                 }
                 guard SyncTransportActivationPolicy.shouldActivate(
@@ -440,58 +543,92 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         Swift.Task { await syncCoordinator.start() }
     }
 
-    /// Confirmation is owned by the calling UI. This operation only copies an
-    /// existing local-only workspace into an empty account workspace, retains
-    /// the source, and waits for relaunch before selecting the account mode.
-    func adoptLocalWorkspaceAfterConfirmation() {
-        guard canAdoptLocalWorkspace,
-              !isTransportActionInProgress,
+    /// Confirmation is owned by the calling UI. Every action preserves both
+    /// repositories. Combining uses the established deterministic merge rules;
+    /// choosing a location only changes which repository is presented.
+    func resolveNotesAfterConfirmation(
+        _ action: MacNoteResolutionAction,
+        requiresEmptyAccount: Bool = false
+    ) {
+        guard !isTransportActionInProgress,
               let localRepository,
               let accountRepository,
-              let accountWorkspaceID else { return }
+              let accountWorkspaceID,
+              let container = cloudContainer else { return }
         isTransportActionInProgress = true
+        resolutionActionFailed = false
+        let wasUsingAccountWorkspace = isUsingAccountWorkspace
         Swift.Task {
             do {
-                guard !(try await accountRepository.hasSyncContent()) else {
-                    canAdoptLocalWorkspace = false
-                    throw PersistenceError.workspaceMismatch
+                switch action {
+                case .useThisMac:
+                    try await selectRepository(
+                        localRepository,
+                        isAccountRepository: false,
+                        workspaceID: accountWorkspaceID,
+                        container: container
+                    )
+                    noteLocationChoiceStore.set(.thisMac, for: accountWorkspaceID)
+                case .useICloud:
+                    guard await revalidateAccount(workspaceID: accountWorkspaceID, container: container) else {
+                        isTransportActionInProgress = false
+                        return
+                    }
+                    try await selectRepository(
+                        accountRepository,
+                        isAccountRepository: true,
+                        workspaceID: accountWorkspaceID,
+                        container: container
+                    )
+                    noteLocationChoiceStore.set(.iCloud, for: accountWorkspaceID)
+                case .combine:
+                    guard await revalidateAccount(workspaceID: accountWorkspaceID, container: container) else {
+                        isTransportActionInProgress = false
+                        return
+                    }
+                    await stopCoordinatorForRepositoryTransition()
+                    if requiresEmptyAccount, try await accountRepository.hasSyncContent() {
+                        hasNotesOnMacAndICloud = try await localRepository.hasSyncContent()
+                        canAdoptLocalWorkspace = false
+                        throw MacNoteResolutionError.accountNoLongerEmpty
+                    }
+                    let fingerprint = try await MacNoteResolutionService.combine(
+                        localRepository: localRepository,
+                        accountRepository: accountRepository,
+                        at: Date()
+                    )
+                    localAdoptionStateStore.setFingerprint(fingerprint, for: accountWorkspaceID)
+                    hasNotesOnMacAndICloud = true
+                    try await selectRepository(
+                        accountRepository,
+                        isAccountRepository: true,
+                        workspaceID: accountWorkspaceID,
+                        container: container
+                    )
+                    noteLocationChoiceStore.set(.iCloud, for: accountWorkspaceID)
                 }
-                try await accountRepository.adoptSyncContent(
-                    notes: try await localRepository.allSyncNotes(),
-                    tasks: try await localRepository.allSyncTasks(),
-                    at: Date()
-                )
-                try await localRepository.markCloudSeedingBegun(at: Date())
-                let fingerprint = try await Self.contentFingerprint(repository: localRepository)
-                localAdoptionStateStore.setFingerprint(fingerprint, for: accountWorkspaceID)
-                canAdoptLocalWorkspace = false
                 hasUnadoptedLocalWorkspace = false
-                adoptionCompletedAwaitingRelaunch = true
+                canAdoptLocalWorkspace = false
             } catch {
-                syncStatus = SyncStatus(
-                    availability: .adoptionRequired,
-                    activity: .attentionNeeded,
-                    issue: .unknown
-                )
+                resolutionActionFailed = true
+                if wasUsingAccountWorkspace {
+                    try? await selectRepository(
+                        accountRepository,
+                        isAccountRepository: true,
+                        workspaceID: accountWorkspaceID,
+                        container: container
+                    )
+                }
+                if !isUsingNotesOnMacByChoice && !isUsingAccountWorkspace {
+                    syncStatus = SyncStatus(
+                        availability: .adoptionRequired,
+                        activity: .attentionNeeded,
+                        issue: .unknown
+                    )
+                }
             }
             isTransportActionInProgress = false
         }
-    }
-
-    private static func contentFingerprint(repository: TildoneRepository) async throws -> String {
-        struct Snapshot: Encodable {
-            let notes: [TildoneDomain.Note]
-            let tasks: [TildoneDomain.Task]
-        }
-
-        let snapshot = Snapshot(
-            notes: try await repository.allSyncNotes().sorted { $0.id < $1.id },
-            tasks: try await repository.allSyncTasks().sorted { $0.id < $1.id }
-        )
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let digest = SHA256.hash(data: try encoder.encode(snapshot))
-        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     static func openRepository(
@@ -610,6 +747,70 @@ final class MacSharedStoreBootstrapper: ObservableObject {
 #endif
     }
 
+    private func revalidateAccount(workspaceID: UUID, container: CKContainer) async -> Bool {
+        let account = await CloudAccountResolver().resolve(container: container)
+        guard account.state == .available, account.workspaceID == workspaceID else {
+            await stopCoordinatorForRepositoryTransition()
+            invalidateForAccountChange()
+            return false
+        }
+        return true
+    }
+
+    private func stopCoordinatorForRepositoryTransition() async {
+        statusTask?.cancel()
+        statusTask = nil
+        store?.attachSyncCoordinator(nil)
+        let coordinator = syncCoordinator
+        syncCoordinator = nil
+        await coordinator?.stop()
+    }
+
+    private func selectRepository(
+        _ repository: TildoneRepository,
+        isAccountRepository: Bool,
+        workspaceID: UUID,
+        container: CKContainer
+    ) async throws {
+        let nextStore: MacSharedStore
+        if selectedRepository === repository, let store {
+            nextStore = store
+        } else {
+            nextStore = MacSharedStore(repository: repository)
+        }
+        // A user-requested location change must only reload the selected
+        // repository. It must not run startup cleanup or mutate either set.
+        try await nextStore.reload()
+
+        await stopCoordinatorForRepositoryTransition()
+        selectedRepository = repository
+        isUsingAccountWorkspace = isAccountRepository
+        isUsingNotesOnMacByChoice = !isAccountRepository
+        store = nextStore
+
+        guard isAccountRepository else {
+            syncStatus = .disabled
+            return
+        }
+        guard Self.transportEnabledByDefault else {
+            syncStatus = .disabled
+            return
+        }
+        guard SyncTransportActivationPolicy.shouldActivate(
+            enabledByDefault: Self.transportEnabledByDefault,
+            persistedState: transportState
+        ) else {
+            syncStatus = await pausedStatus(repository: repository)
+            return
+        }
+        try await startCoordinator(
+            repository: repository,
+            workspaceID: workspaceID,
+            container: container,
+            store: nextStore
+        )
+    }
+
     private func startCoordinator(
         repository: TildoneRepository,
         workspaceID: UUID,
@@ -666,15 +867,24 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         statusTask = nil
         store?.attachSyncCoordinator(nil)
         syncCoordinator = nil
-        selectedRepository = nil
+        let wasPresentingAccount = isUsingAccountWorkspace
+        accountRepository = nil
+        accountWorkspaceID = nil
+        hasResolvedAccountWorkspace = false
+        hasUnadoptedLocalWorkspace = false
+        canAdoptLocalWorkspace = false
+        hasNotesOnMacAndICloud = false
         isUsingAccountWorkspace = false
-        store = nil
+        if wasPresentingAccount {
+            selectedRepository = nil
+            store = nil
+            error = MacSharedStoreBootstrapError.cloudAccountChanged
+        }
         syncStatus = SyncStatus(
             availability: .accountChanged,
             activity: .attentionNeeded,
             issue: .accountChanged
         )
-        error = MacSharedStoreBootstrapError.cloudAccountChanged
     }
 
     private static func requiresAttention(_ status: SyncStatus) -> Bool {

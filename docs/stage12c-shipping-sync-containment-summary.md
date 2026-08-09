@@ -6,7 +6,7 @@
 
 ## Outcome
 
-Stage 12C closes the remaining repository-local containment blockers identified by the Stage 12A architecture review and Stage 12B stabilization summary. It adds durable account-scoped transport pause/resume, compact sync/attention presentation, one narrowly bounded local-only adoption flow, non-destructive reset/incompatibility guidance, and deterministic shared schemes/configuration assertions.
+Stage 12C closes the remaining repository-local containment blockers identified by the Stage 12A architecture review and Stage 12B stabilization summary. It adds durable account-scoped transport pause/resume, compact sync/attention presentation, explicit non-destructive note-location and combine choices, non-destructive reset/incompatibility guidance, and deterministic shared schemes/configuration assertions.
 
 This work does not enable Release transport. The Stage 12B matrix remains authoritative:
 
@@ -32,7 +32,7 @@ This work does not enable Release transport. The Stage 12B matrix remains author
 
 ### Compact macOS sync and attention UI
 
-- The menu-bar item and a compact fixed-size **iCloud Sync** window expose active, paused, attention-needed, and disabled states with distinct text and symbols.
+- The menu-bar item and a compact fixed-size **iCloud Sync** window expose active, paused, attention-needed, and disabled states. The menu-bar item retains the Tildone icon in every state and overlays a small exclamation badge for attention instead of replacing the product icon.
 - The surface reports only content-free state: transport/attention description and a pending-change count. It does not show note titles, task text, record names, or diagnostic logs.
 - The menu and window provide Pause, Resume, Sync Now, Sync Status, and eligible adoption actions. Actions are disabled during a transition.
 - The status item publishes an accessibility label/help/value; the compact view uses semantic labels, ordinary keyboard-accessible controls, explicit state text, and localized strings in English, Spanish, French, and Simplified Chinese.
@@ -41,16 +41,20 @@ This work does not enable Release transport. The Stage 12B matrix remains author
 
 ### Explicit adoption and recovery containment
 
-- An unadopted local-only Mac workspace remains the active workspace. This is true even if the resolved account workspace already contains data; startup cannot silently change workspace mode or hide the local workspace.
-- Adoption is offered only when the local workspace has content and the account workspace is empty. The UI requires an explicit confirmation explaining the target, source retention, and absence of zone/remote deletion.
-- Confirmed adoption copies the existing notes/tasks through the established deterministic adoption operation, retains the local source, records a content fingerprint, and waits for relaunch before account-mode activation. It does not merge into a non-empty target or change the live workspace during the copy.
-- If both workspaces contain data, the app preserves the local workspace and explains that neither side will be merged or overwritten automatically. No merge action is exposed because no approved merge policy exists.
+- An unadopted local-only Mac workspace remains active until the user makes an explicit choice. This is true even if the resolved account workspace already contains data; startup cannot silently change the presented notes or hide the Mac copy.
+- If iCloud has no Tildone notes, the app offers a confirmation-gated copy. The account is revalidated and its emptiness is checked again after sync is stopped, so newly discovered iCloud notes cannot silently turn an empty-copy approval into a merge.
+- If both locations contain notes, **Review Options…** replaces the same status window's content with three plain-language, confirmation-gated actions: **Combine Notes — Recommended**, **Use iCloud Notes**, and **Use Notes on This Mac**. The compact cards have consistent left alignment, wrapped details, and ordinary corner radii. Confirmation also remains in the same window. **Decide Later** returns to status, leaves the Mac notes selected, and changes nothing.
+- Combine copies a stable snapshot of the Mac notes/tasks into the account repository through the existing stable-ID, field-level deterministic sync merge. Distinct notes are retained; matching records use the already-frozen domain merge rules; the complete resulting account content is queued for sync. The Mac repository remains intact and available.
+- If the Mac source changes during the copy, the app does not hide it or record the location change. The user sees a non-destructive failure and can retry; the merge operation is safe to repeat.
+- Choosing Mac or iCloud only changes which existing repository is presented. It does not run startup cleanup, delete, upload, merge, or overwrite content. The explicit choice is persisted per opaque account UUID and restored on relaunch.
+- Before an iCloud selection or combine, the app re-resolves the current account and requires the same account UUID. A mismatch stops the transition rather than exposing or mutating the wrong account.
+- A successful live change closes the old repository's managed note windows before opening the selected repository's windows, preventing notes from different locations from being shown together accidentally.
 - Missing/reset-zone and incompatible-data states provide preservation guidance only. They expose no automatic reset, recreate, reseed, delete, or overwrite operation.
 - The former Debug environment hatches for automatic local adoption and account-workspace reset were removed.
 
 ### Release reproducibility
 
-- Shared `Tildone` and `Tildone iOS` schemes are present under `Tildone.xcodeproj/xcshareddata/xcschemes`, and `.gitignore` now permits both files to be versioned. They remain untracked in this working tree only because Stage 12C was explicitly requested without a commit.
+- Shared `Tildone` and `Tildone iOS` schemes are included in the Stage 12C candidate under `Tildone.xcodeproj/xcshareddata/xcschemes`, and `.gitignore` permits both files to be versioned.
 - Both schemes use Debug for Test/Launch/Analyze and Release for Profile/Archive, with no forced launch language.
 - `Scripts/verify-release-configuration.sh` asserts those scheme settings and the effective unsigned Release build settings for bundle IDs, entitlements paths, platform minimums, and absence of the `DEBUG` compilation condition.
 - No project build setting, Production entitlement, CloudKit container/schema record contract, local persistence schema, or migration contract changed.
@@ -68,7 +72,7 @@ All commands below ran on the Stage 12C working tree on 2026-08-09. Tests used l
 
 ### Hosted application and UI tests
 
-- macOS hosted `TildoneTests`: **28 tests executed, 0 failures, 2 opt-in tests skipped**. This includes active/paused/attention presentation, confirmation-gated adoption, refusal to switch away from an unadopted local workspace, removal of reset hatches, deterministic scheme assertions, Mac CRUD, and legacy migration coverage.
+- macOS hosted `TildoneTests` on the final current tree: **31 tests executed, 0 failures, 2 opt-in tests skipped**. This includes retained-source combine/outbox coverage, per-account relaunch choice persistence, active/paused/attention presentation, same-window confirmation-gated actions, retention of the Tildone menu-bar icon with a rendered attention badge, removal of reset hatches, deterministic scheme assertions, Mac CRUD, and legacy migration coverage.
 - iPhone hosted `TildoneiOSTests` on an iPhone 17 simulator (iOS 26.5): **12 tests executed, 0 failures, 1 opt-in Development CloudKit test skipped**. This includes paused CRUD, per-account preference isolation, workspace revalidation, and paused status presentation.
 - iPhone UI launch smoke: **1 test, 0 failures** using the in-memory UI-test workspace.
 - The macOS UI runner did not start a test: two bounded attempts remained at `waiting for workers to materialize` with `IDEInstallLocalMacWorker`/`IDELaunchServicesLauncher` unfinished and were stopped. Hosted Mac tests passed, but this is not Mac UI-smoke evidence.
@@ -77,7 +81,7 @@ All commands below ran on the Stage 12C working tree on 2026-08-09. Tests used l
 
 - Unsigned generic macOS Debug and Release builds: passed.
 - Unsigned generic iPhone Debug and Release builds: passed.
-- The final source state was recompiled by the macOS hosted Debug suite, a generic iPhone Debug build, and fresh generic macOS/iPhone Release builds after the last containment changes.
+- The final source state was recompiled by the macOS hosted Debug suite and a fresh unsigned universal macOS Release build. The Stage 12C iPhone source had already passed hosted tests plus generic Debug/Release builds and was not changed by the Mac-only note-resolution follow-up.
 - `Scripts/verify-release-configuration.sh`: passed with `Release scheme and build-setting assertions passed.`
 - The unsigned builds establish compilation/configuration only. They do not establish effective signed entitlements, provisioning, APNs, archive export, or store processing.
 
@@ -97,7 +101,7 @@ These checks are still required before Stage 12C can satisfy the rollout plan's 
 
 1. Review the compact Mac menu/window in all four supported languages, light/dark appearance, keyboard-only navigation, VoiceOver, and larger accessibility text. Confirm attention remains understandable without opening a log or exposing user content.
 2. On separately approved disposable Development accounts, use a signed Debug Mac and physical iPhone to pause, edit/delete offline, terminate/relaunch, inspect that no CloudKit zone/record work occurs while paused, resume, and confirm convergence with an empty outbox. Record exact devices, OS/builds, account/container, and observation method.
-3. With backups and an approved disposable empty account workspace, exercise the adoption confirmation, cancellation, successful copy, source retention, and relaunch activation. Also verify that a non-empty account target offers guidance only and continues showing the local workspace.
+3. With backups and an approved disposable Development account, exercise cancellation and each confirmed note choice: empty-account copy, combine, use Mac, use iCloud, changing the choice later, relaunch persistence, source retention, and same-ID conflict results. Verify that switching closes the previously shown note windows and never mixes both sets on screen.
 4. Exercise forced local presentation of zone-reset and incompatible-data attention states. Verify copy, accessibility, and that no reset/reseed/overwrite action exists.
 5. Produce and inspect an exact signed candidate only under later authorization. Verify effective entitlements/provisioning and the Release-off transport assertion from the artifact, not merely source settings.
 6. Name and approve privacy/App Privacy, support, incident-command, rollback/containment, test-account/device, and distribution owners. Stage 12C code cannot close those organizational gates.
@@ -108,7 +112,6 @@ No physical-device, signed Production-candidate, APNs/background-wake, Productio
 
 Stage 12C could safely proceed without inventing the following policies, so the corresponding destructive or ambiguous actions were intentionally not implemented:
 
-- **Non-empty workspace conflict:** decide whether local/account workspaces remain separately selectable or receive a reviewed merge flow. Any merge policy must define authority, conflict handling, backup/rollback, confirmation copy, and support ownership.
 - **Missing/reset zone recovery:** decide whether a zone may ever be recreated and whether any local replica may reseed it. The decision must name the authoritative source, required backups, multi-device coordination, confirmation and authentication, audit evidence, stop conditions, and incident owner.
 - **Release transport enablement:** decide the exact reviewed build control and artifact assertion that may change the current Release-off matrix. Pause state must remain account-scoped and must not become the release feature gate.
 - **External release ownership:** App Privacy/privacy policy compatibility, ordinary-versus-encrypted field decision, support/incident thresholds, disposable Production accounts/devices, signing authority, and distribution authority remain open.

@@ -66,10 +66,19 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }
+            .onDisappear { closeManagedNoteWindows() }
     }
 }
 
 private extension Desktop {
+    func closeManagedNoteWindows() {
+        for window in noteWindows.values { window.close() }
+        noteWindows.removeAll()
+        closedNoteIDs.removeAll()
+        foregroundWindow = nil
+        foregroundNoteID = nil
+    }
+
     func openNoteWindows() {
         if store.notes.isEmpty {
             createAndShowNewNote(at: randomPositionOnScreen())

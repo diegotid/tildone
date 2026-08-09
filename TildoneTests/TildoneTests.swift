@@ -17,6 +17,24 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)
     }
 
+    @MainActor
+    func testMenuBarAttentionImageKeepsTildoneIconAndAddsBadge() throws {
+        let active = try XCTUnwrap(MenuBarController.menuBarImage(
+            for: .active,
+            accessibilityDescription: "Tildone"
+        ))
+        let attention = try XCTUnwrap(MenuBarController.menuBarImage(
+            for: .attentionNeeded,
+            accessibilityDescription: "iCloud sync needs attention"
+        ))
+
+        XCTAssertEqual(active.size, NSSize(width: 16, height: 16))
+        XCTAssertEqual(attention.size, NSSize(width: 18, height: 18))
+        XCTAssertNotEqual(active.tiffRepresentation, attention.tiffRepresentation)
+        XCTAssertTrue(active.isTemplate)
+        XCTAssertTrue(attention.isTemplate)
+    }
+
     func testMacRemoteRefreshPropagatesMigrationAndReloadFailures() async {
         enum FixtureError: Error, Equatable { case migration, reload }
         var reloadAttempted = false
@@ -72,12 +90,19 @@ final class TildoneTests: XCTestCase {
             MacSyncPresentation.symbol(for: .attentionNeeded),
             "exclamationmark.triangle.fill"
         )
+        XCTAssertEqual(
+            MacSyncPresentation.menuBarBadgeSymbol(for: .attentionNeeded),
+            "exclamationmark.circle.fill"
+        )
+        XCTAssertNil(MacSyncPresentation.menuBarBadgeSymbol(for: .active))
+        XCTAssertNil(MacSyncPresentation.menuBarBadgeSymbol(for: .paused))
+        XCTAssertNil(MacSyncPresentation.menuBarBadgeSymbol(for: .disabled))
         let resetDetail = MacSyncPresentation.detail(
             status: zoneReset,
             state: .attentionNeeded,
             hasUnadoptedLocalWorkspace: false,
             canAdoptLocalWorkspace: false,
-            adoptionCompletedAwaitingRelaunch: false
+            isUsingNotesOnMacByChoice: false
         )
         XCTAssertTrue(resetDetail.contains("will not rebuild or upload"))
 
@@ -86,9 +111,18 @@ final class TildoneTests: XCTestCase {
             state: .attentionNeeded,
             hasUnadoptedLocalWorkspace: true,
             canAdoptLocalWorkspace: false,
-            adoptionCompletedAwaitingRelaunch: false
+            isUsingNotesOnMacByChoice: false
         )
-        for detail in [resetDetail, conflictDetail] {
+        let localChoiceDetail = MacSyncPresentation.detail(
+            status: .disabled,
+            state: .disabled,
+            hasUnadoptedLocalWorkspace: false,
+            canAdoptLocalWorkspace: false,
+            isUsingNotesOnMacByChoice: true
+        )
+        XCTAssertTrue(localChoiceDetail.contains("notes saved on this Mac"))
+        XCTAssertTrue(localChoiceDetail.contains("iCloud are unchanged"))
+        for detail in [resetDetail, conflictDetail, localChoiceDetail] {
             for jargon in ["workspace", "zone", "reseed", "CloudKit", "transport"] {
                 XCTAssertFalse(detail.localizedCaseInsensitiveContains(jargon), detail)
             }
@@ -96,8 +130,22 @@ final class TildoneTests: XCTestCase {
     }
 
     func testMacRecoveryUIRequiresAdoptionConfirmationAndHasNoAutomaticResetHatch() throws {
-        XCTAssertFalse(MacWorkspaceSelectionPolicy.usesAccountWorkspace(localNeedsAdoption: true))
-        XCTAssertTrue(MacWorkspaceSelectionPolicy.usesAccountWorkspace(localNeedsAdoption: false))
+        XCTAssertFalse(MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+            localNeedsAdoption: true,
+            explicitChoice: nil
+        ))
+        XCTAssertTrue(MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+            localNeedsAdoption: false,
+            explicitChoice: nil
+        ))
+        XCTAssertFalse(MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+            localNeedsAdoption: false,
+            explicitChoice: .thisMac
+        ))
+        XCTAssertTrue(MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+            localNeedsAdoption: true,
+            explicitChoice: .iCloud
+        ))
         XCTAssertTrue(MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
             localNeedsAdoption: true,
             accountHasContent: false
@@ -120,11 +168,99 @@ final class TildoneTests: XCTestCase {
         )
 
         XCTAssertTrue(appSource.contains(".alert(\"Copy notes to iCloud?\""))
-        XCTAssertTrue(appSource.contains("adoptLocalWorkspaceAfterConfirmation()"))
+        XCTAssertTrue(appSource.contains("Review Options…"))
+        XCTAssertTrue(appSource.contains("Combine Notes — Recommended"))
+        XCTAssertTrue(appSource.contains("MacNoteResolutionOptions("))
+        XCTAssertTrue(appSource.contains("RoundedRectangle(cornerRadius: 8"))
+        XCTAssertTrue(appSource.contains("resolveNotesAfterConfirmation(action)"))
+        XCTAssertFalse(appSource.contains(".sheet(isPresented: $showsResolutionOptions)"))
+        XCTAssertTrue(appSource.contains(".id(ObjectIdentifier(store))"))
+        XCTAssertTrue(storeSource.contains("revalidateAccount(workspaceID:"))
         XCTAssertTrue(appSource.contains("setAccessibilityValue(title)"))
+        XCTAssertTrue(appSource.contains("button.image = Self.menuBarImage(for: state"))
         XCTAssertFalse(storeSource.contains("TILDONE_ALLOW_LOCAL_WORKSPACE_ADOPTION"))
         XCTAssertFalse(storeSource.contains("TILDONE_RESET_DEVELOPMENT_ACCOUNT_WORKSPACE"))
         XCTAssertFalse(storeSource.contains("resetDevelopmentAccountWorkspace"))
+    }
+
+    func testMacNoteLocationChoicePersistsPerAccountAndIgnoresMalformedValues() throws {
+        let suiteName = "MacNoteLocationChoiceTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        addTeardownBlock { defaults.removePersistentDomain(forName: suiteName) }
+        let firstAccount = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let secondAccount = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        let store = MacNoteLocationChoiceStore(defaults: defaults)
+
+        XCTAssertNil(store.choice(for: firstAccount))
+        XCTAssertNil(store.choice(for: secondAccount))
+        store.set(.thisMac, for: firstAccount)
+
+        let relaunchedStore = MacNoteLocationChoiceStore(defaults: defaults)
+        XCTAssertEqual(relaunchedStore.choice(for: firstAccount), .thisMac)
+        XCTAssertNil(relaunchedStore.choice(for: secondAccount))
+
+        defaults.set(
+            "unexpected",
+            forKey: "noteLocationChoice.\(secondAccount.uuidString.lowercased())"
+        )
+        XCTAssertNil(relaunchedStore.choice(for: secondAccount))
+    }
+
+    func testCombineNotesPreservesLocalSourceAndQueuesCombinedAccountContent() async throws {
+        let local = try TildoneRepository(
+            descriptor: .inMemory(workspace: .localOnly),
+            replicaID: ReplicaID(UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!)
+        )
+        let account = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID())),
+            replicaID: ReplicaID(UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!)
+        )
+        let localNoteID = NoteID(UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!)
+        let accountNoteID = NoteID(UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD")!)
+        let localTaskID = TaskID(UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!)
+        let createdAt = Date(timeIntervalSinceReferenceDate: 1_000)
+
+        _ = try await local.createNote(id: localNoteID, createdAt: createdAt, title: "Local")
+        _ = try await local.addTask(
+            id: localTaskID,
+            to: localNoteID,
+            createdAt: createdAt,
+            text: "Local task",
+            orderToken: try OrderToken(rawValue: "h")
+        )
+        _ = try await account.createNote(
+            id: accountNoteID,
+            createdAt: createdAt,
+            title: "iCloud"
+        )
+        let localNotesBefore = try await local.allSyncNotes()
+        let localTasksBefore = try await local.allSyncTasks()
+
+        let fingerprint = try await MacNoteResolutionService.combine(
+            localRepository: local,
+            accountRepository: account,
+            at: createdAt.addingTimeInterval(1)
+        )
+
+        let localNotesAfter = try await local.allSyncNotes()
+        let localTasksAfter = try await local.allSyncTasks()
+        let localFingerprintAfter = try await MacNoteResolutionService.fingerprint(repository: local)
+        let accountNotes = try await account.allSyncNotes()
+        let accountTasks = try await account.allSyncTasks()
+        let accountPending = try await account.pendingMutations()
+
+        XCTAssertEqual(localNotesAfter, localNotesBefore)
+        XCTAssertEqual(localTasksAfter, localTasksBefore)
+        XCTAssertEqual(fingerprint, localFingerprintAfter)
+        XCTAssertEqual(
+            Set(accountNotes.map(\.id)),
+            [localNoteID, accountNoteID]
+        )
+        XCTAssertEqual(accountTasks.map(\.id), [localTaskID])
+        XCTAssertEqual(
+            Set(accountPending.map(\.targetStableID)),
+            [localNoteID.stringValue, accountNoteID.stringValue, localTaskID.stringValue]
+        )
     }
 
     func testTrackedAppSchemesUseDeterministicDebugLaunchAndReleaseArchiveConfigurations() throws {
