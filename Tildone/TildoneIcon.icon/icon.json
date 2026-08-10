@@ -21,7 +21,16 @@
               "value" : false
             }
           ],
-          "image-name" : "tick.svg",
+          "hidden" : false,
+          "image-name-specializations" : [
+            {
+              "value" : "tick.svg"
+            },
+            {
+              "idiom" : "square",
+              "value" : "tick.svg"
+            }
+          ],
           "name" : "tick",
           "position-specializations" : [
             {
@@ -29,8 +38,8 @@
               "value" : {
                 "scale" : 1,
                 "translation-in-points" : [
-                  10,
-                  0
+                  -12,
+                  -12
                 ]
               }
             }
@@ -48,9 +57,25 @@
           "image-name-specializations" : [
             {
               "value" : "front.png"
+            },
+            {
+              "idiom" : "square",
+              "value" : "front.png"
             }
           ],
-          "name" : "front"
+          "name" : "front",
+          "position-specializations" : [
+            {
+              "idiom" : "square",
+              "value" : {
+                "scale" : 1,
+                "translation-in-points" : [
+                  -12,
+                  -12
+                ]
+              }
+            }
+          ]
         },
         {
           "fill-specializations" : [
@@ -72,17 +97,24 @@
           "image-name-specializations" : [
             {
               "value" : "back.png"
+            },
+            {
+              "idiom" : "square",
+              "value" : "back.png"
             }
           ],
           "name" : "back",
           "opacity-specializations" : [
             {
+              "value" : 0.8
+            },
+            {
               "appearance" : "dark",
-              "value" : 0.6
+              "value" : 0.4
             },
             {
               "appearance" : "tinted",
-              "value" : 0.6
+              "value" : 0.4
             }
           ],
           "position-specializations" : [
@@ -91,7 +123,7 @@
               "value" : {
                 "scale" : 1,
                 "translation-in-points" : [
-                  12,
+                  -12,
                   0
                 ]
               }
