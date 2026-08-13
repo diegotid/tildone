@@ -490,6 +490,20 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(lifecycle.showsCompletionOverlay)
     }
 
+    func testCompletionFadeRestoresCancelledAutoDeletionState() {
+        let completedAt = Date(timeIntervalSince1970: 100)
+        var lifecycle = CompletionFadeLifecycle()
+
+        lifecycle.synchronize(completedAt: completedAt, autoDeletionCancelled: true)
+
+        XCTAssertEqual(lifecycle.phase, .cancelled(completedAt: completedAt))
+        XCTAssertFalse(lifecycle.showsCompletionOverlay)
+        XCTAssertNil(lifecycle.beginDeletionIfReady(
+            at: Date(timeIntervalSince1970: 200),
+            duration: 20
+        ))
+    }
+
     func testCompletionFadeProgressClampsAcrossSleepAndClockSkew() {
         var lifecycle = CompletionFadeLifecycle()
         lifecycle.synchronize(completedAt: Date(timeIntervalSince1970: 100))

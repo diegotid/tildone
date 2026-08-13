@@ -751,9 +751,13 @@ final class MenuBarController: NSObject {
 
         menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), keyEquivalent: "n"))
 
-        let showAllNotes = item(String(localized: "Show All Notes"), action: #selector(showAllNotes), keyEquivalent: "u")
-        showAllNotes.keyEquivalentModifierMask = [.command, .shift]
-        menu.addItem(showAllNotes)
+        let minimizeAll = item(String(localized: "Minimize All"), action: #selector(minimizeAll), keyEquivalent: "m")
+        minimizeAll.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(minimizeAll)
+
+        let bringAllUp = item(String(localized: "Bring All Up"), action: #selector(bringAllUp), keyEquivalent: "u")
+        bringAllUp.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(bringAllUp)
 
         menu.addItem(.separator())
         let syncHeader = NSMenuItem(title: String(localized: "iCloud sync is disabled"), action: nil, keyEquivalent: "")
@@ -791,7 +795,8 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func createNote() { sendToActiveApp(.new) }
-    @objc private func showAllNotes() { sendToActiveApp(.bringAllUp) }
+    @objc private func minimizeAll() { sendToActiveApp(.minimizeAll) }
+    @objc private func bringAllUp() { sendToActiveApp(.bringAllUp) }
     @objc private func openSettings() { sendToActiveApp(.openSettings) }
     @objc private func openAbout() { sendToActiveApp(.openAbout) }
     @objc private func openFocusFilterHelp() { sendToActiveApp(.openFocusFilterHelp) }

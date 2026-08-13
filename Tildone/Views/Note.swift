@@ -26,6 +26,7 @@ enum MacNoteTitlebarLayout {
     static let titleLeadingInset: CGFloat = 78
     static let trailingMargin: CGFloat = 2
     static let colorPickerWidth: CGFloat = 26
+    static let minimizedRestoreWidth: CGFloat = 19
     static let syncIndicatorWidth: CGFloat = 24
     static let controlHeight: CGFloat = 22
     static let controlSpacing: CGFloat = 2
@@ -72,9 +73,13 @@ struct CompletionFadeLifecycle: Equatable {
         }
     }
 
-    mutating func synchronize(completedAt: Date?) {
+    mutating func synchronize(completedAt: Date?, autoDeletionCancelled: Bool = false) {
         guard let completedAt else {
             phase = .idle
+            return
+        }
+        if autoDeletionCancelled {
+            phase = .cancelled(completedAt: completedAt)
             return
         }
         guard phase.completedAt != completedAt else { return }
@@ -123,6 +128,23 @@ struct Note: View {
     private var isDark: Bool { colorScheme == .dark && noteBackgroundOpacity < 0.5 }
     private var noteColor: NoteColor { note?.color ?? .yellow }
     private var color: NSColor { noteColor.nsColor }
+    private var noteForeground: Color {
+        isDark ? Color(.primaryFontWhite) : .black
+    }
+    private var isInsertedNewTaskFocused: Bool {
+        guard let focusedTaskID else { return false }
+        return tasks.contains { $0.id == focusedTaskID && $0.text.isEmpty }
+    }
+    private var minimizedForeground: Color {
+        let rgb = color.usingColorSpace(.deviceRGB) ?? color
+        let colorLuminance = 0.2126 * rgb.redComponent
+            + 0.7152 * rgb.greenComponent
+            + 0.0722 * rgb.blueComponent
+        let backdropLuminance: CGFloat = colorScheme == .dark ? 0 : 1
+        let opacity = CGFloat(noteBackgroundOpacity * windowAlpha)
+        let backgroundLuminance = colorLuminance * opacity + backdropLuminance * (1 - opacity)
+        return backgroundLuminance > 0.55 ? .black.opacity(0.75) : .white.opacity(0.75)
+    }
     private var isDone: Bool { completionFade.showsCompletionOverlay }
 
     enum Field: Hashable { case topic, newTask }
@@ -193,9 +215,26 @@ extension Note {
         guard let noteWindow else { return }
         noteWindow.title = "_" + noteWindow.title
         minimizedFromFrame = noteWindow.frame
+        setColorPickerHidden(true)
+        setRestoreControlVisible(true)
         withAnimation { isMinimized = true }
         noteWindow.setFrame(minimizedFrame(for: noteWindow), display: true, animate: false)
         NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+    }
+
+    func handleClose() {
+        guard note?.isDeletable == true else { return }
+        Swift.Task {
+            do {
+                try await store.deleteNote(noteID)
+                UserDefaults.standard.removeObject(forKey: completionAutoDeletionCancellationKey)
+            } catch {
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error closing completed note",
+                    error: error
+                )
+            }
+        }
     }
 }
 
@@ -358,6 +397,8 @@ private extension Note {
         guard let noteWindow, noteWindow.title.starts(with: "_"), let frame = minimizedFromFrame else { return }
         noteWindow.title = String(noteWindow.title.dropFirst())
         minimizedFromFrame = nil
+        setColorPickerHidden(false)
+        setRestoreControlVisible(false)
         DispatchQueue.main.async {
             withAnimation { noteWindow.setFrame(frame, display: true, animate: true) } completion: {
                 withAnimation { isMinimized = false }
@@ -371,7 +412,10 @@ private extension Note {
     }
 
     func synchronizeCompletionFade(completedAt: Date?) {
-        completionFade.synchronize(completedAt: completedAt)
+        completionFade.synchronize(
+            completedAt: completedAt,
+            autoDeletionCancelled: completionAutoDeletionWasCancelled(for: completedAt)
+        )
         updateTopicVisibility()
         if completionFade.isFading {
             advanceCompletionFade(Date())
@@ -396,8 +440,37 @@ private extension Note {
 
     func cancelCompletionFade() {
         completionFade.cancel()
+        markCompletionAutoDeletionCancelled()
         updateTopicVisibility()
         resetFadeAppearance()
+    }
+
+    func completionAutoDeletionWasCancelled(for completedAt: Date?) -> Bool {
+        let defaults = UserDefaults.standard
+        let key = completionAutoDeletionCancellationKey
+        guard let completedAt else {
+            defaults.removeObject(forKey: key)
+            return false
+        }
+        guard let storedTimestamp = defaults.object(forKey: key) as? Double else { return false }
+        guard abs(storedTimestamp - completedAt.timeIntervalSinceReferenceDate) < 0.001 else {
+            // A new completion cycle should retain its normal grace-period fade.
+            defaults.removeObject(forKey: key)
+            return false
+        }
+        return true
+    }
+
+    func markCompletionAutoDeletionCancelled() {
+        guard let completedAt = note?.completedAt else { return }
+        UserDefaults.standard.set(
+            completedAt.timeIntervalSinceReferenceDate,
+            forKey: completionAutoDeletionCancellationKey
+        )
+    }
+
+    var completionAutoDeletionCancellationKey: String {
+        "cancelledCompletionAutoDeletion.\(noteID.stringValue)"
     }
 
     func deleteCompletedNote(completedAt: Date) {
@@ -479,6 +552,37 @@ private extension Note {
         let frame = window.frameRect(forContentRect: content)
         return NSRect(x: window.frame.minX, y: window.frame.maxY - frame.height, width: frame.width, height: frame.height)
     }
+
+    func setColorPickerHidden(_ hidden: Bool) {
+        guard let themeFrame = noteWindow?.contentView?.superview else { return }
+        themeFrame.subviews
+            .compactMap { $0 as? NoteColorPickerTitlebarControl }
+            .forEach { $0.isHidden = hidden }
+    }
+
+    func setRestoreControlVisible(_ visible: Bool) {
+        guard let themeFrame = noteWindow?.contentView?.superview else { return }
+        let existing = themeFrame.subviews.compactMap { $0 as? MinimizedNoteRestoreTitlebarControl }
+        guard visible else {
+            existing.forEach { $0.removeFromSuperview() }
+            return
+        }
+        guard existing.isEmpty,
+              let picker = themeFrame.subviews.first(where: { $0 is NoteColorPickerTitlebarControl }) else {
+            return
+        }
+
+        let restore = MinimizedNoteRestoreTitlebarControl { handleBringUp() }
+        let restoreWidth = MacNoteTitlebarLayout.minimizedRestoreWidth
+        restore.frame = NSRect(
+            x: themeFrame.bounds.maxX - restoreWidth - 2,
+            y: themeFrame.bounds.maxY - picker.frame.height + restoreWidth,
+            width: restoreWidth,
+            height: picker.frame.height
+        )
+        restore.autoresizingMask = [.minXMargin, .minYMargin]
+        themeFrame.addSubview(restore, positioned: .above, relativeTo: nil)
+    }
 }
 
 private extension Note {
@@ -494,7 +598,7 @@ private extension Note {
                                 taskRow(task, at: index)
                                 taskDropTarget(at: index + 1)
                             }
-                            newListItem().opacity(isDone || isTextBlurred ? 0 : 1)
+                            newListItem().opacity(isDone || isTextBlurred || isInsertedNewTaskFocused ? 0 : 1)
                             Spacer().id(Id.bottomAnchor)
                         }
                         .onAppear {
@@ -543,18 +647,50 @@ private extension Note {
         let pending = note.pendingTasks.count
         let total = note.tasks.count
         let complete = pending == 0 && total > 0
-        let foreground = complete ? Color.accentColor : isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)
-        return VStack {
+        let foreground = minimizedForeground
+        return ZStack(alignment: .topLeading) {
+            ZStack(alignment: .bottomLeading) {
+                Gauge(value: total == 0 ? 0 : Float(total - pending), in: 0...Float(max(total, 1))) {
+                    EmptyView()
+                } currentValueLabel: {
+                    if complete {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 25, weight: .bold))
+                            .foregroundStyle(foreground)
+                            .offset(y: -2)
+                    } else {
+                        Text("\(pending)")
+                            .bold()
+                            .font(.system(size: pending > 9 ? 24 : 30))
+                            .foregroundStyle(foreground)
+                            .padding(.top, -2)
+                    }
+                }
+                .gaugeStyle(.accessoryCircular).tint(Gradient(colors: [.clear, foreground]))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                Text(statusText(complete: complete, total: total))
+                    .font(.system(size: 10))
+                    .foregroundStyle(foreground)
+                    .padding(.leading, 13)
+                    .padding(.bottom, 13)
+                    .frame(maxWidth: 54, alignment: .leading)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .padding(.top, -14)
+            .padding(.horizontal, 8)
+
             if let title = note.title {
                 Text(title).font(.system(size: 12)).foregroundStyle(foreground).bold().lineLimit(1)
-                    .padding(.top, -32).padding(.horizontal, 8).frame(maxWidth: .infinity, alignment: .leading)
+                    .truncationMode(.tail)
+                    .frame(
+                        width: Layout.minimizedNoteWidth - 8 - MacNoteTitlebarLayout.minimizedRestoreWidth - 2,
+                        alignment: .leading
+                    )
+                    .padding(.top, -26)
+                    .padding(.leading, 8)
             }
-            Gauge(value: total == 0 ? 0 : Float(total - pending), in: 0...Float(max(total, 1))) {
-                Text(statusText(complete: complete, total: total)).font(.system(size: 10)).foregroundStyle(foreground)
-            } currentValueLabel: {
-                Text("\(pending)").bold().font(.system(size: 30)).foregroundStyle(foreground)
-            }
-            .gaugeStyle(.accessoryCircular).tint(Gradient(colors: [.clear, foreground]))
         }
         .frame(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
         .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
@@ -573,7 +709,8 @@ private extension Note {
         return GeometryReader { geometry in
             TextField("Topic", text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit))
                 .textFieldStyle(.plain).truncationMode(.tail).font(.system(size: size, weight: .bold, design: .rounded))
-                .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).background(Color.clear).padding(.top, 5)
+                .foregroundColor(noteForeground).background(Color.clear).padding(.top, 5)
+                .tint(noteForeground)
                 .focused($focusedField, equals: .topic)
                 .onChange(of: focusedField) { _, field in
                     if let title = note?.title, field == .topic { placeCursor(forText: title) }
@@ -615,14 +752,17 @@ private extension Note {
         HStack(spacing: 8) {
             Checkbox().disabled(true)
             ZStack(alignment: .leading) {
-                if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.6).allowsHitTesting(false) }
-                TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
+                if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(minimizedForeground).opacity(0.35).allowsHitTesting(false) }
+                TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(noteForeground).tint(noteForeground)
                     .onSubmit { handleNewTaskCommit() }.focused($focusedField, equals: .newTask)
                     .onChange(of: focusedField) { _, field in if field != .newTask && !newTaskText.isEmpty { handleNewTaskCommit() } }
                     .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in handleNewTaskCommit() }
             }
             Spacer()
-        }.padding(.leading, 2).padding(.bottom, 10)
+        }
+        .padding(.leading, 2)
+        .padding(.bottom, 10)
+        .allowsHitTesting(!isInsertedNewTaskFocused)
     }
 
     func topicListItem() -> some View {
@@ -639,6 +779,9 @@ private extension Note {
             rowIndex: index,
             fontSize: fontSize,
             isDark: isDark,
+            contentColor: noteForeground,
+            cursorColor: noteForeground,
+            placeholderColor: minimizedForeground,
             truncation: taskLineTruncation,
             isFirst: task.id == tasks.first?.id,
             feedbackResetToken: taskDropFeedbackResetToken,
@@ -674,7 +817,14 @@ private extension Note {
             if completionFade.isFading {
                 ZStack {
                     ProgressView("Fading out...", value: fadeAwayProgress, total: Timeout.noteFadeOutSeconds).foregroundColor(.accentColor).padding(.horizontal, 20).padding(.bottom, 12)
-                    HStack { Spacer(); Button("Cancel", action: cancelCompletionFade).buttonStyle(.plain).padding(.trailing, 20).padding(.bottom, 30) }
+                    HStack {
+                        Spacer()
+                        Button("Cancel", action: cancelCompletionFade)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(minimizedForeground)
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 30)
+                    }
                 }
             }
         }.opacity(windowAlpha * 0.9)
@@ -783,6 +933,59 @@ struct MacNoteSyncTitlebarIcon: View {
             .foregroundStyle(state == .attentionNeeded
                 ? Color(nsColor: .systemOrange)
                 : Color(nsColor: .secondaryLabelColor))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .ignoresSafeArea()
+    }
+}
+
+final class MinimizedNoteRestoreTitlebarControl: NSHostingView<MinimizedNoteRestoreTitlebarIcon> {
+    private let onRestore: () -> Void
+
+    required init(rootView: MinimizedNoteRestoreTitlebarIcon) {
+        onRestore = rootView.onRestore
+        super.init(rootView: rootView)
+        toolTip = "Restore note"
+        setAccessibilityElement(true)
+        setAccessibilityLabel("Restore note")
+        setAccessibilityRole(.button)
+    }
+
+    convenience init(onRestore: @escaping () -> Void) {
+        self.init(rootView: MinimizedNoteRestoreTitlebarIcon(onRestore: onRestore))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onRestore()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onRestore()
+        return true
+    }
+
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        .button
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+}
+
+struct MinimizedNoteRestoreTitlebarIcon: View {
+    let onRestore: () -> Void
+
+    var body: some View {
+        Image(systemName: "app.shadow")
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
+            .scaleEffect(x: -1, y: 1)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .ignoresSafeArea()
@@ -945,6 +1148,9 @@ private struct TaskRow: View {
     let rowIndex: Int
     let fontSize: Double
     let isDark: Bool
+    let contentColor: Color
+    let cursorColor: Color
+    let placeholderColor: Color
     let truncation: TaskLineTruncation
     let isFirst: Bool
     let feedbackResetToken: UUID
@@ -974,9 +1180,7 @@ private struct TaskRow: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundColor(
-                        isDark
-                            ? Color(.primaryFontWhite).opacity(0.6)
-                            : Color(.primaryFontColor).opacity(0.6)
+                        contentColor.opacity(0.6)
                     )
                     .overlay {
                         Rectangle()
@@ -985,31 +1189,40 @@ private struct TaskRow: View {
                             .offset(y: 1)
                     }
             } else {
-                TextField(
-                    "New task.default",
-                    text: Binding(get: { task.text }, set: onEdit),
-                    axis: truncation == .single ? .horizontal : .vertical
-                )
-                .if(truncation == .single) { $0.truncationMode(.tail) }
-                .textFieldStyle(.plain)
-                .font(.system(size: CGFloat(fontSize)))
-                .foregroundColor(isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor))
-                .background(Color.clear)
-                .focused($focusedTaskID, equals: task.id)
-                .onChange(of: focusedTaskID) { _, id in
-                    if id == task.id { onFocus() }
+                ZStack(alignment: .leading) {
+                    if task.text.isEmpty {
+                        Text("New task.default")
+                            .font(.system(size: CGFloat(fontSize)))
+                            .foregroundStyle(placeholderColor.opacity(0.35))
+                            .allowsHitTesting(false)
+                    }
+                    TextField(
+                        "",
+                        text: Binding(get: { task.text }, set: onEdit),
+                        axis: truncation == .single ? .horizontal : .vertical
+                    )
+                    .if(truncation == .single) { $0.truncationMode(.tail) }
+                    .textFieldStyle(.plain)
+                    .font(.system(size: CGFloat(fontSize)))
+                    .foregroundColor(contentColor)
+                    .tint(cursorColor)
+                    .background(Color.clear)
+                    .focused($focusedTaskID, equals: task.id)
+                    .onChange(of: focusedTaskID) { _, id in
+                        if id == task.id { onFocus() }
+                    }
+                    .onKeyPress(keys: [.return]) { _ in
+                        onEnter()
+                        return .handled
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                        if focusedTaskID == task.id { onCopy() }
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                        if focusedTaskID == task.id { onPaste() }
+                    }
+                    .onSubmit { onSubmit() }
                 }
-                .onKeyPress(keys: [.return]) { _ in
-                    onEnter()
-                    return .handled
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                    if focusedTaskID == task.id { onCopy() }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                    if focusedTaskID == task.id { onPaste() }
-                }
-                .onSubmit { onSubmit() }
             }
 
             Spacer()
