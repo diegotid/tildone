@@ -37,6 +37,15 @@ enum MacNoteTitlebarLayout {
     static var titleTrailingInset: CGFloat {
         trailingMargin + colorPickerWidth + controlSpacing + syncIndicatorWidth + titleControlSpacing
     }
+
+    static func minimizedRestoreFrame(in bounds: NSRect, alignedWith pickerFrame: NSRect) -> NSRect {
+        NSRect(
+            x: bounds.maxX - minimizedRestoreWidth - trailingMargin,
+            y: pickerFrame.minY,
+            width: minimizedRestoreWidth,
+            height: pickerFrame.height
+        )
+    }
 }
 
 /// Restart-safe presentation state for a note's destructive completion grace
@@ -573,12 +582,9 @@ private extension Note {
         }
 
         let restore = MinimizedNoteRestoreTitlebarControl { handleBringUp() }
-        let restoreWidth = MacNoteTitlebarLayout.minimizedRestoreWidth
-        restore.frame = NSRect(
-            x: themeFrame.bounds.maxX - restoreWidth - 2,
-            y: themeFrame.bounds.maxY - picker.frame.height + restoreWidth,
-            width: restoreWidth,
-            height: picker.frame.height
+        restore.frame = MacNoteTitlebarLayout.minimizedRestoreFrame(
+            in: themeFrame.bounds,
+            alignedWith: picker.frame
         )
         restore.autoresizingMask = [.minXMargin, .minYMargin]
         themeFrame.addSubview(restore, positioned: .above, relativeTo: nil)
@@ -905,6 +911,14 @@ final class MacNoteSyncTitlebarControl: NSHostingView<MacNoteSyncTitlebarIcon> {
         openOptions()
     }
 
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override var mouseDownCanMoveWindow: Bool {
+        false
+    }
+
     override func accessibilityPerformPress() -> Bool {
         openOptions()
         return true
@@ -964,6 +978,14 @@ final class MinimizedNoteRestoreTitlebarControl: NSHostingView<MinimizedNoteRest
         onRestore()
     }
 
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override var mouseDownCanMoveWindow: Bool {
+        false
+    }
+
     override func accessibilityPerformPress() -> Bool {
         onRestore()
         return true
@@ -1018,6 +1040,14 @@ final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitleba
 
     override func mouseDown(with event: NSEvent) {
         togglePopover()
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override var mouseDownCanMoveWindow: Bool {
+        false
     }
 
     override func accessibilityPerformPress() -> Bool {

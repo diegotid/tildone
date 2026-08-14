@@ -124,11 +124,17 @@ extension NSWindow {
 extension NSButton {
     func style() {
         let frame = NSRect(x: 1, y: 2, width: 12, height: 12)
-        let overlay = NSView(frame: frame)
+        let overlay = MouseIgnoringView(frame: frame)
         overlay.wantsLayer = true
         overlay.layer?.cornerRadius = frame.width / 2
         overlay.layer?.backgroundColor = NSColor.checkboxBorder.withAlphaComponent(0.2).cgColor
         self.addSubview(overlay)
+    }
+}
+
+final class MouseIgnoringView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
     }
 }
 

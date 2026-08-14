@@ -63,6 +63,8 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(localControl.toolTip, localStatus)
         XCTAssertEqual(localControl.accessibilityLabel(), localStatus)
         XCTAssertEqual(localControl.accessibilityRole(), .button)
+        XCTAssertTrue(localControl.acceptsFirstMouse(for: nil))
+        XCTAssertFalse(localControl.mouseDownCanMoveWindow)
 
         let opensOptions = expectation(
             forNotification: .openSyncResolutionOptions,
@@ -85,6 +87,27 @@ final class TildoneTests: XCTestCase {
         let opensStatus = expectation(forNotification: .openSyncStatus, object: nil)
         XCTAssertTrue(attentionControl.accessibilityPerformPress())
         wait(for: [opensStatus], timeout: 1)
+    }
+
+    @MainActor
+    func testMacNoteTitlebarControlsRemainClickableWhileWindowIsInactive() {
+        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 14, height: 16))
+        button.style()
+        XCTAssertTrue(button.hitTest(NSPoint(x: 7, y: 8)) === button)
+
+        let restore = MinimizedNoteRestoreTitlebarControl(onRestore: {})
+        XCTAssertTrue(restore.acceptsFirstMouse(for: nil))
+        XCTAssertFalse(restore.mouseDownCanMoveWindow)
+    }
+
+    func testMinimizedRestoreControlUsesTheFullTitlebarHeight() {
+        let pickerFrame = NSRect(x: 220, y: 272, width: 26, height: 22)
+        let frame = MacNoteTitlebarLayout.minimizedRestoreFrame(
+            in: NSRect(x: 0, y: 0, width: 250, height: 300),
+            alignedWith: pickerFrame
+        )
+
+        XCTAssertEqual(frame, NSRect(x: 229, y: 272, width: 19, height: 22))
     }
 
     func testMacRemoteRefreshPropagatesMigrationAndReloadFailures() async {
