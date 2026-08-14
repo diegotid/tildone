@@ -695,9 +695,11 @@ final class MenuBarController: NSObject {
         if transportState == .paused {
             syncActionItem?.title = String(localized: "Resume Sync")
             syncActionItem?.action = #selector(resumeSync)
+            syncActionItem?.image = menuImage(named: "play.circle")
         } else {
             syncActionItem?.title = String(localized: "Pause Sync")
             syncActionItem?.action = #selector(pauseSync)
+            syncActionItem?.image = menuImage(named: "pause.circle")
         }
 
         guard let button = statusItem.button else { return }
@@ -746,16 +748,16 @@ final class MenuBarController: NSObject {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout)))
+        menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout), symbolName: "info.circle"))
         menu.addItem(.separator())
 
-        menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), keyEquivalent: "n"))
+        menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), keyEquivalent: "n", symbolName: "square.and.pencil"))
 
-        let minimizeAll = item(String(localized: "Minimize All"), action: #selector(minimizeAll), keyEquivalent: "m")
+        let minimizeAll = item(String(localized: "Minimize All"), action: #selector(minimizeAll), keyEquivalent: "m", symbolName: "minus.square")
         minimizeAll.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(minimizeAll)
 
-        let bringAllUp = item(String(localized: "Bring All Up"), action: #selector(bringAllUp), keyEquivalent: "u")
+        let bringAllUp = item(String(localized: "Bring All Up"), action: #selector(bringAllUp), keyEquivalent: "u", symbolName: "app.shadow")
         bringAllUp.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(bringAllUp)
 
@@ -769,29 +771,41 @@ final class MenuBarController: NSObject {
         syncPending.isHidden = true
         syncPendingItem = syncPending
         menu.addItem(syncPending)
-        let syncAction = item(String(localized: "Pause Sync"), action: #selector(pauseSync))
+        let syncAction = item(String(localized: "Pause Sync"), action: #selector(pauseSync), symbolName: "pause.circle")
         syncAction.isHidden = true
         syncActionItem = syncAction
         menu.addItem(syncAction)
-        menu.addItem(item(String(localized: "Sync Status…"), action: #selector(openSyncStatus)))
+        menu.addItem(item(String(localized: "Sync Status…"), action: #selector(openSyncStatus), symbolName: "arrow.trianglehead.2.clockwise.rotate.90.icloud"))
 
         menu.addItem(.separator())
-        let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
+        let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",", symbolName: "gearshape")
         settings.keyEquivalentModifierMask = .command
         menu.addItem(settings)
-        menu.addItem(item(String(localized: "How to Use Focus Filters…"), action: #selector(openFocusFilterHelp)))
+        menu.addItem(item(String(localized: "How to Use Focus Filters…"), action: #selector(openFocusFilterHelp), symbolName: "moon"))
 
         menu.addItem(.separator())
-        let quit = item(String(localized: "Quit Tildone"), action: #selector(quit), keyEquivalent: "q")
+        let quit = item(String(localized: "Quit Tildone"), action: #selector(quit), keyEquivalent: "q", symbolName: "power")
         quit.keyEquivalentModifierMask = .command
         menu.addItem(quit)
         return menu
     }
 
-    private func item(_ title: String, action: Selector, keyEquivalent: String = "") -> NSMenuItem {
+    private func item(
+        _ title: String,
+        action: Selector,
+        keyEquivalent: String = "",
+        symbolName: String? = nil
+    ) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
         item.target = self
+        item.image = symbolName.flatMap(menuImage(named:))
         return item
+    }
+
+    private func menuImage(named symbolName: String) -> NSImage? {
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
+        image?.isTemplate = true
+        return image
     }
 
     @objc private func createNote() { sendToActiveApp(.new) }
