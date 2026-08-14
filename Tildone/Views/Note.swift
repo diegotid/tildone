@@ -32,8 +32,6 @@ enum MacNoteTitlebarLayout {
     static let controlSpacing: CGFloat = 2
     static let titleControlSpacing: CGFloat = 6
 
-    /// Reserve the maximum title-bar control width so the title neither
-    /// overlaps nor jumps when the sync indicator appears or changes state.
     static var titleTrailingInset: CGFloat {
         trailingMargin + colorPickerWidth + controlSpacing + syncIndicatorWidth + titleControlSpacing
     }
@@ -41,7 +39,7 @@ enum MacNoteTitlebarLayout {
     static func minimizedRestoreFrame(in bounds: NSRect, alignedWith pickerFrame: NSRect) -> NSRect {
         NSRect(
             x: bounds.maxX - minimizedRestoreWidth - trailingMargin,
-            y: pickerFrame.minY,
+            y: bounds.maxY - pickerFrame.height - 8,
             width: minimizedRestoreWidth,
             height: pickerFrame.height
         )
@@ -602,6 +600,7 @@ private extension Note {
                             taskDropTarget(at: 0)
                             ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
                                 taskRow(task, at: index)
+                                    .id(task.id)
                                 taskDropTarget(at: index + 1)
                             }
                             newListItem().opacity(isDone || isTextBlurred || isInsertedNewTaskFocused ? 0 : 1)
@@ -612,6 +611,12 @@ private extension Note {
                             applyInitialFocusIfNeeded()
                         }
                         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
+                    }
+                    .onChange(of: focusedTaskID) { _, taskID in
+                        guard let taskID else { return }
+                        withAnimation {
+                            scroll.scrollTo(taskID, anchor: .center)
+                        }
                     }
                     .modifier(ScrollFrame())
                     .onChange(of: tasks.count) { _, _ in withAnimation { scroll.scrollTo(Id.bottomAnchor, anchor: .bottom) } }
@@ -691,7 +696,7 @@ private extension Note {
                 Text(title).font(.system(size: 12)).foregroundStyle(foreground).bold().lineLimit(1)
                     .truncationMode(.tail)
                     .frame(
-                        width: Layout.minimizedNoteWidth - 8 - MacNoteTitlebarLayout.minimizedRestoreWidth - 2,
+                        width: Layout.minimizedNoteWidth - 10 - MacNoteTitlebarLayout.minimizedRestoreWidth,
                         alignment: .leading
                     )
                     .padding(.top, -26)
@@ -1008,6 +1013,7 @@ struct MinimizedNoteRestoreTitlebarIcon: View {
             .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(Color(nsColor: .secondaryLabelColor))
             .scaleEffect(x: -1, y: 1)
+            .offset(y: -3)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .ignoresSafeArea()
@@ -1198,6 +1204,7 @@ private struct TaskRow: View {
     let onHover: (Bool) -> Void
 
     var body: some View {
+        let isFocused = focusedTaskID == task.id
         HStack(alignment: .top, spacing: 8) {
             Checkbox(checked: task.isCompleted)
                 .disabled(task.text.isEmpty)
@@ -1225,6 +1232,7 @@ private struct TaskRow: View {
                             .font(.system(size: CGFloat(fontSize)))
                             .foregroundStyle(placeholderColor.opacity(0.35))
                             .allowsHitTesting(false)
+                            .padding(.leading, isFocused ? Self.focusedTextLeadingCompensation : 0)
                     }
                     TextField(
                         "",
@@ -1238,6 +1246,7 @@ private struct TaskRow: View {
                     .tint(cursorColor)
                     .background(Color.clear)
                     .focused($focusedTaskID, equals: task.id)
+                    .padding(.leading, isFocused ? Self.focusedTextLeadingCompensation : 0)
                     .onChange(of: focusedTaskID) { _, id in
                         if id == task.id { onFocus() }
                     }
@@ -1300,6 +1309,8 @@ private struct TaskRow: View {
             )
         )
     }
+
+    private static let focusedTextLeadingCompensation: CGFloat = 2
 }
 
 private struct TaskReorderInsertionLine: View {
