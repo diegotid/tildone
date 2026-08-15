@@ -44,24 +44,44 @@ struct SettingsForm: View {
     @AppStorage(AppAppearance.showDockIconStorageKey)
     private var showDockIcon = false
 
+    @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey)
+    private var moveCheckedTasksToEnd = false
+
     var body: some View {
         ScrollView {
             Form {
                 VStack(alignment: .leading) {
                     Section {
-                        HStack(alignment: .top, spacing: 22) {
+                        VStack(alignment: .leading, spacing: 12) {
                             VStack(alignment: .leading) {
                                 Launcher.Toggle()
                                 Text("Start Tildone automatically when you log in.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Toggle("Show Dock icon", isOn: $showDockIcon)
-                                .onChange(of: showDockIcon) { _, _ in
-                                    NSApplication.shared.setActivationPolicy(
-                                        showDockIcon ? .regular : .accessory
-                                    )
-                                }
+                            VStack(alignment: .leading) {
+                                Toggle("Show Dock icon", isOn: $showDockIcon)
+                                    .onChange(of: showDockIcon) { _, _ in
+                                        NSApplication.shared.setActivationPolicy(
+                                            showDockIcon ? .regular : .accessory
+                                        )
+                                    }
+                                Text("Show or hide Tildone in the Dock.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            VStack(alignment: .leading) {
+                                Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
+                                    .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
+                                        NotificationCenter.default.post(
+                                            name: .updateCompletedTaskOrdering,
+                                            object: isEnabled
+                                        )
+                                    }
+                                Text("Keep unfinished tasks at the top of each list.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     } header: {
                         Text("General")
@@ -82,7 +102,7 @@ struct SettingsForm: View {
                             }
                         }
                     } header: {
-                        Text("General")
+                        Text("Appearance")
                             .bold()
                     }
                     Divider()
@@ -101,7 +121,7 @@ struct SettingsForm: View {
             }
             .padding(24)
         }
-        .frame(width: 520, height: 660)
+        .frame(width: 520, height: 746)
     }
 }
 

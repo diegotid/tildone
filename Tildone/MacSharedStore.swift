@@ -131,11 +131,73 @@ final class MacSharedStore: ObservableObject {
         await syncCoordinator?.notifyLocalChanges()
     }
 
-    func setTaskCompletion(_ id: TaskID, completed: Bool) async throws {
-        _ = try await repository.setTaskCompletion(
+    func setTaskCompletion(
+        _ id: TaskID,
+        completed: Bool,
+        moveToEndWhenCompleted: Bool = false
+    ) async throws {
+        let task = try await repository.setTaskCompletion(
             id: id,
             completion: completed ? .completed(at: Date()) : .incomplete
         )
+        if completed && moveToEndWhenCompleted {
+            CompletedTaskOrderPreference.recordOriginalOrderToken(task.orderToken, for: id)
+            let tasks = try await repository.orderedTasks(in: task.noteID)
+            if tasks.last?.id != id {
+                let lower = tasks.last(where: { $0.id != id })?.orderToken
+                _ = try await repository.moveTask(
+                    id: id,
+                    to: try OrderToken.between(lower, nil)
+                )
+            }
+        }
+        try await reload()
+        await syncCoordinator?.notifyLocalChanges()
+    }
+
+    func applyCompletedTaskOrdering(enabled: Bool) async throws {
+        let notes = try await repository.visibleNotes()
+        var hasChanges = false
+
+        if enabled {
+            for note in notes {
+                let completedTasks = try await repository.orderedTasks(in: note.id)
+                    .filter(\.isCompleted)
+                for task in completedTasks {
+                    CompletedTaskOrderPreference.recordOriginalOrderToken(
+                        task.orderToken,
+                        for: task.id
+                    )
+                }
+                for task in completedTasks {
+                    let tasks = try await repository.orderedTasks(in: note.id)
+                    guard tasks.last?.id != task.id else { continue }
+                    let lower = tasks.last(where: { $0.id != task.id })?.orderToken
+                    _ = try await repository.moveTask(
+                        id: task.id,
+                        to: try OrderToken.between(lower, nil)
+                    )
+                    hasChanges = true
+                }
+            }
+        } else {
+            for note in notes {
+                let completedTasks = try await repository.orderedTasks(in: note.id)
+                    .filter(\.isCompleted)
+                for task in completedTasks {
+                    guard let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(
+                        for: task.id
+                    ), originalOrderToken != task.orderToken else {
+                        continue
+                    }
+                    _ = try await repository.moveTask(id: task.id, to: originalOrderToken)
+                    hasChanges = true
+                }
+            }
+            CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        }
+
+        guard hasChanges else { return }
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
     }

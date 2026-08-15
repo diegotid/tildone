@@ -42,6 +42,11 @@ struct Desktop: View {
                 }
                 openNoteWindows()
                 createWhatsNewNoteIfNeeded()
+                updateCompletedTaskOrdering(
+                    isEnabled: UserDefaults.standard.bool(
+                        forKey: AppAppearance.moveCheckedTasksToEndStorageKey
+                    )
+                )
             }
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
@@ -61,6 +66,10 @@ struct Desktop: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in handleClose() }
             .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in openSettings() }
+            .onReceive(NotificationCenter.default.publisher(for: .updateCompletedTaskOrdering)) { notification in
+                guard let isEnabled = notification.object as? Bool else { return }
+                updateCompletedTaskOrdering(isEnabled: isEnabled)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .openAbout)) { _ in
                 openWindow(id: Id.aboutWindow)
             }
@@ -75,6 +84,19 @@ struct Desktop: View {
 }
 
 private extension Desktop {
+    func updateCompletedTaskOrdering(isEnabled: Bool) {
+        Swift.Task {
+            do {
+                try await store.applyCompletedTaskOrdering(enabled: isEnabled)
+            } catch {
+                UserDefaults.standard.set(
+                    !isEnabled,
+                    forKey: AppAppearance.moveCheckedTasksToEndStorageKey
+                )
+            }
+        }
+    }
+
     func closeManagedNoteWindows() {
         for window in noteWindows.values { window.close() }
         noteWindows.removeAll()

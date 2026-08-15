@@ -628,6 +628,7 @@ extension Notification.Name {
     static let pauseSync = Notification.Name("pauseSync")
     static let resumeSync = Notification.Name("resumeSync")
     static let syncNow = Notification.Name("syncNow")
+    static let updateCompletedTaskOrdering = Notification.Name("updateCompletedTaskOrdering")
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {

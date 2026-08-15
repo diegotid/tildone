@@ -662,6 +662,79 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    func testMacSharedStoreMovesNewlyCompletedTaskToEndWhenEnabled() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(),
+            now: { Date(timeIntervalSince1970: 4_000) }
+        )
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+
+        try await store.setTaskCompletion(
+            second.id,
+            completed: true,
+            moveToEndWhenCompleted: true
+        )
+
+        let completedOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(completedOrder.map(\.id), [first.id, third.id, second.id])
+        XCTAssertTrue(completedOrder.last?.isCompleted == true)
+
+        try await store.setTaskCompletion(
+            second.id,
+            completed: false,
+            moveToEndWhenCompleted: true
+        )
+        let incompleteOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            incompleteOrder.map(\.id),
+            [first.id, third.id, second.id]
+        )
+
+        try await store.setTaskCompletion(
+            second.id,
+            completed: true,
+            moveToEndWhenCompleted: true
+        )
+        try await store.applyCompletedTaskOrdering(enabled: false)
+        let restoredOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(restoredOrder.map(\.id), [first.id, second.id, third.id])
+    }
+
+    func testMacSharedStoreRegroupsExistingCompletedTasksAndRestoresTheirPositions() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(),
+            now: { Date(timeIntervalSince1970: 4_000) }
+        )
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+        let fourth = try await store.addTask(to: note.id, text: "Fourth")
+        try await store.setTaskCompletion(second.id, completed: true)
+        try await store.setTaskCompletion(fourth.id, completed: true)
+
+        try await store.applyCompletedTaskOrdering(enabled: true)
+        let groupedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(groupedTasks.map(\.id), [first.id, third.id, second.id, fourth.id])
+
+        try await store.applyCompletedTaskOrdering(enabled: false)
+        let restoredTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(restoredTasks.map(\.id), [first.id, second.id, third.id, fourth.id])
+    }
+
     func testMacTaskDragPayloadRejectsCrossNoteAndMalformedDrops() throws {
         let noteID = NoteID()
         let taskID = TaskID()

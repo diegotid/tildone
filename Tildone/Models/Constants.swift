@@ -39,6 +39,7 @@ enum Timeout {
 
 enum AppAppearance {
     static let showDockIconStorageKey = "showDockIcon"
+    static let moveCheckedTasksToEndStorageKey = "moveCheckedTasksToEnd"
 
     /// A new installation starts as a menu-bar app. Existing installations
     /// retain the Dock icon users already expect until they opt out.
@@ -69,5 +70,31 @@ enum AppAppearance {
         return domain.keys.contains { key in
             legacyPreferenceKeys.contains(key) || key.hasPrefix("NSWindow Frame ")
         }
+    }
+}
+
+/// Installation-local restoration data for the optional completed-task ordering.
+/// It deliberately stays out of the shared task model and iCloud sync payload.
+enum CompletedTaskOrderPreference {
+    private static let originalOrderTokensStorageKey = "completedTaskOriginalOrderTokens"
+
+    static func originalOrderToken(for taskID: TaskID) -> OrderToken? {
+        guard let rawValue = originalOrderTokens()[taskID.stringValue] else { return nil }
+        return try? OrderToken(rawValue: rawValue)
+    }
+
+    static func recordOriginalOrderToken(_ orderToken: OrderToken, for taskID: TaskID) {
+        var tokens = originalOrderTokens()
+        guard tokens[taskID.stringValue] == nil else { return }
+        tokens[taskID.stringValue] = orderToken.rawValue
+        UserDefaults.standard.set(tokens, forKey: originalOrderTokensStorageKey)
+    }
+
+    static func clearOriginalOrderTokens() {
+        UserDefaults.standard.removeObject(forKey: originalOrderTokensStorageKey)
+    }
+
+    private static func originalOrderTokens() -> [String: String] {
+        UserDefaults.standard.dictionary(forKey: originalOrderTokensStorageKey) as? [String: String] ?? [:]
     }
 }

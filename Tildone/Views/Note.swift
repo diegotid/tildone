@@ -128,6 +128,7 @@ struct Note: View {
     @AppStorage(TaskLineTruncation.storageKey) private var taskLineTruncation: TaskLineTruncation = .single
     @AppStorage(FontSize.storageKey) private var fontSize = Double(FontSize.small.rawValue)
     @AppStorage(NoteWindowBackground.opacityStorageKey) private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
+    @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey) private var moveCheckedTasksToEnd = false
 
     private var note: MacNoteSnapshot? { store.note(noteID) }
     private var tasks: [TildoneDomain.Task] { note?.tasks ?? [] }
@@ -307,7 +308,13 @@ private extension Note {
 
     func handleTaskToggle(_ task: TildoneDomain.Task) {
         noteWindow?.makeFirstResponder(nil)
-        mutate({ try await store.setTaskCompletion(task.id, completed: !task.isCompleted) }, message: "Error on task completion")
+        mutate({
+            try await store.setTaskCompletion(
+                task.id,
+                completed: !task.isCompleted,
+                moveToEndWhenCompleted: moveCheckedTasksToEnd
+            )
+        }, message: "Error on task completion")
     }
 
     func handleTaskDrop(_ payload: MacTaskDragPayload, at destination: Int) -> Bool {
