@@ -140,8 +140,11 @@ struct Note: View {
         isDark ? Color(.primaryFontWhite) : .black
     }
     private var isInsertedNewTaskFocused: Bool {
-        guard let focusedTaskID else { return false }
+        guard let focusedTaskID = activeFocusedTaskID else { return false }
         return tasks.contains { $0.id == focusedTaskID && $0.text.isEmpty }
+    }
+    private var activeFocusedTaskID: TaskID? {
+        nativeFocusedTaskID ?? focusedTaskID
     }
     private var minimizedForeground: Color {
         let rgb = color.usingColorSpace(.deviceRGB) ?? color
@@ -172,6 +175,9 @@ struct Note: View {
     @State private var fadeAwayProgress: TimeInterval = 0
     @State private var mutationErrorMessage: String?
     @State private var taskDropFeedbackResetToken = UUID()
+    @State private var skipsNextTaskCountBottomScroll = false
+    @State private var keyboardFocusedTaskID: TaskID?
+    @State private var nativeFocusedTaskID: TaskID?
     @FocusState private var focusedField: Field?
     @FocusState private var focusedTaskID: TaskID?
 
@@ -340,6 +346,10 @@ private extension Note {
     func handleKeyboard() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.window == noteWindow else { return event }
+            if (event.keyCode == Keyboard.arrowUp || event.keyCode == Keyboard.arrowDown),
+               isEditingNativeTaskField() {
+                return event
+            }
             if event.keyCode == Keyboard.tabKey, focusedField == .newTask, !newTaskText.isEmpty {
                 handleNewTaskCommit(); return nil
             }
@@ -354,42 +364,107 @@ private extension Note {
         }
     }
 
+    func isEditingNativeTaskField() -> Bool {
+        guard let firstResponder = noteWindow?.firstResponder else { return false }
+        return noteWindow?.contentView?.getNestedSubviews().contains { field in
+            guard let taskField = field as? MouseSafeTaskNSTextField else { return false }
+            return taskField.currentEditor() === firstResponder
+        } ?? false
+    }
+
     func handleEnter(for task: TildoneDomain.Task) {
         guard let field = textField(forText: task.text),
               let editor = field.currentEditor() as? NSTextView,
               let cursor = editor.selectedRanges.first?.rangeValue.location,
               let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        if cursor == editor.textStorage?.length {
-            handleMoveDown()
-        } else {
-            let insertion = cursor == 0 ? index : index + 1
-            mutate({ _ = try await store.addTask(to: noteID, text: "", insertingAt: insertion) }, message: "Error on task creation")
+        let insertion = cursor == 0 ? index : index + 1
+        insertEmptyTask(at: insertion)
+    }
+
+    func insertEmptyTask(at position: Int) {
+        skipsNextTaskCountBottomScroll = true
+        let emptyTaskIDs = tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id)
+        let removedBeforeInsertion = tasks[..<position].filter {
+            !$0.isCompleted && $0.text.isEmpty
+        }.count
+        Swift.Task {
+            do {
+                for id in emptyTaskIDs {
+                    try await store.deleteTask(id)
+                }
+                let task = try await store.addTask(
+                    to: noteID,
+                    text: "",
+                    insertingAt: position - removedBeforeInsertion
+                )
+                focusTaskUsingKeyboard(task.id)
+            } catch {
+                skipsNextTaskCountBottomScroll = false
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task creation",
+                    error: error
+                )
+            }
         }
     }
 
     func handleMoveUp() {
-        guard let id = focusedTaskID, let index = pendingTasks.firstIndex(where: { $0.id == id }) else {
-            if focusedField == .newTask { focusedTaskID = pendingTasks.last?.id } else { focusOnNewTask() }
+        guard let id = activeFocusedTaskID else {
+            if focusedField == .newTask, let taskID = pendingTasks.last?.id { focusTaskUsingKeyboard(taskID) } else { focusOnNewTask() }
             return
         }
-        if index > 0 { focusedTaskID = pendingTasks[index - 1].id } else { focusOnTopic() }
+        handleMoveUp(from: id)
+    }
+
+    func handleMoveUp(from id: TaskID) {
+        guard let index = pendingTasks.firstIndex(where: { $0.id == id }) else { return }
+        if index > 0 { focusTaskUsingKeyboard(pendingTasks[index - 1].id) } else { focusOnTopic() }
     }
 
     func handleMoveDown() {
-        guard let id = focusedTaskID, let index = pendingTasks.firstIndex(where: { $0.id == id }) else {
-            if focusedField == .topic { focusedTaskID = pendingTasks.first?.id } else { focusOnTopic() }
+        guard let id = activeFocusedTaskID else {
+            if focusedField == .topic, let taskID = pendingTasks.first?.id { focusTaskUsingKeyboard(taskID) } else { focusOnTopic() }
             return
         }
-        if index < pendingTasks.endIndex - 1 { focusedTaskID = pendingTasks[index + 1].id } else { focusOnNewTask() }
+        handleMoveDown(from: id)
+    }
+
+    func handleMoveDown(from id: TaskID) {
+        guard let index = pendingTasks.firstIndex(where: { $0.id == id }) else { return }
+        if index < pendingTasks.endIndex - 1 { focusTaskUsingKeyboard(pendingTasks[index + 1].id) } else { focusOnNewTask() }
     }
 
     func handleDelete(isBackwards: Bool = false) -> Bool {
-        guard let id = focusedTaskID, let index = pendingTasks.firstIndex(where: { $0.id == id }), pendingTasks[index].text.isEmpty else {
+        guard let id = activeFocusedTaskID, let index = pendingTasks.firstIndex(where: { $0.id == id }), pendingTasks[index].text.isEmpty else {
             return false
         }
-        let next = index - (isBackwards ? 1 : 0)
-        mutate({ try await store.deleteTask(id) }, message: "Error on task deletion")
-        if !pendingTasks.isEmpty { focusedTaskID = pendingTasks[max(0, min(next, pendingTasks.count - 1))].id }
+        let remainingTasks = pendingTasks.filter { $0.id != id }
+        let nextIndex = index - (isBackwards ? 1 : 0)
+        let nextTaskID: TaskID?
+        if remainingTasks.isEmpty {
+            nextTaskID = nil
+        } else {
+            nextTaskID = remainingTasks[
+                max(0, min(nextIndex, remainingTasks.count - 1))
+            ].id
+        }
+        skipsNextTaskCountBottomScroll = true
+        Swift.Task {
+            do {
+                try await store.deleteTask(id)
+                if let nextTaskID {
+                    focusTaskUsingKeyboard(nextTaskID)
+                } else {
+                    focusOnNewTask()
+                }
+            } catch {
+                skipsNextTaskCountBottomScroll = false
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task deletion",
+                    error: error
+                )
+            }
+        }
         return true
     }
 
@@ -550,11 +625,47 @@ private extension Note {
         if fontSize < FontSize.xSmall.rawValue, let size = FontSize(fromLegacySetting: fontSize) { fontSize = size.rawValue }
     }
 
-    func focusOnTopic() { focusedTaskID = nil; focusedField = .topic }
-    func focusOnNewTask() { focusedTaskID = nil; focusedField = .newTask }
+    func focusTaskUsingKeyboard(_ taskID: TaskID) {
+        nativeFocusedTaskID = taskID
+        keyboardFocusedTaskID = taskID
+        focusedTaskID = taskID
+    }
+
+    func activateNativeTask(_ taskID: TaskID) {
+        nativeFocusedTaskID = taskID
+        focusedTaskID = taskID
+    }
+
+    func focusOnTopic() { nativeFocusedTaskID = nil; keyboardFocusedTaskID = nil; focusedTaskID = nil; focusedField = .topic }
+    func focusOnNewTask() {
+        nativeFocusedTaskID = nil
+        keyboardFocusedTaskID = nil
+        focusedTaskID = nil
+        focusedField = .newTask
+        discardUnfilledTaskSlots()
+    }
+
+    func discardUnfilledTaskSlots() {
+        let emptyTaskIDs = tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id)
+        guard !emptyTaskIDs.isEmpty else { return }
+        skipsNextTaskCountBottomScroll = true
+        Swift.Task {
+            do {
+                for id in emptyTaskIDs {
+                    try await store.deleteTask(id)
+                }
+            } catch {
+                skipsNextTaskCountBottomScroll = false
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task deletion",
+                    error: error
+                )
+            }
+        }
+    }
 
     func placeCursor(forText value: String, at position: Int = 0) {
-        textField(forText: value)?.currentEditor()?.selectedRange = NSMakeRange(position, position)
+        textField(forText: value)?.currentEditor()?.selectedRange = NSMakeRange(position, 0)
     }
 
     func textField(forText value: String) -> NSTextField? {
@@ -620,13 +731,22 @@ private extension Note {
                         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
                     }
                     .onChange(of: focusedTaskID) { _, taskID in
+                        if taskID != keyboardFocusedTaskID {
+                            keyboardFocusedTaskID = nil
+                        }
                         guard let taskID else { return }
                         withAnimation {
                             scroll.scrollTo(taskID, anchor: .center)
                         }
                     }
                     .modifier(ScrollFrame())
-                    .onChange(of: tasks.count) { _, _ in withAnimation { scroll.scrollTo(Id.bottomAnchor, anchor: .bottom) } }
+                    .onChange(of: tasks.count) { _, _ in
+                        guard !skipsNextTaskCountBottomScroll else {
+                            skipsNextTaskCountBottomScroll = false
+                            return
+                        }
+                        withAnimation { scroll.scrollTo(Id.bottomAnchor, anchor: .bottom) }
+                    }
                 }
                 if isTopScrolledOut { scrollingHeader() }
             }
@@ -804,13 +924,17 @@ private extension Note {
             isFirst: task.id == tasks.first?.id,
             feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
+            isActive: activeFocusedTaskID == task.id,
+            usesKeyboardFocusAlignment: keyboardFocusedTaskID == task.id,
+            placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
+            onNativeFocus: { activateNativeTask(task.id) },
             onToggle: { handleTaskToggle(task) },
             onEdit: { handleTaskEdit(task, to: $0) },
-            onFocus: { placeCursor(forText: task.text) },
             onEnter: { handleEnter(for: task) },
             onCopy: { Copier.copy(task.text, forType: .string) },
             onPaste: { paste(into: task) },
-            onSubmit: handleMoveDown,
+            onMoveUp: { handleMoveUp(from: task.id) },
+            onSubmit: { handleMoveDown(from: task.id) },
             onDrop: { payload, destination in
                 handleTaskDrop(payload, at: destination)
             },
@@ -1198,20 +1322,23 @@ private struct TaskRow: View {
     let isFirst: Bool
     let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
+    let isActive: Bool
+    let usesKeyboardFocusAlignment: Bool
+    let placesCaretAtStartOnFocus: Bool
+    let onNativeFocus: () -> Void
     @State private var rowHeight: CGFloat = 0
     @State private var dropPlacement: TaskRowDropPlacement?
     let onToggle: () -> Void
     let onEdit: (String) -> Void
-    let onFocus: () -> Void
     let onEnter: () -> Void
     let onCopy: () -> Void
     let onPaste: () -> Void
+    let onMoveUp: () -> Void
     let onSubmit: () -> Void
     let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
 
     var body: some View {
-        let isFocused = focusedTaskID == task.id
         HStack(alignment: .top, spacing: 8) {
             Checkbox(checked: task.isCompleted)
                 .disabled(task.text.isEmpty)
@@ -1239,35 +1366,50 @@ private struct TaskRow: View {
                             .font(.system(size: CGFloat(fontSize)))
                             .foregroundStyle(placeholderColor.opacity(0.35))
                             .allowsHitTesting(false)
-                            .padding(.leading, isFocused ? Self.focusedTextLeadingCompensation : 0)
+                            .offset(x: usesKeyboardFocusAlignment ? Self.focusedTextLeadingCompensation : 0)
                     }
-                    TextField(
-                        "",
-                        text: Binding(get: { task.text }, set: onEdit),
-                        axis: truncation == .single ? .horizontal : .vertical
-                    )
-                    .if(truncation == .single) { $0.truncationMode(.tail) }
-                    .textFieldStyle(.plain)
-                    .font(.system(size: CGFloat(fontSize)))
-                    .foregroundColor(contentColor)
-                    .tint(cursorColor)
-                    .background(Color.clear)
-                    .focused($focusedTaskID, equals: task.id)
-                    .padding(.leading, isFocused ? Self.focusedTextLeadingCompensation : 0)
-                    .onChange(of: focusedTaskID) { _, id in
-                        if id == task.id { onFocus() }
+                    if truncation == .single {
+                        MouseSafeTaskTextField(
+                            text: Binding(get: { task.text }, set: onEdit),
+                            taskID: task.id,
+                            isFocused: isActive,
+                            placesCaretAtStartOnFocus: placesCaretAtStartOnFocus,
+                            fontSize: CGFloat(fontSize),
+                            textColor: contentColor,
+                            cursorColor: cursorColor,
+                            onFocus: onNativeFocus,
+                            onEnter: onEnter,
+                            onMoveUp: onMoveUp,
+                            onMoveDown: onSubmit
+                        )
+                        .offset(x: usesKeyboardFocusAlignment ? Self.focusedTextLeadingCompensation : 0)
+                        .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                            if focusedTaskID == task.id { onCopy() }
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                            if focusedTaskID == task.id { onPaste() }
+                        }
+                    } else {
+                        TextField("", text: Binding(get: { task.text }, set: onEdit), axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: CGFloat(fontSize)))
+                            .foregroundColor(contentColor)
+                            .tint(cursorColor)
+                            .background(Color.clear)
+                            .focused($focusedTaskID, equals: task.id)
+                            .offset(x: usesKeyboardFocusAlignment ? Self.focusedTextLeadingCompensation : 0)
+                            .onKeyPress(keys: [.return]) { _ in
+                                onEnter()
+                                return .handled
+                            }
+                            .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                                if focusedTaskID == task.id { onCopy() }
+                            }
+                            .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                                if focusedTaskID == task.id { onPaste() }
+                            }
+                            .onSubmit { onSubmit() }
                     }
-                    .onKeyPress(keys: [.return]) { _ in
-                        onEnter()
-                        return .handled
-                    }
-                    .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                        if focusedTaskID == task.id { onCopy() }
-                    }
-                    .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                        if focusedTaskID == task.id { onPaste() }
-                    }
-                    .onSubmit { onSubmit() }
                 }
             }
 
@@ -1317,7 +1459,178 @@ private struct TaskRow: View {
         )
     }
 
-    private static let focusedTextLeadingCompensation: CGFloat = 2
+    private static let focusedTextLeadingCompensation: CGFloat = 1
+}
+
+private struct MouseSafeTaskTextField: NSViewRepresentable {
+    @Binding var text: String
+    let taskID: TaskID
+    let isFocused: Bool
+    let placesCaretAtStartOnFocus: Bool
+    let fontSize: CGFloat
+    let textColor: Color
+    let cursorColor: Color
+    let onFocus: () -> Void
+    let onEnter: () -> Void
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> MouseSafeTaskNSTextField {
+        let field = MouseSafeTaskNSTextField()
+        field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isEditable = true
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.alignment = .left
+        field.lineBreakMode = .byTruncatingTail
+        field.usesSingleLineMode = true
+        field.cell?.lineBreakMode = .byTruncatingTail
+        field.delegate = context.coordinator
+        return field
+    }
+
+    func updateNSView(_ field: MouseSafeTaskNSTextField, context: Context) {
+        context.coordinator.parent = self
+        field.taskID = taskID
+        field.placesCaretAtStartOnFocus = placesCaretAtStartOnFocus
+        if field.stringValue != text { field.stringValue = text }
+        field.font = .systemFont(ofSize: fontSize)
+        field.textColor = NSColor(textColor)
+        if let editor = field.currentEditor() as? NSTextView {
+            Self.configure(
+                editor,
+                cursorColor: NSColor(cursorColor)
+            )
+        }
+
+        guard isFocused,
+              field.window?.firstResponder !== field.currentEditor() else {
+            return
+        }
+        field.window?.makeFirstResponder(field)
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: MouseSafeTaskTextField
+
+        init(parent: MouseSafeTaskTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidBeginEditing(_ notification: Notification) {
+            if let field = notification.object as? NSTextField,
+               let editor = field.currentEditor() as? NSTextView {
+                configure(editor)
+            }
+            parent.onFocus()
+        }
+
+        private func configure(_ editor: NSTextView) {
+            MouseSafeTaskTextField.configure(
+                editor,
+                cursorColor: NSColor(parent.cursorColor)
+            )
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            switch commandSelector {
+            case #selector(NSResponder.insertNewline(_:)):
+                parent.onEnter()
+                return true
+            case #selector(NSResponder.moveUp(_:)):
+                parent.onMoveUp()
+                return true
+            case #selector(NSResponder.moveDown(_:)):
+                parent.onMoveDown()
+                return true
+            default:
+                return false
+            }
+        }
+    }
+
+    private static func configure(_ editor: NSTextView, cursorColor: NSColor) {
+        editor.insertionPointColor = cursorColor
+        TaskTextSelectionStyle.apply(to: editor)
+    }
+}
+
+private final class MouseSafeTaskNSTextField: NSTextField {
+    var taskID: TaskID?
+    var placesCaretAtStartOnFocus = false
+
+    override func becomeFirstResponder() -> Bool {
+        let becameFirstResponder = super.becomeFirstResponder()
+        if becameFirstResponder, placesCaretAtStartOnFocus {
+            (currentEditor() as? NSTextView)?.selectedRange = NSRange(location: 0, length: 0)
+        }
+        return becameFirstResponder
+    }
+}
+
+private final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
+    private lazy var taskFieldEditor: MouseSafeTaskFieldEditor = {
+        let editor = MouseSafeTaskFieldEditor()
+        editor.isFieldEditor = true
+        editor.isRichText = false
+        return editor
+    }()
+
+    override func fieldEditor(for controlView: NSView) -> NSTextView? {
+        taskFieldEditor.enforceSelectionContrast()
+        return taskFieldEditor
+    }
+}
+
+private final class MouseSafeTaskFieldEditor: NSTextView {
+    override var selectedTextAttributes: [NSAttributedString.Key: Any] {
+        get { TaskTextSelectionStyle.withHighContrast(super.selectedTextAttributes) }
+        set { super.selectedTextAttributes = TaskTextSelectionStyle.withHighContrast(newValue) }
+    }
+
+    override func setSelectedRanges(
+        _ ranges: [NSValue],
+        affinity: NSSelectionAffinity,
+        stillSelecting stillSelectingFlag: Bool
+    ) {
+        super.setSelectedRanges(
+            ranges,
+            affinity: affinity,
+            stillSelecting: stillSelectingFlag
+        )
+        enforceSelectionContrast()
+    }
+
+    func enforceSelectionContrast() {
+        super.selectedTextAttributes = TaskTextSelectionStyle.withHighContrast(
+            super.selectedTextAttributes
+        )
+    }
+}
+
+private enum TaskTextSelectionStyle {
+    static func apply(to editor: NSTextView) {
+        editor.selectedTextAttributes = withHighContrast(editor.selectedTextAttributes)
+    }
+
+    static func withHighContrast(
+        _ attributes: [NSAttributedString.Key: Any]
+    ) -> [NSAttributedString.Key: Any] {
+        var attributes = attributes
+        attributes[.foregroundColor] = NSColor.black
+        attributes[.backgroundColor] = NSColor.selectedTextBackgroundColor
+        return attributes
+    }
 }
 
 private struct TaskReorderInsertionLine: View {
