@@ -1484,6 +1484,7 @@ private struct MouseSafeTaskTextField: NSViewRepresentable {
         field.lineBreakMode = .byTruncatingTail
         field.usesSingleLineMode = true
         field.cell?.lineBreakMode = .byTruncatingTail
+        field.cell?.isScrollable = true
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = context.coordinator
@@ -1695,7 +1696,9 @@ private final class MouseSafeTaskFieldEditor: NSTextView {
         let desiredInsetX = isOverflowing ? Self.overflowLeadingCompensation : 0
         let insetNeedsUpdate = abs(textContainerInset.width - desiredInsetX) > 0.001
         let restingOriginX = clipView.frame.minX
-        let originNeedsUpdate = abs(clipView.bounds.origin.x - restingOriginX) > 0.001
+        let shouldAnchorLeadingEdge = !isOverflowing || clipView.bounds.origin.x <= 0.001
+        let originNeedsUpdate = shouldAnchorLeadingEdge
+            && abs(clipView.bounds.origin.x - restingOriginX) > 0.001
         guard insetNeedsUpdate || originNeedsUpdate else { return }
 
         isRestoringTextGeometry = true
