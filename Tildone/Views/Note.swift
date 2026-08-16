@@ -925,7 +925,6 @@ private extension Note {
             feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
             isActive: activeFocusedTaskID == task.id,
-            usesKeyboardFocusAlignment: keyboardFocusedTaskID == task.id,
             placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
             onNativeFocus: { activateNativeTask(task.id) },
             onToggle: { handleTaskToggle(task) },
@@ -1323,7 +1322,6 @@ private struct TaskRow: View {
     let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
     let isActive: Bool
-    let usesKeyboardFocusAlignment: Bool
     let placesCaretAtStartOnFocus: Bool
     let onNativeFocus: () -> Void
     @State private var rowHeight: CGFloat = 0
@@ -1359,6 +1357,7 @@ private struct TaskRow: View {
                             .frame(height: 2)
                             .offset(y: 1)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ZStack(alignment: .leading) {
                     if task.text.isEmpty {
@@ -1366,7 +1365,6 @@ private struct TaskRow: View {
                             .font(.system(size: CGFloat(fontSize)))
                             .foregroundStyle(placeholderColor.opacity(0.35))
                             .allowsHitTesting(false)
-                            .offset(x: usesKeyboardFocusAlignment ? Self.focusedTextLeadingCompensation : 0)
                     }
                     if truncation == .single {
                         MouseSafeTaskTextField(
@@ -1382,7 +1380,7 @@ private struct TaskRow: View {
                             onMoveUp: onMoveUp,
                             onMoveDown: onSubmit
                         )
-                        .offset(x: usesKeyboardFocusAlignment ? Self.focusedTextLeadingCompensation : 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }
@@ -1397,7 +1395,6 @@ private struct TaskRow: View {
                             .tint(cursorColor)
                             .background(Color.clear)
                             .focused($focusedTaskID, equals: task.id)
-                            .offset(x: usesKeyboardFocusAlignment ? Self.focusedTextLeadingCompensation : 0)
                             .onKeyPress(keys: [.return]) { _ in
                                 onEnter()
                                 return .handled
@@ -1411,9 +1408,8 @@ private struct TaskRow: View {
                             .onSubmit { onSubmit() }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Spacer()
 
             TaskReorderHandle(
                 payload: dragPayload,
@@ -1458,8 +1454,6 @@ private struct TaskRow: View {
             )
         )
     }
-
-    private static let focusedTextLeadingCompensation: CGFloat = 1
 }
 
 private struct MouseSafeTaskTextField: NSViewRepresentable {
@@ -1490,6 +1484,8 @@ private struct MouseSafeTaskTextField: NSViewRepresentable {
         field.lineBreakMode = .byTruncatingTail
         field.usesSingleLineMode = true
         field.cell?.lineBreakMode = .byTruncatingTail
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = context.coordinator
         return field
     }
@@ -1560,7 +1556,12 @@ private struct MouseSafeTaskTextField: NSViewRepresentable {
     }
 
     private static func configure(_ editor: NSTextView, cursorColor: NSColor) {
-        editor.insertionPointColor = cursorColor
+        let opaqueCursorColor = cursorColor.withAlphaComponent(1)
+        if let editor = editor as? MouseSafeTaskFieldEditor {
+            editor.enforceInsertionPointColor(opaqueCursorColor)
+        } else {
+            editor.insertionPointColor = opaqueCursorColor
+        }
         TaskTextSelectionStyle.apply(to: editor)
     }
 }
@@ -1568,6 +1569,10 @@ private struct MouseSafeTaskTextField: NSViewRepresentable {
 private final class MouseSafeTaskNSTextField: NSTextField {
     var taskID: TaskID?
     var placesCaretAtStartOnFocus = false
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: super.intrinsicContentSize.height)
+    }
 
     override func becomeFirstResponder() -> Bool {
         let becameFirstResponder = super.becomeFirstResponder()
@@ -1588,14 +1593,38 @@ private final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
 
     override func fieldEditor(for controlView: NSView) -> NSTextView? {
         taskFieldEditor.enforceSelectionContrast()
+        if let textColor = (controlView as? NSTextField)?.textColor {
+            taskFieldEditor.enforceInsertionPointColor(textColor)
+        }
         return taskFieldEditor
     }
 }
 
 private final class MouseSafeTaskFieldEditor: NSTextView {
+    private weak var observedClipView: NSClipView?
+    private var clipViewObservers: [NSObjectProtocol] = []
+    private var isRestoringTextGeometry = false
+    private var enforcedInsertionPointColor = NSColor.textColor
+
+    deinit {
+        clipViewObservers.forEach(NotificationCenter.default.removeObserver)
+    }
+
     override var selectedTextAttributes: [NSAttributedString.Key: Any] {
         get { TaskTextSelectionStyle.withHighContrast(super.selectedTextAttributes) }
         set { super.selectedTextAttributes = TaskTextSelectionStyle.withHighContrast(newValue) }
+    }
+
+    override func drawInsertionPoint(
+        in rect: NSRect,
+        color: NSColor,
+        turnedOn flag: Bool
+    ) {
+        super.drawInsertionPoint(
+            in: rect,
+            color: enforcedInsertionPointColor,
+            turnedOn: flag
+        )
     }
 
     override func setSelectedRanges(
@@ -1609,6 +1638,19 @@ private final class MouseSafeTaskFieldEditor: NSTextView {
             stillSelecting: stillSelectingFlag
         )
         enforceSelectionContrast()
+        enforceInsertionPointColor(enforcedInsertionPointColor)
+        restoreFirstCharacterPosition()
+    }
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        super.scrollRangeToVisible(range)
+        restoreFirstCharacterPosition()
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        observeClipViewBounds()
+        restoreFirstCharacterPosition()
     }
 
     func enforceSelectionContrast() {
@@ -1616,6 +1658,57 @@ private final class MouseSafeTaskFieldEditor: NSTextView {
             super.selectedTextAttributes
         )
     }
+
+    func enforceInsertionPointColor(_ color: NSColor) {
+        enforcedInsertionPointColor = color.withAlphaComponent(1)
+        super.insertionPointColor = enforcedInsertionPointColor
+    }
+
+    private func observeClipViewBounds() {
+        clipViewObservers.forEach(NotificationCenter.default.removeObserver)
+        clipViewObservers.removeAll()
+        guard let clipView = superview as? NSClipView else {
+            observedClipView = nil
+            return
+        }
+        observedClipView = clipView
+        clipView.postsBoundsChangedNotifications = true
+        clipView.postsFrameChangedNotifications = true
+        clipViewObservers = [NSView.boundsDidChangeNotification, NSView.frameDidChangeNotification].map {
+            notificationName in
+            NotificationCenter.default.addObserver(
+                forName: notificationName,
+                object: clipView,
+                queue: .main
+            ) { [weak self] _ in
+                self?.restoreFirstCharacterPosition()
+            }
+        }
+    }
+
+    private func restoreFirstCharacterPosition() {
+        guard !isRestoringTextGeometry,
+              let clipView = observedClipView ?? superview as? NSClipView else { return }
+        let textWidth = (textStorage?.size().width ?? 0)
+            + 2 * (textContainer?.lineFragmentPadding ?? 0)
+        let isOverflowing = textWidth > clipView.bounds.width + 0.5
+        let desiredInsetX = isOverflowing ? Self.overflowLeadingCompensation : 0
+        let insetNeedsUpdate = abs(textContainerInset.width - desiredInsetX) > 0.001
+        let restingOriginX = clipView.frame.minX
+        let originNeedsUpdate = abs(clipView.bounds.origin.x - restingOriginX) > 0.001
+        guard insetNeedsUpdate || originNeedsUpdate else { return }
+
+        isRestoringTextGeometry = true
+        if insetNeedsUpdate {
+            textContainerInset = NSSize(width: desiredInsetX, height: textContainerInset.height)
+        }
+        if originNeedsUpdate {
+            clipView.setBoundsOrigin(NSPoint(x: restingOriginX, y: clipView.bounds.origin.y))
+        }
+        isRestoringTextGeometry = false
+    }
+
+    private static let overflowLeadingCompensation: CGFloat = 2
 }
 
 private enum TaskTextSelectionStyle {
