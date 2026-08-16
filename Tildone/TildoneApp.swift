@@ -39,7 +39,7 @@ struct TildoneApp: App {
     }
 
     var body: some Scene {
-        TildonePrimaryScene {
+        TildonePrimaryScene(isVisible: sharedStoreBootstrapper.error != nil) {
             Group {
                 if let store = sharedStoreBootstrapper.store {
                     Desktop(
@@ -59,6 +59,14 @@ struct TildoneApp: App {
                     ProgressView()
                         .onAppear { sharedStoreBootstrapper.start() }
                 }
+            }
+            .onAppear {
+                appDelegate.setCoordinatorWindowVisible(
+                    sharedStoreBootstrapper.error != nil
+                )
+            }
+            .onChange(of: sharedStoreBootstrapper.error != nil) { _, isVisible in
+                appDelegate.setCoordinatorWindowVisible(isVisible)
             }
             .onAppear { updateMenuBarSyncPresentation() }
             .onChange(of: sharedStoreBootstrapper.syncStatus) { _, _ in
@@ -598,14 +606,63 @@ private struct MacNoteResolutionOptionButtonStyle: ButtonStyle {
 /// The primary scene hosts the one process-wide coordinator that owns every
 /// manually managed note window.
 struct TildonePrimaryScene<Content: View>: Scene {
+    private let isVisible: Bool
     private let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(isVisible: Bool = false, @ViewBuilder content: () -> Content) {
+        self.isVisible = isVisible
         self.content = content()
     }
 
     var body: some Scene {
-        Window("Tildone", id: Id.desktopWindow) { content }
+        Window("Tildone", id: Id.desktopWindow) {
+            content
+                .background(CoordinatorWindowVisibility(isVisible: isVisible))
+        }
+    }
+}
+
+private struct CoordinatorWindowVisibility: NSViewRepresentable {
+    let isVisible: Bool
+
+    func makeNSView(context: Context) -> CoordinatorView {
+        CoordinatorView(isVisible: isVisible)
+    }
+
+    func updateNSView(_ view: CoordinatorView, context: Context) {
+        view.isVisible = isVisible
+    }
+
+    final class CoordinatorView: NSView {
+        var isVisible: Bool {
+            didSet { updateWindowVisibility() }
+        }
+
+        init(isVisible: Bool) {
+            self.isVisible = isVisible
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) {
+            nil
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            updateWindowVisibility()
+        }
+
+        private func updateWindowVisibility() {
+            guard let window else { return }
+            if isVisible {
+                window.makeKeyAndOrderFront(nil)
+            } else {
+                window.orderOut(nil)
+                DispatchQueue.main.async { [weak window] in
+                    window?.orderOut(nil)
+                }
+            }
+        }
     }
 }
 
@@ -632,16 +689,55 @@ extension Notification.Name {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var isCoordinatorWindowVisible = false
+    private var coordinatorWindowObserver: NSObjectProtocol?
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
         AppAppearance.prepareDockIconPreference()
         applyDockIconVisibility()
         MenuBarController.shared.install()
+        coordinatorWindowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.hideCoordinatorWindowIfNeeded(notification)
+        }
+    }
+
+    deinit {
+        if let coordinatorWindowObserver {
+            NotificationCenter.default.removeObserver(coordinatorWindowObserver)
+        }
+    }
+
+    func setCoordinatorWindowVisible(_ isVisible: Bool) {
+        isCoordinatorWindowVisible = isVisible
+        guard isVisible else { return }
+        coordinatorWindow()?.makeKeyAndOrderFront(nil)
     }
 
     func applyDockIconVisibility() {
         let shouldShowDockIcon = UserDefaults.standard.bool(forKey: AppAppearance.showDockIconStorageKey)
         NSApplication.shared.setActivationPolicy(shouldShowDockIcon ? .regular : .accessory)
+    }
+
+    private func hideCoordinatorWindowIfNeeded(_ notification: Notification) {
+        guard !isCoordinatorWindowVisible,
+              let window = notification.object as? NSWindow,
+              isCoordinatorWindow(window) else {
+            return
+        }
+        window.orderOut(nil)
+    }
+
+    private func coordinatorWindow() -> NSWindow? {
+        NSApplication.shared.windows.first(where: isCoordinatorWindow)
+    }
+
+    private func isCoordinatorWindow(_ window: NSWindow) -> Bool {
+        window.identifier?.rawValue == Id.desktopWindow || window.title == "Tildone"
     }
 }
 
