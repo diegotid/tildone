@@ -69,7 +69,7 @@ final class TildoneTests: XCTestCase {
     func testWheelOpacityUsesPhysicalDirectionRegardlessOfNaturalScrollingPreference() {
         XCTAssertEqual(
             NoteWindowOpacity.wheelDelta(
-                scrollingDelta: 1,
+                verticalDelta: 1,
                 isDirectionInvertedFromDevice: false,
                 isPrecise: false
             ),
@@ -77,12 +77,32 @@ final class TildoneTests: XCTestCase {
         )
         XCTAssertEqual(
             NoteWindowOpacity.wheelDelta(
-                scrollingDelta: -1,
+                verticalDelta: -1,
                 isDirectionInvertedFromDevice: true,
                 isPrecise: false
             ),
             0.05
         )
+    }
+
+    func testShiftCommandWheelUsesHorizontalDeltaRemappedByMacOS() {
+        XCTAssertEqual(
+            NoteWindowOpacity.wheelDelta(
+                verticalDelta: 0,
+                horizontalDelta: -1,
+                usesShiftAxis: true,
+                isDirectionInvertedFromDevice: false,
+                isPrecise: false
+            ),
+            -0.05
+        )
+        XCTAssertNil(NoteWindowOpacity.wheelDelta(
+            verticalDelta: 0,
+            horizontalDelta: -1,
+            usesShiftAxis: false,
+            isDirectionInvertedFromDevice: false,
+            isPrecise: false
+        ))
     }
 
     @MainActor

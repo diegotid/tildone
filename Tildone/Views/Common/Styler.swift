@@ -65,17 +65,24 @@ enum NoteWindowOpacity {
 
     static func wheelDelta(for event: NSEvent) -> CGFloat? {
         wheelDelta(
-            scrollingDelta: CGFloat(event.scrollingDeltaY),
+            verticalDelta: CGFloat(event.scrollingDeltaY),
+            horizontalDelta: CGFloat(event.scrollingDeltaX),
+            usesShiftAxis: event.modifierFlags.contains(.shift),
             isDirectionInvertedFromDevice: event.isDirectionInvertedFromDevice,
             isPrecise: event.hasPreciseScrollingDeltas
         )
     }
 
     static func wheelDelta(
-        scrollingDelta: CGFloat,
+        verticalDelta: CGFloat,
+        horizontalDelta: CGFloat = 0,
+        usesShiftAxis: Bool = false,
         isDirectionInvertedFromDevice: Bool,
         isPrecise: Bool
     ) -> CGFloat? {
+        let scrollingDelta = usesShiftAxis && abs(horizontalDelta) > abs(verticalDelta)
+            ? horizontalDelta
+            : verticalDelta
         let rawDelta = isDirectionInvertedFromDevice ? -scrollingDelta : scrollingDelta
         guard rawDelta != 0 else { return nil }
         if isPrecise {
