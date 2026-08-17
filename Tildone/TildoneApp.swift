@@ -686,6 +686,7 @@ extension Notification.Name {
     static let resumeSync = Notification.Name("resumeSync")
     static let syncNow = Notification.Name("syncNow")
     static let updateCompletedTaskOrdering = Notification.Name("updateCompletedTaskOrdering")
+    static let noteWindowOpacityChanged = Notification.Name("noteWindowOpacityChanged")
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {

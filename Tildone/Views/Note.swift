@@ -200,6 +200,11 @@ struct Note: View {
         }
         .onChange(of: note?.color) { _, _ in applyCurrentNoteBackground() }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
+        .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
+            guard let changedWindow = notification.object as? NSWindow,
+                  changedWindow === noteWindow else { return }
+            applyCurrentNoteBackground()
+        }
         .onAppear {
             synchronizeCompletionFade(completedAt: note?.completedAt)
         }
@@ -612,7 +617,12 @@ private extension Note {
     }
 
     func applyCurrentNoteBackground() {
-        noteWindow?.applyNoteBackgroundColor(color, alpha: CGFloat(noteBackgroundOpacity * windowAlpha))
+        guard let noteWindow else { return }
+        let tintAlpha = NoteWindowBackground.tintAlpha(
+            configuredAlpha: CGFloat(noteBackgroundOpacity),
+            windowAlpha: noteWindow.alphaValue
+        )
+        noteWindow.applyNoteBackgroundColor(color, alpha: tintAlpha * CGFloat(windowAlpha))
     }
 
     func applyInitialFocusIfNeeded() {

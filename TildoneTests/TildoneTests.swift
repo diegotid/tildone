@@ -12,6 +12,79 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    func testNoteWindowBackgroundStaysAtConfiguredOpacityUntilWindowCrossesIt() {
+        XCTAssertEqual(
+            NoteWindowBackground.tintAlpha(configuredAlpha: 0.6, windowAlpha: 1),
+            0.6,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            NoteWindowBackground.tintAlpha(configuredAlpha: 0.6, windowAlpha: 0.8) * 0.8,
+            0.6,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            NoteWindowBackground.tintAlpha(configuredAlpha: 0.6, windowAlpha: 0.4) * 0.4,
+            0.4,
+            accuracy: 0.0001
+        )
+    }
+
+    func testAllNoteOpacityDecreaseStartsAtMostOpaqueWindow() {
+        XCTAssertEqual(
+            NoteWindowOpacity.adjustedAlphas([1, 0.8, 0.4], by: -0.1),
+            [0.9, 0.8, 0.4]
+        )
+        XCTAssertEqual(
+            NoteWindowOpacity.adjustedAlphas([1, 0.8, 0.4], by: -0.3),
+            [0.7, 0.7, 0.4]
+        )
+    }
+
+    func testAllNoteOpacityIncreaseStartsAtLeastOpaqueWindow() {
+        let firstStep = NoteWindowOpacity.adjustedAlphas([0.2, 0.5, 0.9], by: 0.1)
+        XCTAssertEqual(firstStep[0], 0.3, accuracy: 0.0001)
+        XCTAssertEqual(firstStep[1], 0.5, accuracy: 0.0001)
+        XCTAssertEqual(firstStep[2], 0.9, accuracy: 0.0001)
+
+        let crossingStep = NoteWindowOpacity.adjustedAlphas([0.2, 0.5, 0.9], by: 0.4)
+        XCTAssertEqual(crossingStep[0], 0.6, accuracy: 0.0001)
+        XCTAssertEqual(crossingStep[1], 0.6, accuracy: 0.0001)
+        XCTAssertEqual(crossingStep[2], 0.9, accuracy: 0.0001)
+    }
+
+    func testPerNoteWindowOpacityIsInstallationLocalAndClamped() throws {
+        let suiteName = "NoteWindowOpacityTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        addTeardownBlock { defaults.removePersistentDomain(forName: suiteName) }
+        let noteID = NoteID()
+
+        XCTAssertEqual(NoteWindowOpacity.currentAlpha(for: noteID, defaults: defaults), 1)
+        NoteWindowOpacity.setAlpha(0, for: noteID, defaults: defaults)
+        XCTAssertEqual(NoteWindowOpacity.currentAlpha(for: noteID, defaults: defaults), 0.1)
+        NoteWindowOpacity.setAlpha(2, for: noteID, defaults: defaults)
+        XCTAssertEqual(NoteWindowOpacity.currentAlpha(for: noteID, defaults: defaults), 1)
+    }
+
+    func testWheelOpacityUsesPhysicalDirectionRegardlessOfNaturalScrollingPreference() {
+        XCTAssertEqual(
+            NoteWindowOpacity.wheelDelta(
+                scrollingDelta: 1,
+                isDirectionInvertedFromDevice: false,
+                isPrecise: false
+            ),
+            0.05
+        )
+        XCTAssertEqual(
+            NoteWindowOpacity.wheelDelta(
+                scrollingDelta: -1,
+                isDirectionInvertedFromDevice: true,
+                isPrecise: false
+            ),
+            0.05
+        )
+    }
+
     @MainActor
     func testMacTransportIsDisabledUnderTests() {
         XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)

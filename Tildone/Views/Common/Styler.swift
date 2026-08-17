@@ -22,6 +22,76 @@ enum NoteWindowBackground {
         let clamped = min(max(stored, 0), 1)
         return CGFloat(clamped)
     }
+
+    static func tintAlpha(configuredAlpha: CGFloat, windowAlpha: CGFloat) -> CGFloat {
+        let background = min(max(configuredAlpha, 0), 1)
+        let window = min(max(windowAlpha, 0), 1)
+        guard window > 0 else { return 1 }
+        return min(background / window, 1)
+    }
+}
+
+enum NoteWindowOpacity {
+    static let defaultAlpha: CGFloat = 1
+    static let minimumAlpha: CGFloat = 0.1
+    static let wheelStep: CGFloat = 0.05
+    private static let storageKeyPrefix = "noteWindowOpacity."
+
+    static func currentAlpha(for noteID: NoteID, defaults: UserDefaults = .standard) -> CGFloat {
+        let key = storageKey(for: noteID)
+        guard defaults.object(forKey: key) != nil else { return defaultAlpha }
+        return clamped(CGFloat(defaults.double(forKey: key)))
+    }
+
+    static func setAlpha(_ alpha: CGFloat, for noteID: NoteID, defaults: UserDefaults = .standard) {
+        defaults.set(Double(clamped(alpha)), forKey: storageKey(for: noteID))
+    }
+
+    static func adjustedAlpha(_ alpha: CGFloat, by delta: CGFloat) -> CGFloat {
+        clamped(alpha + delta)
+    }
+
+    static func adjustedAlphas(_ alphas: [CGFloat], by delta: CGFloat) -> [CGFloat] {
+        guard !alphas.isEmpty, delta != 0 else { return alphas }
+        let clampedAlphas = alphas.map(clamped)
+        if delta > 0, let lowest = clampedAlphas.min() {
+            let sweep = clamped(lowest + delta)
+            return clampedAlphas.map { max($0, sweep) }
+        }
+        guard let highest = clampedAlphas.max() else { return clampedAlphas }
+        let sweep = clamped(highest + delta)
+        return clampedAlphas.map { min($0, sweep) }
+    }
+
+    static func wheelDelta(for event: NSEvent) -> CGFloat? {
+        wheelDelta(
+            scrollingDelta: CGFloat(event.scrollingDeltaY),
+            isDirectionInvertedFromDevice: event.isDirectionInvertedFromDevice,
+            isPrecise: event.hasPreciseScrollingDeltas
+        )
+    }
+
+    static func wheelDelta(
+        scrollingDelta: CGFloat,
+        isDirectionInvertedFromDevice: Bool,
+        isPrecise: Bool
+    ) -> CGFloat? {
+        let rawDelta = isDirectionInvertedFromDevice ? -scrollingDelta : scrollingDelta
+        guard rawDelta != 0 else { return nil }
+        if isPrecise {
+            let scaled = min(max(abs(rawDelta) * 0.01, 0.002), wheelStep)
+            return rawDelta > 0 ? scaled : -scaled
+        }
+        return rawDelta > 0 ? wheelStep : -wheelStep
+    }
+
+    private static func storageKey(for noteID: NoteID) -> String {
+        storageKeyPrefix + noteID.stringValue
+    }
+
+    private static func clamped(_ alpha: CGFloat) -> CGFloat {
+        min(max(alpha, minimumAlpha), 1)
+    }
 }
 
 enum Layout {

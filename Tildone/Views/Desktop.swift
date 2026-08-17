@@ -17,6 +17,7 @@ struct Desktop: View {
     @State private var closedNoteIDs: Set<NoteID> = []
     @State private var foregroundWindow: NSWindow?
     @State private var updateWindow: NSWindow?
+    @State private var opacityScrollMonitor = NoteOpacityScrollMonitor()
     @Binding var foregroundNoteID: NoteID? {
         didSet { cleanUnfocusedNotes() }
     }
@@ -47,6 +48,7 @@ struct Desktop: View {
                         forKey: AppAppearance.moveCheckedTasksToEndStorageKey
                     )
                 )
+                installOpacityScrollMonitor()
             }
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
@@ -79,7 +81,10 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }
-            .onDisappear { closeManagedNoteWindows() }
+            .onDisappear {
+                opacityScrollMonitor.stop()
+                closeManagedNoteWindows()
+            }
     }
 }
 
@@ -103,6 +108,12 @@ private extension Desktop {
         closedNoteIDs.removeAll()
         foregroundWindow = nil
         foregroundNoteID = nil
+    }
+
+    func installOpacityScrollMonitor() {
+        opacityScrollMonitor.start { event in
+            handleOpacityScroll(event)
+        }
     }
 
     func openNoteWindows() {
@@ -206,10 +217,18 @@ private extension Desktop {
             defer: false
         )
         window.setNoteStyle(noteColor: note.color)
+        let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
+        window.alphaValue = windowAlpha
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
         window.contentView = NSHostingView(rootView: noteWindow(for: note))
         addNoteColorPicker(to: window, noteID: note.id)
-        window.applyNoteBackgroundColor(note.color.nsColor)
+        window.applyNoteBackgroundColor(
+            note.color.nsColor,
+            alpha: NoteWindowBackground.tintAlpha(
+                configuredAlpha: NoteWindowBackground.currentAlpha(),
+                windowAlpha: windowAlpha
+            )
+        )
         window.setFrameAutosaveName(note.legacyWindowKey)
         window.title = note.legacyWindowKey
         window.titleVisibility = .hidden
@@ -221,6 +240,59 @@ private extension Desktop {
         closedNoteIDs.remove(note.id)
         foregroundNoteID = note.id
         foregroundWindow = window
+    }
+
+    func handleOpacityScroll(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        guard modifiers == .command || modifiers == [.command, .shift],
+              let delta = NoteWindowOpacity.wheelDelta(for: event),
+              let hovered = hoveredNoteWindow() else {
+            return false
+        }
+
+        if modifiers.contains(.shift) {
+            adjustAllNoteWindowOpacities(by: delta)
+        } else {
+            setOpacity(
+                NoteWindowOpacity.adjustedAlpha(hovered.window.alphaValue, by: delta),
+                for: hovered.noteID,
+                window: hovered.window
+            )
+        }
+        return true
+    }
+
+    func hoveredNoteWindow(at point: NSPoint = NSEvent.mouseLocation) -> (noteID: NoteID, window: NSWindow)? {
+        let hovered = noteWindows.filter { _, window in
+            window.isVisible && window.isOnActiveSpace && window.frame.contains(point)
+        }
+        guard !hovered.isEmpty else { return nil }
+
+        for window in NSApp.orderedWindows {
+            if let match = hovered.first(where: { $0.value === window }) {
+                return (match.key, match.value)
+            }
+        }
+        guard let match = hovered.first else { return nil }
+        return (match.key, match.value)
+    }
+
+    func adjustAllNoteWindowOpacities(by delta: CGFloat) {
+        let notesAndWindows = noteWindows.map { (noteID: $0.key, window: $0.value) }
+        let adjusted = NoteWindowOpacity.adjustedAlphas(
+            notesAndWindows.map { $0.window.alphaValue },
+            by: delta
+        )
+        for (entry, alpha) in zip(notesAndWindows, adjusted) {
+            setOpacity(alpha, for: entry.noteID, window: entry.window)
+        }
+    }
+
+    func setOpacity(_ alpha: CGFloat, for noteID: NoteID, window: NSWindow) {
+        guard alpha != window.alphaValue else { return }
+        window.alphaValue = alpha
+        NoteWindowOpacity.setAlpha(alpha, for: noteID)
+        NotificationCenter.default.post(name: .noteWindowOpacityChanged, object: window)
     }
 
     func addNoteColorPicker(to window: NSWindow, noteID: NoteID) {
@@ -375,6 +447,36 @@ private extension Desktop {
             x: CGFloat.random(in: frame.minX...(frame.maxX - Layout.defaultNoteWidth - margin)),
             y: CGFloat.random(in: frame.minY...(frame.maxY - Layout.defaultNoteHeight - margin))
         )
+    }
+}
+
+private final class NoteOpacityScrollMonitor {
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
+
+    func start(handler: @escaping (NSEvent) -> Bool) {
+        guard localMonitor == nil, globalMonitor == nil else { return }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+            handler(event) ? nil : event
+        }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .scrollWheel) { event in
+            _ = handler(event)
+        }
+    }
+
+    func stop() {
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+            self.localMonitor = nil
+        }
+        if let globalMonitor {
+            NSEvent.removeMonitor(globalMonitor)
+            self.globalMonitor = nil
+        }
+    }
+
+    deinit {
+        stop()
     }
 }
 
