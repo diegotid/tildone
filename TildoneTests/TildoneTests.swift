@@ -183,6 +183,110 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(frame, NSRect(x: 229, y: 272, width: 19, height: 22))
     }
 
+    func testRepeatedMinimizeAllKeepsTheFirstNormalFrameAndRestoresOnce() throws {
+        let normalFrame = NSRect(x: 120, y: 180, width: 420, height: 360)
+        let compactFrame = NSRect(x: 20, y: 20, width: 96, height: 98)
+        var state = NoteWindowMinimizationState()
+
+        XCTAssertTrue(state.beginMinimizing(
+            from: normalFrame,
+            autosaveName: "note-frame"
+        ))
+        XCTAssertFalse(state.beginMinimizing(
+            from: compactFrame,
+            autosaveName: "note-frame"
+        ))
+
+        let restoration = try XCTUnwrap(state.beginRestoring())
+        XCTAssertEqual(restoration.frame, normalFrame)
+        XCTAssertEqual(restoration.autosaveName, "note-frame")
+        XCTAssertFalse(state.isMinimized)
+        XCTAssertTrue(state.isRestoring)
+        XCTAssertNil(state.beginRestoring())
+        XCTAssertFalse(state.beginMinimizing(
+            from: compactFrame,
+            autosaveName: "note-frame"
+        ))
+
+        state.finishRestoring()
+        XCTAssertFalse(state.isMinimized)
+        XCTAssertFalse(state.isRestoring)
+    }
+
+    func testPreviouslyPersistedCompactFrameIsRepairedAtTheSameTopLeftPosition() {
+        let compactFrame = NSRect(x: 20, y: 300, width: 96, height: 98)
+        let repairedFrame = MacNoteWindowGeometry.repairingUndersizedRestoredFrame(
+            compactFrame,
+            minimumSize: NSSize(width: 180, height: 272),
+            defaultSize: NSSize(width: 250, height: 332)
+        )
+
+        XCTAssertEqual(repairedFrame, NSRect(x: 20, y: 66, width: 250, height: 332))
+        XCTAssertEqual(repairedFrame.maxY, compactFrame.maxY)
+    }
+
+    @MainActor
+    func testQuittingWhileMinimizedLeavesTheNormalFrameForRelaunch() throws {
+        let autosaveName = "TildoneTests.NoteWindowFrame.\(UUID().uuidString)"
+        NSWindow.removeFrame(usingName: autosaveName)
+        defer { NSWindow.removeFrame(usingName: autosaveName) }
+
+        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
+        let normalFrame = NSRect(
+            x: visibleFrame.minX + 100,
+            y: visibleFrame.minY + 100,
+            width: 420,
+            height: 360
+        )
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.setFrame(normalFrame, display: false)
+        XCTAssertTrue(window.setFrameAutosaveName(autosaveName))
+        let savedNormalFrame = window.frameDescriptor
+
+        XCTAssertEqual(NoteWindowFrameAutosavePolicy.suspend(for: window), autosaveName)
+        XCTAssertEqual(window.frameAutosaveName, NoteWindowFrameAutosavePolicy.disabledName)
+        window.setFrame(NSRect(x: 20, y: 20, width: 96, height: 98), display: false)
+
+        XCTAssertEqual(
+            UserDefaults.standard.string(forKey: "NSWindow Frame \(autosaveName)"),
+            savedNormalFrame
+        )
+    }
+
+    @MainActor
+    func testRestoringReenablesAutosaveForTheFullFrame() {
+        let autosaveName = "TildoneTests.NoteWindowRestore.\(UUID().uuidString)"
+        NSWindow.removeFrame(usingName: autosaveName)
+        defer { NSWindow.removeFrame(usingName: autosaveName) }
+
+        let normalFrame = NSRect(x: 140, y: 180, width: 400, height: 340)
+        let window = NSWindow(
+            contentRect: .zero,
+            styleMask: [.titled, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.setFrame(normalFrame, display: false)
+        XCTAssertTrue(window.setFrameAutosaveName(autosaveName))
+        NoteWindowFrameAutosavePolicy.suspend(for: window)
+        window.setFrame(NSRect(x: 20, y: 20, width: 96, height: 98), display: false)
+
+        window.setFrame(normalFrame, display: false)
+        NoteWindowFrameAutosavePolicy.resume(for: window, using: autosaveName)
+
+        XCTAssertEqual(window.frameAutosaveName, autosaveName)
+        XCTAssertEqual(window.frame, normalFrame)
+        XCTAssertEqual(
+            UserDefaults.standard.string(forKey: "NSWindow Frame \(autosaveName)"),
+            window.frameDescriptor
+        )
+    }
+
     func testMacRemoteRefreshPropagatesMigrationAndReloadFailures() async {
         enum FixtureError: Error, Equatable { case migration, reload }
         var reloadAttempted = false

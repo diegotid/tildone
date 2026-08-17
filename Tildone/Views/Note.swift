@@ -46,6 +46,58 @@ enum MacNoteTitlebarLayout {
     }
 }
 
+/// Keeps the compact note presentation separate from the normal window frame
+/// that AppKit persists between launches.
+@MainActor
+enum NoteWindowFrameAutosavePolicy {
+    static let disabledName = ""
+
+    @discardableResult
+    static func suspend(for window: NSWindow) -> String {
+        let autosaveName = window.frameAutosaveName
+        guard !autosaveName.isEmpty else { return autosaveName }
+        window.saveFrame(usingName: autosaveName)
+        window.setFrameAutosaveName(disabledName)
+        return autosaveName
+    }
+
+    static func resume(for window: NSWindow, using autosaveName: String) {
+        guard !autosaveName.isEmpty else { return }
+        window.saveFrame(usingName: autosaveName)
+        window.setFrameAutosaveName(autosaveName)
+    }
+}
+
+struct NoteWindowMinimizationState: Equatable {
+    struct Restoration: Equatable {
+        let frame: NSRect
+        let autosaveName: String
+    }
+
+    private(set) var restoration: Restoration?
+    private(set) var isRestoring = false
+
+    var isMinimized: Bool { restoration != nil && !isRestoring }
+
+    mutating func beginMinimizing(from frame: NSRect, autosaveName: String) -> Bool {
+        guard restoration == nil else { return false }
+        restoration = Restoration(frame: frame, autosaveName: autosaveName)
+        return true
+    }
+
+    mutating func beginRestoring() -> Restoration? {
+        guard let restoration, !isRestoring else { return nil }
+        isRestoring = true
+        return restoration
+    }
+
+    mutating func finishRestoring() {
+        guard isRestoring else { return }
+        restoration = nil
+        isRestoring = false
+    }
+}
+
 /// Restart-safe presentation state for a note's destructive completion grace
 /// period. The persisted completion date identifies one completion cycle, so a
 /// restored or remotely completed note resumes the same fade instead of being
@@ -146,6 +198,7 @@ struct Note: View {
     private var activeFocusedTaskID: TaskID? {
         nativeFocusedTaskID ?? focusedTaskID
     }
+    private var isMinimized: Bool { minimizationState.isMinimized }
     private var minimizedForeground: Color {
         let rgb = color.usingColorSpace(.deviceRGB) ?? color
         let colorLuminance = 0.2126 * rgb.redComponent
@@ -167,10 +220,7 @@ struct Note: View {
     @State private var isTopicHidden = false
     @State private var didSetInitialFocus = false
     @State private var windowAlpha = 1.0
-    @State private var isMinimized = false {
-        didSet { setTrafficLightsHidden(isMinimized) }
-    }
-    @State private var minimizedFromFrame: NSRect?
+    @State private var minimizationState = NoteWindowMinimizationState()
     @State private var completionFade = CompletionFadeLifecycle()
     @State private var fadeAwayProgress: TimeInterval = 0
     @State private var mutationErrorMessage: String?
@@ -199,6 +249,7 @@ struct Note: View {
             }
         }
         .onChange(of: note?.color) { _, _ in applyCurrentNoteBackground() }
+        .onChange(of: isMinimized) { _, minimized in setTrafficLightsHidden(minimized) }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,
@@ -232,11 +283,15 @@ struct Note: View {
 extension Note {
     func handleMinimize() {
         guard let noteWindow else { return }
+        let autosaveName = noteWindow.frameAutosaveName
+        guard minimizationState.beginMinimizing(
+            from: noteWindow.frame,
+            autosaveName: autosaveName
+        ) else { return }
+        NoteWindowFrameAutosavePolicy.suspend(for: noteWindow)
         noteWindow.title = "_" + noteWindow.title
-        minimizedFromFrame = noteWindow.frame
         setColorPickerHidden(true)
         setRestoreControlVisible(true)
-        withAnimation { isMinimized = true }
         noteWindow.setFrame(minimizedFrame(for: noteWindow), display: true, animate: false)
         NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
     }
@@ -488,14 +543,24 @@ private extension Note {
     }
 
     func handleBringUp() {
-        guard let noteWindow, noteWindow.title.starts(with: "_"), let frame = minimizedFromFrame else { return }
-        noteWindow.title = String(noteWindow.title.dropFirst())
-        minimizedFromFrame = nil
+        guard let noteWindow, let restoration = minimizationState.beginRestoring() else { return }
+        if noteWindow.title.starts(with: "_") {
+            noteWindow.title = String(noteWindow.title.dropFirst())
+        }
         setColorPickerHidden(false)
         setRestoreControlVisible(false)
         DispatchQueue.main.async {
-            withAnimation { noteWindow.setFrame(frame, display: true, animate: true) } completion: {
-                withAnimation { isMinimized = false }
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                noteWindow.animator().setFrame(restoration.frame, display: true)
+            } completionHandler: {
+                Swift.Task { @MainActor in
+                    NoteWindowFrameAutosavePolicy.resume(
+                        for: noteWindow,
+                        using: restoration.autosaveName
+                    )
+                    minimizationState.finishRestoring()
+                }
             }
         }
     }

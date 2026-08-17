@@ -6,6 +6,24 @@
 import SwiftUI
 import TildoneDomain
 
+enum MacNoteWindowGeometry {
+    static func repairingUndersizedRestoredFrame(
+        _ frame: NSRect,
+        minimumSize: NSSize,
+        defaultSize: NSSize
+    ) -> NSRect {
+        guard frame.width < minimumSize.width || frame.height < minimumSize.height else {
+            return frame
+        }
+        return NSRect(
+            x: frame.minX,
+            y: frame.maxY - defaultSize.height,
+            width: defaultSize.width,
+            height: defaultSize.height
+        )
+    }
+}
+
 /// macOS-only window coordinator. It renders repository snapshots but owns no
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
@@ -230,6 +248,7 @@ private extension Desktop {
             )
         )
         window.setFrameAutosaveName(note.legacyWindowKey)
+        repairUndersizedRestoredFrame(of: window)
         window.title = note.legacyWindowKey
         window.titleVisibility = .hidden
         let desiredOrigin = position.map {
@@ -240,6 +259,24 @@ private extension Desktop {
         closedNoteIDs.remove(note.id)
         foregroundNoteID = note.id
         foregroundWindow = window
+    }
+
+    func repairUndersizedRestoredFrame(of window: NSWindow) {
+        let minimumFrameSize = window.frameRect(forContentRect: NSRect(
+            origin: .zero,
+            size: NSSize(width: Layout.minNoteWidth, height: Layout.minNoteHeight)
+        )).size
+        let defaultFrameSize = window.frameRect(forContentRect: NSRect(
+            origin: .zero,
+            size: NSSize(width: Layout.defaultNoteWidth, height: Layout.defaultNoteHeight)
+        )).size
+        let repairedFrame = MacNoteWindowGeometry.repairingUndersizedRestoredFrame(
+            window.frame,
+            minimumSize: minimumFrameSize,
+            defaultSize: defaultFrameSize
+        )
+        guard repairedFrame != window.frame else { return }
+        window.setFrame(repairedFrame, display: false)
     }
 
     func handleOpacityScroll(_ event: NSEvent) -> Bool {
