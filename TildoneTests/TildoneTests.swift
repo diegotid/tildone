@@ -81,6 +81,24 @@ final class TildoneTests: XCTestCase {
         ))
     }
 
+    func testFocusBlurRevealsOnHoverOnlyWhenClickThroughIsDisabled() {
+        XCTAssertFalse(Note.shouldBlurContent(
+            isFocusBlurred: true,
+            isClickThroughEnabled: false,
+            isHovering: true
+        ))
+        XCTAssertTrue(Note.shouldBlurContent(
+            isFocusBlurred: true,
+            isClickThroughEnabled: true,
+            isHovering: true
+        ))
+        XCTAssertFalse(Note.shouldBlurContent(
+            isFocusBlurred: false,
+            isClickThroughEnabled: true,
+            isHovering: false
+        ))
+    }
+
     func testWheelOpacityUsesPhysicalDirectionRegardlessOfNaturalScrollingPreference() {
         XCTAssertEqual(
             NoteWindowOpacity.wheelDelta(

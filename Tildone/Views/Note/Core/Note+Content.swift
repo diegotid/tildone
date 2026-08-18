@@ -21,7 +21,7 @@ extension Note {
                                     .id(task.id)
                                 taskDropTarget(at: index + 1)
                             }
-                            newListItem().opacity(isDone || isTextBlurred || isInsertedNewTaskFocused ? 0 : 1)
+                            newListItem().opacity(isDone || isContentBlurred || isInsertedNewTaskFocused ? 0 : 1)
                             Spacer().id(Id.bottomAnchor)
                         }
                         .animation(
@@ -63,8 +63,9 @@ extension Note {
                 }
                 if isTopScrolledOut { scrollingHeader() }
             }
-            .blur(radius: isTextBlurred ? 3 : 0)
+            .blur(radius: isContentBlurred ? 3 : 0)
             .opacity(windowAlpha / (isDone ? 2 : 1))
+            .animation(.easeInOut(duration: 0.18), value: isContentBlurred)
             if isDone { doneOverlay() }
         }
         .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
@@ -92,6 +93,9 @@ extension Note {
         }
         .onReceive(NotificationCenter.default.publisher(for: .clean), perform: cleanIfRequested)
         .disabled(isTextBlurred)
+        .onHover { hovering in
+            isPointerHovering = hovering
+        }
     }
 
     func taskListProgress(_ note: MacNoteSnapshot) -> some View {

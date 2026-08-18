@@ -17,6 +17,7 @@ struct Note: View {
     @AppStorage(FontSize.storageKey) var fontSize = Double(FontSize.small.rawValue)
     @AppStorage(NoteWindowBackground.opacityStorageKey) var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
     @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey) var moveCheckedTasksToEnd = false
+    @AppStorage(NoteWindowClickThrough.storageKey) var clickThroughNotes = false
 
     var note: MacNoteSnapshot? { store.note(noteID) }
     var tasks: [TildoneDomain.Task] { note?.tasks ?? [] }
@@ -46,12 +47,28 @@ struct Note: View {
         return backgroundLuminance > 0.55 ? .black.opacity(0.75) : .white.opacity(0.75)
     }
     var isDone: Bool { completionFade.showsCompletionOverlay }
+    var isContentBlurred: Bool {
+        Self.shouldBlurContent(
+            isFocusBlurred: isTextBlurred,
+            isClickThroughEnabled: clickThroughNotes,
+            isHovering: isPointerHovering
+        )
+    }
+
+    static func shouldBlurContent(
+        isFocusBlurred: Bool,
+        isClickThroughEnabled: Bool,
+        isHovering: Bool
+    ) -> Bool {
+        isFocusBlurred && (isClickThroughEnabled || !isHovering)
+    }
 
     enum Field: Hashable { case topic, newTask }
 
     @State var noteWindow: NSWindow?
     @State var newTaskText = ""
     @State var isTextBlurred = false
+    @State var isPointerHovering = false
     @State var isTopScrolledOut = false
     @State var isTopicHidden = false
     @State var didSetInitialFocus = false
