@@ -81,21 +81,35 @@ final class TildoneTests: XCTestCase {
         ))
     }
 
+    func testClickThroughHoverHalvesWindowOpacity() {
+        XCTAssertEqual(
+            NoteWindowClickThrough.hoverAlpha(for: 0.8, isHovered: true),
+            0.4
+        )
+        XCTAssertEqual(
+            NoteWindowClickThrough.hoverAlpha(for: 0.8, isHovered: false),
+            0.8
+        )
+    }
+
     func testFocusBlurRevealsOnHoverOnlyWhenClickThroughIsDisabled() {
         XCTAssertFalse(Note.shouldBlurContent(
             isFocusBlurred: true,
             isClickThroughEnabled: false,
-            isHovering: true
+            isHovering: true,
+            isCommandInteractionActive: false
         ))
         XCTAssertTrue(Note.shouldBlurContent(
             isFocusBlurred: true,
             isClickThroughEnabled: true,
-            isHovering: true
+            isHovering: true,
+            isCommandInteractionActive: false
         ))
         XCTAssertFalse(Note.shouldBlurContent(
-            isFocusBlurred: false,
+            isFocusBlurred: true,
             isClickThroughEnabled: true,
-            isHovering: false
+            isHovering: true,
+            isCommandInteractionActive: true
         ))
     }
 

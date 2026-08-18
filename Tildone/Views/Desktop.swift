@@ -37,6 +37,12 @@ struct Desktop: View {
     @State private var updateWindow: NSWindow?
     @State private var opacityScrollMonitor = NoteOpacityScrollMonitor()
     @State private var clickThroughMonitor = NoteClickThroughMonitor()
+    @State private var clickThroughHoverMonitor = NoteClickThroughHoverMonitor()
+    @State private var hoveredClickThroughNoteID: NoteID?
+    @State private var clickThroughBaseAlphas: [NoteID: CGFloat] = [:]
+    @State private var clickThroughHintWindows: [NoteID: NSPanel] = [:]
+    @State private var commandInteractionNoteID: NoteID?
+    @State private var isClickThroughCommandPressed = false
     @Binding var foregroundNoteID: NoteID? {
         didSet { cleanUnfocusedNotes() }
     }
@@ -71,6 +77,7 @@ struct Desktop: View {
                 )
                 installOpacityScrollMonitor()
                 updateClickThroughMonitoring()
+                updateClickThroughHoverMonitoring()
             }
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
@@ -80,6 +87,7 @@ struct Desktop: View {
             }
             .onChange(of: clickThroughNotes) { _, _ in
                 updateClickThroughMonitoring()
+                updateClickThroughHoverMonitoring()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
@@ -106,9 +114,16 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMoveNotification)) { event in
+                updateClickThroughHintPosition(for: event)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { event in
+                updateClickThroughHintPosition(for: event)
+            }
             .onDisappear {
                 opacityScrollMonitor.stop()
                 clickThroughMonitor.stop()
+                clickThroughHoverMonitor.stop()
                 closeManagedNoteWindows()
             }
     }
@@ -129,6 +144,9 @@ private extension Desktop {
     }
 
     func closeManagedNoteWindows() {
+        setClickThroughHoveredNote(nil)
+        setClickThroughCommandInteractionNote(nil)
+        closeClickThroughHintWindows()
         for window in noteWindows.values { window.close() }
         noteWindows.removeAll()
         closedNoteIDs.removeAll()
@@ -144,8 +162,153 @@ private extension Desktop {
 
     func updateClickThroughMonitoring() {
         clickThroughMonitor.update(isEnabled: clickThroughNotes) { isCommandPressed in
+            isClickThroughCommandPressed = isCommandPressed
+            setClickThroughCommandInteractionNote(
+                isCommandPressed ? hoveredNoteWindow()?.noteID : nil
+            )
             applyClickThroughPreference(isCommandPressed: isCommandPressed)
+            updateClickThroughHoverAppearance()
         }
+    }
+
+    func updateClickThroughHoverMonitoring() {
+        guard clickThroughNotes else {
+            clickThroughHoverMonitor.stop()
+            setClickThroughHoveredNote(nil)
+            setClickThroughCommandInteractionNote(nil)
+            return
+        }
+        clickThroughHoverMonitor.start { point in
+            updateClickThroughHoverAppearance(at: point)
+        }
+        updateClickThroughHoverAppearance()
+    }
+
+    func updateClickThroughHoverAppearance(at point: NSPoint = NSEvent.mouseLocation) {
+        guard clickThroughNotes, !isClickThroughCommandPressed else {
+            setClickThroughHoveredNote(nil)
+            return
+        }
+        setClickThroughHoveredNote(hoveredNoteWindow(at: point)?.noteID)
+    }
+
+    func setClickThroughHoveredNote(_ noteID: NoteID?) {
+        guard hoveredClickThroughNoteID != noteID else { return }
+        if let previousNoteID = hoveredClickThroughNoteID {
+            if let window = noteWindows[previousNoteID],
+               let baseAlpha = clickThroughBaseAlphas.removeValue(forKey: previousNoteID) {
+                animateWindowOpacity(window, to: baseAlpha)
+            }
+            hideClickThroughHint(for: previousNoteID)
+        }
+        hoveredClickThroughNoteID = noteID
+        if let noteID, let window = noteWindows[noteID] {
+            let baseAlpha = NoteWindowOpacity.currentAlpha(for: noteID)
+            clickThroughBaseAlphas[noteID] = baseAlpha
+            animateWindowOpacity(
+                window,
+                to: NoteWindowClickThrough.hoverAlpha(for: baseAlpha, isHovered: true)
+            )
+            showClickThroughHint(for: noteID, parent: window)
+        }
+    }
+
+    func animateWindowOpacity(_ window: NSWindow, to alpha: CGFloat) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = NoteWindowClickThrough.visualTransitionDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            window.animator().alphaValue = alpha
+        }
+    }
+
+    func setClickThroughCommandInteractionNote(_ noteID: NoteID?) {
+        guard commandInteractionNoteID != noteID else { return }
+        if let previousNoteID = commandInteractionNoteID {
+            NotificationCenter.default.post(
+                name: .noteWindowClickThroughCommandChanged,
+                object: (previousNoteID, false)
+            )
+        }
+        commandInteractionNoteID = noteID
+        if let noteID {
+            NotificationCenter.default.post(
+                name: .noteWindowClickThroughCommandChanged,
+                object: (noteID, true)
+            )
+        }
+    }
+
+    func showClickThroughHint(for noteID: NoteID, parent: NSWindow) {
+        let hintWindow = clickThroughHintWindows[noteID] ?? makeClickThroughHintWindow()
+        clickThroughHintWindows[noteID] = hintWindow
+        positionClickThroughHint(hintWindow, over: parent)
+        if hintWindow.parent !== parent {
+            parent.addChildWindow(hintWindow, ordered: .above)
+        }
+        hintWindow.orderFront(nil)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = NoteWindowClickThrough.visualTransitionDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            hintWindow.animator().alphaValue = 1
+        }
+    }
+
+    func hideClickThroughHint(for noteID: NoteID) {
+        guard let hintWindow = clickThroughHintWindows[noteID] else { return }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = NoteWindowClickThrough.visualTransitionDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            hintWindow.animator().alphaValue = 0
+        }, completionHandler: {
+            if hintWindow.alphaValue == 0 {
+                hintWindow.orderOut(nil)
+            }
+        })
+    }
+
+    func closeClickThroughHintWindows() {
+        for hintWindow in clickThroughHintWindows.values {
+            hintWindow.close()
+        }
+        clickThroughHintWindows.removeAll()
+    }
+
+    func makeClickThroughHintWindow() -> NSPanel {
+        let panel = NSPanel(
+            contentRect: .init(x: 0, y: 0, width: Layout.defaultNoteWidth, height: 30),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.ignoresMouseEvents = true
+        panel.alphaValue = 0
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.contentView = NSHostingView(rootView: ClickThroughHint())
+        return panel
+    }
+
+    func positionClickThroughHint(_ hintWindow: NSWindow, over parent: NSWindow) {
+        hintWindow.setFrame(
+            .init(
+                x: parent.frame.minX,
+                y: parent.frame.maxY - 30,
+                width: parent.frame.width,
+                height: 30
+            ),
+            display: false
+        )
+    }
+
+    func updateClickThroughHintPosition(for event: Notification) {
+        guard let parent = event.object as? NSWindow,
+              let noteID = noteWindows.first(where: { $0.value === parent })?.key,
+              let hintWindow = clickThroughHintWindows[noteID] else {
+            return
+        }
+        positionClickThroughHint(hintWindow, over: parent)
     }
 
     func applyClickThroughPreference(isCommandPressed: Bool = NoteWindowClickThrough.isCommandPressed) {
@@ -169,6 +332,14 @@ private extension Desktop {
     func reconcileNoteWindows() {
         let activeIDs = Set(store.notes.map(\.id))
         for (id, window) in noteWindows where !activeIDs.contains(id) {
+            if id == hoveredClickThroughNoteID {
+                setClickThroughHoveredNote(nil)
+            }
+            if id == commandInteractionNoteID {
+                setClickThroughCommandInteractionNote(nil)
+            }
+            clickThroughHintWindows.removeValue(forKey: id)?.close()
+            clickThroughBaseAlphas.removeValue(forKey: id)
             window.close()
             noteWindows[id] = nil
             closedNoteIDs.remove(id)
@@ -200,6 +371,12 @@ private extension Desktop {
 
     func handleClose() {
         if let noteID = foregroundNoteID, let note = store.note(noteID), note.isDeletable {
+            if noteID == hoveredClickThroughNoteID {
+                setClickThroughHoveredNote(nil)
+            }
+            if noteID == commandInteractionNoteID {
+                setClickThroughCommandInteractionNote(nil)
+            }
             foregroundWindow?.close()
             noteWindows[noteID] = nil
             closedNoteIDs.insert(noteID)
@@ -261,7 +438,7 @@ private extension Desktop {
         window.setNoteStyle(noteColor: note.color)
         window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: clickThroughNotes,
-            isCommandPressed: NoteWindowClickThrough.isCommandPressed
+            isCommandPressed: isClickThroughCommandPressed
         )
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
@@ -284,6 +461,7 @@ private extension Desktop {
         } ?? window.frame.origin
         window.setFrameOrigin(clampedOrigin(for: window, desiredOrigin: desiredOrigin, on: screenForNewWindow(at: position)))
         noteWindows[note.id] = window
+        updateClickThroughHoverAppearance()
         closedNoteIDs.remove(note.id)
         foregroundNoteID = note.id
         foregroundWindow = window
@@ -570,7 +748,7 @@ private final class NoteClickThroughMonitor {
             }
         }
         if modifierTimer == nil {
-            modifierTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            modifierTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 120.0, repeats: true) { [weak self] _ in
                 self?.updateCommandState(NoteWindowClickThrough.isCommandPressed)
             }
         }
@@ -604,6 +782,62 @@ private final class NoteClickThroughMonitor {
         guard self.isCommandPressed != isCommandPressed else { return }
         self.isCommandPressed = isCommandPressed
         handler?(isCommandPressed)
+    }
+}
+
+private final class NoteClickThroughHoverMonitor {
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
+
+    func start(handler: @escaping (NSPoint) -> Void) {
+        guard localMonitor == nil, globalMonitor == nil else { return }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { event in
+            handler(NSEvent.mouseLocation)
+            return event
+        }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { _ in
+            handler(NSEvent.mouseLocation)
+        }
+    }
+
+    func stop() {
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+            self.localMonitor = nil
+        }
+        if let globalMonitor {
+            NSEvent.removeMonitor(globalMonitor)
+            self.globalMonitor = nil
+        }
+    }
+
+    deinit {
+        stop()
+    }
+}
+
+private struct ClickThroughHint: View {
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "command")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+            Text("+")
+            Text("click to interact")
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
+            Spacer(minLength: 0)
+        }
+        .font(.caption)
+        .foregroundStyle(.primary)
+        .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
+        .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
+        .offset(y: -1)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .allowsHitTesting(false)
     }
 }
 

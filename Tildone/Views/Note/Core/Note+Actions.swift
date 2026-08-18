@@ -437,7 +437,10 @@ extension Note {
             configuredAlpha: CGFloat(noteBackgroundOpacity),
             windowAlpha: noteWindow.alphaValue
         )
-        noteWindow.applyNoteBackgroundColor(color, alpha: tintAlpha * CGFloat(windowAlpha))
+        noteWindow.applyNoteBackgroundColor(
+            color,
+            alpha: tintAlpha * CGFloat(windowAlpha)
+        )
     }
 
     func applyInitialFocusIfNeeded() {

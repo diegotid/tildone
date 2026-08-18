@@ -65,7 +65,10 @@ extension Note {
             }
             .blur(radius: isContentBlurred ? 3 : 0)
             .opacity(windowAlpha / (isDone ? 2 : 1))
-            .animation(.easeInOut(duration: 0.18), value: isContentBlurred)
+            .animation(
+                .easeInOut(duration: NoteWindowClickThrough.visualTransitionDuration),
+                value: isContentBlurred
+            )
             if isDone { doneOverlay() }
         }
         .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
@@ -92,10 +95,19 @@ extension Note {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .clean), perform: cleanIfRequested)
-        .disabled(isTextBlurred)
-        .onHover { hovering in
-            isPointerHovering = hovering
+        .onReceive(NotificationCenter.default.publisher(for: .noteWindowClickThroughCommandChanged)) { notification in
+            guard let (interactingNoteID, isInteracting) = notification.object as? (NoteID, Bool),
+                  interactingNoteID == noteID else {
+                return
+            }
+            isClickThroughCommandInteractionActive = isInteracting
         }
+        .onChange(of: clickThroughNotes) { _, isEnabled in
+            guard !isEnabled else { return }
+            isPointerHovering = noteWindow?.frame.contains(NSEvent.mouseLocation) ?? false
+        }
+        .disabled(isTextBlurred && !isClickThroughCommandInteractionActive)
+        .onHover { isPointerHovering = $0 }
     }
 
     func taskListProgress(_ note: MacNoteSnapshot) -> some View {

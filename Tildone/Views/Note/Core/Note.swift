@@ -51,16 +51,18 @@ struct Note: View {
         Self.shouldBlurContent(
             isFocusBlurred: isTextBlurred,
             isClickThroughEnabled: clickThroughNotes,
-            isHovering: isPointerHovering
+            isHovering: isPointerHovering,
+            isCommandInteractionActive: isClickThroughCommandInteractionActive
         )
     }
 
     static func shouldBlurContent(
         isFocusBlurred: Bool,
         isClickThroughEnabled: Bool,
-        isHovering: Bool
+        isHovering: Bool,
+        isCommandInteractionActive: Bool
     ) -> Bool {
-        isFocusBlurred && (isClickThroughEnabled || !isHovering)
+        isFocusBlurred && (isClickThroughEnabled || !isHovering) && !isCommandInteractionActive
     }
 
     enum Field: Hashable { case topic, newTask }
@@ -69,6 +71,7 @@ struct Note: View {
     @State var newTaskText = ""
     @State var isTextBlurred = false
     @State var isPointerHovering = false
+    @State var isClickThroughCommandInteractionActive = false
     @State var isTopScrolledOut = false
     @State var isTopicHidden = false
     @State var didSetInitialFocus = false

@@ -26,4 +26,5 @@ extension Notification.Name {
     static let syncNow = Notification.Name("syncNow")
     static let updateCompletedTaskOrdering = Notification.Name("updateCompletedTaskOrdering")
     static let noteWindowOpacityChanged = Notification.Name("noteWindowOpacityChanged")
+    static let noteWindowClickThroughCommandChanged = Notification.Name("noteWindowClickThroughCommandChanged")
 }

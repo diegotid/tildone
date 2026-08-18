@@ -103,13 +103,20 @@ enum NoteWindowOpacity {
 
 enum NoteWindowClickThrough {
     static let storageKey = "noteWindowsClickThrough"
+    static let visualTransitionDuration: TimeInterval = 0.18
 
     static var isCommandPressed: Bool {
-        CGEventSource.flagsState(.combinedSessionState).contains(.maskCommand)
+        let combined = CGEventSource.flagsState(.combinedSessionState)
+        let hardware = CGEventSource.flagsState(.hidSystemState)
+        return combined.contains(.maskCommand) || hardware.contains(.maskCommand)
     }
 
     static func shouldIgnoreMouseEvents(isEnabled: Bool, isCommandPressed: Bool) -> Bool {
         isEnabled && !isCommandPressed
+    }
+
+    static func hoverAlpha(for windowAlpha: CGFloat, isHovered: Bool) -> CGFloat {
+        isHovered ? windowAlpha * 0.5 : windowAlpha
     }
 }
 
