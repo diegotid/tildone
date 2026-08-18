@@ -166,10 +166,13 @@ extension Note {
               let cursor = editor.selectedRanges.first?.rangeValue.location,
               let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
         let insertion = cursor == 0 ? index : index + 1
-        insertEmptyTask(at: insertion)
+        insertEmptyTask(
+            at: insertion,
+            focusing: cursor == 0 ? task.id : nil
+        )
     }
 
-    func insertEmptyTask(at position: Int) {
+    func insertEmptyTask(at position: Int, focusing taskID: TaskID? = nil) {
         skipsNextTaskCountBottomScroll = true
         let emptyTaskIDs = tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id)
         let removedBeforeInsertion = tasks[..<position].filter {
@@ -185,7 +188,7 @@ extension Note {
                     text: "",
                     insertingAt: position - removedBeforeInsertion
                 )
-                focusTaskUsingKeyboard(task.id)
+                focusTaskUsingKeyboard(taskID ?? task.id)
             } catch {
                 skipsNextTaskCountBottomScroll = false
                 mutationErrorMessage = Self.mutationFailureMessage(
