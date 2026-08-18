@@ -48,8 +48,10 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 
 - `Tildone.xcodeproj/`: Xcode project and tracked shared `Tildone` and `Tildone iOS` schemes.
 - `Tildone.xcodeproj/project.pbxproj`: macOS and iOS app, unit-test, and UI-test targets; deployment and signing settings live here.
-- `Tildone/TildoneApp.swift`: SwiftUI app entry point, shared-store bootstrap scene, menu commands, notification names, and `AppDelegate`.
-- `Tildone/MacSharedStore.swift`: process-wide shared-store bootstrap, durable activation gate, repository-backed macOS snapshots, and typed CRUD adapter.
+- `Tildone/App/`: lifecycle, scene, and non-view presentation state grouped into `Lifecycle/`, `Scenes/`, and `Presentation/`.
+- `Tildone/Store/`: process-wide shared store plus bootstrap, location, resolution, and sync collaborators grouped by subject.
+- `Tildone/Views/App/`: app-level SwiftUI/AppKit views grouped into coordinator, Focus help, note resolution, and sync status.
+- `Tildone/Views/Note/`: note UI and supporting behavior grouped into core, completion, tasks, title-bar, and window concerns.
 - `Tildone/Models/`:
   - `Todo.swift`: SwiftData task model and ordering/backward-compatibility helpers.
   - `TodoList.swift`: SwiftData note model, relationships, computed lifecycle state, and task/list mutation methods.
@@ -57,7 +59,7 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
   - `Constants.swift`: window IDs, AppKit key codes, layout-related constants, and the fade duration.
 - `Tildone/Views/`:
   - `Desktop.swift`: root coordinator for shared snapshots, manually created note windows, focus, cleanup, positioning, and arrangement.
-  - `Note.swift`: note/task editing UI plus focus, keyboard, completion/fade, minimization, clipboard event handling, and window state.
+  - `Note/`: note/task editing UI plus focused files for actions, content, focus-safe AppKit text editing, completion/fade, minimization, title-bar controls, and task reordering.
   - `Settings.swift`: settings UI, preference enums/keys, previews, and legacy preference conversion support.
   - `About.swift`: fixed-size About scene.
 - `Tildone/Views/Common/`:
@@ -79,6 +81,19 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - `LICENSE`: GNU General Public License version 3; consider its distribution obligations when adding or extracting shared components.
 
 `Packages/TildoneCore` provides the implemented `TildoneDomain`, `TildonePersistence`, and `TildoneSync` products plus the source-derived Development contract generator. `TildoneiOS` is a separate native companion target and must not receive Mac source files.
+
+## Architecture and file organization
+
+- Preserve the existing directory hierarchy and architectural boundaries.
+- Keep one top-level named type per Swift file. Use `Type+Concern.swift` for focused extensions.
+- Place SwiftUI `View`, `NSViewRepresentable`, `ViewModifier`, `ButtonStyle`, and AppKit view subclasses under `Tildone/Views/`.
+- Group view files by feature and subject. Do not place dozens of files directly in a first-level folder.
+- Keep application lifecycle, presentation state, and scenes under the corresponding `Tildone/App/` subfolders.
+- Keep shared-store code grouped under `Tildone/Store/Bootstrap`, `Location`, `Resolution`, and `Sync`.
+- Before introducing a new folder or moving code across architectural boundaries, inspect the existing structure and follow the closest established pattern.
+- Keep filesystem folders and Xcode project groups synchronized.
+- Update tests and documentation containing source-file paths after moving files.
+- Do not consolidate unrelated types into large files for convenience.
 
 ## Project and platform facts
 
@@ -439,10 +454,11 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 
 - `Tildone.xcodeproj/project.pbxproj`: merge-prone and currently may carry user icon/project changes. Make minimal target-membership/build-setting edits and inspect the diff.
 - `Tildone/Models/Todo.swift` and `TodoList.swift`: released store schema, ordering, relationship, and destructive deletion semantics.
-- `Tildone/MacSharedStore.swift`: activation safety, test-process isolation, snapshot refresh, insertion ordering, and every Mac repository operation.
-- `Tildone/TildoneApp.swift`: shared-store bootstrap and global menu/notification contract.
+- `Tildone/Store/`: activation safety, test-process isolation, snapshot refresh, insertion ordering, workspace policy, and every Mac repository operation.
+- `Tildone/App/`: lifecycle, scene coordination, sync presentation state, and global menu/notification contract.
+- `Tildone/Views/App/`: shared-store bootstrap presentation, recovery choices, and sync-status UI.
 - `Tildone/Views/Desktop.swift`: manual window lifecycle, snapshot reconciliation, foreground selection, multi-display coordinates, and deletion on termination.
-- `Tildone/Views/Note.swift`: repository requests plus keyboard monitoring, AppKit responder manipulation, completion timer, fade deletion, focus, and minimization. Small changes can affect several workflows.
+- `Tildone/Views/Note/`: repository requests plus keyboard monitoring, AppKit responder manipulation, completion timer, fade deletion, focus, and minimization. Small changes can affect several workflows.
 - `Tildone/Views/Common/Styler.swift`: reaches into AppKit’s theme-frame subviews, retries background application asynchronously, globally overrides `NSTextField.focusRingType`, and restyles standard window buttons.
 - `Tildone/Views/Common/WindowAccessor.swift`: depends on SwiftUI/AppKit view timing and casts a stored `any View` back to `Note`.
 - `Tildone/Views/Settings.swift`: owns preference raw values/migrations and contains app-like preview persistence code.

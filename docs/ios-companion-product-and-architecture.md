@@ -178,18 +178,18 @@ Do not show record IDs, zones, queues, or raw CloudKit errors outside a diagnost
 
 ### Repository facts
 
-- [TildoneApp.swift](../Tildone/TildoneApp.swift) creates one persistent SwiftData `ModelContainer` from `Schema([Todo.self, TodoList.self])` with the default local store. No store URL, CloudKit database, App Group, or migration plan is specified.
+- [TildoneApp.swift](../Tildone/App/Lifecycle/TildoneApp.swift) creates one persistent SwiftData `ModelContainer` from `Schema([Todo.self, TodoList.self])` with the default local store. No store URL, CloudKit database, App Group, or migration plan is specified.
 - [TodoList.swift](../Tildone/Models/TodoList.swift) is the note entity. Persisted fields are `created: Date`, optional `topic`, optional `systemURL`, optional `systemContent`, and `items: [Todo]` inverse to `Todo.list`.
 - [Todo.swift](../Tildone/Models/Todo.swift) is the task entity. Persisted fields are `what: String`, `created: Date`, optional `index: Int`, optional `done: Date`, and optional `list`.
 - A task is complete when `done != nil`; checking writes the current date and unchecking sets it to nil.
 - Display order is optional integer `index`, secondarily stabilized by `created`. Reading through the custom `sorted()` helper fills missing legacy indexes as a side effect.
 - The current Mac UI can insert tasks at an index and reindex after deletion, but it exposes no task-reordering operation. Reordering is new product/domain behavior for the synchronized apps.
 - Neither model has a UUID or another explicit distributed identifier. `TodoList.hash` and window autosave naming use an ISO-8601 representation of `created`; SwiftUI focus and `ForEach` identify tasks by `created`.
-- `TodoList.createNewTask`, `delete`, and `clean` save through the model's injected context. [Note.swift](../Tildone/Views/Note.swift) also saves edits/toggles and deletes tasks directly. [Desktop.swift](../Tildone/Views/Desktop.swift) creates lists, deletes complete/empty lists at termination, and inserts system release notes.
+- `TodoList.createNewTask`, `delete`, and `clean` save through the model's injected context. [Note.swift](../Tildone/Views/Note/Core/Note.swift) also saves edits/toggles and deletes tasks directly. [Desktop.swift](../Tildone/Views/Desktop.swift) creates lists, deletes complete/empty lists at termination, and inserts system release notes.
 - A final completion starts a 20-second fade after a short delay and then physically deletes the note and its children. Empty rows are physically deleted during cleaning. No tombstones, revisions, modified timestamps, undo store, archive, or sync queue exist.
 - Save errors commonly terminate through `fatalError`.
 - There is no `VersionedSchema` or `SchemaMigrationPlan`. Existing compatibility is ad hoc: task `index` is optional and backfilled; legacy font and color preferences are converted in UI/settings code.
-- [Desktop.swift](../Tildone/Views/Desktop.swift) queries lists and manually creates an `NSWindow` per list. [Note.swift](../Tildone/Views/Note.swift), [Styler.swift](../Tildone/Views/Common/Styler.swift), [WindowAccessor.swift](../Tildone/Views/Common/WindowAccessor.swift), [Copier.swift](../Tildone/Services/Copier.swift), `FocusFilter`, and `Launcher` contain significant AppKit/macOS coupling.
+- [Desktop.swift](../Tildone/Views/Desktop.swift) queries lists and manually creates an `NSWindow` per list. [Note.swift](../Tildone/Views/Note/Core/Note.swift), [Styler.swift](../Tildone/Views/Common/Styler.swift), [WindowAccessor.swift](../Tildone/Views/Common/WindowAccessor.swift), [Copier.swift](../Tildone/Services/Copier.swift), `FocusFilter`, and `Launcher` contain significant AppKit/macOS coupling.
 - The project has only macOS app/test/UI-test targets and placeholder tests. The Mac deployment target is 14.0, Swift language mode is 5, marketing version is 1.6.0, build 24, bundle ID is `studio.cuatro.tildone`, and automatic signing uses team `F6HFAVTS49`.
 - [Tildone.entitlements](../Tildone/Tildone.entitlements) enables App Sandbox, client networking, user-selected read-only files, and a development APS environment. Its iCloud container and service arrays are empty. These keys do not constitute working iCloud synchronization.
 

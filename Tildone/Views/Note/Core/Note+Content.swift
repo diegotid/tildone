@@ -1,0 +1,273 @@
+//
+//  Note+Content.swift
+//  Tildone
+//
+
+import AppKit
+import SwiftUI
+import TildoneDomain
+
+extension Note {
+    func taskList(_ note: MacNoteSnapshot) -> some View {
+        ZStack {
+            Group {
+                ScrollViewReader { scroll in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            topicListItem()
+                            taskDropTarget(at: 0)
+                            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                                taskRow(task, at: index)
+                                    .id(task.id)
+                                taskDropTarget(at: index + 1)
+                            }
+                            newListItem().opacity(isDone || isTextBlurred || isInsertedNewTaskFocused ? 0 : 1)
+                            Spacer().id(Id.bottomAnchor)
+                        }
+                        .onAppear {
+                            if note.title == nil { focusOnTopic() } else { focusOnNewTask() }
+                            applyInitialFocusIfNeeded()
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
+                    }
+                    .onChange(of: focusedTaskID) { _, taskID in
+                        if taskID != keyboardFocusedTaskID {
+                            keyboardFocusedTaskID = nil
+                        }
+                        guard let taskID else { return }
+                        withAnimation {
+                            scroll.scrollTo(taskID, anchor: .center)
+                        }
+                    }
+                    .modifier(ScrollFrame())
+                    .onChange(of: tasks.count) { _, _ in
+                        guard !skipsNextTaskCountBottomScroll else {
+                            skipsNextTaskCountBottomScroll = false
+                            return
+                        }
+                        withAnimation { scroll.scrollTo(Id.bottomAnchor, anchor: .bottom) }
+                    }
+                }
+                if isTopScrolledOut { scrollingHeader() }
+            }
+            .blur(radius: isTextBlurred ? 3 : 0)
+            .opacity(windowAlpha / (isDone ? 2 : 1))
+            if isDone { doneOverlay() }
+        }
+        .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
+               minHeight: Layout.minNoteHeight, idealHeight: Layout.defaultNoteHeight, maxHeight: .infinity)
+        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        .onAppear {
+            handleKeyboard()
+            convertLegacyFontSizeSettingIfNeeded()
+            applyInitialFocusIfNeeded()
+        }
+        .onChange(of: noteWindow) { _, _ in
+            applyInitialFocusIfNeeded()
+            if completionFade.isFading {
+                advanceCompletionFade(Date())
+            } else {
+                updateFadeAppearance()
+            }
+        }
+        .onChange(of: note.isDeletable) { _, _ in updateWindowClosability() }
+        .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+            if let (blur, normal) = notification.object as? (Bool, Bool) {
+                noteWindow?.level = normal ? .normal : .floating
+                isTextBlurred = blur
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .clean), perform: cleanIfRequested)
+        .disabled(isTextBlurred)
+    }
+
+    func taskListProgress(_ note: MacNoteSnapshot) -> some View {
+        let pending = note.pendingTasks.count
+        let total = note.tasks.count
+        let complete = pending == 0 && total > 0
+        let foreground = minimizedForeground
+        return ZStack(alignment: .topLeading) {
+            ZStack(alignment: .bottomLeading) {
+                Gauge(value: total == 0 ? 0 : Float(total - pending), in: 0...Float(max(total, 1))) {
+                    EmptyView()
+                } currentValueLabel: {
+                    if complete {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 25, weight: .bold))
+                            .foregroundStyle(foreground)
+                            .offset(y: -2)
+                    } else {
+                        Text("\(pending)")
+                            .bold()
+                            .font(.system(size: pending > 9 ? 24 : 30))
+                            .foregroundStyle(foreground)
+                            .padding(.top, -2)
+                    }
+                }
+                .gaugeStyle(.accessoryCircular).tint(Gradient(colors: [.clear, foreground]))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                Text(statusText(complete: complete, total: total))
+                    .font(.system(size: 10))
+                    .foregroundStyle(foreground)
+                    .padding(.leading, 13)
+                    .padding(.bottom, 13)
+                    .frame(maxWidth: 54, alignment: .leading)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .padding(.top, -14)
+            .padding(.horizontal, 8)
+
+            if let title = note.title {
+                Text(title).font(.system(size: 12)).foregroundStyle(foreground).bold().lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(
+                        width: Layout.minimizedNoteWidth - 10 - MacNoteTitlebarLayout.minimizedRestoreWidth,
+                        alignment: .leading
+                    )
+                    .padding(.top, -26)
+                    .padding(.leading, 8)
+            }
+        }
+        .frame(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
+        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        .onTapGesture(perform: handleBringUp)
+        .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
+    }
+
+    private func statusText(complete: Bool, total: Int) -> String {
+        if complete { return String(localized: "all done") }
+        if total == 0 { return String(localized: "no tasks") }
+        return String(localized: "pending")
+    }
+
+    func listTopic() -> some View {
+        let size = 20 / CGFloat(FontSize.small.rawValue) * CGFloat(fontSize)
+        return GeometryReader { geometry in
+            TextField("Topic", text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit))
+                .textFieldStyle(.plain).truncationMode(.tail).font(.system(size: size, weight: .bold, design: .rounded))
+                .foregroundColor(noteForeground).background(Color.clear).padding(.top, 5)
+                .tint(noteForeground)
+                .focused($focusedField, equals: .topic)
+                .onChange(of: focusedField) { _, field in
+                    if let title = note?.title, field == .topic { placeCursor(forText: title) }
+                    updateTopicVisibility()
+                }
+                .onSubmit { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() }
+                .onChange(of: geometry.frame(in: .global)) { _, frame in withAnimation(.easeInOut) { isTopScrolledOut = frame.minY < 10 } }
+                .onHover { hovering in if hovering { isTopicHidden = false } else { updateTopicVisibility() } }
+        }
+        .padding(.bottom, size)
+    }
+
+    func scrollingHeader() -> some View {
+        VStack {
+            ZStack {
+                Color.clear
+                    .frame(height: 30)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(.black.opacity(0.2)).frame(height: 1)
+                    }
+                if let title = note?.title {
+                    HStack(spacing: 0) {
+                        Text(title)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
+                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
+                    .offset(y: -1)
+                }
+            }
+            Spacer()
+        }.padding(.top, -30)
+    }
+
+    func newListItem() -> some View {
+        HStack(spacing: 8) {
+            Checkbox().disabled(true)
+            ZStack(alignment: .leading) {
+                if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(minimizedForeground).opacity(0.35).allowsHitTesting(false) }
+                TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(noteForeground).tint(noteForeground)
+                    .onSubmit { handleNewTaskCommit() }.focused($focusedField, equals: .newTask)
+                    .onChange(of: focusedField) { _, field in if field != .newTask && !newTaskText.isEmpty { handleNewTaskCommit() } }
+                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in handleNewTaskCommit() }
+            }
+            Spacer()
+        }
+        .padding(.leading, 2)
+        .padding(.bottom, 10)
+        .allowsHitTesting(!isInsertedNewTaskFocused)
+    }
+
+    func topicListItem() -> some View {
+        listTopic()
+            .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
+            .frame(height: isTopicHidden ? 1 : 30)
+            .padding(.bottom, CGFloat(fontSize - 10))
+    }
+
+    func taskRow(_ task: TildoneDomain.Task, at index: Int) -> TaskRow {
+        TaskRow(
+            task: task,
+            dragPayload: MacTaskDragPayload(noteID: noteID, taskID: task.id),
+            rowIndex: index,
+            fontSize: fontSize,
+            isDark: isDark,
+            contentColor: noteForeground,
+            cursorColor: noteForeground,
+            placeholderColor: minimizedForeground,
+            truncation: taskLineTruncation,
+            isFirst: task.id == tasks.first?.id,
+            feedbackResetToken: taskDropFeedbackResetToken,
+            focusedTaskID: $focusedTaskID,
+            isActive: activeFocusedTaskID == task.id,
+            placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
+            onNativeFocus: { activateNativeTask(task.id) },
+            onToggle: { handleTaskToggle(task) },
+            onEdit: { handleTaskEdit(task, to: $0) },
+            onEnter: { handleEnter(for: task) },
+            onCopy: { Copier.copy(task.text, forType: .string) },
+            onPaste: { paste(into: task) },
+            onMoveUp: { handleMoveUp(from: task.id) },
+            onSubmit: { handleMoveDown(from: task.id) },
+            onDrop: { payload, destination in
+                handleTaskDrop(payload, at: destination)
+            },
+            onHover: { hovering in
+                if hovering { isTopicHidden = false } else { updateTopicVisibility() }
+            }
+        )
+    }
+
+    func taskDropTarget(at destination: Int) -> TaskReorderDropTarget {
+        TaskReorderDropTarget(feedbackResetToken: taskDropFeedbackResetToken) { payload in
+            handleTaskDrop(payload, at: destination)
+        }
+    }
+
+    func doneOverlay() -> some View {
+        VStack {
+            Spacer()
+            Image(systemName: "checkmark").padding(.top, 12).padding(.leading, 12).font(.system(size: 90, weight: .bold)).foregroundColor(.accentColor).symbolEffect(.bounce, value: completionFade.isFading)
+            Text("Done!").padding(.leading, 6).padding(.bottom, completionFade.isFading ? 30 : 60).font(.system(size: 30, weight: .bold)).foregroundColor(.accentColor)
+            Spacer()
+            if completionFade.isFading {
+                ZStack {
+                    ProgressView("Fading out...", value: fadeAwayProgress, total: Timeout.noteFadeOutSeconds).foregroundColor(.accentColor).padding(.horizontal, 20).padding(.bottom, 12)
+                    HStack {
+                        Spacer()
+                        Button("Cancel", action: cancelCompletionFade)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(minimizedForeground)
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 30)
+                    }
+                }
+            }
+        }.opacity(windowAlpha * 0.9)
+    }
+}

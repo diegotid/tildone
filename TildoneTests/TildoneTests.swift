@@ -430,12 +430,16 @@ final class TildoneTests: XCTestCase {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let appSource = try String(
-            contentsOf: sourceURL.appendingPathComponent("Tildone/TildoneApp.swift"),
-            encoding: .utf8
-        )
+        let appSource = try [
+            "Tildone/App/Lifecycle/TildoneApp.swift",
+            "Tildone/Views/App/Sync/MacSyncStatusView.swift",
+            "Tildone/Views/App/Resolution/MacNoteResolutionOptions.swift",
+            "Tildone/App/Lifecycle/MenuBarController.swift",
+        ].map {
+            try String(contentsOf: sourceURL.appendingPathComponent($0), encoding: .utf8)
+        }.joined(separator: "\n")
         let storeSource = try String(
-            contentsOf: sourceURL.appendingPathComponent("Tildone/MacSharedStore.swift"),
+            contentsOf: sourceURL.appendingPathComponent("Tildone/Store/Bootstrap/MacSharedStoreBootstrapper.swift"),
             encoding: .utf8
         )
         let desktopSource = try String(
@@ -443,7 +447,7 @@ final class TildoneTests: XCTestCase {
             encoding: .utf8
         )
         let noteSource = try String(
-            contentsOf: sourceURL.appendingPathComponent("Tildone/Views/Note.swift"),
+            contentsOf: sourceURL.appendingPathComponent("Tildone/Views/Note/Core/Note+Content.swift"),
             encoding: .utf8
         )
         XCTAssertTrue(appSource.contains(".alert(\"Copy notes to iCloud?\""))
@@ -947,11 +951,19 @@ final class TildoneTests: XCTestCase {
     }
 
     func testMacTaskRowsExposeDedicatedDragHandlesAndDropTargets() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
+        let sourceRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Tildone/Views/Note.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let source = try [
+            "Tildone/Views/Note/Tasks/MacTaskDragPayload.swift",
+            "Tildone/Views/Note/Tasks/TaskRow.swift",
+            "Tildone/Views/Note/Tasks/TaskReorderDropTarget.swift",
+            "Tildone/Views/Note/Tasks/TaskReorderFeedback.swift",
+            "Tildone/Views/Note/Tasks/TaskReorderHandle.swift",
+            "Tildone/Views/Note/Tasks/TaskReorderPreview.swift",
+        ].map {
+            try String(contentsOf: sourceRoot.appendingPathComponent($0), encoding: .utf8)
+        }.joined(separator: "\n")
 
         XCTAssertTrue(source.contains("TaskReorderHandle("))
         XCTAssertTrue(source.contains(".draggable(payload)"))

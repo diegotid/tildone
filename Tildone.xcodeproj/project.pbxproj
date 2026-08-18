@@ -45,6 +45,61 @@
 		F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F15A835D2F5200B600231A3F /* TildoneIcon.icon */; };
 		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
 		F16670492AF711EC000B76A5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670482AF711EC000B76A5 /* Note.swift */; };
+		D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000101 /* MacTaskDragPayload.swift */; };
+		D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000102 /* MacNoteTitlebarLayout.swift */; };
+		D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */; };
+		D10000000000000000000204 /* NoteWindowMinimizationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000104 /* NoteWindowMinimizationState.swift */; };
+		D10000000000000000000205 /* CompletionFadeLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000105 /* CompletionFadeLifecycle.swift */; };
+		D10000000000000000000206 /* Note+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000106 /* Note+Actions.swift */; };
+		D10000000000000000000207 /* Note+Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000107 /* Note+Content.swift */; };
+		D10000000000000000000208 /* MacNoteSyncIndicatorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */; };
+		D10000000000000000000209 /* MacNoteSyncTitlebarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */; };
+		D1000000000000000000020A /* MacNoteSyncTitlebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010A /* MacNoteSyncTitlebarIcon.swift */; };
+		D1000000000000000000020B /* MinimizedNoteRestoreTitlebarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010B /* MinimizedNoteRestoreTitlebarControl.swift */; };
+		D1000000000000000000020C /* MinimizedNoteRestoreTitlebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010C /* MinimizedNoteRestoreTitlebarIcon.swift */; };
+		D1000000000000000000020D /* NoteColorPickerTitlebarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010D /* NoteColorPickerTitlebarControl.swift */; };
+		D1000000000000000000020E /* ScrollFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010E /* ScrollFrame.swift */; };
+		D1000000000000000000020F /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010F /* TaskRow.swift */; };
+		D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000110 /* MouseSafeTaskTextField.swift */; };
+		D20000000000000000000201 /* FocusFilterHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000101 /* FocusFilterHelp.swift */; };
+		D20000000000000000000202 /* MacSyncPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000102 /* MacSyncPresentation.swift */; };
+		D20000000000000000000203 /* MacSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000103 /* MacSyncStatusView.swift */; };
+		D20000000000000000000204 /* MacNoteResolutionOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000104 /* MacNoteResolutionOptions.swift */; };
+		D20000000000000000000205 /* TildonePrimaryScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000105 /* TildonePrimaryScene.swift */; };
+		D20000000000000000000206 /* AppNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000106 /* AppNotifications.swift */; };
+		D20000000000000000000207 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000107 /* AppDelegate.swift */; };
+		D20000000000000000000208 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000108 /* MenuBarController.swift */; };
+		D30000000000000000000201 /* MacNoteSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000101 /* MacNoteSnapshot.swift */; };
+		D30000000000000000000202 /* MacSharedStoreBootstrapError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000102 /* MacSharedStoreBootstrapError.swift */; };
+		D30000000000000000000203 /* MacRemoteRefreshHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000103 /* MacRemoteRefreshHandler.swift */; };
+		D30000000000000000000204 /* MacLocalAdoptionStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000104 /* MacLocalAdoptionStateStore.swift */; };
+		D30000000000000000000205 /* MacNoteLocationChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000105 /* MacNoteLocationChoice.swift */; };
+		D30000000000000000000206 /* MacNoteLocationChoiceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000106 /* MacNoteLocationChoiceStore.swift */; };
+		D30000000000000000000207 /* MacNoteResolutionAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000107 /* MacNoteResolutionAction.swift */; };
+		D30000000000000000000208 /* MacNoteResolutionError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000108 /* MacNoteResolutionError.swift */; };
+		D30000000000000000000209 /* MacNoteResolutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000109 /* MacNoteResolutionService.swift */; };
+		D3000000000000000000020A /* MacWorkspaceSelectionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3000000000000000000010A /* MacWorkspaceSelectionPolicy.swift */; };
+		D3000000000000000000020B /* MacSharedStoreBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3000000000000000000010B /* MacSharedStoreBootstrapper.swift */; };
+		D40000000000000000000201 /* MacSyncDisplayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000101 /* MacSyncDisplayState.swift */; };
+		D40000000000000000000202 /* NoteColorPickerTitlebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000102 /* NoteColorPickerTitlebarIcon.swift */; };
+		D40000000000000000000203 /* NoteColorPickerTitlebarPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000103 /* NoteColorPickerTitlebarPalette.swift */; };
+		D40000000000000000000204 /* NoteColorPickerIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000104 /* NoteColorPickerIcon.swift */; };
+		D40000000000000000000205 /* NoteColorPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000105 /* NoteColorPalette.swift */; };
+		D40000000000000000000206 /* MouseSafeTaskNSTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000106 /* MouseSafeTaskNSTextField.swift */; };
+		D40000000000000000000207 /* MouseSafeTaskNSTextFieldCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000107 /* MouseSafeTaskNSTextFieldCell.swift */; };
+		D40000000000000000000208 /* MouseSafeTaskFieldEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000108 /* MouseSafeTaskFieldEditor.swift */; };
+		D40000000000000000000209 /* TaskTextSelectionStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000109 /* TaskTextSelectionStyle.swift */; };
+		D4000000000000000000020A /* TaskReorderInsertionLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010A /* TaskReorderInsertionLine.swift */; };
+		D4000000000000000000020B /* TaskReorderFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010B /* TaskReorderFeedback.swift */; };
+		D4000000000000000000020C /* TaskRowDropPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010C /* TaskRowDropPlacement.swift */; };
+		D4000000000000000000020D /* TaskRowDropDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010D /* TaskRowDropDelegate.swift */; };
+		D4000000000000000000020E /* TaskReorderHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010E /* TaskReorderHandle.swift */; };
+		D4000000000000000000020F /* TaskReorderPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010F /* TaskReorderPreview.swift */; };
+		D40000000000000000000210 /* TaskReorderDropTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000110 /* TaskReorderDropTarget.swift */; };
+		D50000000000000000000201 /* FocusFilterHelpStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000101 /* FocusFilterHelpStep.swift */; };
+		D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */; };
+		D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000103 /* CoordinatorWindowVisibility.swift */; };
+		D50000000000000000000204 /* MacSyncContentSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000104 /* MacSyncContentSnapshot.swift */; };
 		F166704B2AF711EC000B76A5 /* Todo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166704A2AF711EC000B76A5 /* Todo.swift */; };
 		F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F166704C2AF711ED000B76A5 /* Assets.xcassets */; };
 		F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */; };
@@ -139,6 +194,61 @@
 		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F16670462AF711EC000B76A5 /* TildoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneApp.swift; sourceTree = "<group>"; };
 		F16670482AF711EC000B76A5 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
+		D10000000000000000000101 /* MacTaskDragPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTaskDragPayload.swift; sourceTree = "<group>"; };
+		D10000000000000000000102 /* MacNoteTitlebarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteTitlebarLayout.swift; sourceTree = "<group>"; };
+		D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowFrameAutosavePolicy.swift; sourceTree = "<group>"; };
+		D10000000000000000000104 /* NoteWindowMinimizationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowMinimizationState.swift; sourceTree = "<group>"; };
+		D10000000000000000000105 /* CompletionFadeLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionFadeLifecycle.swift; sourceTree = "<group>"; };
+		D10000000000000000000106 /* Note+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Note+Actions.swift"; sourceTree = "<group>"; };
+		D10000000000000000000107 /* Note+Content.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Note+Content.swift"; sourceTree = "<group>"; };
+		D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSyncIndicatorState.swift; sourceTree = "<group>"; };
+		D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSyncTitlebarControl.swift; sourceTree = "<group>"; };
+		D1000000000000000000010A /* MacNoteSyncTitlebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSyncTitlebarIcon.swift; sourceTree = "<group>"; };
+		D1000000000000000000010B /* MinimizedNoteRestoreTitlebarControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimizedNoteRestoreTitlebarControl.swift; sourceTree = "<group>"; };
+		D1000000000000000000010C /* MinimizedNoteRestoreTitlebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimizedNoteRestoreTitlebarIcon.swift; sourceTree = "<group>"; };
+		D1000000000000000000010D /* NoteColorPickerTitlebarControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorPickerTitlebarControl.swift; sourceTree = "<group>"; };
+		D1000000000000000000010E /* ScrollFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollFrame.swift; sourceTree = "<group>"; };
+		D1000000000000000000010F /* TaskRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRow.swift; sourceTree = "<group>"; };
+		D10000000000000000000110 /* MouseSafeTaskTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskTextField.swift; sourceTree = "<group>"; };
+		D20000000000000000000101 /* FocusFilterHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilterHelp.swift; sourceTree = "<group>"; };
+		D20000000000000000000102 /* MacSyncPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncPresentation.swift; sourceTree = "<group>"; };
+		D20000000000000000000103 /* MacSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncStatusView.swift; sourceTree = "<group>"; };
+		D20000000000000000000104 /* MacNoteResolutionOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionOptions.swift; sourceTree = "<group>"; };
+		D20000000000000000000105 /* TildonePrimaryScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildonePrimaryScene.swift; sourceTree = "<group>"; };
+		D20000000000000000000106 /* AppNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotifications.swift; sourceTree = "<group>"; };
+		D20000000000000000000107 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D20000000000000000000108 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
+		D30000000000000000000101 /* MacNoteSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSnapshot.swift; sourceTree = "<group>"; };
+		D30000000000000000000102 /* MacSharedStoreBootstrapError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSharedStoreBootstrapError.swift; sourceTree = "<group>"; };
+		D30000000000000000000103 /* MacRemoteRefreshHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRemoteRefreshHandler.swift; sourceTree = "<group>"; };
+		D30000000000000000000104 /* MacLocalAdoptionStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacLocalAdoptionStateStore.swift; sourceTree = "<group>"; };
+		D30000000000000000000105 /* MacNoteLocationChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteLocationChoice.swift; sourceTree = "<group>"; };
+		D30000000000000000000106 /* MacNoteLocationChoiceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteLocationChoiceStore.swift; sourceTree = "<group>"; };
+		D30000000000000000000107 /* MacNoteResolutionAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionAction.swift; sourceTree = "<group>"; };
+		D30000000000000000000108 /* MacNoteResolutionError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionError.swift; sourceTree = "<group>"; };
+		D30000000000000000000109 /* MacNoteResolutionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionService.swift; sourceTree = "<group>"; };
+		D3000000000000000000010A /* MacWorkspaceSelectionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWorkspaceSelectionPolicy.swift; sourceTree = "<group>"; };
+		D3000000000000000000010B /* MacSharedStoreBootstrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSharedStoreBootstrapper.swift; sourceTree = "<group>"; };
+		D40000000000000000000101 /* MacSyncDisplayState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncDisplayState.swift; sourceTree = "<group>"; };
+		D40000000000000000000102 /* NoteColorPickerTitlebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorPickerTitlebarIcon.swift; sourceTree = "<group>"; };
+		D40000000000000000000103 /* NoteColorPickerTitlebarPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorPickerTitlebarPalette.swift; sourceTree = "<group>"; };
+		D40000000000000000000104 /* NoteColorPickerIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorPickerIcon.swift; sourceTree = "<group>"; };
+		D40000000000000000000105 /* NoteColorPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorPalette.swift; sourceTree = "<group>"; };
+		D40000000000000000000106 /* MouseSafeTaskNSTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskNSTextField.swift; sourceTree = "<group>"; };
+		D40000000000000000000107 /* MouseSafeTaskNSTextFieldCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskNSTextFieldCell.swift; sourceTree = "<group>"; };
+		D40000000000000000000108 /* MouseSafeTaskFieldEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskFieldEditor.swift; sourceTree = "<group>"; };
+		D40000000000000000000109 /* TaskTextSelectionStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTextSelectionStyle.swift; sourceTree = "<group>"; };
+		D4000000000000000000010A /* TaskReorderInsertionLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderInsertionLine.swift; sourceTree = "<group>"; };
+		D4000000000000000000010B /* TaskReorderFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderFeedback.swift; sourceTree = "<group>"; };
+		D4000000000000000000010C /* TaskRowDropPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowDropPlacement.swift; sourceTree = "<group>"; };
+		D4000000000000000000010D /* TaskRowDropDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowDropDelegate.swift; sourceTree = "<group>"; };
+		D4000000000000000000010E /* TaskReorderHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderHandle.swift; sourceTree = "<group>"; };
+		D4000000000000000000010F /* TaskReorderPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderPreview.swift; sourceTree = "<group>"; };
+		D40000000000000000000110 /* TaskReorderDropTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderDropTarget.swift; sourceTree = "<group>"; };
+		D50000000000000000000101 /* FocusFilterHelpStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilterHelpStep.swift; sourceTree = "<group>"; };
+		D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionOptionButtonStyle.swift; sourceTree = "<group>"; };
+		D50000000000000000000103 /* CoordinatorWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinatorWindowVisibility.swift; sourceTree = "<group>"; };
+		D50000000000000000000104 /* MacSyncContentSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncContentSnapshot.swift; sourceTree = "<group>"; };
 		F166704A2AF711EC000B76A5 /* Todo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Todo.swift; sourceTree = "<group>"; };
 		F166704C2AF711ED000B76A5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -356,8 +466,8 @@
 		F16670452AF711EC000B76A5 /* Tildone */ = {
 			isa = PBXGroup;
 			children = (
-				B70000000000000000000011 /* MacSharedStore.swift */,
-				F16670462AF711EC000B76A5 /* TildoneApp.swift */,
+				D20000000000000000000001 /* App */,
+				D30000000000000000000001 /* Store */,
 				F19B3BF22B155711003C094A /* LicenseType.swift */,
 				F166704C2AF711ED000B76A5 /* Assets.xcassets */,
 				F15A835D2F5200B600231A3F /* TildoneIcon.icon */,
@@ -371,6 +481,29 @@
 				F107B17C2F0DE77800D20216 /* Info.plist */,
 			);
 			path = Tildone;
+			sourceTree = "<group>";
+		};
+		D30000000000000000000001 /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				B70000000000000000000011 /* MacSharedStore.swift */,
+				D30000000000000000000101 /* MacNoteSnapshot.swift */,
+				D60000000000000000000004 /* Bootstrap */,
+				D60000000000000000000005 /* Location */,
+				D60000000000000000000006 /* Resolution */,
+				D60000000000000000000007 /* Sync */,
+			);
+			path = Store;
+			sourceTree = "<group>";
+		};
+		D20000000000000000000001 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D60000000000000000000001 /* Lifecycle */,
+				D60000000000000000000002 /* Presentation */,
+				D60000000000000000000003 /* Scenes */,
+			);
+			path = App;
 			sourceTree = "<group>";
 		};
 		F166704E2AF711ED000B76A5 /* Preview Content */ = {
@@ -414,13 +547,205 @@
 		F16670742AF71273000B76A5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D60000000000000000000008 /* App */,
 				F1EA81F92AFEA81700E58A73 /* Common */,
-				F16670482AF711EC000B76A5 /* Note.swift */,
+				D10000000000000000000001 /* Note */,
 				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
 				F17F46952B4A0FE000127AD9 /* Settings.swift */,
 				F1D300202B52061400654241 /* About.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		D10000000000000000000001 /* Note */ = {
+			isa = PBXGroup;
+			children = (
+				D6000000000000000000000D /* Completion */,
+				D6000000000000000000000E /* Core */,
+				D6000000000000000000000F /* Tasks */,
+				D60000000000000000000010 /* Titlebar */,
+				D60000000000000000000011 /* Window */,
+			);
+			path = Note;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000001 /* Lifecycle */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000107 /* AppDelegate.swift */,
+				D20000000000000000000106 /* AppNotifications.swift */,
+				D20000000000000000000108 /* MenuBarController.swift */,
+				F16670462AF711EC000B76A5 /* TildoneApp.swift */,
+			);
+			path = Lifecycle;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000002 /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				D40000000000000000000101 /* MacSyncDisplayState.swift */,
+				D20000000000000000000102 /* MacSyncPresentation.swift */,
+			);
+			path = Presentation;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000003 /* Scenes */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000105 /* TildonePrimaryScene.swift */,
+			);
+			path = Scenes;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000004 /* Bootstrap */ = {
+			isa = PBXGroup;
+			children = (
+				D30000000000000000000104 /* MacLocalAdoptionStateStore.swift */,
+				D30000000000000000000102 /* MacSharedStoreBootstrapError.swift */,
+				D3000000000000000000010B /* MacSharedStoreBootstrapper.swift */,
+				D3000000000000000000010A /* MacWorkspaceSelectionPolicy.swift */,
+			);
+			path = Bootstrap;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000005 /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				D30000000000000000000105 /* MacNoteLocationChoice.swift */,
+				D30000000000000000000106 /* MacNoteLocationChoiceStore.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000006 /* Resolution */ = {
+			isa = PBXGroup;
+			children = (
+				D30000000000000000000107 /* MacNoteResolutionAction.swift */,
+				D30000000000000000000108 /* MacNoteResolutionError.swift */,
+				D30000000000000000000109 /* MacNoteResolutionService.swift */,
+				D50000000000000000000104 /* MacSyncContentSnapshot.swift */,
+			);
+			path = Resolution;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000007 /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				D30000000000000000000103 /* MacRemoteRefreshHandler.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000008 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D60000000000000000000009 /* Coordinator */,
+				D6000000000000000000000A /* Focus */,
+				D6000000000000000000000B /* Resolution */,
+				D6000000000000000000000C /* Sync */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000009 /* Coordinator */ = {
+			isa = PBXGroup;
+			children = (
+				D50000000000000000000103 /* CoordinatorWindowVisibility.swift */,
+			);
+			path = Coordinator;
+			sourceTree = "<group>";
+		};
+		D6000000000000000000000A /* Focus */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000101 /* FocusFilterHelp.swift */,
+				D50000000000000000000101 /* FocusFilterHelpStep.swift */,
+			);
+			path = Focus;
+			sourceTree = "<group>";
+		};
+		D6000000000000000000000B /* Resolution */ = {
+			isa = PBXGroup;
+			children = (
+				D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */,
+				D20000000000000000000104 /* MacNoteResolutionOptions.swift */,
+			);
+			path = Resolution;
+			sourceTree = "<group>";
+		};
+		D6000000000000000000000C /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000103 /* MacSyncStatusView.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		D6000000000000000000000D /* Completion */ = {
+			isa = PBXGroup;
+			children = (
+				D10000000000000000000105 /* CompletionFadeLifecycle.swift */,
+			);
+			path = Completion;
+			sourceTree = "<group>";
+		};
+		D6000000000000000000000E /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				F16670482AF711EC000B76A5 /* Note.swift */,
+				D10000000000000000000106 /* Note+Actions.swift */,
+				D10000000000000000000107 /* Note+Content.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		D6000000000000000000000F /* Tasks */ = {
+			isa = PBXGroup;
+			children = (
+				D10000000000000000000101 /* MacTaskDragPayload.swift */,
+				D40000000000000000000108 /* MouseSafeTaskFieldEditor.swift */,
+				D40000000000000000000106 /* MouseSafeTaskNSTextField.swift */,
+				D40000000000000000000107 /* MouseSafeTaskNSTextFieldCell.swift */,
+				D10000000000000000000110 /* MouseSafeTaskTextField.swift */,
+				D40000000000000000000110 /* TaskReorderDropTarget.swift */,
+				D4000000000000000000010B /* TaskReorderFeedback.swift */,
+				D4000000000000000000010E /* TaskReorderHandle.swift */,
+				D4000000000000000000010A /* TaskReorderInsertionLine.swift */,
+				D4000000000000000000010F /* TaskReorderPreview.swift */,
+				D1000000000000000000010F /* TaskRow.swift */,
+				D4000000000000000000010D /* TaskRowDropDelegate.swift */,
+				D4000000000000000000010C /* TaskRowDropPlacement.swift */,
+				D40000000000000000000109 /* TaskTextSelectionStyle.swift */,
+			);
+			path = Tasks;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000010 /* Titlebar */ = {
+			isa = PBXGroup;
+			children = (
+				D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */,
+				D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */,
+				D1000000000000000000010A /* MacNoteSyncTitlebarIcon.swift */,
+				D10000000000000000000102 /* MacNoteTitlebarLayout.swift */,
+				D1000000000000000000010B /* MinimizedNoteRestoreTitlebarControl.swift */,
+				D1000000000000000000010C /* MinimizedNoteRestoreTitlebarIcon.swift */,
+				D40000000000000000000105 /* NoteColorPalette.swift */,
+				D40000000000000000000104 /* NoteColorPickerIcon.swift */,
+				D1000000000000000000010D /* NoteColorPickerTitlebarControl.swift */,
+				D40000000000000000000102 /* NoteColorPickerTitlebarIcon.swift */,
+				D40000000000000000000103 /* NoteColorPickerTitlebarPalette.swift */,
+			);
+			path = Titlebar;
+			sourceTree = "<group>";
+		};
+		D60000000000000000000011 /* Window */ = {
+			isa = PBXGroup;
+			children = (
+				D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */,
+				D10000000000000000000104 /* NoteWindowMinimizationState.swift */,
+				D1000000000000000000010E /* ScrollFrame.swift */,
+			);
+			path = Window;
 			sourceTree = "<group>";
 		};
 		F1D300192B51F16A00654241 /* Services */ = {
@@ -727,6 +1052,61 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D30000000000000000000201 /* MacNoteSnapshot.swift in Sources */,
+				D30000000000000000000202 /* MacSharedStoreBootstrapError.swift in Sources */,
+				D30000000000000000000203 /* MacRemoteRefreshHandler.swift in Sources */,
+				D30000000000000000000204 /* MacLocalAdoptionStateStore.swift in Sources */,
+				D30000000000000000000205 /* MacNoteLocationChoice.swift in Sources */,
+				D30000000000000000000206 /* MacNoteLocationChoiceStore.swift in Sources */,
+				D30000000000000000000207 /* MacNoteResolutionAction.swift in Sources */,
+				D30000000000000000000208 /* MacNoteResolutionError.swift in Sources */,
+				D30000000000000000000209 /* MacNoteResolutionService.swift in Sources */,
+				D3000000000000000000020A /* MacWorkspaceSelectionPolicy.swift in Sources */,
+				D3000000000000000000020B /* MacSharedStoreBootstrapper.swift in Sources */,
+				D50000000000000000000204 /* MacSyncContentSnapshot.swift in Sources */,
+				D20000000000000000000201 /* FocusFilterHelp.swift in Sources */,
+				D50000000000000000000201 /* FocusFilterHelpStep.swift in Sources */,
+				D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */,
+				D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */,
+				D40000000000000000000201 /* MacSyncDisplayState.swift in Sources */,
+				D20000000000000000000202 /* MacSyncPresentation.swift in Sources */,
+				D20000000000000000000203 /* MacSyncStatusView.swift in Sources */,
+				D20000000000000000000204 /* MacNoteResolutionOptions.swift in Sources */,
+				D20000000000000000000205 /* TildonePrimaryScene.swift in Sources */,
+				D20000000000000000000206 /* AppNotifications.swift in Sources */,
+				D20000000000000000000207 /* AppDelegate.swift in Sources */,
+				D20000000000000000000208 /* MenuBarController.swift in Sources */,
+				D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */,
+				D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */,
+				D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */,
+				D10000000000000000000204 /* NoteWindowMinimizationState.swift in Sources */,
+				D10000000000000000000205 /* CompletionFadeLifecycle.swift in Sources */,
+				D10000000000000000000206 /* Note+Actions.swift in Sources */,
+				D10000000000000000000207 /* Note+Content.swift in Sources */,
+				D10000000000000000000208 /* MacNoteSyncIndicatorState.swift in Sources */,
+				D10000000000000000000209 /* MacNoteSyncTitlebarControl.swift in Sources */,
+				D1000000000000000000020A /* MacNoteSyncTitlebarIcon.swift in Sources */,
+				D1000000000000000000020B /* MinimizedNoteRestoreTitlebarControl.swift in Sources */,
+				D1000000000000000000020C /* MinimizedNoteRestoreTitlebarIcon.swift in Sources */,
+				D1000000000000000000020D /* NoteColorPickerTitlebarControl.swift in Sources */,
+				D40000000000000000000202 /* NoteColorPickerTitlebarIcon.swift in Sources */,
+				D40000000000000000000203 /* NoteColorPickerTitlebarPalette.swift in Sources */,
+				D40000000000000000000204 /* NoteColorPickerIcon.swift in Sources */,
+				D40000000000000000000205 /* NoteColorPalette.swift in Sources */,
+				D1000000000000000000020E /* ScrollFrame.swift in Sources */,
+				D1000000000000000000020F /* TaskRow.swift in Sources */,
+				D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */,
+				D40000000000000000000206 /* MouseSafeTaskNSTextField.swift in Sources */,
+				D40000000000000000000207 /* MouseSafeTaskNSTextFieldCell.swift in Sources */,
+				D40000000000000000000208 /* MouseSafeTaskFieldEditor.swift in Sources */,
+				D40000000000000000000209 /* TaskTextSelectionStyle.swift in Sources */,
+				D4000000000000000000020A /* TaskReorderInsertionLine.swift in Sources */,
+				D4000000000000000000020B /* TaskReorderFeedback.swift in Sources */,
+				D4000000000000000000020C /* TaskRowDropPlacement.swift in Sources */,
+				D4000000000000000000020D /* TaskRowDropDelegate.swift in Sources */,
+				D4000000000000000000020E /* TaskReorderHandle.swift in Sources */,
+				D4000000000000000000020F /* TaskReorderPreview.swift in Sources */,
+				D40000000000000000000210 /* TaskReorderDropTarget.swift in Sources */,
 				B70000000000000000000001 /* MacSharedStore.swift in Sources */,
 				B60000000000000000000001 /* LegacyStoreDiscovery.swift in Sources */,
 				B60000000000000000000002 /* LegacyStoreReader.swift in Sources */,
