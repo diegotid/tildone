@@ -120,7 +120,8 @@ final class MenuBarController: NSObject {
         minimizeAll.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(minimizeAll)
 
-        let bringAllUp = item(String(localized: "Bring All Up"), action: #selector(bringAllUp), keyEquivalent: "u", symbolName: "app.shadow")
+        let bringAllUp = item(String(localized: "Bring All Up"), action: #selector(bringAllUp), keyEquivalent: "u")
+        bringAllUp.image = menuAssetImage(named: "MaximizeIcon")
         bringAllUp.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(bringAllUp)
 
@@ -169,6 +170,18 @@ final class MenuBarController: NSObject {
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
         image?.isTemplate = true
         return image
+    }
+
+    private func menuAssetImage(named name: String) -> NSImage? {
+        guard let image = NSImage(named: NSImage.Name(name)) else {
+            return nil
+        }
+        let menuImage = NSImage(size: NSSize(width: 14.5, height: 14.5), flipped: false) { rect in
+            image.draw(in: rect.insetBy(dx: 3.4, dy: 3.2))
+            return true
+        }
+        menuImage.isTemplate = true
+        return menuImage
     }
 
     @objc private func createNote() { sendToActiveApp(.new) }

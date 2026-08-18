@@ -9,11 +9,13 @@ struct MinimizedNoteRestoreTitlebarIcon: View {
     let onRestore: () -> Void
 
     var body: some View {
-        Image(systemName: "app.shadow")
-            .font(.system(size: 9, weight: .semibold))
+        Image("MaximizeIcon")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 10, height: 10)
             .foregroundStyle(Color(nsColor: .secondaryLabelColor))
-            .scaleEffect(x: -1, y: 1)
-            .offset(y: -3)
+            .offset(x: 2, y: -6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .ignoresSafeArea()
