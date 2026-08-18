@@ -122,6 +122,9 @@
 		F1D3001D2B51F3E100654241 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3001C2B51F3E100654241 /* UpdateChecker.swift */; };
 		F1D300212B52061400654241 /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D300202B52061400654241 /* About.swift */; };
 		F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */; };
+		D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000101 /* NoteWindowButtonActionController.swift */; };
+		D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000102 /* WindowAccessorAttachmentView.swift */; };
+		D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000103 /* NSView+NestedSubviews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -273,6 +276,9 @@
 		F1D3001C2B51F3E100654241 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		F1D300202B52061400654241 /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
+		D70000000000000000000101 /* NoteWindowButtonActionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowButtonActionController.swift; sourceTree = "<group>"; };
+		D70000000000000000000102 /* WindowAccessorAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessorAttachmentView.swift; sourceTree = "<group>"; };
+		D70000000000000000000103 /* NSView+NestedSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSView+NestedSubviews.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -741,9 +747,13 @@
 		D60000000000000000000011 /* Window */ = {
 			isa = PBXGroup;
 			children = (
+				D70000000000000000000103 /* NSView+NestedSubviews.swift */,
+				D70000000000000000000101 /* NoteWindowButtonActionController.swift */,
 				D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */,
 				D10000000000000000000104 /* NoteWindowMinimizationState.swift */,
 				D1000000000000000000010E /* ScrollFrame.swift */,
+				F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */,
+				D70000000000000000000102 /* WindowAccessorAttachmentView.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -765,7 +775,6 @@
 				F1D3001A2B51F2FB00654241 /* Launcher+Toggle.swift */,
 				F16670772AF7167D000B76A5 /* Styler.swift */,
 				F17F46992B4A1C0B00127AD9 /* View+Util.swift */,
-				F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -1052,6 +1061,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */,
+				D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */,
+				D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */,
 				D30000000000000000000201 /* MacNoteSnapshot.swift in Sources */,
 				D30000000000000000000202 /* MacSharedStoreBootstrapError.swift in Sources */,
 				D30000000000000000000203 /* MacRemoteRefreshHandler.swift in Sources */,

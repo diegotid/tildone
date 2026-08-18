@@ -59,12 +59,11 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
   - `Constants.swift`: window IDs, AppKit key codes, layout-related constants, and the fade duration.
 - `Tildone/Views/`:
   - `Desktop.swift`: root coordinator for shared snapshots, manually created note windows, focus, cleanup, positioning, and arrangement.
-  - `Note/`: note/task editing UI plus focused files for actions, content, focus-safe AppKit text editing, completion/fade, minimization, title-bar controls, and task reordering.
+  - `Note/`: note/task editing UI plus focused files for actions, content, focus-safe AppKit text editing, completion/fade, minimization, title-bar controls, task reordering, and SwiftUI-to-window bridging.
   - `Settings.swift`: settings UI, preference enums/keys, previews, and legacy preference conversion support.
   - `About.swift`: fixed-size About scene.
 - `Tildone/Views/Common/`:
   - `Styler.swift`: note geometry, colors, custom AppKit window styling/blur, window buttons, and text-field behavior.
-  - `WindowAccessor.swift`: bridges a SwiftUI note to its owning `NSWindow` and overrides the minimize button action.
   - `Checkbox.swift`: custom circular checkbox.
   - `Launcher+Toggle.swift`: settings control for launch at login.
   - `View+Util.swift`: conditional SwiftUI modifier helper.
@@ -460,7 +459,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 - `Tildone/Views/Desktop.swift`: manual window lifecycle, snapshot reconciliation, foreground selection, multi-display coordinates, and deletion on termination.
 - `Tildone/Views/Note/`: repository requests plus keyboard monitoring, AppKit responder manipulation, completion timer, fade deletion, focus, and minimization. Small changes can affect several workflows.
 - `Tildone/Views/Common/Styler.swift`: reaches into AppKit’s theme-frame subviews, retries background application asynchronously, globally overrides `NSTextField.focusRingType`, and restyles standard window buttons.
-- `Tildone/Views/Common/WindowAccessor.swift`: depends on SwiftUI/AppKit view timing and casts a stored `any View` back to `Note`.
+- `Tildone/Views/Note/Window/WindowAccessor.swift` and its AppKit attachment/action collaborators: bridge a SwiftUI note to its owning `NSWindow`; preserve deterministic reattachment and strong ownership of the standard-button action target across view/store refreshes.
 - `Tildone/Views/Settings.swift`: owns preference raw values/migrations and contains app-like preview persistence code.
 - `Tildone/Localizable.xcstrings`: generated/extracted state and manually maintained translations can be changed by Xcode; inspect diffs carefully.
 - `Tildone/Tildone.entitlements`: contains apparently unused or incomplete capabilities; coordinate changes with provisioning and App Store configuration.

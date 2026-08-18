@@ -56,7 +56,7 @@ extension Note {
         }
         .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
                minHeight: Layout.minNoteHeight, idealHeight: Layout.defaultNoteHeight, maxHeight: .infinity)
-        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        .background(WindowAccessor(note: self, window: $noteWindow))
         .onAppear {
             handleKeyboard()
             convertLegacyFontSizeSettingIfNeeded()
@@ -131,7 +131,7 @@ extension Note {
             }
         }
         .frame(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
-        .background(WindowAccessor(note: Binding.constant(self), window: $noteWindow))
+        .background(WindowAccessor(note: self, window: $noteWindow))
         .onTapGesture(perform: handleBringUp)
         .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
     }

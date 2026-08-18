@@ -193,6 +193,67 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(restore.mouseDownCanMoveWindow)
     }
 
+    @MainActor
+    func testWindowAccessorRestoresButtonActionsAfterViewRefreshAndReconstruction() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        let contentView = try XCTUnwrap(window.contentView)
+        let minimizeButton = try XCTUnwrap(window.standardWindowButton(.miniaturizeButton))
+        let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
+        var minimizeCount = 0
+        var closeCount = 0
+
+        let attachmentView = WindowAccessorAttachmentView()
+        attachmentView.update(
+            onMinimize: { minimizeCount += 1 },
+            onClose: { closeCount += 1 }
+        )
+        contentView.addSubview(attachmentView)
+
+        XCTAssertTrue(minimizeButton.isEnabled)
+        XCTAssertTrue(minimizeButton.target is NoteWindowButtonActionController)
+        XCTAssertTrue(closeButton.target is NoteWindowButtonActionController)
+        minimizeButton.performClick(nil)
+        closeButton.performClick(nil)
+        XCTAssertEqual(minimizeCount, 1)
+        XCTAssertEqual(closeCount, 1)
+
+        minimizeButton.isEnabled = false
+        minimizeButton.target = nil
+        minimizeButton.action = nil
+        attachmentView.update(
+            onMinimize: { minimizeCount += 10 },
+            onClose: { closeCount += 10 }
+        )
+
+        XCTAssertTrue(minimizeButton.isEnabled)
+        XCTAssertTrue(minimizeButton.target is NoteWindowButtonActionController)
+        minimizeButton.performClick(nil)
+        XCTAssertEqual(minimizeCount, 11)
+
+        minimizeButton.isEnabled = false
+        minimizeButton.target = nil
+        minimizeButton.action = nil
+
+        let replacementView = WindowAccessorAttachmentView()
+        replacementView.update(
+            onMinimize: { minimizeCount += 100 },
+            onClose: { closeCount += 100 }
+        )
+        contentView.addSubview(replacementView)
+        attachmentView.reset()
+        attachmentView.removeFromSuperview()
+
+        XCTAssertTrue(minimizeButton.isEnabled)
+        XCTAssertTrue(minimizeButton.target is NoteWindowButtonActionController)
+        minimizeButton.performClick(nil)
+        XCTAssertEqual(minimizeCount, 111)
+    }
+
     func testMinimizedRestoreControlUsesTheFullTitlebarHeight() {
         let pickerFrame = NSRect(x: 220, y: 272, width: 26, height: 22)
         let frame = MacNoteTitlebarLayout.minimizedRestoreFrame(
