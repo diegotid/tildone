@@ -101,14 +101,33 @@ extension Note {
     }
 
     func handleTaskToggle(_ task: TildoneDomain.Task) {
+        let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(for: task.id)
+        let restoresOriginalPosition = originalOrderToken.map { $0 != task.orderToken } ?? false
+        let animatesTaskMovement = moveCheckedTasksToEnd && (
+            (!task.isCompleted && tasks.last?.id != task.id)
+                || (task.isCompleted && restoresOriginalPosition)
+        )
+        if animatesTaskMovement {
+            completedTaskMovementAnimationID = task.id
+        }
         noteWindow?.makeFirstResponder(nil)
-        mutate({
-            try await store.setTaskCompletion(
-                task.id,
-                completed: !task.isCompleted,
-                moveToEndWhenCompleted: moveCheckedTasksToEnd
+        Swift.Task {
+            do {
+                try await store.setTaskCompletion(
+                    task.id,
+                    completed: !task.isCompleted,
+                    moveToEndWhenCompleted: moveCheckedTasksToEnd
             )
-        }, message: "Error on task completion")
+        } catch {
+                if animatesTaskMovement {
+                    completedTaskMovementAnimationID = nil
+                }
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task completion",
+                    error: error
+                )
+            }
+        }
     }
 
     func handleTaskDrop(_ payload: MacTaskDragPayload, at destination: Int) -> Bool {

@@ -62,6 +62,7 @@ struct Note: View {
     @State var mutationErrorMessage: String?
     @State var taskDropFeedbackResetToken = UUID()
     @State var skipsNextTaskCountBottomScroll = false
+    @State var completedTaskMovementAnimationID: TaskID?
     @State var keyboardFocusedTaskID: TaskID?
     @State var nativeFocusedTaskID: TaskID?
     @FocusState var focusedField: Field?

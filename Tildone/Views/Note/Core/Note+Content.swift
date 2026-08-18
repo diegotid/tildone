@@ -24,6 +24,19 @@ extension Note {
                             newListItem().opacity(isDone || isTextBlurred || isInsertedNewTaskFocused ? 0 : 1)
                             Spacer().id(Id.bottomAnchor)
                         }
+                        .animation(
+                            completedTaskMovementAnimationID == nil
+                                ? nil
+                                : .linear(duration: 0.35),
+                            value: tasks.map(\.id)
+                        )
+                        .onChange(of: tasks.map(\.id)) { _, _ in
+                            guard let taskID = completedTaskMovementAnimationID else { return }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                guard completedTaskMovementAnimationID == taskID else { return }
+                                completedTaskMovementAnimationID = nil
+                            }
+                        }
                         .onAppear {
                             if note.title == nil { focusOnTopic() } else { focusOnNewTask() }
                             applyInitialFocusIfNeeded()

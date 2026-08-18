@@ -36,6 +36,7 @@ struct Desktop: View {
     @State private var foregroundWindow: NSWindow?
     @State private var updateWindow: NSWindow?
     @State private var opacityScrollMonitor = NoteOpacityScrollMonitor()
+    @State private var clickThroughMonitor = NoteClickThroughMonitor()
     @Binding var foregroundNoteID: NoteID? {
         didSet { cleanUnfocusedNotes() }
     }
@@ -48,6 +49,8 @@ struct Desktop: View {
     private var selectedArrangementCornerMargin: ArrangementSpacing = .medium
     @AppStorage(ArrangementSpacing.sideStorageKey)
     private var selectedArrangementSpacing: ArrangementSpacing = .minimum
+    @AppStorage(NoteWindowClickThrough.storageKey)
+    private var clickThroughNotes = false
 
     private static let appWindowIDs = [Id.aboutWindow, Id.syncStatusWindow, Id.updateWindow]
 
@@ -67,12 +70,16 @@ struct Desktop: View {
                     )
                 )
                 installOpacityScrollMonitor()
+                updateClickThroughMonitoring()
             }
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 reconcileNoteWindows()
             }
             .onChange(of: noteSyncIndicatorState) { _, state in
                 setNoteSyncIndicatorState(state)
+            }
+            .onChange(of: clickThroughNotes) { _, _ in
+                updateClickThroughMonitoring()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
@@ -101,6 +108,7 @@ struct Desktop: View {
             }
             .onDisappear {
                 opacityScrollMonitor.stop()
+                clickThroughMonitor.stop()
                 closeManagedNoteWindows()
             }
     }
@@ -131,6 +139,22 @@ private extension Desktop {
     func installOpacityScrollMonitor() {
         opacityScrollMonitor.start { event in
             handleOpacityScroll(event)
+        }
+    }
+
+    func updateClickThroughMonitoring() {
+        clickThroughMonitor.update(isEnabled: clickThroughNotes) { isCommandPressed in
+            applyClickThroughPreference(isCommandPressed: isCommandPressed)
+        }
+    }
+
+    func applyClickThroughPreference(isCommandPressed: Bool = NoteWindowClickThrough.isCommandPressed) {
+        let ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: clickThroughNotes,
+            isCommandPressed: isCommandPressed
+        )
+        for window in noteWindows.values {
+            window.ignoresMouseEvents = ignoresMouseEvents
         }
     }
 
@@ -235,6 +259,10 @@ private extension Desktop {
             defer: false
         )
         window.setNoteStyle(noteColor: note.color)
+        window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: clickThroughNotes,
+            isCommandPressed: NoteWindowClickThrough.isCommandPressed
+        )
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
@@ -514,6 +542,68 @@ private final class NoteOpacityScrollMonitor {
 
     deinit {
         stop()
+    }
+}
+
+private final class NoteClickThroughMonitor {
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
+    private var modifierTimer: Timer?
+    private var handler: ((Bool) -> Void)?
+    private var isCommandPressed = false
+
+    func update(isEnabled: Bool, handler: @escaping (Bool) -> Void) {
+        self.handler = handler
+        guard isEnabled else {
+            stop()
+            handler(false)
+            return
+        }
+
+        if localMonitor == nil, globalMonitor == nil {
+            localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+                self?.handle(event)
+                return event
+            }
+            globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+                self?.handle(event)
+            }
+        }
+        if modifierTimer == nil {
+            modifierTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+                self?.updateCommandState(NoteWindowClickThrough.isCommandPressed)
+            }
+        }
+        isCommandPressed = !NoteWindowClickThrough.isCommandPressed
+        updateCommandState(NoteWindowClickThrough.isCommandPressed)
+    }
+
+    func stop() {
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+            self.localMonitor = nil
+        }
+        if let globalMonitor {
+            NSEvent.removeMonitor(globalMonitor)
+            self.globalMonitor = nil
+        }
+        modifierTimer?.invalidate()
+        modifierTimer = nil
+        handler = nil
+    }
+
+    deinit {
+        stop()
+    }
+
+    private func handle(_ event: NSEvent) {
+        updateCommandState(event.modifierFlags.contains(.command))
+    }
+
+    private func updateCommandState(_ isCommandPressed: Bool) {
+        guard self.isCommandPressed != isCommandPressed else { return }
+        self.isCommandPressed = isCommandPressed
+        handler?(isCommandPressed)
     }
 }
 

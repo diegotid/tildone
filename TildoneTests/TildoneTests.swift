@@ -66,6 +66,21 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(NoteWindowOpacity.currentAlpha(for: noteID, defaults: defaults), 1)
     }
 
+    func testClickThroughNotesAllowsCommandClickToInteract() {
+        XCTAssertFalse(NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: false,
+            isCommandPressed: false
+        ))
+        XCTAssertTrue(NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: true,
+            isCommandPressed: false
+        ))
+        XCTAssertFalse(NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: true,
+            isCommandPressed: true
+        ))
+    }
+
     func testWheelOpacityUsesPhysicalDirectionRegardlessOfNaturalScrollingPreference() {
         XCTAssertEqual(
             NoteWindowOpacity.wheelDelta(
@@ -950,6 +965,19 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(completedOrder.last?.isCompleted == true)
 
         try await store.setTaskCompletion(
+            first.id,
+            completed: true,
+            moveToEndWhenCompleted: true
+        )
+        let orderedCompletedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(orderedCompletedTasks.map(\.id), [third.id, first.id, second.id])
+
+        try await store.setTaskCompletion(
+            first.id,
+            completed: false,
+            moveToEndWhenCompleted: true
+        )
+        try await store.setTaskCompletion(
             second.id,
             completed: false,
             moveToEndWhenCompleted: true
@@ -957,7 +985,7 @@ final class TildoneTests: XCTestCase {
         let incompleteOrder = try await repository.orderedTasks(in: note.id)
         XCTAssertEqual(
             incompleteOrder.map(\.id),
-            [first.id, third.id, second.id]
+            [first.id, second.id, third.id]
         )
 
         try await store.setTaskCompletion(

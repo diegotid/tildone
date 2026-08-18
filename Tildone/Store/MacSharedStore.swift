@@ -118,13 +118,46 @@ final class MacSharedStore: ObservableObject {
         if completed && moveToEndWhenCompleted {
             CompletedTaskOrderPreference.recordOriginalOrderToken(task.orderToken, for: id)
             let tasks = try await repository.orderedTasks(in: task.noteID)
-            if tasks.last?.id != id {
+            guard let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(for: id) else {
+                throw PersistenceError.domainInvariant
+            }
+            let nextCompletedTask = tasks
+                .compactMap { candidate -> (task: Task, originalOrderToken: OrderToken)? in
+                    guard candidate.id != id,
+                          candidate.isCompleted,
+                          let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(
+                            for: candidate.id
+                          ) else {
+                        return nil
+                    }
+                    return (candidate, originalOrderToken)
+                }
+                .filter { $0.originalOrderToken > originalOrderToken }
+                .min { $0.originalOrderToken < $1.originalOrderToken }?
+                .task
+            if let nextCompletedTask,
+               let nextIndex = tasks.firstIndex(where: { $0.id == nextCompletedTask.id }) {
+                let lower = tasks[..<nextIndex]
+                    .last(where: { $0.id != id })?
+                    .orderToken
+                _ = try await repository.moveTask(
+                    id: id,
+                    to: try OrderToken.between(lower, nextCompletedTask.orderToken)
+                )
+            } else if tasks.last?.id != id {
                 let lower = tasks.last(where: { $0.id != id })?.orderToken
                 _ = try await repository.moveTask(
                     id: id,
                     to: try OrderToken.between(lower, nil)
                 )
             }
+        } else if !completed,
+                  moveToEndWhenCompleted,
+                  let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(for: id) {
+            if originalOrderToken != task.orderToken {
+                _ = try await repository.moveTask(id: id, to: originalOrderToken)
+            }
+            CompletedTaskOrderPreference.removeOriginalOrderToken(for: id)
         }
         try await reload()
         await syncCoordinator?.notifyLocalChanges()

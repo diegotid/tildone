@@ -90,6 +90,12 @@ enum CompletedTaskOrderPreference {
         UserDefaults.standard.set(tokens, forKey: originalOrderTokensStorageKey)
     }
 
+    static func removeOriginalOrderToken(for taskID: TaskID) {
+        var tokens = originalOrderTokens()
+        tokens.removeValue(forKey: taskID.stringValue)
+        UserDefaults.standard.set(tokens, forKey: originalOrderTokensStorageKey)
+    }
+
     static func clearOriginalOrderTokens() {
         UserDefaults.standard.removeObject(forKey: originalOrderTokensStorageKey)
     }

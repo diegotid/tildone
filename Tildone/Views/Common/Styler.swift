@@ -101,6 +101,18 @@ enum NoteWindowOpacity {
     }
 }
 
+enum NoteWindowClickThrough {
+    static let storageKey = "noteWindowsClickThrough"
+
+    static var isCommandPressed: Bool {
+        CGEventSource.flagsState(.combinedSessionState).contains(.maskCommand)
+    }
+
+    static func shouldIgnoreMouseEvents(isEnabled: Bool, isCommandPressed: Bool) -> Bool {
+        isEnabled && !isCommandPressed
+    }
+}
+
 enum Layout {
     static let checkboxSize: CGFloat = 14
     static let checkboxCheckSize: CGFloat = 8

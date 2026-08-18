@@ -47,45 +47,70 @@ struct SettingsForm: View {
     @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey)
     private var moveCheckedTasksToEnd = false
 
+    @AppStorage(NoteWindowClickThrough.storageKey)
+    private var clickThroughNotes = false
+
     var body: some View {
         ScrollView {
             Form {
                 VStack(alignment: .leading) {
                     Section {
-                        VStack(alignment: .leading, spacing: 12) {
-                            VStack(alignment: .leading) {
-                                Launcher.Toggle()
-                                Text("Start Tildone automatically when you log in.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                        HStack(alignment: .top, spacing: 32) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                VStack(alignment: .leading) {
+                                    Launcher.Toggle()
+                                    Text("Start Tildone automatically when you log in.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                VStack(alignment: .leading) {
+                                    Toggle("Show Dock icon", isOn: $showDockIcon)
+                                        .onChange(of: showDockIcon) { _, _ in
+                                            NSApplication.shared.setActivationPolicy(
+                                                showDockIcon ? .regular : .accessory
+                                            )
+                                        }
+                                    Text("Show or hide Tildone in the Dock.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            VStack(alignment: .leading) {
-                                Toggle("Show Dock icon", isOn: $showDockIcon)
-                                    .onChange(of: showDockIcon) { _, _ in
-                                        NSApplication.shared.setActivationPolicy(
-                                            showDockIcon ? .regular : .accessory
-                                        )
+                            Spacer(minLength: 0)
+                            VStack(alignment: .leading, spacing: 12) {
+                                VStack(alignment: .leading) {
+                                    Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
+                                        .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
+                                            NotificationCenter.default.post(
+                                                name: .updateCompletedTaskOrdering,
+                                                object: isEnabled
+                                            )
+                                        }
+                                    Text("Keep unfinished tasks at the top of each list.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                VStack(alignment: .leading) {
+                                    Toggle("Click through notes", isOn: $clickThroughNotes)
+                                    HStack(spacing: 5) {
+                                        Text("When enabled, use")
+                                        Image(systemName: "command")
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.horizontal, 4)
+                                            .padding(.vertical, 2)
+                                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                                        Text("+")
+                                        Text("click to interact")
                                     }
-                                Text("Show or hide Tildone in the Dock.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                }
                             }
-                            VStack(alignment: .leading) {
-                                Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
-                                    .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
-                                        NotificationCenter.default.post(
-                                            name: .updateCompletedTaskOrdering,
-                                            object: isEnabled
-                                        )
-                                    }
-                                Text("Keep unfinished tasks at the top of each list.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            .frame(width: 240, alignment: .leading)
                         }
                     } header: {
                         Text("General")
                             .bold()
+                            .padding(.bottom, 8)
                     }
                     Divider()
                         .padding(.vertical, 16)
@@ -104,6 +129,7 @@ struct SettingsForm: View {
                     } header: {
                         Text("Appearance")
                             .bold()
+                            .padding(.bottom, -4)
                     }
                     Divider()
                         .padding(.vertical, 16)
@@ -121,7 +147,7 @@ struct SettingsForm: View {
             }
             .padding(24)
         }
-        .frame(width: 520, height: 746)
+        .frame(width: 520, height: 712)
     }
 }
 
