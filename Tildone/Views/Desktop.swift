@@ -43,6 +43,8 @@ struct Desktop: View {
     @State private var clickThroughHintWindows: [NoteID: NSPanel] = [:]
     @State private var commandInteractionNoteID: NoteID?
     @State private var isClickThroughCommandPressed = false
+    @State private var isFocusFilterTextBlurred = false
+    @State private var focusFilterAllowsBackgroundNotes = false
     @Binding var foregroundNoteID: NoteID? {
         didSet { cleanUnfocusedNotes() }
     }
@@ -98,6 +100,13 @@ struct Desktop: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+                guard let (isTextBlurred, allowsBackgroundNotes) = notification.object as? (Bool, Bool) else {
+                    return
+                }
+                isFocusFilterTextBlurred = isTextBlurred
+                focusFilterAllowsBackgroundNotes = allowsBackgroundNotes
             }
             .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in handleClose() }
             .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in openSettings() }
@@ -409,7 +418,11 @@ private extension Desktop {
 
 private extension Desktop {
     func noteWindow(for note: MacNoteSnapshot) -> some View {
-        Note(store: store, noteID: note.id)
+        Note(
+            store: store,
+            noteID: note.id,
+            initialFocusBlurred: isFocusFilterTextBlurred
+        )
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 guard let window = event.object as? NSWindow else { return }
                 foregroundWindow = window
@@ -436,6 +449,7 @@ private extension Desktop {
             defer: false
         )
         window.setNoteStyle(noteColor: note.color)
+        window.level = focusFilterAllowsBackgroundNotes ? .normal : .floating
         window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: clickThroughNotes,
             isCommandPressed: isClickThroughCommandPressed

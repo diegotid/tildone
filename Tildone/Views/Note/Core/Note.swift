@@ -90,9 +90,14 @@ struct Note: View {
 
     let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
-    init(store: MacSharedStore, noteID: NoteID) {
+    init(
+        store: MacSharedStore,
+        noteID: NoteID,
+        initialFocusBlurred: Bool = false
+    ) {
         self.store = store
         self.noteID = noteID
+        _isTextBlurred = State(initialValue: initialFocusBlurred)
     }
 
     var body: some View {

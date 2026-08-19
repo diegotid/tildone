@@ -106,7 +106,7 @@ extension Note {
             guard !isEnabled else { return }
             isPointerHovering = noteWindow?.frame.contains(NSEvent.mouseLocation) ?? false
         }
-        .disabled(isTextBlurred && !isClickThroughCommandInteractionActive)
+        .disabled(isContentBlurred)
         .onHover { isPointerHovering = $0 }
     }
 
