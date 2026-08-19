@@ -35,7 +35,8 @@ struct Desktop: View {
     @State private var closedNoteIDs: Set<NoteID> = []
     @State private var foregroundWindow: NSWindow?
     @State private var updateWindow: NSWindow?
-    @State private var opacityScrollMonitor = NoteOpacityScrollMonitor()
+    @State private var noteScrollMonitor = NoteScrollMonitor()
+    @State private var cornerConvergence: NoteCornerConvergence?
     @State private var clickThroughMonitor = NoteClickThroughMonitor()
     @State private var clickThroughHoverMonitor = NoteClickThroughHoverMonitor()
     @State private var hoveredClickThroughNoteID: NoteID?
@@ -77,11 +78,12 @@ struct Desktop: View {
                         forKey: AppAppearance.moveCheckedTasksToEndStorageKey
                     )
                 )
-                installOpacityScrollMonitor()
+                installScrollMonitor()
                 updateClickThroughMonitoring()
                 updateClickThroughHoverMonitoring()
             }
             .onChange(of: store.notes.map(\.id)) { _, _ in
+                cornerConvergence = nil
                 reconcileNoteWindows()
             }
             .onChange(of: noteSyncIndicatorState) { _, state in
@@ -124,13 +126,13 @@ struct Desktop: View {
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMoveNotification)) { event in
-                updateClickThroughHintPosition(for: event)
+                handleNoteWindowMove(event)
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { event in
                 updateClickThroughHintPosition(for: event)
             }
             .onDisappear {
-                opacityScrollMonitor.stop()
+                noteScrollMonitor.stop()
                 clickThroughMonitor.stop()
                 clickThroughHoverMonitor.stop()
                 closeManagedNoteWindows()
@@ -163,9 +165,9 @@ private extension Desktop {
         foregroundNoteID = nil
     }
 
-    func installOpacityScrollMonitor() {
-        opacityScrollMonitor.start { event in
-            handleOpacityScroll(event)
+    func installScrollMonitor() {
+        noteScrollMonitor.start { event in
+            handleScroll(event)
         }
     }
 
@@ -318,6 +320,17 @@ private extension Desktop {
             return
         }
         positionClickThroughHint(hintWindow, over: parent)
+    }
+
+    func handleNoteWindowMove(_ event: Notification) {
+        updateClickThroughHintPosition(for: event)
+        guard NoteWindowManualPosition.shouldRecordDrag(),
+              let window = event.object as? NSWindow,
+              let noteID = noteWindows.first(where: { $0.value === window })?.key else {
+            return
+        }
+        NoteWindowManualPosition.recordDraggedOrigin(window.frame.origin, for: noteID)
+        cornerConvergence = nil
     }
 
     func applyClickThroughPreference(isCommandPressed: Bool = NoteWindowClickThrough.isCommandPressed) {
@@ -474,6 +487,7 @@ private extension Desktop {
             CGPoint(x: $0.x - window.frame.width / 2, y: $0.y - window.frame.height / 2)
         } ?? window.frame.origin
         window.setFrameOrigin(clampedOrigin(for: window, desiredOrigin: desiredOrigin, on: screenForNewWindow(at: position)))
+        NoteWindowManualPosition.ensureStoredOrigin(window.frame.origin, for: note.id)
         noteWindows[note.id] = window
         updateClickThroughHoverAppearance()
         closedNoteIDs.remove(note.id)
@@ -517,6 +531,103 @@ private extension Desktop {
             )
         }
         return true
+    }
+
+    func handleScroll(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        guard modifiers == [.command, .control] else {
+            return handleOpacityScroll(event)
+        }
+        guard let delta = NoteWindowOpacity.wheelDelta(for: event),
+              let hovered = hoveredNoteWindow() else {
+            return false
+        }
+
+        if cornerConvergence == nil {
+            let recoversWheelPosition = delta > 0
+            guard !recoversWheelPosition || noteWindows.keys.contains(where: {
+                NoteWindowManualPosition.isWheelPosition(for: $0)
+            }) else {
+                return true
+            }
+            cornerConvergence = makeCornerConvergence(
+                recoveringStoredManualPositions: recoversWheelPosition
+            )
+        }
+        guard var convergence = cornerConvergence else { return true }
+
+        let frames = convergence.frames(afterWheelDelta: delta)
+        cornerConvergence = convergence
+        for (noteID, frame) in frames {
+            noteWindows[noteID]?.setFrameOrigin(frame.origin)
+            NoteWindowManualPosition.setIsWheelPosition(
+                convergence.progress > 0,
+                for: noteID
+            )
+        }
+        applyCornerConvergenceZOrder(hoveredNoteID: hovered.noteID)
+        return true
+    }
+
+    func makeCornerConvergence(
+        recoveringStoredManualPositions: Bool = false
+    ) -> NoteCornerConvergence? {
+        let candidates = noteWindows.compactMap { noteID, window -> (NoteID, NSWindow, NSScreen)? in
+            guard window.isVisible, window.isOnActiveSpace, let screen = window.screen,
+                  !recoveringStoredManualPositions || NoteWindowManualPosition.isWheelPosition(for: noteID) else {
+                return nil
+            }
+            return (noteID, window, screen)
+        }
+        guard !candidates.isEmpty else { return nil }
+
+        let currentFrames = Dictionary(uniqueKeysWithValues: candidates.map { ($0.0, $0.1.frame) })
+        let startFrames = Dictionary(uniqueKeysWithValues: candidates.map { noteID, window, _ in
+            var frame = window.frame
+            if recoveringStoredManualPositions,
+               let storedOrigin = NoteWindowManualPosition.storedOrigin(for: noteID) {
+                frame.origin = storedOrigin
+            }
+            return (noteID, frame)
+        })
+        let grouped = Dictionary(grouping: candidates, by: { $0.2 })
+        let targetFrames = grouped.reduce(into: [NoteID: NSRect]()) { result, group in
+            let items = group.value.map { noteID, window, _ in
+                NoteCornerConvergence.Item(
+                    noteID: noteID,
+                    startFrame: startFrames[noteID] ?? window.frame,
+                    pendingTaskCount: store.note(noteID)?.pendingTasks.count ?? 0
+                )
+            }
+            result.merge(
+                NoteCornerConvergence.targetFrames(
+                    for: items,
+                    in: group.key.visibleFrame,
+                    corner: selectedArrangementCorner,
+                    margin: CGFloat(selectedArrangementCornerMargin.rawValue)
+                ),
+                uniquingKeysWith: { _, new in new }
+            )
+        }
+        return NoteCornerConvergence(
+            startFrames: startFrames,
+            targetFrames: targetFrames,
+            currentFrames: recoveringStoredManualPositions ? currentFrames : nil
+        )
+    }
+
+    func applyCornerConvergenceZOrder(hoveredNoteID: NoteID) {
+        let items = noteWindows.compactMap { noteID, window -> NoteCornerConvergence.Item? in
+            guard window.isVisible, window.isOnActiveSpace else { return nil }
+            return NoteCornerConvergence.Item(
+                noteID: noteID,
+                startFrame: window.frame,
+                pendingTaskCount: store.note(noteID)?.pendingTasks.count ?? 0
+            )
+        }
+        for item in NoteCornerConvergence.orderedBackToFront(items, hoveredNoteID: hoveredNoteID) {
+            noteWindows[item.noteID]?.orderFront(nil)
+        }
     }
 
     func hoveredNoteWindow(at point: NSPoint = NSEvent.mouseLocation) -> (noteID: NoteID, window: NSWindow)? {
@@ -639,6 +750,10 @@ private extension Desktop {
     }
 
     func arrangeNotes(onlyMinimized: Bool = false) {
+        cornerConvergence = nil
+        for (noteID, window) in noteWindows where !onlyMinimized || window.title.starts(with: "_") {
+            NoteWindowManualPosition.setIsWheelPosition(false, for: noteID)
+        }
         let horizontal = selectedArrangementAlignment == .horizontal
         let inverse = horizontal
             ? [.bottomRight, .topRight].contains(selectedArrangementCorner)
@@ -707,17 +822,17 @@ private extension Desktop {
     }
 }
 
-private final class NoteOpacityScrollMonitor {
+private final class NoteScrollMonitor {
     private var localMonitor: Any?
     private var globalMonitor: Any?
 
-    func start(handler: @escaping (NSEvent) -> Bool) {
+    func start(scrollHandler: @escaping (NSEvent) -> Bool) {
         guard localMonitor == nil, globalMonitor == nil else { return }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-            handler(event) ? nil : event
+            scrollHandler(event) ? nil : event
         }
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .scrollWheel) { event in
-            _ = handler(event)
+            _ = scrollHandler(event)
         }
     }
 

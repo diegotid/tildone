@@ -125,6 +125,8 @@
 		D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000101 /* NoteWindowButtonActionController.swift */; };
 		D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000102 /* WindowAccessorAttachmentView.swift */; };
 		D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000103 /* NSView+NestedSubviews.swift */; };
+		D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000101 /* NoteCornerConvergence.swift */; };
+		D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000102 /* NoteWindowManualPosition.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -279,6 +281,8 @@
 		D70000000000000000000101 /* NoteWindowButtonActionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowButtonActionController.swift; sourceTree = "<group>"; };
 		D70000000000000000000102 /* WindowAccessorAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessorAttachmentView.swift; sourceTree = "<group>"; };
 		D70000000000000000000103 /* NSView+NestedSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSView+NestedSubviews.swift"; sourceTree = "<group>"; };
+		D80000000000000000000101 /* NoteCornerConvergence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCornerConvergence.swift; sourceTree = "<group>"; };
+		D80000000000000000000102 /* NoteWindowManualPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManualPosition.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -749,6 +753,8 @@
 			children = (
 				D70000000000000000000103 /* NSView+NestedSubviews.swift */,
 				D70000000000000000000101 /* NoteWindowButtonActionController.swift */,
+				D80000000000000000000101 /* NoteCornerConvergence.swift */,
+				D80000000000000000000102 /* NoteWindowManualPosition.swift */,
 				D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */,
 				D10000000000000000000104 /* NoteWindowMinimizationState.swift */,
 				D1000000000000000000010E /* ScrollFrame.swift */,
@@ -1092,6 +1098,8 @@
 				D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */,
 				D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */,
 				D10000000000000000000204 /* NoteWindowMinimizationState.swift in Sources */,
+				D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */,
+				D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */,
 				D10000000000000000000205 /* CompletionFadeLifecycle.swift in Sources */,
 				D10000000000000000000206 /* Note+Actions.swift in Sources */,
 				D10000000000000000000207 /* Note+Content.swift in Sources */,

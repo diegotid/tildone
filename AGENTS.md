@@ -303,6 +303,8 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 - `noteColor`: legacy/global fallback used to seed shared per-note color; legacy value `6` has migration meaning. Per-note keys remain migration evidence.
 - `noteBackgroundOpacity`: global background opacity, default 0.6.
 - `noteWindowOpacity.<note-id>`: installation-local whole-window opacity set with Command–wheel; default 1.0.
+- `noteUserDraggedPosition.<note-id>`: installation-local last manually dragged Mac window origin; wheel convergence and arrangement never overwrite it.
+- `noteCornerWheelPosition.<note-id>`: installation-local marker that lets Command–Control–wheel restore a wheel-moved note to its last manual origin after relaunch.
 - `knownAppVersion`: last App Store version for which the local update note was generated.
 - `NSFullScreenMenuItemEverywhere`: set false during desktop setup.
 - `syncTransportState.<account-workspace-uuid>`: `active` or `paused`; missing state preserves the Debug default and malformed state fails safe to paused.
