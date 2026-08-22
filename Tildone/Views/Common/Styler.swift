@@ -149,10 +149,8 @@ extension NSColor {
 extension NSWindow {
     func setNoteStyle(noteColor: NoteColor) {
         self.level = .floating
-        self.makeKeyAndOrderFront(nil)
         self.titlebarAppearsTransparent = true
         self.isReleasedWhenClosed = false
-        self.makeKeyAndOrderFront(nil)
         self.standardWindowButton(.closeButton)?.style()
         self.standardWindowButton(.miniaturizeButton)?.style()
         self.standardWindowButton(.zoomButton)?.style()

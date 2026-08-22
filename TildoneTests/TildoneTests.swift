@@ -247,6 +247,37 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    func testCornerConvergenceZOrderPutsSmallerNotesInFrontOfLargerNotes() {
+        let largeHoveredID = NoteID()
+        let mediumID = NoteID()
+        let smallID = NoteID()
+        let items = [
+            NoteCornerConvergence.Item(
+                noteID: smallID,
+                startFrame: NSRect(x: 0, y: 0, width: 140, height: 120),
+                pendingTaskCount: 20
+            ),
+            NoteCornerConvergence.Item(
+                noteID: largeHoveredID,
+                startFrame: NSRect(x: 0, y: 0, width: 320, height: 260),
+                pendingTaskCount: 0
+            ),
+            NoteCornerConvergence.Item(
+                noteID: mediumID,
+                startFrame: NSRect(x: 0, y: 0, width: 220, height: 180),
+                pendingTaskCount: 10
+            )
+        ]
+
+        XCTAssertEqual(
+            NoteCornerConvergence.orderedBackToFront(
+                items,
+                hoveredNoteID: largeHoveredID
+            ).map(\.noteID),
+            [largeHoveredID, mediumID, smallID]
+        )
+    }
+
     func testCornerConvergenceCanInferCornerProgressAndRecoverStoredStartFrames() throws {
         let noteID = NoteID()
         let startFrame = NSRect(x: 700, y: 500, width: 200, height: 200)
@@ -263,6 +294,45 @@ final class TildoneTests: XCTestCase {
         }
         XCTAssertEqual(convergence.progress, 0, accuracy: 0.0001)
         XCTAssertEqual(try XCTUnwrap(convergence.frames[noteID]), startFrame)
+    }
+
+    func testCornerConvergenceRetargetsToChangedSettingWithoutLosingProgress() throws {
+        let noteID = NoteID()
+        let startFrame = NSRect(x: 400, y: 300, width: 200, height: 200)
+        var convergence = NoteCornerConvergence(
+            startFrames: [noteID: startFrame],
+            targetFrames: [noteID: NSRect(x: 40, y: 40, width: 200, height: 200)]
+        )
+        for _ in 0..<10 {
+            _ = convergence.frames(afterWheelDelta: -0.05)
+        }
+
+        let retargeted = convergence.retargeted(
+            to: [noteID: NSRect(x: 760, y: 560, width: 200, height: 200)]
+        )
+
+        XCTAssertEqual(retargeted.progress, 0.5, accuracy: 0.0001)
+        let frame = try XCTUnwrap(retargeted.frames[noteID])
+        XCTAssertEqual(frame.origin.x, 580, accuracy: 0.0001)
+        XCTAssertEqual(frame.origin.y, 430, accuracy: 0.0001)
+        XCTAssertEqual(retargeted.startFrames[noteID], startFrame)
+    }
+
+    func testCornerScrollSessionKeepsMovingAfterNotesLeavePointerUntilModifiersAreReleased() {
+        let firstNoteID = NoteID()
+        let secondNoteID = NoteID()
+        var session = NoteCornerConvergence.ScrollSession()
+
+        XCTAssertNil(session.noteID(currentlyHovered: nil))
+        XCTAssertEqual(session.noteID(currentlyHovered: firstNoteID), firstNoteID)
+        XCTAssertEqual(session.noteID(currentlyHovered: nil), firstNoteID)
+        XCTAssertEqual(session.noteID(currentlyHovered: secondNoteID), secondNoteID)
+
+        session.update(modifiers: [.command, .control, .shift])
+        XCTAssertEqual(session.noteID(currentlyHovered: nil), secondNoteID)
+
+        session.update(modifiers: [.command])
+        XCTAssertNil(session.noteID(currentlyHovered: nil))
     }
 
     func testManualNotePositionPersistsAndWheelMovementDoesNotReplaceIt() throws {
@@ -289,6 +359,31 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(NoteWindowManualPosition.isWheelPosition(for: noteID, defaults: defaults))
         XCTAssertTrue(NoteWindowManualPosition.shouldRecordDrag(pressedMouseButtons: 1))
         XCTAssertFalse(NoteWindowManualPosition.shouldRecordDrag(pressedMouseButtons: 0))
+    }
+
+    func testConvergedNoteUsesManualDragOriginOnNextLaunch() throws {
+        let suiteName = "NoteWindowLaunchPositionTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        addTeardownBlock { defaults.removePersistentDomain(forName: suiteName) }
+        let noteID = NoteID()
+        let manualOrigin = NSPoint(x: 180, y: 420)
+        let convergedAutosaveOrigin = NSPoint(x: 20, y: 20)
+        NoteWindowManualPosition.recordDraggedOrigin(
+            manualOrigin,
+            for: noteID,
+            defaults: defaults
+        )
+        NoteWindowManualPosition.setIsWheelPosition(true, for: noteID, defaults: defaults)
+
+        let launchOrigin = NoteWindowManualPosition.launchOrigin(
+            restoredOrigin: convergedAutosaveOrigin,
+            for: noteID,
+            defaults: defaults
+        )
+
+        XCTAssertEqual(launchOrigin, manualOrigin)
+        XCTAssertFalse(NoteWindowManualPosition.isWheelPosition(for: noteID, defaults: defaults))
+        XCTAssertEqual(NoteWindowManualPosition.storedOrigin(for: noteID, defaults: defaults), manualOrigin)
     }
 
     @MainActor

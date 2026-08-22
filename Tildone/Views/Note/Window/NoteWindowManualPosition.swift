@@ -63,6 +63,18 @@ enum NoteWindowManualPosition {
         defaults.set(isWheelPosition, forKey: key)
     }
 
+    static func launchOrigin(
+        restoredOrigin: NSPoint,
+        for noteID: NoteID,
+        defaults: UserDefaults = .standard
+    ) -> NSPoint {
+        guard isWheelPosition(for: noteID, defaults: defaults) else {
+            return restoredOrigin
+        }
+        setIsWheelPosition(false, for: noteID, defaults: defaults)
+        return storedOrigin(for: noteID, defaults: defaults) ?? restoredOrigin
+    }
+
     private static func setOrigin(
         _ origin: NSPoint,
         for noteID: NoteID,

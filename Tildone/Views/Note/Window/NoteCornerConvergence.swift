@@ -13,6 +13,24 @@ struct NoteCornerConvergence {
         let pendingTaskCount: Int
     }
 
+    struct ScrollSession {
+        private(set) var hoveredNoteID: NoteID?
+
+        mutating func noteID(currentlyHovered candidate: NoteID?) -> NoteID? {
+            if let candidate {
+                hoveredNoteID = candidate
+            }
+            return hoveredNoteID
+        }
+
+        mutating func update(modifiers: NSEvent.ModifierFlags) {
+            guard modifiers.contains(.command), modifiers.contains(.control) else {
+                hoveredNoteID = nil
+                return
+            }
+        }
+    }
+
     static let separation: CGFloat = 10
 
     let startFrames: [NoteID: NSRect]
@@ -38,6 +56,15 @@ struct NoteCornerConvergence {
     mutating func frames(afterWheelDelta wheelDelta: CGFloat) -> [NoteID: NSRect] {
         progress = min(max(progress - wheelDelta, 0), 1)
         return frames
+    }
+
+    func retargeted(to targetFrames: [NoteID: NSRect]) -> NoteCornerConvergence {
+        var convergence = NoteCornerConvergence(
+            startFrames: startFrames,
+            targetFrames: targetFrames
+        )
+        convergence.progress = progress
+        return convergence
     }
 
     var frames: [NoteID: NSRect] {
@@ -92,6 +119,11 @@ struct NoteCornerConvergence {
 
     static func orderedBackToFront(_ items: [Item], hoveredNoteID: NoteID? = nil) -> [Item] {
         items.sorted { lhs, rhs in
+            let lhsArea = lhs.startFrame.width * lhs.startFrame.height
+            let rhsArea = rhs.startFrame.width * rhs.startFrame.height
+            if lhsArea != rhsArea {
+                return lhsArea > rhsArea
+            }
             if lhs.noteID == hoveredNoteID { return false }
             if rhs.noteID == hoveredNoteID { return true }
             if lhs.pendingTaskCount != rhs.pendingTaskCount {
@@ -128,4 +160,5 @@ struct NoteCornerConvergence {
         guard !progressValues.isEmpty else { return 0 }
         return progressValues.reduce(0, +) / CGFloat(progressValues.count)
     }
+
 }
