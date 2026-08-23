@@ -84,7 +84,7 @@ struct NoteCornerConvergence {
 
     static func targetFrames(
         for items: [Item],
-        in visibleFrame: NSRect,
+        in screenFrame: NSRect,
         corner: ArrangementCorner,
         margin: CGFloat
     ) -> [NoteID: NSRect] {
@@ -94,20 +94,32 @@ struct NoteCornerConvergence {
             let targetsLeft = corner == .bottomLeft || corner == .topLeft
             let targetsBottom = corner == .bottomLeft || corner == .bottomRight
             let candidateX = targetsLeft
-                ? visibleFrame.minX + margin + offset
-                : visibleFrame.maxX - margin - item.startFrame.width - offset
+                ? screenFrame.minX + margin + offset
+                : screenFrame.maxX - margin - item.startFrame.width - offset
             let candidateY = targetsBottom
-                ? visibleFrame.minY + margin + offset
-                : visibleFrame.maxY - margin - item.startFrame.height - offset
+                ? screenFrame.minY + margin + offset
+                : screenFrame.maxY - margin - item.startFrame.height - offset
 
             // A note already closer to the selected corner stays there instead of
             // moving away from it to join the staggered stack.
-            let targetX = targetsLeft
+            let preferredX = targetsLeft
                 ? min(candidateX, item.startFrame.minX)
                 : max(candidateX, item.startFrame.minX)
-            let targetY = targetsBottom
+            let preferredY = targetsBottom
                 ? min(candidateY, item.startFrame.minY)
                 : max(candidateY, item.startFrame.minY)
+            let minimumX = screenFrame.minX
+            let maximumX = max(
+                minimumX,
+                screenFrame.maxX - item.startFrame.width
+            )
+            let minimumY = screenFrame.minY
+            let maximumY = max(
+                minimumY,
+                screenFrame.maxY - item.startFrame.height
+            )
+            let targetX = min(max(preferredX, minimumX), maximumX)
+            let targetY = min(max(preferredY, minimumY), maximumY)
             result[item.noteID] = NSRect(
                 x: targetX,
                 y: targetY,

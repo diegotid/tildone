@@ -231,6 +231,64 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(frontTarget.origin, NSPoint(x: 750, y: 600))
     }
 
+    func testCornerConvergenceKeepsFullNotesInsideThePhysicalScreen() throws {
+        let leftNoteID = NoteID()
+        let leftTargets = NoteCornerConvergence.targetFrames(
+            for: [NoteCornerConvergence.Item(
+                noteID: leftNoteID,
+                startFrame: NSRect(x: -100, y: 300, width: 200, height: 100),
+                pendingTaskCount: 0
+            )],
+            in: NSRect(x: 0, y: 0, width: 1_000, height: 800),
+            corner: .bottomLeft,
+            margin: 40
+        )
+        let leftTarget = try XCTUnwrap(leftTargets[leftNoteID])
+        XCTAssertEqual(leftTarget.minX, 0, accuracy: 0.0001)
+
+        let rightNoteID = NoteID()
+        let rightTargets = NoteCornerConvergence.targetFrames(
+            for: [NoteCornerConvergence.Item(
+                noteID: rightNoteID,
+                startFrame: NSRect(x: 1_100, y: 300, width: 200, height: 100),
+                pendingTaskCount: 0
+            )],
+            in: NSRect(x: 0, y: 0, width: 1_000, height: 800),
+            corner: .bottomRight,
+            margin: 40
+        )
+        let rightTarget = try XCTUnwrap(rightTargets[rightNoteID])
+        XCTAssertEqual(rightTarget.maxX, 1_000, accuracy: 0.0001)
+    }
+
+    func testDesktopPlacementUsesTheDockAndMenuBarSafeArea() {
+        let safeFrame = NSRect(x: -1_400, y: 30, width: 1_360, height: 830)
+        let windowSize = NSSize(width: 200, height: 100)
+
+        XCTAssertEqual(
+            MacDesktopPlacement.origin(
+                for: windowSize,
+                on: safeFrame,
+                corner: .topRight,
+                horizontal: true,
+                position: 40,
+                cornerMargin: 40
+            ),
+            NSPoint(x: -280, y: 720)
+        )
+        XCTAssertEqual(
+            MacDesktopPlacement.origin(
+                for: windowSize,
+                on: safeFrame,
+                corner: .bottomLeft,
+                horizontal: true,
+                position: 40,
+                cornerMargin: 40
+            ),
+            NSPoint(x: -1_360, y: 70)
+        )
+    }
+
     func testCornerConvergenceZOrderKeepsHoveredNoteFrontmost() {
         let mostPendingID = NoteID()
         let middleID = NoteID()

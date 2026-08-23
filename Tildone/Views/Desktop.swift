@@ -24,6 +24,30 @@ enum MacNoteWindowGeometry {
     }
 }
 
+enum MacDesktopPlacement {
+    static func origin(
+        for windowSize: NSSize,
+        on screenFrame: NSRect,
+        corner: ArrangementCorner,
+        horizontal: Bool,
+        position: Int,
+        cornerMargin: Int
+    ) -> NSPoint {
+        let targetsRight = corner == .bottomRight || corner == .topRight
+        let targetsTop = corner == .topLeft || corner == .topRight
+        let offsetX = CGFloat(horizontal ? position : cornerMargin)
+        let offsetY = CGFloat(horizontal ? cornerMargin : position)
+        return NSPoint(
+            x: targetsRight
+                ? screenFrame.maxX - offsetX - windowSize.width
+                : screenFrame.minX + offsetX,
+            y: targetsTop
+                ? screenFrame.maxY - offsetY - windowSize.height
+                : screenFrame.minY + offsetY
+        )
+    }
+}
+
 /// macOS-only window coordinator. It renders repository snapshots but owns no
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
@@ -665,7 +689,7 @@ private extension Desktop {
             result.merge(
                 NoteCornerConvergence.targetFrames(
                     for: items,
-                    in: group.key.visibleFrame,
+                    in: group.key.frame,
                     corner: corner,
                     margin: CGFloat(margin.rawValue)
                 ),
@@ -871,20 +895,19 @@ private extension Desktop {
     }
 
     func positionOnScreen(_ windows: [NSWindow], from: Int = 0) {
-        guard let window = windows.first, let screenFrame = window.screen?.frame else { return }
+        guard let window = windows.first, let safeFrame = window.screen?.visibleFrame else { return }
         let margin = from > 0 ? selectedArrangementSpacing.rawValue : selectedArrangementCornerMargin.rawValue
         let newPosition = from + margin
         let horizontal = selectedArrangementAlignment == .horizontal
-        let inverseX = [.bottomRight, .topRight].contains(selectedArrangementCorner)
-        let inverseY = [.topLeft, .topRight].contains(selectedArrangementCorner)
-        let newX = horizontal ? newPosition : selectedArrangementCornerMargin.rawValue
-        let newY = horizontal ? selectedArrangementCornerMargin.rawValue : newPosition
-        let x = inverseX ? Int(screenFrame.width) - newX - Int(window.frame.width) : newX
-        let y = inverseY ? Int(screenFrame.height) - Frame.menuBarHeight - newY - Int(window.frame.height) : newY
-        let frame = NSRect(
-            x: x + Int(screenFrame.origin.x), y: y + Int(screenFrame.origin.y),
-            width: Int(window.frame.width), height: Int(window.frame.height)
+        let origin = MacDesktopPlacement.origin(
+            for: window.frame.size,
+            on: safeFrame,
+            corner: selectedArrangementCorner,
+            horizontal: horizontal,
+            position: newPosition,
+            cornerMargin: selectedArrangementCornerMargin.rawValue
         )
+        let frame = NSRect(origin: origin, size: window.frame.size)
         DispatchQueue.main.async { withAnimation { window.setFrame(frame, display: false, animate: true) } }
         positionOnScreen(Array(windows.dropFirst()), from: newPosition + Int(horizontal ? window.frame.width : window.frame.height))
     }

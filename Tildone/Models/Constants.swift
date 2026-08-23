@@ -22,7 +22,6 @@ enum Frame {
     static let aboutWindowWidth: CGFloat = 240
     static let aboutWindowHeight: CGFloat = 260
     static let aboutIconSize: CGFloat = 100
-    static let menuBarHeight: Int = 20
 }
 
 enum Keyboard {
