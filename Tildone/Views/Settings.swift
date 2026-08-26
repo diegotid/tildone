@@ -9,9 +9,99 @@ import SwiftUI
 import AppKit
 import TildoneDomain
 
+// MARK: Configurable shortcuts
+
+struct MacAppShortcut: Equatable {
+    static let significantModifiers: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+
+    var key: String?
+    var modifiers: NSEvent.ModifierFlags
+
+    var displayName: String {
+        let modifierNames = [
+            (NSEvent.ModifierFlags.control, "⌃"),
+            (.option, "⌥"),
+            (.shift, "⇧"),
+            (.command, "⌘")
+        ]
+        let prefix = modifierNames.compactMap { modifiers.contains($0.0) ? $0.1 : nil }.joined()
+        return prefix + (key?.uppercased() ?? "")
+    }
+
+    var swiftUIModifiers: EventModifiers {
+        var result: EventModifiers = []
+        if modifiers.contains(.command) { result.insert(.command) }
+        if modifiers.contains(.option) { result.insert(.option) }
+        if modifiers.contains(.control) { result.insert(.control) }
+        if modifiers.contains(.shift) { result.insert(.shift) }
+        return result
+    }
+
+    var keyEquivalent: KeyEquivalent {
+        KeyEquivalent(key?.first ?? Character("a"))
+    }
+
+    func matches(_ eventModifiers: NSEvent.ModifierFlags) -> Bool {
+        eventModifiers.intersection(Self.significantModifiers) == modifiers
+    }
+}
+
+enum AppShortcuts {
+    static let opacityModifiersStorageKey = "noteOpacityWheelShortcutModifiers"
+    static let gatherModifiersStorageKey = "noteGatherWheelShortcutModifiers"
+    static let lineUpKeyStorageKey = "lineUpNotesShortcutKey"
+    static let lineUpModifiersStorageKey = "lineUpNotesShortcutModifiers"
+
+    static let defaultOpacity = MacAppShortcut(key: nil, modifiers: [.command])
+    static let defaultGather = MacAppShortcut(key: nil, modifiers: [.command, .control])
+    static let defaultLineUp = MacAppShortcut(key: "a", modifiers: [.command, .shift])
+
+    static func opacity(from rawValue: Int) -> MacAppShortcut {
+        let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
+            .intersection(MacAppShortcut.significantModifiers)
+            .subtracting(.shift)
+        return modifiers.isEmpty ? defaultOpacity : MacAppShortcut(key: nil, modifiers: modifiers)
+    }
+
+    static func opacityShortcut(
+        _ shortcut: MacAppShortcut,
+        matches eventModifiers: NSEvent.ModifierFlags
+    ) -> Bool {
+        let modifiersWithoutShift = eventModifiers
+            .intersection(MacAppShortcut.significantModifiers)
+            .subtracting(.shift)
+        return modifiersWithoutShift == shortcut.modifiers
+    }
+
+    static func gather(from rawValue: Int) -> MacAppShortcut {
+        let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
+            .intersection(MacAppShortcut.significantModifiers)
+        return modifiers.isEmpty ? defaultGather : MacAppShortcut(key: nil, modifiers: modifiers)
+    }
+
+    static func lineUp(key: String, modifiersRawValue: Int) -> MacAppShortcut {
+        let normalizedKey = key.first.map { String($0).lowercased() } ?? defaultLineUp.key!
+        let modifiers = NSEvent.ModifierFlags(rawValue: UInt(modifiersRawValue))
+            .intersection(MacAppShortcut.significantModifiers)
+        return MacAppShortcut(
+            key: normalizedKey,
+            modifiers: modifiers.isEmpty ? defaultLineUp.modifiers : modifiers
+        )
+    }
+}
+
 // MARK: Settings view
 
+private enum SettingsTab: Hashable {
+    case general
+    case appearance
+    case positioning
+}
+
 struct SettingsForm: View {
+    private static let windowWidth: CGFloat = 600
+
+    @State private var selectedTab: SettingsTab = .general
     
     @AppStorage(FontSize.storageKey)
     private var fontSize = Double(FontSize.small.rawValue)
@@ -50,110 +140,240 @@ struct SettingsForm: View {
     @AppStorage(NoteWindowClickThrough.storageKey)
     private var clickThroughNotes = false
 
+    @AppStorage(AppShortcuts.opacityModifiersStorageKey)
+    private var opacityModifiersRawValue = Int(AppShortcuts.defaultOpacity.modifiers.rawValue)
+
+    @AppStorage(AppShortcuts.gatherModifiersStorageKey)
+    private var gatherModifiersRawValue = Int(AppShortcuts.defaultGather.modifiers.rawValue)
+
+    @AppStorage(AppShortcuts.lineUpKeyStorageKey)
+    private var lineUpKey = AppShortcuts.defaultLineUp.key!
+
+    @AppStorage(AppShortcuts.lineUpModifiersStorageKey)
+    private var lineUpModifiersRawValue = Int(AppShortcuts.defaultLineUp.modifiers.rawValue)
+
     var body: some View {
-        ScrollView {
-            Form {
-                VStack(alignment: .leading) {
-                    Section {
-                        HStack(alignment: .top, spacing: 32) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                VStack(alignment: .leading) {
-                                    Launcher.Toggle()
-                                    Text("Start Tildone automatically when you log in.")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                VStack(alignment: .leading) {
-                                    Toggle("Show Dock icon", isOn: $showDockIcon)
-                                        .onChange(of: showDockIcon) { _, _ in
-                                            NSApplication.shared.setActivationPolicy(
-                                                showDockIcon ? .regular : .accessory
-                                            )
-                                        }
-                                    Text("Show or hide Tildone in the Dock.")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                            VStack(alignment: .leading, spacing: 12) {
-                                VStack(alignment: .leading) {
-                                    Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
-                                        .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
-                                            NotificationCenter.default.post(
-                                                name: .updateCompletedTaskOrdering,
-                                                object: isEnabled
-                                            )
-                                        }
-                                    Text("Keep unfinished tasks at the top of each list.")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                VStack(alignment: .leading) {
-                                    Toggle("Click through notes", isOn: $clickThroughNotes)
-                                    HStack(spacing: 5) {
-                                        Text("When enabled, use")
-                                        Image(systemName: "command")
-                                            .font(.caption.weight(.semibold))
-                                            .padding(.horizontal, 4)
-                                            .padding(.vertical, 2)
-                                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
-                                        Text("+")
-                                        Text("click to interact")
-                                    }
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                }
-                            }
-                            .frame(width: 240, alignment: .leading)
-                        }
-                    } header: {
-                        Text("General")
-                            .bold()
-                            .padding(.bottom, 8)
-                    }
-                    Divider()
-                        .padding(.vertical, 16)
-                    Section {
-                        VStack(alignment: .leading) {
-                            HStack(alignment: .bottom) {
-                                VStack(alignment: .leading) {
-                                    noteColorSettings()
-                                    fontSizeSettings()
-                                    taskWrappingSettings()
-                                }
-                                Spacer()
-                                notePreview()
-                            }
-                        }
-                    } header: {
-                        Text("Appearance")
-                            .bold()
-                            .padding(.bottom, -4)
-                    }
-                    Divider()
-                        .padding(.vertical, 16)
-                    Section {
-                        HStack(alignment: .bottom, spacing: 12) {
-                            desktopAppearanceSettings()
-                            Spacer()
-                            desktopPreview()
-                        }
-                    } header: {
-                        Text("Desktop placement")
-                            .bold()
-                    }
-                }
-            }
-            .padding(24)
+        TabView(selection: $selectedTab) {
+            settingsPane { generalSettings() }
+                .tabItem { Label("General", systemImage: "gearshape") }
+                .tag(SettingsTab.general)
+            settingsPane { appearanceSettings() }
+                .tabItem { Label("Appearance", systemImage: "paintpalette") }
+                .tag(SettingsTab.appearance)
+            settingsPane { positioningSettings() }
+                .tabItem { Label("Positioning", systemImage: "rectangle.3.group") }
+                .tag(SettingsTab.positioning)
         }
-        .frame(width: 520, height: 712)
+        .frame(width: Self.windowWidth, height: preferredWindowHeight)
+        .animation(.easeInOut(duration: 0.18), value: preferredWindowHeight)
+    }
+
+    private var preferredWindowHeight: CGFloat {
+        let paneHeight: CGFloat
+        switch selectedTab {
+        case .general: paneHeight = 250
+        case .appearance: paneHeight = 530
+        case .positioning: paneHeight = 536
+        }
+        return Self.preferredWindowHeight(
+            contentHeight: paneHeight,
+            width: Self.windowWidth
+        )
     }
 }
 
 // MARK: Form components
 
 private extension SettingsForm {
+    @ViewBuilder
+    func settingsPane<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                content()
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    func generalSettings() -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            settingWithHelp("Start Tildone automatically when you log in.") {
+                Launcher.Toggle()
+            }
+            settingWithHelp("Show or hide Tildone in the Dock.") {
+                Toggle("Show Dock icon", isOn: $showDockIcon)
+                    .onChange(of: showDockIcon) { _, _ in
+                        NSApplication.shared.setActivationPolicy(showDockIcon ? .regular : .accessory)
+                    }
+            }
+            settingWithHelp("Keep unfinished tasks at the top of each list.") {
+                Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
+                    .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
+                        NotificationCenter.default.post(
+                            name: .updateCompletedTaskOrdering,
+                            object: isEnabled
+                        )
+                    }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    func appearanceSettings() -> some View {
+        HStack(alignment: .top, spacing: 28) {
+            VStack(alignment: .leading, spacing: 8) {
+                noteColorSettings()
+                fontSizeSettings()
+                taskWrappingSettings()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            staticAppearancePreview()
+        }
+
+        Divider()
+
+        HStack(alignment: .top, spacing: 28) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Note dimming:")
+                    .font(.headline)
+                LabeledContent("Mouse wheel shortcut") {
+                    ShortcutRecorder(
+                        shortcut: opacityShortcutBinding,
+                        kind: .modifiers(disallowsShift: true)
+                    )
+                }
+                Text("Hold this shortcut and scroll over a note to dim or restore its entire window.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Label("Add Shift to apply the dimming change to all notes. Shift cannot be part of the shortcut itself.", systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                settingWithHelp("When enabled, hold ⌘ while clicking to interact with a transparent note.") {
+                    Toggle("Click through notes", isOn: $clickThroughNotes)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            dimmingPreview()
+        }
+    }
+
+    @ViewBuilder
+    func positioningSettings() -> some View {
+        HStack(alignment: .top, spacing: 28) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Line Up:")
+                    .font(.headline)
+                Text("Place notes in an evenly spaced row or column.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LabeledContent("Keyboard shortcut") {
+                    ShortcutRecorder(shortcut: lineUpShortcutBinding, kind: .key)
+                }
+                HStack {
+                    Text("Corner")
+                    Spacer(minLength: 16)
+                    Picker("", selection: $selectedArrangementCorner) {
+                        Text("Bottom left").tag(ArrangementCorner.bottomLeft)
+                        Text("Bottom right").tag(ArrangementCorner.bottomRight)
+                        Text("Top right").tag(ArrangementCorner.topRight)
+                        Text("Top left").tag(ArrangementCorner.topLeft)
+                    }
+                    .labelsHidden()
+                    .frame(width: 120, alignment: .trailing)
+                }
+                .frame(maxWidth: .infinity)
+                HStack {
+                    Text("Margin")
+                    Spacer(minLength: 16)
+                    Picker("", selection: $selectedArrangementCornerMargin) {
+                        Text("Minimum").tag(ArrangementSpacing.minimum)
+                        Text("Medium").tag(ArrangementSpacing.medium)
+                        Text("Maximum").tag(ArrangementSpacing.maximum)
+                    }
+                    .labelsHidden()
+                    .frame(width: 120, alignment: .trailing)
+                }
+                .frame(maxWidth: .infinity)
+                HStack {
+                    Text("Direction")
+                    Spacer(minLength: 16)
+                    Picker("", selection: $selectedArrangementAlignment) {
+                        Text("Horizontal").tag(ArrangementAlignment.horizontal)
+                        Text("Vertical").tag(ArrangementAlignment.vertical)
+                    }
+                    .labelsHidden()
+                    .frame(width: 120, alignment: .trailing)
+                }
+                .frame(maxWidth: .infinity)
+                HStack {
+                    Text("Spacing")
+                    Spacer(minLength: 16)
+                    Picker("", selection: $selectedArrangementSpacing) {
+                        Text("Minimum").tag(ArrangementSpacing.minimum)
+                        Text("Medium").tag(ArrangementSpacing.medium)
+                        Text("Maximum").tag(ArrangementSpacing.maximum)
+                    }
+                    .labelsHidden()
+                    .frame(width: 120, alignment: .trailing)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            LineUpPreview(
+                corner: selectedArrangementCorner,
+                margin: selectedArrangementCornerMargin,
+                alignment: selectedArrangementAlignment,
+                spacing: selectedArrangementSpacing,
+                noteColor: noteColor,
+                backgroundOpacity: noteBackgroundOpacity,
+                shortcut: lineUpShortcutBinding.wrappedValue
+            )
+        }
+
+        Divider()
+
+        HStack(alignment: .top, spacing: 28) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Gather:")
+                    .font(.headline)
+                Text("Hold the shortcut and scroll over a note to gather all notes. Scroll up to restore their positions.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("The corner selected for Line Up is also the Gather destination.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LabeledContent("Mouse wheel shortcut") {
+                    ShortcutRecorder(shortcut: gatherShortcutBinding, kind: .modifiers(disallowsShift: false))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            GatherPreview(
+                corner: selectedArrangementCorner,
+                margin: selectedArrangementCornerMargin,
+                noteColor: noteColor,
+                backgroundOpacity: noteBackgroundOpacity
+            )
+        }
+    }
+
+    @ViewBuilder
+    func settingWithHelp<Content: View>(_ help: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            content()
+            Text(help)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
     
     @ViewBuilder
     func fontSizeSettings() -> some View {
@@ -195,23 +415,14 @@ private extension SettingsForm {
                 noteColorSample(for: option)
             }
         }
-        Text("Background opacity")
+        Text("Note background transparency")
             .foregroundColor(.secondary)
             .padding(.top, 8)
-        Slider(value: $noteBackgroundOpacity, in: 0...1) {
-            Text("Background opacity")
+        Slider(value: noteBackgroundTransparencyBinding, in: 0...1) {
+            Text("Note background transparency")
         }
         .labelsHidden()
         .frame(width: 200)
-    }
-    
-    @ViewBuilder
-    func desktopAppearanceSettings() -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("When menu command used or ⇧⌘A pressed:")
-                .foregroundColor(.secondary)
-            desktopPickers()
-        }
     }
     
     @ViewBuilder
@@ -233,148 +444,591 @@ private extension SettingsForm {
     }
     
     @ViewBuilder
-    func notePreview() -> some View {
-        ZStack {
-            Image("desktop")
-            ZStack {
-                VisualEffectBlurView(material: .hudWindow, blendingMode: .withinWindow)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .allowsHitTesting(false)
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(nsColor: noteColor.nsColor).opacity(noteBackgroundOpacity))
-                    .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 3)
-                VStack(alignment: .leading) {
-                    HStack {
-                        ForEach(0..<3) { index in
-                            Circle()
-                                .frame(width: 15, height: 15)
-                                .foregroundStyle(index == 1 ? Color.yellow : .gray.opacity(0.4))
-                        }
-                    }
-                    .padding(.top, 9)
-                    .padding(.leading, 9)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Sample note")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                        Label("Done task", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                        Label("A longer task that should wrap or truncate based on settings", systemImage: "circle")
-                        Label("Another task", systemImage: "circle")
-                    }
-                    .font(.system(size: CGFloat(fontSize)))
-                    .foregroundStyle(Color(.primaryFontColor))
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 14)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .allowsHitTesting(false)
-                }
-            }
-            .frame(width: Layout.defaultNoteWidth, height: Layout.defaultNoteHeight)
-            .scaleEffect(0.75)
-            .padding(.top, 110)
-        }
-        .frame(width: 240, height: 160)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+    func staticAppearancePreview() -> some View {
+        appearancePreview(windowAlpha: 1, scrollGesture: nil)
     }
-    
+
     @ViewBuilder
-    func desktopPreview() -> some View {
-        ZStack(alignment: SettingsForm.alignment(for: selectedArrangementCorner)) {
-            Image("desktop")
-                .frame(width: 240, height: 160)
-            switch selectedArrangementAlignment {
-            case .horizontal:
-                HStack {
-                    sampleDesktopNotes()
-                }
-                .padding(CGFloat(selectedArrangementCornerMargin.rawValue / 4))
-            case .vertical:
-                VStack {
-                    sampleDesktopNotes()
-                }
-                .padding(CGFloat(selectedArrangementCornerMargin.rawValue / 4))
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-    
-    @ViewBuilder
-    func sampleDesktopNotes() -> some View {
-        ForEach(0..<3) { _ in
-            ZStack {
-                VisualEffectBlurView(material: .hudWindow, blendingMode: .withinWindow)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(nsColor: noteColor.nsColor).opacity(noteBackgroundOpacity))
-                    .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 3)
-            }
-            .frame(width: 24, height: 30)
-            .padding(
-                SettingsForm.edge(
-                    for: selectedArrangementCorner,
-                    withAlignment: selectedArrangementAlignment
-                ),
-                CGFloat(selectedArrangementSpacing.rawValue / 24)
+    func dimmingPreview() -> some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            appearancePreview(
+                windowAlpha: SettingsForm.opacityPreviewValue(at: context.date),
+                scrollGesture: SettingsForm.opacityChevronState(at: context.date)
             )
         }
     }
-    
+
     @ViewBuilder
-    func desktopPickers() -> some View {
-        let pickerWidth: CGFloat = 150
-        VStack(alignment: .leading, spacing: 8) {
-            Picker(selection: $selectedArrangementCorner) {
-                Text("Bottom left")
-                    .tag(ArrangementCorner.bottomLeft)
-                Text("Bottom right")
-                    .tag(ArrangementCorner.bottomRight)
-                Text("Top right")
-                    .tag(ArrangementCorner.topRight)
-                Text("Top left")
-                    .tag(ArrangementCorner.topLeft)
-            } label: {
-                EmptyView()
+    func appearancePreview(windowAlpha: Double, scrollGesture: ScrollChevronState?) -> some View {
+        SettingsPreviewCanvas {
+            SampleSettingsNote(
+                noteColor: noteColor,
+                backgroundOpacity: noteBackgroundOpacity,
+                fontSize: fontSize,
+                taskLineTruncation: taskLineTruncation,
+                showsContent: true
+            )
+            .frame(width: 190, height: 142)
+            .opacity(windowAlpha)
+            if let scrollGesture {
+                ScrollChevronIndicator(state: scrollGesture)
+                    .position(x: ScrollChevronLayout.previewCenterX, y: 80)
             }
-            .labelsHidden()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Picker(selection: $selectedArrangementAlignment) {
-                Text("Horizontal")
-                    .tag(ArrangementAlignment.horizontal)
-                Text("Vertical")
-                    .tag(ArrangementAlignment.vertical)
-            } label: {
-                EmptyView()
-            }
-            .labelsHidden()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Picker(selection: $selectedArrangementCornerMargin) {
-                Text("Minimum margin")
-                    .tag(ArrangementSpacing.minimum)
-                Text("Medium margin")
-                    .tag(ArrangementSpacing.medium)
-                Text("Maximum margin")
-                    .tag(ArrangementSpacing.maximum)
-            } label: {
-                EmptyView()
-            }
-            .labelsHidden()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Picker(selection: $selectedArrangementSpacing) {
-                Text("Minimum spacing")
-                    .tag(ArrangementSpacing.minimum)
-                Text("Medium spacing")
-                    .tag(ArrangementSpacing.medium)
-                Text("Maximum spacing")
-                    .tag(ArrangementSpacing.maximum)
-            } label: {
-                EmptyView()
-            }
-            .labelsHidden()
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: pickerWidth, alignment: .leading)
+    }
+
+    var noteBackgroundTransparencyBinding: Binding<Double> {
+        Binding(
+            get: { SettingsForm.backgroundTransparency(fromOpacity: noteBackgroundOpacity) },
+            set: { noteBackgroundOpacity = SettingsForm.backgroundOpacity(fromTransparency: $0) }
+        )
+    }
+
+    var opacityShortcutBinding: Binding<MacAppShortcut> {
+        Binding(
+            get: { AppShortcuts.opacity(from: opacityModifiersRawValue) },
+            set: { opacityModifiersRawValue = Int($0.modifiers.rawValue) }
+        )
+    }
+
+    var gatherShortcutBinding: Binding<MacAppShortcut> {
+        Binding(
+            get: { AppShortcuts.gather(from: gatherModifiersRawValue) },
+            set: { gatherModifiersRawValue = Int($0.modifiers.rawValue) }
+        )
+    }
+
+    var lineUpShortcutBinding: Binding<MacAppShortcut> {
+        Binding(
+            get: { AppShortcuts.lineUp(key: lineUpKey, modifiersRawValue: lineUpModifiersRawValue) },
+            set: {
+                lineUpKey = $0.key ?? AppShortcuts.defaultLineUp.key!
+                lineUpModifiersRawValue = Int($0.modifiers.rawValue)
+            }
+        )
+    }
+}
+
+private struct SettingsPreviewCanvas<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack {
+            SettingsPreviewBackground()
+            content
+        }
+        .frame(width: 240, height: 160)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct SettingsPreviewBackground: View {
+    var body: some View {
+        Image("desktop")
+            .resizable()
+            .scaledToFill()
+            .frame(width: 240, height: 160)
+            .clipped()
+    }
+}
+
+private struct SampleSettingsNote: View {
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+    let fontSize: Double
+    let taskLineTruncation: TaskLineTruncation
+    let showsContent: Bool
+    var cornerRadius: CGFloat = 10
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            VisualEffectBlurView(material: .hudWindow, blendingMode: .withinWindow)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .allowsHitTesting(false)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color(nsColor: noteColor.nsColor).opacity(backgroundOpacity))
+                .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 3)
+            if showsContent {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 5) {
+                        ForEach(0..<3) { index in
+                            Circle()
+                                .frame(width: 8, height: 8)
+                                .foregroundStyle(index == 1 ? Color.yellow : .gray.opacity(0.4))
+                        }
+                    }
+                    .padding(.top, 8)
+                    .padding(.horizontal, 10)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Weekend plans")
+                            .font(.system(size: CGFloat(fontSize) + 1, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                        sampleTask("Book a table", isDone: true)
+                        sampleTask("Pick up fresh flowers", isDone: false)
+                        sampleTask("Choose a longer scenic route home", isDone: false)
+                    }
+                    .font(.system(size: CGFloat(fontSize)))
+                    .foregroundStyle(
+                        NoteContentForeground.color(
+                            colorScheme: colorScheme,
+                            backgroundOpacity: backgroundOpacity
+                        )
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.top, 7)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func sampleTask(_ title: LocalizedStringKey, isDone: Bool) -> some View {
+        HStack(alignment: .top, spacing: 5) {
+            Checkbox(checked: isDone)
+                .padding(.top, max(0, CGFloat(fontSize) - Layout.checkboxSize) / 2)
+            Text(title)
+                .strikethrough(isDone)
+                .lineLimit(taskLineTruncation == .single ? 1 : 2)
+        }
+    }
+}
+
+struct ScrollChevronState: Equatable {
+    let travelOffset: CGFloat
+    let pointsDown: Bool
+    let directionTransitionOpacity: Double
+}
+
+enum ScrollChevronLayout {
+    static let count = 6
+    static let travelSpan: CGFloat = 60
+    static let indicatorWidth: CGFloat = 24
+    static let previewCenterX: CGFloat = 228
+
+    static func previewCenterX(for corner: ArrangementCorner) -> CGFloat {
+        corner == .bottomRight ? 16 : previewCenterX
+    }
+
+    static func verticalOffset(for index: Int, travelOffset: CGFloat) -> CGFloat {
+        let spacing = travelSpan / CGFloat(count)
+        let centeredIndex = CGFloat(index) - CGFloat(count - 1) / 2
+        let unwrapped = centeredIndex * spacing + travelOffset
+        let halfSpan = travelSpan / 2
+        var wrapped = (unwrapped + halfSpan).truncatingRemainder(dividingBy: travelSpan)
+        if wrapped < 0 {
+            wrapped += travelSpan
+        }
+        return wrapped - halfSpan
+    }
+
+    static func opacity(at verticalOffset: CGFloat) -> Double {
+        let distanceFromCenter = abs(verticalOffset) / (travelSpan / 2)
+        return Double(max(0, 1 - distanceFromCenter))
+    }
+}
+
+private struct ScrollChevronIndicator: View {
+    let state: ScrollChevronState
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<ScrollChevronLayout.count, id: \.self) { index in
+                let verticalOffset = ScrollChevronLayout.verticalOffset(
+                    for: index,
+                    travelOffset: state.travelOffset
+                )
+                Image(systemName: state.pointsDown ? "chevron.down" : "chevron.up")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.8), radius: 2, y: 1)
+                    .offset(y: verticalOffset)
+                    .opacity(ScrollChevronLayout.opacity(at: verticalOffset))
+            }
+        }
+        .frame(
+            width: ScrollChevronLayout.indicatorWidth,
+            height: ScrollChevronLayout.travelSpan
+        )
+        .clipped()
+        .opacity(state.directionTransitionOpacity)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct LineUpPreview: View {
+    let corner: ArrangementCorner
+    let margin: ArrangementSpacing
+    let alignment: ArrangementAlignment
+    let spacing: ArrangementSpacing
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+    let shortcut: MacAppShortcut
+
+    @State private var progress: CGFloat = 0
+    @State private var hasAnimated = false
+
+    private let starts = [
+        CGPoint(x: 42, y: 39),
+        CGPoint(x: 121, y: 88),
+        CGPoint(x: 193, y: 48)
+    ]
+    private let noteSize = CGSize(width: 24, height: 30)
+
+    var body: some View {
+        SettingsPreviewCanvas {
+            ForEach(starts.indices, id: \.self) { index in
+                let target = targetCenter(
+                    for: LineUpPreviewLayout.position(
+                        of: index,
+                        in: starts,
+                        alignment: alignment,
+                        corner: corner
+                    )
+                )
+                SampleSettingsNote(
+                    noteColor: noteColor,
+                    backgroundOpacity: backgroundOpacity,
+                    fontSize: Double(FontSize.small.rawValue),
+                    taskLineTruncation: .single,
+                    showsContent: false,
+                    cornerRadius: 3
+                )
+                .frame(width: noteSize.width, height: noteSize.height)
+                .position(
+                    x: starts[index].x + (target.x - starts[index].x) * progress,
+                    y: starts[index].y + (target.y - starts[index].y) * progress
+                )
+            }
+            VStack {
+                Spacer()
+                HStack {
+                    if corner != .bottomRight {
+                        Spacer()
+                    }
+                    Button(action: replay) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(shortcut.displayName)
+                                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                .tracking(1)
+                        }
+                        .foregroundStyle(.white.opacity(0.94))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .stroke(.white.opacity(0.18), lineWidth: 1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(shortcut.keyEquivalent, modifiers: shortcut.swiftUIModifiers)
+                    .help("Replay Line Up preview")
+                    if corner == .bottomRight {
+                        Spacer()
+                    }
+                }
+            }
+            .padding(8)
+        }
+        .onAppear {
+            guard !hasAnimated else { return }
+            hasAnimated = true
+            replay()
+        }
+    }
+
+    private func replay() {
+        var resetTransaction = Transaction()
+        resetTransaction.disablesAnimations = true
+        withTransaction(resetTransaction) {
+            progress = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            withAnimation(.easeInOut(duration: 1.4)) {
+                progress = 1
+            }
+        }
+    }
+
+    private func targetCenter(for position: Int) -> CGPoint {
+        let previewMargin = CGFloat(margin.rawValue) / 4
+        let previewSpacing = CGFloat(spacing.rawValue) / 8
+        let targetsRight = corner == .bottomRight || corner == .topRight
+        let targetsTop = corner == .topLeft || corner == .topRight
+        let stepX = noteSize.width + previewSpacing
+        let stepY = noteSize.height + previewSpacing
+        switch alignment {
+        case .horizontal:
+            return CGPoint(
+                x: targetsRight
+                    ? 240 - previewMargin - noteSize.width / 2 - CGFloat(position) * stepX
+                    : previewMargin + noteSize.width / 2 + CGFloat(position) * stepX,
+                y: targetsTop
+                    ? previewMargin + noteSize.height / 2
+                    : 160 - previewMargin - noteSize.height / 2
+            )
+        case .vertical:
+            return CGPoint(
+                x: targetsRight
+                    ? 240 - previewMargin - noteSize.width / 2
+                    : previewMargin + noteSize.width / 2,
+                y: targetsTop
+                    ? previewMargin + noteSize.height / 2 + CGFloat(position) * stepY
+                    : 160 - previewMargin - noteSize.height / 2 - CGFloat(position) * stepY
+            )
+        }
+    }
+}
+
+enum LineUpPreviewLayout {
+    static func position(
+        of index: Int,
+        in starts: [CGPoint],
+        alignment: ArrangementAlignment,
+        corner: ArrangementCorner
+    ) -> Int {
+        orderedIndices(in: starts, alignment: alignment, corner: corner)
+            .firstIndex(of: index) ?? index
+    }
+
+    static func orderedIndices(
+        in starts: [CGPoint],
+        alignment: ArrangementAlignment,
+        corner: ArrangementCorner
+    ) -> [Int] {
+        let targetsRight = corner == .bottomRight || corner == .topRight
+        let targetsTop = corner == .topLeft || corner == .topRight
+        return starts.indices.sorted { lhs, rhs in
+            switch alignment {
+            case .horizontal:
+                return targetsRight
+                    ? starts[lhs].x > starts[rhs].x
+                    : starts[lhs].x < starts[rhs].x
+            case .vertical:
+                // AppKit's screen Y-axis points up; this preview's Y-axis points down.
+                return targetsTop
+                    ? starts[lhs].y < starts[rhs].y
+                    : starts[lhs].y > starts[rhs].y
+            }
+        }
+    }
+}
+
+private struct GatherPreview: View {
+    let corner: ArrangementCorner
+    let margin: ArrangementSpacing
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+
+    private let starts = [
+        CGPoint(x: 36, y: 37),
+        CGPoint(x: 119, y: 81),
+        CGPoint(x: 193, y: 47)
+    ]
+    private let sizes = [
+        CGSize(width: 27, height: 35),
+        CGSize(width: 35, height: 45),
+        CGSize(width: 23, height: 31)
+    ]
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            let progress = SettingsForm.gatherPreviewProgress(at: context.date)
+            SettingsPreviewCanvas {
+                ForEach(starts.indices, id: \.self) { index in
+                    let target = targetCenter(for: index)
+                    SampleSettingsNote(
+                        noteColor: noteColor,
+                        backgroundOpacity: backgroundOpacity,
+                        fontSize: Double(FontSize.small.rawValue),
+                        taskLineTruncation: .single,
+                        showsContent: false,
+                        cornerRadius: 4
+                    )
+                    .frame(width: sizes[index].width, height: sizes[index].height)
+                    .position(
+                        x: starts[index].x + (target.x - starts[index].x) * progress,
+                        y: starts[index].y + (target.y - starts[index].y) * progress
+                    )
+                    .zIndex(Double(sizes.count - index))
+                }
+                ScrollChevronIndicator(
+                    state: SettingsForm.gatherChevronState(at: context.date)
+                )
+                .position(
+                    x: ScrollChevronLayout.previewCenterX(for: corner),
+                    y: 80
+                )
+            }
+        }
+    }
+
+    private func targetCenter(for index: Int) -> CGPoint {
+        let previewMargin = CGFloat(margin.rawValue) / 4
+        let stagger = CGFloat(index) * 5
+        let size = sizes[index]
+        let targetsRight = corner == .bottomRight || corner == .topRight
+        let targetsTop = corner == .topLeft || corner == .topRight
+        return CGPoint(
+            x: targetsRight
+                ? 240 - previewMargin - size.width / 2 - stagger
+                : previewMargin + size.width / 2 + stagger,
+            y: targetsTop
+                ? previewMargin + size.height / 2 + stagger
+                : 160 - previewMargin - size.height / 2 - stagger
+        )
+    }
+}
+
+private enum ShortcutRecorderKind: Equatable {
+    case key
+    case modifiers(disallowsShift: Bool)
+}
+
+private struct ShortcutRecorder: View {
+    @Binding var shortcut: MacAppShortcut
+    let kind: ShortcutRecorderKind
+    @State private var isRecording = false
+    @State private var draft = ""
+    @State private var validationMessage: LocalizedStringKey?
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Button {
+                validationMessage = nil
+                draft = ""
+                isRecording = true
+            } label: {
+                Text(isRecording ? (draft.isEmpty ? "Type shortcut" : draft) : shortcut.displayName)
+                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                    .tracking(3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                    .frame(width: 56, height: 20)
+            }
+            .buttonStyle(.bordered)
+            .background {
+                ShortcutCaptureView(
+                    isRecording: $isRecording,
+                    kind: kind,
+                    onDraft: { draft = $0.displayName },
+                    onCommit: commit,
+                    onValidationError: { validationMessage = $0 }
+                )
+                .frame(width: 0, height: 0)
+            }
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func commit(_ newShortcut: MacAppShortcut) {
+        shortcut = newShortcut
+        validationMessage = nil
+        isRecording = false
+    }
+}
+
+private struct ShortcutCaptureView: NSViewRepresentable {
+    @Binding var isRecording: Bool
+    let kind: ShortcutRecorderKind
+    let onDraft: (MacAppShortcut) -> Void
+    let onCommit: (MacAppShortcut) -> Void
+    let onValidationError: (LocalizedStringKey) -> Void
+
+    func makeNSView(context: Context) -> ShortcutCaptureNSView {
+        let view = ShortcutCaptureNSView()
+        configure(view)
+        return view
+    }
+
+    func updateNSView(_ nsView: ShortcutCaptureNSView, context: Context) {
+        configure(nsView)
+        guard isRecording else { return }
+        DispatchQueue.main.async {
+            nsView.window?.makeFirstResponder(nsView)
+        }
+    }
+
+    private func configure(_ view: ShortcutCaptureNSView) {
+        view.isRecording = isRecording
+        view.kind = kind
+        view.onDraft = onDraft
+        view.onCommit = onCommit
+        view.onCancel = { isRecording = false }
+        view.onValidationError = onValidationError
+    }
+}
+
+private final class ShortcutCaptureNSView: NSView {
+    var isRecording = false
+    var kind: ShortcutRecorderKind = .key
+    var onDraft: ((MacAppShortcut) -> Void)?
+    var onCommit: ((MacAppShortcut) -> Void)?
+    var onCancel: (() -> Void)?
+    var onValidationError: ((LocalizedStringKey) -> Void)?
+    private var pendingModifiers: NSEvent.ModifierFlags = []
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        guard isRecording else { return }
+        if event.keyCode == 53 {
+            pendingModifiers = []
+            onCancel?()
+            return
+        }
+        guard kind == .key,
+              let character = event.charactersIgnoringModifiers?.first,
+              !character.isWhitespace else {
+            NSSound.beep()
+            return
+        }
+        let modifiers = event.modifierFlags.intersection(MacAppShortcut.significantModifiers)
+        guard !modifiers.isEmpty else {
+            onValidationError?("Include at least one modifier key.")
+            NSSound.beep()
+            return
+        }
+        onCommit?(MacAppShortcut(key: String(character).lowercased(), modifiers: modifiers))
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        guard isRecording else { return }
+        let modifiers = event.modifierFlags.intersection(MacAppShortcut.significantModifiers)
+        switch kind {
+        case .key:
+            onDraft?(MacAppShortcut(key: nil, modifiers: modifiers))
+        case .modifiers(let disallowsShift):
+            if !modifiers.isEmpty {
+                pendingModifiers = modifiers
+                onDraft?(MacAppShortcut(key: nil, modifiers: modifiers))
+                return
+            }
+            guard !pendingModifiers.isEmpty else { return }
+            defer { pendingModifiers = [] }
+            guard !disallowsShift || !pendingModifiers.contains(.shift) else {
+                onValidationError?("Shift is reserved for all notes.")
+                NSSound.beep()
+                return
+            }
+            onCommit?(MacAppShortcut(key: nil, modifiers: pendingModifiers))
+        }
     }
 }
 
@@ -401,7 +1055,91 @@ private struct VisualEffectBlurView: NSViewRepresentable {
 // MARK: Private functions
 
 extension SettingsForm {
-    
+    static func preferredWindowHeight(
+        contentHeight: CGFloat,
+        width: CGFloat
+    ) -> CGFloat {
+        min(width, contentHeight)
+    }
+
+    static func backgroundTransparency(fromOpacity opacity: Double) -> Double {
+        1 - min(max(opacity, 0), 1)
+    }
+
+    static func backgroundOpacity(fromTransparency transparency: Double) -> Double {
+        1 - min(max(transparency, 0), 1)
+    }
+
+    static func opacityPreviewValue(at date: Date) -> Double {
+        let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 8)
+        return 0.25 + 0.75 * (0.5 + 0.5 * cos(phase * .pi / 4))
+    }
+
+    static func gatherPreviewProgress(at date: Date) -> CGFloat {
+        movementPreviewProgress(at: date)
+    }
+
+    static func opacityChevronState(at date: Date) -> ScrollChevronState {
+        let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 8)
+        let opacity = opacityPreviewValue(at: date)
+        let dimmingProgress = (1 - opacity) / 0.75
+        return ScrollChevronState(
+            travelOffset: CGFloat(dimmingProgress * 60),
+            pointsDown: phase < 4,
+            directionTransitionOpacity: directionTransitionOpacity(
+                phase: phase,
+                period: 8,
+                reversalPoints: [0, 4]
+            )
+        )
+    }
+
+    static func gatherChevronState(at date: Date) -> ScrollChevronState {
+        let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 5)
+        return ScrollChevronState(
+            travelOffset: gatherPreviewProgress(at: date) * 60,
+            pointsDown: phase < 3,
+            directionTransitionOpacity: directionTransitionOpacity(
+                phase: phase,
+                period: 5,
+                reversalPoints: [0, 3]
+            )
+        )
+    }
+
+    private static func directionTransitionOpacity(
+        phase: TimeInterval,
+        period: TimeInterval,
+        reversalPoints: [TimeInterval]
+    ) -> Double {
+        let fadeDuration = 0.35
+        let distanceToReversal = reversalPoints.reduce(period) { currentDistance, point in
+            let directDistance = abs(phase - point)
+            let wrappedDistance = period - directDistance
+            return min(currentDistance, min(directDistance, wrappedDistance))
+        }
+        return min(1, distanceToReversal / fadeDuration)
+    }
+
+    private static func movementPreviewProgress(at date: Date) -> CGFloat {
+        let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 5)
+        let linear: Double
+        switch phase {
+        case ..<0.5:
+            linear = 0
+        case ..<2.0:
+            linear = (phase - 0.5) / 1.5
+        case ..<3.0:
+            linear = 1
+        case ..<4.5:
+            linear = 1 - (phase - 3.0) / 1.5
+        default:
+            linear = 0
+        }
+        let eased = linear * linear * (3 - 2 * linear)
+        return CGFloat(eased)
+    }
+
     static func alignment(for corner: ArrangementCorner) -> Alignment {
         switch corner {
         case .bottomLeft: .bottomLeading

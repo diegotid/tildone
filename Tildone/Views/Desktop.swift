@@ -85,6 +85,10 @@ struct Desktop: View {
     private var selectedArrangementSpacing: ArrangementSpacing = .minimum
     @AppStorage(NoteWindowClickThrough.storageKey)
     private var clickThroughNotes = false
+    @AppStorage(AppShortcuts.opacityModifiersStorageKey)
+    private var opacityModifiersRawValue = Int(AppShortcuts.defaultOpacity.modifiers.rawValue)
+    @AppStorage(AppShortcuts.gatherModifiersStorageKey)
+    private var gatherModifiersRawValue = Int(AppShortcuts.defaultGather.modifiers.rawValue)
 
     private static let appWindowIDs = [Id.aboutWindow, Id.syncStatusWindow, Id.updateWindow]
 
@@ -209,7 +213,10 @@ private extension Desktop {
                 handleScroll(event)
             },
             modifierHandler: { modifiers in
-                cornerScrollSession.update(modifiers: modifiers)
+                cornerScrollSession.update(
+                    modifiers: modifiers,
+                    requiredModifiers: AppShortcuts.gather(from: gatherModifiersRawValue).modifiers
+                )
             }
         )
     }
@@ -579,7 +586,8 @@ private extension Desktop {
 
     func handleOpacityScroll(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
-        guard modifiers == .command || modifiers == [.command, .shift],
+        let shortcut = AppShortcuts.opacity(from: opacityModifiersRawValue)
+        guard AppShortcuts.opacityShortcut(shortcut, matches: modifiers),
               let delta = NoteWindowOpacity.wheelDelta(for: event),
               let hovered = hoveredNoteWindow() else {
             return false
@@ -599,8 +607,14 @@ private extension Desktop {
 
     func handleScroll(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
-        guard modifiers.contains(.command), modifiers.contains(.control) else {
-            cornerScrollSession.update(modifiers: modifiers)
+        let gatherShortcut = AppShortcuts.gather(from: gatherModifiersRawValue)
+        let continuesActiveGather = cornerScrollSession.hoveredNoteID != nil
+            && modifiers.isSuperset(of: gatherShortcut.modifiers)
+        guard gatherShortcut.matches(modifiers) || continuesActiveGather else {
+            cornerScrollSession.update(
+                modifiers: modifiers,
+                requiredModifiers: gatherShortcut.modifiers
+            )
             return handleOpacityScroll(event)
         }
         guard let delta = NoteWindowOpacity.wheelDelta(for: event),

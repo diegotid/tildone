@@ -23,8 +23,12 @@ struct NoteCornerConvergence {
             return hoveredNoteID
         }
 
-        mutating func update(modifiers: NSEvent.ModifierFlags) {
-            guard modifiers.contains(.command), modifiers.contains(.control) else {
+        mutating func update(
+            modifiers: NSEvent.ModifierFlags,
+            requiredModifiers: NSEvent.ModifierFlags = [.command, .control]
+        ) {
+            let significant = modifiers.intersection(MacAppShortcut.significantModifiers)
+            guard significant.isSuperset(of: requiredModifiers) else {
                 hoveredNoteID = nil
                 return
             }

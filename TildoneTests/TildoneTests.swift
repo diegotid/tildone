@@ -12,6 +12,255 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    func testNoteContentForegroundUsesTheSameContrastRuleInNotesAndPreviews() {
+        XCTAssertFalse(
+            NoteContentForeground.usesLightText(
+                colorScheme: .light,
+                backgroundOpacity: 0
+            )
+        )
+        XCTAssertFalse(
+            NoteContentForeground.usesLightText(
+                colorScheme: .dark,
+                backgroundOpacity: 0.5
+            )
+        )
+        XCTAssertTrue(
+            NoteContentForeground.usesLightText(
+                colorScheme: .dark,
+                backgroundOpacity: 0.49
+            )
+        )
+    }
+
+    func testSettingsHeightFollowsContentAndNeverExceedsItsFixedWidth() {
+        let hostingView = NSHostingView(rootView: SettingsForm())
+        XCTAssertEqual(hostingView.fittingSize, CGSize(width: 600, height: 250))
+
+        XCTAssertEqual(
+            SettingsForm.preferredWindowHeight(
+                contentHeight: 40,
+                width: 600
+            ),
+            40
+        )
+        XCTAssertEqual(
+            SettingsForm.preferredWindowHeight(
+                contentHeight: 200,
+                width: 600
+            ),
+            200
+        )
+        XCTAssertEqual(
+            SettingsForm.preferredWindowHeight(
+                contentHeight: 700,
+                width: 600
+            ),
+            600
+        )
+    }
+
+    func testBackgroundTransparencyControllerIsTheInverseOfStoredOpacity() {
+        XCTAssertEqual(SettingsForm.backgroundTransparency(fromOpacity: 0.7), 0.3, accuracy: 0.0001)
+        XCTAssertEqual(SettingsForm.backgroundOpacity(fromTransparency: 0.3), 0.7, accuracy: 0.0001)
+        XCTAssertEqual(SettingsForm.backgroundTransparency(fromOpacity: -1), 1)
+        XCTAssertEqual(SettingsForm.backgroundOpacity(fromTransparency: 2), 0)
+    }
+
+    func testDimmingPreviewUsesSlowEightSecondCycle() {
+        XCTAssertEqual(
+            SettingsForm.opacityPreviewValue(at: Date(timeIntervalSinceReferenceDate: 0)),
+            1,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            SettingsForm.opacityPreviewValue(at: Date(timeIntervalSinceReferenceDate: 4)),
+            0.25,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            SettingsForm.opacityPreviewValue(at: Date(timeIntervalSinceReferenceDate: 8)),
+            1,
+            accuracy: 0.0001
+        )
+    }
+
+    func testScrollChevronsFollowTheDirectionOfEachPreview() {
+        let fullyOpaque = SettingsForm.opacityChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 0)
+        )
+        let fullyDimmed = SettingsForm.opacityChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 4)
+        )
+        let restoringOpacity = SettingsForm.opacityChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 6)
+        )
+
+        XCTAssertEqual(fullyOpaque.travelOffset, 0, accuracy: 0.0001)
+        XCTAssertTrue(fullyOpaque.pointsDown)
+        XCTAssertEqual(fullyOpaque.directionTransitionOpacity, 0, accuracy: 0.0001)
+        XCTAssertEqual(fullyDimmed.travelOffset, 60, accuracy: 0.0001)
+        XCTAssertFalse(fullyDimmed.pointsDown)
+        XCTAssertEqual(fullyDimmed.directionTransitionOpacity, 0, accuracy: 0.0001)
+        XCTAssertEqual(restoringOpacity.travelOffset, 30, accuracy: 0.0001)
+        XCTAssertFalse(restoringOpacity.pointsDown)
+        XCTAssertEqual(restoringOpacity.directionTransitionOpacity, 1, accuracy: 0.0001)
+
+        let converging = SettingsForm.gatherChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 1.25)
+        )
+        let restoringPositions = SettingsForm.gatherChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 3.75)
+        )
+
+        XCTAssertEqual(converging.travelOffset, 30, accuracy: 0.0001)
+        XCTAssertTrue(converging.pointsDown)
+        XCTAssertEqual(converging.directionTransitionOpacity, 1, accuracy: 0.0001)
+        XCTAssertEqual(restoringPositions.travelOffset, 30, accuracy: 0.0001)
+        XCTAssertFalse(restoringPositions.pointsDown)
+        XCTAssertEqual(restoringPositions.directionTransitionOpacity, 1, accuracy: 0.0001)
+    }
+
+    func testScrollChevronsFadeOutAndBackInAroundDirectionChanges() {
+        let beforeOpacityReversal = SettingsForm.opacityChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 3.825)
+        )
+        let atOpacityReversal = SettingsForm.opacityChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 4)
+        )
+        let afterOpacityReversal = SettingsForm.opacityChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 4.175)
+        )
+
+        XCTAssertEqual(beforeOpacityReversal.directionTransitionOpacity, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(atOpacityReversal.directionTransitionOpacity, 0, accuracy: 0.0001)
+        XCTAssertEqual(afterOpacityReversal.directionTransitionOpacity, 0.5, accuracy: 0.0001)
+        XCTAssertTrue(beforeOpacityReversal.pointsDown)
+        XCTAssertFalse(afterOpacityReversal.pointsDown)
+
+        let beforeGatherReversal = SettingsForm.gatherChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 2.825)
+        )
+        let atGatherReversal = SettingsForm.gatherChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 3)
+        )
+        let afterGatherReversal = SettingsForm.gatherChevronState(
+            at: Date(timeIntervalSinceReferenceDate: 3.175)
+        )
+
+        XCTAssertEqual(beforeGatherReversal.directionTransitionOpacity, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(atGatherReversal.directionTransitionOpacity, 0, accuracy: 0.0001)
+        XCTAssertEqual(afterGatherReversal.directionTransitionOpacity, 0.5, accuracy: 0.0001)
+        XCTAssertTrue(beforeGatherReversal.pointsDown)
+        XCTAssertFalse(afterGatherReversal.pointsDown)
+    }
+
+    func testSixScrollChevronsWrapOnlyWhileTransparentAtTheEdges() {
+        XCTAssertEqual(ScrollChevronLayout.count, 6)
+        XCTAssertEqual(
+            240 - ScrollChevronLayout.previewCenterX - ScrollChevronLayout.indicatorWidth / 2,
+            4,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(ScrollChevronLayout.opacity(at: 0), 1, accuracy: 0.0001)
+        XCTAssertEqual(ScrollChevronLayout.opacity(at: 30), 0, accuracy: 0.0001)
+        XCTAssertEqual(ScrollChevronLayout.opacity(at: -30), 0, accuracy: 0.0001)
+
+        let leavingBottom = ScrollChevronLayout.verticalOffset(
+            for: 5,
+            travelOffset: 4.999
+        )
+        let enteringTop = ScrollChevronLayout.verticalOffset(
+            for: 5,
+            travelOffset: 5.001
+        )
+        XCTAssertEqual(leavingBottom, 29.999, accuracy: 0.0001)
+        XCTAssertEqual(enteringTop, -29.999, accuracy: 0.0001)
+        XCTAssertLessThan(ScrollChevronLayout.opacity(at: leavingBottom), 0.0001)
+        XCTAssertLessThan(ScrollChevronLayout.opacity(at: enteringTop), 0.0001)
+    }
+
+    func testLineUpPreviewSortsMockNotesLikeScreenWindowsForEveryCorner() {
+        let starts = [
+            CGPoint(x: 42, y: 39),
+            CGPoint(x: 121, y: 88),
+            CGPoint(x: 193, y: 48),
+        ]
+
+        XCTAssertEqual(
+            LineUpPreviewLayout.orderedIndices(
+                in: starts,
+                alignment: .horizontal,
+                corner: .bottomLeft
+            ),
+            [0, 1, 2]
+        )
+        XCTAssertEqual(
+            LineUpPreviewLayout.orderedIndices(
+                in: starts,
+                alignment: .horizontal,
+                corner: .bottomRight
+            ),
+            [2, 1, 0]
+        )
+        XCTAssertEqual(
+            LineUpPreviewLayout.orderedIndices(
+                in: starts,
+                alignment: .vertical,
+                corner: .bottomLeft
+            ),
+            [1, 2, 0]
+        )
+        XCTAssertEqual(
+            LineUpPreviewLayout.orderedIndices(
+                in: starts,
+                alignment: .vertical,
+                corner: .topLeft
+            ),
+            [0, 2, 1]
+        )
+    }
+
+    func testBottomRightGatherPreviewMovesScrollChevronsToTheLeftEdge() {
+        XCTAssertEqual(
+            ScrollChevronLayout.previewCenterX(for: .bottomRight)
+                - ScrollChevronLayout.indicatorWidth / 2,
+            4,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            240 - ScrollChevronLayout.previewCenterX(for: .topRight)
+                - ScrollChevronLayout.indicatorWidth / 2,
+            4,
+            accuracy: 0.0001
+        )
+    }
+
+    func testOpacityShortcutReservesShiftForAllNotes() {
+        let configured = AppShortcuts.opacity(
+            from: Int(NSEvent.ModifierFlags([.option, .shift]).rawValue)
+        )
+
+        XCTAssertEqual(configured.modifiers, [.option])
+        XCTAssertTrue(AppShortcuts.opacityShortcut(configured, matches: [.option]))
+        XCTAssertTrue(AppShortcuts.opacityShortcut(configured, matches: [.option, .shift]))
+        XCTAssertFalse(AppShortcuts.opacityShortcut(configured, matches: [.option, .control]))
+    }
+
+    func testConfigurableShortcutsPreserveKeyAndModifierChoices() {
+        let gather = AppShortcuts.gather(from: Int(NSEvent.ModifierFlags([.option, .shift]).rawValue))
+        let lineUp = AppShortcuts.lineUp(
+            key: "L",
+            modifiersRawValue: Int(NSEvent.ModifierFlags([.command, .option]).rawValue)
+        )
+
+        XCTAssertTrue(gather.matches([.option, .shift]))
+        XCTAssertFalse(gather.matches([.option]))
+        XCTAssertEqual(lineUp.key, "l")
+        XCTAssertEqual(lineUp.modifiers, [.command, .option])
+        XCTAssertEqual(lineUp.displayName, "⌥⌘L")
+    }
+
     func testNoteWindowBackgroundStaysAtConfiguredOpacityUntilWindowCrossesIt() {
         XCTAssertEqual(
             NoteWindowBackground.tintAlpha(configuredAlpha: 0.6, windowAlpha: 1),
@@ -390,6 +639,17 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(session.noteID(currentlyHovered: nil), secondNoteID)
 
         session.update(modifiers: [.command])
+        XCTAssertNil(session.noteID(currentlyHovered: nil))
+    }
+
+    func testCornerScrollSessionUsesTheConfiguredModifiers() {
+        let noteID = NoteID()
+        var session = NoteCornerConvergence.ScrollSession()
+
+        XCTAssertEqual(session.noteID(currentlyHovered: noteID), noteID)
+        session.update(modifiers: [.option, .shift], requiredModifiers: [.option])
+        XCTAssertEqual(session.noteID(currentlyHovered: nil), noteID)
+        session.update(modifiers: [.shift], requiredModifiers: [.option])
         XCTAssertNil(session.noteID(currentlyHovered: nil))
     }
 

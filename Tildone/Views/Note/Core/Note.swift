@@ -22,11 +22,19 @@ struct Note: View {
     var note: MacNoteSnapshot? { store.note(noteID) }
     var tasks: [TildoneDomain.Task] { note?.tasks ?? [] }
     var pendingTasks: [TildoneDomain.Task] { tasks.filter { !$0.isCompleted } }
-    var isDark: Bool { colorScheme == .dark && noteBackgroundOpacity < 0.5 }
+    var isDark: Bool {
+        NoteContentForeground.usesLightText(
+            colorScheme: colorScheme,
+            backgroundOpacity: noteBackgroundOpacity
+        )
+    }
     var noteColor: NoteColor { note?.color ?? .yellow }
     var color: NSColor { noteColor.nsColor }
     var noteForeground: Color {
-        isDark ? Color(.primaryFontWhite) : .black
+        NoteContentForeground.color(
+            colorScheme: colorScheme,
+            backgroundOpacity: noteBackgroundOpacity
+        )
     }
     var isInsertedNewTaskFocused: Bool {
         guard let focusedTaskID = activeFocusedTaskID else { return false }
