@@ -521,14 +521,14 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(rightTarget.maxX, 1_000, accuracy: 0.0001)
     }
 
-    func testDesktopPlacementUsesTheDockAndMenuBarSafeArea() {
-        let safeFrame = NSRect(x: -1_400, y: 30, width: 1_360, height: 830)
+    func testDesktopPlacementUsesThePhysicalScreenEdges() {
+        let screenFrame = NSRect(x: -1_400, y: 0, width: 1_360, height: 860)
         let windowSize = NSSize(width: 200, height: 100)
 
         XCTAssertEqual(
             MacDesktopPlacement.origin(
                 for: windowSize,
-                on: safeFrame,
+                on: screenFrame,
                 corner: .topRight,
                 horizontal: true,
                 position: 40,
@@ -539,13 +539,13 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(
             MacDesktopPlacement.origin(
                 for: windowSize,
-                on: safeFrame,
+                on: screenFrame,
                 corner: .bottomLeft,
                 horizontal: true,
                 position: 40,
                 cornerMargin: 40
             ),
-            NSPoint(x: -1_360, y: 70)
+            NSPoint(x: -1_360, y: 40)
         )
     }
 

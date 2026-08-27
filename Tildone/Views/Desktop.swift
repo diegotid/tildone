@@ -909,13 +909,13 @@ private extension Desktop {
     }
 
     func positionOnScreen(_ windows: [NSWindow], from: Int = 0) {
-        guard let window = windows.first, let safeFrame = window.screen?.visibleFrame else { return }
+        guard let window = windows.first, let screenFrame = window.screen?.frame else { return }
         let margin = from > 0 ? selectedArrangementSpacing.rawValue : selectedArrangementCornerMargin.rawValue
         let newPosition = from + margin
         let horizontal = selectedArrangementAlignment == .horizontal
         let origin = MacDesktopPlacement.origin(
             for: window.frame.size,
-            on: safeFrame,
+            on: screenFrame,
             corner: selectedArrangementCorner,
             horizontal: horizontal,
             position: newPosition,
