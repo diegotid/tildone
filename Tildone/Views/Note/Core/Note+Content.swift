@@ -263,6 +263,7 @@ extension Note {
             onPaste: { paste(into: task) },
             onMoveUp: { handleMoveUp(from: task.id) },
             onSubmit: { handleMoveDown(from: task.id) },
+            onInsertAbove: { insertEmptyTask(at: index) },
             onDrop: { payload, destination in
                 handleTaskDrop(payload, at: destination)
             },

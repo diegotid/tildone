@@ -1666,6 +1666,9 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(source.contains(".stroke(Color.accentColor"))
         XCTAssertTrue(source.contains(".dropDestination(for: MacTaskDragPayload.self)"))
         XCTAssertTrue(source.contains(".accessibilityLabel(\"Reorder task\")"))
+        XCTAssertTrue(source.contains("onInsertAbove"))
+        XCTAssertTrue(source.contains("Image(systemName: \"plus\")"))
+        XCTAssertTrue(source.contains("Insert task above"))
     }
 
     /// Opt-in smoke test hosted by the signed development Mac app so the test

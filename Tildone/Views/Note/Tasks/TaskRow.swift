@@ -24,6 +24,8 @@ struct TaskRow: View {
     let onNativeFocus: () -> Void
     @State private var rowHeight: CGFloat = 0
     @State private var dropPlacement: TaskRowDropPlacement?
+    @State private var isHoveringReorderControls = false
+    @State private var reorderControlsHideWorkItem: DispatchWorkItem?
     let onToggle: () -> Void
     let onEdit: (String) -> Void
     let onEnter: () -> Void
@@ -31,6 +33,7 @@ struct TaskRow: View {
     let onPaste: () -> Void
     let onMoveUp: () -> Void
     let onSubmit: () -> Void
+    let onInsertAbove: () -> Void
     let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
 
@@ -109,16 +112,39 @@ struct TaskRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            TaskReorderHandle(
-                payload: dragPayload,
-                taskText: task.text,
-                isCompleted: task.isCompleted,
-                fontSize: fontSize,
-                isDark: isDark
-            )
+            HStack(spacing: 2) {
+                Button(action: onInsertAbove) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(
+                    (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
+                )
+                .contentShape(Rectangle())
+                .opacity(isHoveringReorderControls ? 1 : 0)
+                .allowsHitTesting(isHoveringReorderControls)
+                .help("Insert task above")
+                .accessibilityLabel("Insert task above")
+
+                TaskReorderHandle(
+                    payload: dragPayload,
+                    taskText: task.text,
+                    isCompleted: task.isCompleted,
+                    fontSize: fontSize,
+                    isDark: isDark
+                )
+            }
+            .onHover {
+                if $0 { updateReorderControlsHover(true) }
+            }
             .padding(.trailing, 8)
         }
         .padding(.leading, 2)
+        .onHover {
+            if !$0 { updateReorderControlsHover(false) }
+        }
         .if(isFirst) { $0.onHover { onHover($0) } }
         .background {
             GeometryReader { geometry in
@@ -151,5 +177,19 @@ struct TaskRow: View {
                 onDrop: onDrop
             )
         )
+    }
+
+    private func updateReorderControlsHover(_ isHovering: Bool) {
+        reorderControlsHideWorkItem?.cancel()
+        guard !isHovering else {
+            isHoveringReorderControls = true
+            return
+        }
+
+        let workItem = DispatchWorkItem {
+            isHoveringReorderControls = false
+        }
+        reorderControlsHideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
     }
 }

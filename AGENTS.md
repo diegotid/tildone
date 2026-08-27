@@ -6,6 +6,8 @@ This file guides AI-assisted work on the Tildone macOS app, iPhone companion, sh
 
 Before changing code, inspect the working tree. This repository may contain in-progress Xcode or asset changes; preserve unrelated work. When asked to commit, commit all uncommitted changes separately, with one well-named commit per feature or user request.
 
+Every chat/task that adds or changes user-visible text must complete its localization before handoff: update `Tildone/Localizable.xcstrings` with the English source and translated Spanish, French, and Simplified Chinese entries. Do this even when Xcode has automatically extracted the English key, and include tooltips, accessibility labels, menus, alerts, placeholders, and other UI copy.
+
 ## Shared persistence invariants
 
 - Never enable automatic SwiftData CloudKit mirroring for the shared store; every `ModelConfiguration` must explicitly use `cloudKitDatabase: .none`.
