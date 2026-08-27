@@ -175,9 +175,9 @@ struct SettingsForm: View {
     private var preferredWindowHeight: CGFloat {
         let paneHeight: CGFloat
         switch selectedTab {
-        case .general: paneHeight = 250
-        case .appearance: paneHeight = 530
-        case .positioning: paneHeight = 536
+        case .general: paneHeight = 188
+        case .appearance: paneHeight = 504
+        case .positioning: paneHeight = 474
         }
         return Self.preferredWindowHeight(
             contentHeight: paneHeight,
@@ -275,14 +275,15 @@ private extension SettingsForm {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Line Up:")
                     .font(.headline)
-                Text("Place notes in an evenly spaced row or column.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 LabeledContent("Keyboard shortcut") {
                     ShortcutRecorder(shortcut: lineUpShortcutBinding, kind: .key)
                 }
+                Text("Place notes in an evenly spaced row or column.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 HStack {
                     Text("Corner")
+                        .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
                     Picker("", selection: $selectedArrangementCorner) {
                         Text("Bottom left").tag(ArrangementCorner.bottomLeft)
@@ -291,11 +292,10 @@ private extension SettingsForm {
                         Text("Top left").tag(ArrangementCorner.topLeft)
                     }
                     .labelsHidden()
-                    .frame(width: 120, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity)
                 HStack {
                     Text("Margin")
+                        .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
                     Picker("", selection: $selectedArrangementCornerMargin) {
                         Text("Minimum").tag(ArrangementSpacing.minimum)
@@ -303,22 +303,20 @@ private extension SettingsForm {
                         Text("Maximum").tag(ArrangementSpacing.maximum)
                     }
                     .labelsHidden()
-                    .frame(width: 120, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity)
                 HStack {
                     Text("Direction")
+                        .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
                     Picker("", selection: $selectedArrangementAlignment) {
                         Text("Horizontal").tag(ArrangementAlignment.horizontal)
                         Text("Vertical").tag(ArrangementAlignment.vertical)
                     }
                     .labelsHidden()
-                    .frame(width: 120, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity)
                 HStack {
                     Text("Spacing")
+                        .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
                     Picker("", selection: $selectedArrangementSpacing) {
                         Text("Minimum").tag(ArrangementSpacing.minimum)
@@ -326,11 +324,8 @@ private extension SettingsForm {
                         Text("Maximum").tag(ArrangementSpacing.maximum)
                     }
                     .labelsHidden()
-                    .frame(width: 120, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             LineUpPreview(
                 corner: selectedArrangementCorner,
                 margin: selectedArrangementCornerMargin,
