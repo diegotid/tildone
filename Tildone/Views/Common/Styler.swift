@@ -122,6 +122,11 @@ enum NoteWindowOpacity {
 enum NoteWindowClickThrough {
     static let storageKey = "noteWindowsClickThrough"
     static let visualTransitionDuration: TimeInterval = 0.18
+    static let minimumBackgroundTransparency = 0.7
+
+    static func isAvailable(backgroundTransparency: Double) -> Bool {
+        backgroundTransparency >= minimumBackgroundTransparency
+    }
 
     static var isCommandPressed: Bool {
         let combined = CGEventSource.flagsState(.combinedSessionState)

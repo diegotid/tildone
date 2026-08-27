@@ -166,6 +166,10 @@ struct SettingsForm: View {
         }
         .frame(width: Self.windowWidth, height: preferredWindowHeight)
         .animation(.easeInOut(duration: 0.18), value: preferredWindowHeight)
+        .onAppear(perform: enforceClickThroughAvailability)
+        .onChange(of: noteBackgroundOpacity) { _, _ in
+            enforceClickThroughAvailability()
+        }
     }
 
     private var preferredWindowHeight: CGFloat {
@@ -234,7 +238,11 @@ private extension SettingsForm {
                 taskWrappingSettings()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            staticAppearancePreview()
+            VStack(alignment: .leading, spacing: 24) {
+                staticAppearancePreview()
+                    .padding(.top, 12)
+                clickThroughSetting()
+            }
         }
 
         Divider()
@@ -255,9 +263,6 @@ private extension SettingsForm {
                 Label("Add Shift to apply the dimming change to all notes. Shift cannot be part of the shortcut itself.", systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                settingWithHelp("When enabled, hold ⌘ while clicking to interact with a transparent note.") {
-                    Toggle("Click through notes", isOn: $clickThroughNotes)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             dimmingPreview()
@@ -422,7 +427,35 @@ private extension SettingsForm {
             Text("Note background transparency")
         }
         .labelsHidden()
-        .frame(width: 200)
+        .frame(width: TransparencySliderLayout.width)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(.secondary.opacity(0.65))
+                .frame(width: 1, height: 8)
+                .offset(x: TransparencySliderLayout.thresholdMarkX - 0.5)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    func clickThroughSetting() -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle("Click through notes", isOn: $clickThroughNotes)
+                .disabled(!isClickThroughAvailable)
+            Group {
+                if isClickThroughAvailable {
+                    Text("When enabled, hold ⌘ while clicking to interact with a transparent note.")
+                } else {
+                    Text("Requires at least 70% note background transparency.")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(width: 240, alignment: .leading)
     }
     
     @ViewBuilder
@@ -480,8 +513,38 @@ private extension SettingsForm {
     var noteBackgroundTransparencyBinding: Binding<Double> {
         Binding(
             get: { SettingsForm.backgroundTransparency(fromOpacity: noteBackgroundOpacity) },
-            set: { noteBackgroundOpacity = SettingsForm.backgroundOpacity(fromTransparency: $0) }
+            set: { newTransparency in
+                let previousTransparency = SettingsForm.backgroundTransparency(
+                    fromOpacity: noteBackgroundOpacity
+                )
+                if SettingsForm.crossesClickThroughThreshold(
+                    from: previousTransparency,
+                    to: newTransparency
+                ) {
+                    NSHapticFeedbackManager.defaultPerformer.perform(
+                        .alignment,
+                        performanceTime: .now
+                    )
+                }
+                noteBackgroundOpacity = SettingsForm.backgroundOpacity(
+                    fromTransparency: newTransparency
+                )
+            }
         )
+    }
+
+    var isClickThroughAvailable: Bool {
+        NoteWindowClickThrough.isAvailable(
+            backgroundTransparency: SettingsForm.backgroundTransparency(
+                fromOpacity: noteBackgroundOpacity
+            )
+        )
+    }
+
+    func enforceClickThroughAvailability() {
+        if !isClickThroughAvailable {
+            clickThroughNotes = false
+        }
     }
 
     var opacityShortcutBinding: Binding<MacAppShortcut> {
@@ -524,6 +587,13 @@ private struct SettingsPreviewCanvas<Content: View>: View {
         .frame(width: 240, height: 160)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
+}
+
+enum TransparencySliderLayout {
+    static let width: CGFloat = 200
+    private static let thumbInset: CGFloat = 8
+    static let thresholdMarkX = thumbInset
+        + (width - 2 * thumbInset) * NoteWindowClickThrough.minimumBackgroundTransparency
 }
 
 private struct SettingsPreviewBackground: View {
@@ -1068,6 +1138,12 @@ extension SettingsForm {
 
     static func backgroundOpacity(fromTransparency transparency: Double) -> Double {
         1 - min(max(transparency, 0), 1)
+    }
+
+    static func crossesClickThroughThreshold(from oldValue: Double, to newValue: Double) -> Bool {
+        let threshold = NoteWindowClickThrough.minimumBackgroundTransparency
+        return (oldValue < threshold && newValue >= threshold)
+            || (oldValue >= threshold && newValue < threshold)
     }
 
     static func opacityPreviewValue(at date: Date) -> Double {

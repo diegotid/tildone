@@ -330,6 +330,17 @@ final class TildoneTests: XCTestCase {
         ))
     }
 
+    func testClickThroughRequiresSeventyPercentBackgroundTransparency() {
+        XCTAssertFalse(NoteWindowClickThrough.isAvailable(backgroundTransparency: 0.6999))
+        XCTAssertTrue(NoteWindowClickThrough.isAvailable(backgroundTransparency: 0.7))
+        XCTAssertTrue(NoteWindowClickThrough.isAvailable(backgroundTransparency: 1))
+
+        XCTAssertTrue(SettingsForm.crossesClickThroughThreshold(from: 0.69, to: 0.7))
+        XCTAssertTrue(SettingsForm.crossesClickThroughThreshold(from: 0.7, to: 0.69))
+        XCTAssertFalse(SettingsForm.crossesClickThroughThreshold(from: 0.7, to: 0.8))
+        XCTAssertFalse(SettingsForm.crossesClickThroughThreshold(from: 0.5, to: 0.6))
+    }
+
     func testClickThroughHoverHalvesWindowOpacity() {
         XCTAssertEqual(
             NoteWindowClickThrough.hoverAlpha(for: 0.8, isHovered: true),
