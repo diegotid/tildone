@@ -19,7 +19,7 @@ struct MacNoteResolutionOptionButtonStyle: ButtonStyle {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                    .stroke(Color(nsColor: .separatorColor))
             }
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }

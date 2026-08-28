@@ -10,16 +10,22 @@ struct SubtaskProgressGauge: View {
 
     var body: some View {
         ZStack {
-            Circle()
-                .stroke(Color(.checkboxBorder), lineWidth: 1)
-            Circle()
-                .trim(from: 0, to: progress.fraction)
-                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            if progress.completedCount == progress.totalCount {
+            if progress.fraction < 1 {
                 Circle()
-                    .fill(Color.accentColor)
-                    .frame(width: Layout.checkboxCheckSize, height: Layout.checkboxCheckSize)
+                    .fill(Color(.checkboxOffFill))
+                    .frame(width: Layout.checkboxSize, height: Layout.checkboxSize, alignment: .center)
+                Circle()
+                    .stroke(Color(.checkboxBorder))
+            }
+            PizzaSlice(startAngle: .degrees(0), endAngle: .degrees(progress.fraction * 360))
+                .fill(Color.accentColor)
+                .frame(width: Layout.checkboxSize, height: Layout.checkboxSize, alignment: .center)
+                .rotationEffect(.degrees(-90))
+            if progress.fraction == 1 {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.white)
+                    .bold()
             }
         }
         .frame(width: Layout.checkboxSize, height: Layout.checkboxSize)

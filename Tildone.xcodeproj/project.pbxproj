@@ -39,12 +39,6 @@
 		C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */; };
 		C1000000000000000000000F /* TaskCheckbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001F /* TaskCheckbox.swift */; };
 		C10000000000000000000040 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000041 /* Localizable.xcstrings */; };
-		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
-		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
-		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
-		F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F15A835D2F5200B600231A3F /* TildoneIcon.icon */; };
-		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
-		F16670492AF711EC000B76A5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670482AF711EC000B76A5 /* Note.swift */; };
 		D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000101 /* MacTaskDragPayload.swift */; };
 		D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000102 /* MacNoteTitlebarLayout.swift */; };
 		D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */; };
@@ -60,8 +54,6 @@
 		D1000000000000000000020D /* NoteColorPickerTitlebarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010D /* NoteColorPickerTitlebarControl.swift */; };
 		D1000000000000000000020E /* ScrollFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010E /* ScrollFrame.swift */; };
 		D1000000000000000000020F /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010F /* TaskRow.swift */; };
-		D90000000000000000000001 /* TaskHierarchy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000011 /* TaskHierarchy.swift */; };
-		D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000012 /* SubtaskProgressGauge.swift */; };
 		D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000110 /* MouseSafeTaskTextField.swift */; };
 		D20000000000000000000201 /* FocusFilterHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000101 /* FocusFilterHelp.swift */; };
 		D20000000000000000000202 /* MacSyncPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000102 /* MacSyncPresentation.swift */; };
@@ -102,6 +94,20 @@
 		D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */; };
 		D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000103 /* CoordinatorWindowVisibility.swift */; };
 		D50000000000000000000204 /* MacSyncContentSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000104 /* MacSyncContentSnapshot.swift */; };
+		D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000101 /* NoteWindowButtonActionController.swift */; };
+		D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000102 /* WindowAccessorAttachmentView.swift */; };
+		D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000103 /* NSView+NestedSubviews.swift */; };
+		D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000101 /* NoteCornerConvergence.swift */; };
+		D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000102 /* NoteWindowManualPosition.swift */; };
+		D90000000000000000000001 /* TaskHierarchy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000011 /* TaskHierarchy.swift */; };
+		D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000012 /* SubtaskProgressGauge.swift */; };
+		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
+		F12F7B3930424E3900553CAC /* PizzaSlice.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12F7B3830424DB700553CAC /* PizzaSlice.swift */; };
+		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
+		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
+		F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F15A835D2F5200B600231A3F /* TildoneIcon.icon */; };
+		F16670472AF711EC000B76A5 /* TildoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670462AF711EC000B76A5 /* TildoneApp.swift */; };
+		F16670492AF711EC000B76A5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16670482AF711EC000B76A5 /* Note.swift */; };
 		F166704B2AF711EC000B76A5 /* Todo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166704A2AF711EC000B76A5 /* Todo.swift */; };
 		F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F166704C2AF711ED000B76A5 /* Assets.xcassets */; };
 		F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */; };
@@ -124,11 +130,6 @@
 		F1D3001D2B51F3E100654241 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3001C2B51F3E100654241 /* UpdateChecker.swift */; };
 		F1D300212B52061400654241 /* About.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D300202B52061400654241 /* About.swift */; };
 		F1EA81F82AFEA80C00E58A73 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */; };
-		D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000101 /* NoteWindowButtonActionController.swift */; };
-		D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000102 /* WindowAccessorAttachmentView.swift */; };
-		D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000103 /* NSView+NestedSubviews.swift */; };
-		D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000101 /* NoteCornerConvergence.swift */; };
-		D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000102 /* NoteWindowManualPosition.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -194,13 +195,6 @@
 		C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteTaskSummary+Accessibility.swift"; sourceTree = "<group>"; };
 		C1000000000000000000001F /* TaskCheckbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckbox.swift; sourceTree = "<group>"; };
 		C10000000000000000000041 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
-		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		F15A835D2F5200B600231A3F /* TildoneIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = TildoneIcon.icon; sourceTree = "<group>"; };
-		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F16670462AF711EC000B76A5 /* TildoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneApp.swift; sourceTree = "<group>"; };
-		F16670482AF711EC000B76A5 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		D10000000000000000000101 /* MacTaskDragPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTaskDragPayload.swift; sourceTree = "<group>"; };
 		D10000000000000000000102 /* MacNoteTitlebarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteTitlebarLayout.swift; sourceTree = "<group>"; };
 		D10000000000000000000103 /* NoteWindowFrameAutosavePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowFrameAutosavePolicy.swift; sourceTree = "<group>"; };
@@ -217,8 +211,6 @@
 		D1000000000000000000010E /* ScrollFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollFrame.swift; sourceTree = "<group>"; };
 		D1000000000000000000010F /* TaskRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRow.swift; sourceTree = "<group>"; };
 		D10000000000000000000110 /* MouseSafeTaskTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskTextField.swift; sourceTree = "<group>"; };
-		D90000000000000000000011 /* TaskHierarchy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHierarchy.swift; sourceTree = "<group>"; };
-		D90000000000000000000012 /* SubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskProgressGauge.swift; sourceTree = "<group>"; };
 		D20000000000000000000101 /* FocusFilterHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilterHelp.swift; sourceTree = "<group>"; };
 		D20000000000000000000102 /* MacSyncPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncPresentation.swift; sourceTree = "<group>"; };
 		D20000000000000000000103 /* MacSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncStatusView.swift; sourceTree = "<group>"; };
@@ -258,6 +250,21 @@
 		D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionOptionButtonStyle.swift; sourceTree = "<group>"; };
 		D50000000000000000000103 /* CoordinatorWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinatorWindowVisibility.swift; sourceTree = "<group>"; };
 		D50000000000000000000104 /* MacSyncContentSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncContentSnapshot.swift; sourceTree = "<group>"; };
+		D70000000000000000000101 /* NoteWindowButtonActionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowButtonActionController.swift; sourceTree = "<group>"; };
+		D70000000000000000000102 /* WindowAccessorAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessorAttachmentView.swift; sourceTree = "<group>"; };
+		D70000000000000000000103 /* NSView+NestedSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSView+NestedSubviews.swift"; sourceTree = "<group>"; };
+		D80000000000000000000101 /* NoteCornerConvergence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCornerConvergence.swift; sourceTree = "<group>"; };
+		D80000000000000000000102 /* NoteWindowManualPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManualPosition.swift; sourceTree = "<group>"; };
+		D90000000000000000000011 /* TaskHierarchy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHierarchy.swift; sourceTree = "<group>"; };
+		D90000000000000000000012 /* SubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskProgressGauge.swift; sourceTree = "<group>"; };
+		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F12F7B3830424DB700553CAC /* PizzaSlice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PizzaSlice.swift; sourceTree = "<group>"; };
+		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
+		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		F15A835D2F5200B600231A3F /* TildoneIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = TildoneIcon.icon; sourceTree = "<group>"; };
+		F16670432AF711EC000B76A5 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F16670462AF711EC000B76A5 /* TildoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneApp.swift; sourceTree = "<group>"; };
+		F16670482AF711EC000B76A5 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		F166704A2AF711EC000B76A5 /* Todo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Todo.swift; sourceTree = "<group>"; };
 		F166704C2AF711ED000B76A5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -282,11 +289,6 @@
 		F1D3001C2B51F3E100654241 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		F1D300202B52061400654241 /* About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About.swift; sourceTree = "<group>"; };
 		F1EA81F72AFEA80C00E58A73 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
-		D70000000000000000000101 /* NoteWindowButtonActionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowButtonActionController.swift; sourceTree = "<group>"; };
-		D70000000000000000000102 /* WindowAccessorAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessorAttachmentView.swift; sourceTree = "<group>"; };
-		D70000000000000000000103 /* NSView+NestedSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSView+NestedSubviews.swift"; sourceTree = "<group>"; };
-		D80000000000000000000101 /* NoteCornerConvergence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCornerConvergence.swift; sourceTree = "<group>"; };
-		D80000000000000000000102 /* NoteWindowManualPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManualPosition.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -451,50 +453,26 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
-		F166703A2AF711EC000B76A5 = {
+		D10000000000000000000001 /* Note */ = {
 			isa = PBXGroup;
 			children = (
-				F16670452AF711EC000B76A5 /* Tildone */,
-				F16670592AF711EE000B76A5 /* TildoneTests */,
-				F16670632AF711EE000B76A5 /* TildoneUITests */,
-				A10000000000000000000051 /* TildoneiOS */,
-				A10000000000000000000052 /* TildoneiOSTests */,
-				A10000000000000000000053 /* TildoneiOSUITests */,
-				F16670442AF711EC000B76A5 /* Products */,
+				D6000000000000000000000D /* Completion */,
+				D6000000000000000000000E /* Core */,
+				D6000000000000000000000F /* Tasks */,
+				D60000000000000000000010 /* Titlebar */,
+				D60000000000000000000011 /* Window */,
 			);
+			path = Note;
 			sourceTree = "<group>";
 		};
-		F16670442AF711EC000B76A5 /* Products */ = {
+		D20000000000000000000001 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				F16670432AF711EC000B76A5 /* Tildone.app */,
-				F16670562AF711EE000B76A5 /* TildoneTests.xctest */,
-				F16670602AF711EE000B76A5 /* TildoneUITests.xctest */,
-				A10000000000000000000010 /* Tildone.app */,
-				A10000000000000000000016 /* TildoneiOSTests.xctest */,
-				A10000000000000000000018 /* TildoneiOSUITests.xctest */,
+				D60000000000000000000001 /* Lifecycle */,
+				D60000000000000000000002 /* Presentation */,
+				D60000000000000000000003 /* Scenes */,
 			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		F16670452AF711EC000B76A5 /* Tildone */ = {
-			isa = PBXGroup;
-			children = (
-				D20000000000000000000001 /* App */,
-				D30000000000000000000001 /* Store */,
-				F19B3BF22B155711003C094A /* LicenseType.swift */,
-				F166704C2AF711ED000B76A5 /* Assets.xcassets */,
-				F15A835D2F5200B600231A3F /* TildoneIcon.icon */,
-				F13428132B535EA40045343D /* Localizable.xcstrings */,
-				F16670512AF711ED000B76A5 /* Tildone.entitlements */,
-				F16670732AF7122F000B76A5 /* Models */,
-				F16670742AF71273000B76A5 /* Views */,
-				F1D300192B51F16A00654241 /* Services */,
-				B60000000000000000000020 /* Migration */,
-				F166704E2AF711ED000B76A5 /* Preview Content */,
-				F107B17C2F0DE77800D20216 /* Info.plist */,
-			);
-			path = Tildone;
+			path = App;
 			sourceTree = "<group>";
 		};
 		D30000000000000000000001 /* Store */ = {
@@ -508,79 +486,6 @@
 				D60000000000000000000007 /* Sync */,
 			);
 			path = Store;
-			sourceTree = "<group>";
-		};
-		D20000000000000000000001 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				D60000000000000000000001 /* Lifecycle */,
-				D60000000000000000000002 /* Presentation */,
-				D60000000000000000000003 /* Scenes */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		F166704E2AF711ED000B76A5 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */,
-				F180D8D92AF850CC002ED6BF /* Mocks.swift */,
-			);
-			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		F16670592AF711EE000B76A5 /* TildoneTests */ = {
-			isa = PBXGroup;
-			children = (
-				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
-				B60000000000000000000014 /* LegacyMigrationTests.swift */,
-			);
-			path = TildoneTests;
-			sourceTree = "<group>";
-		};
-		F16670632AF711EE000B76A5 /* TildoneUITests */ = {
-			isa = PBXGroup;
-			children = (
-				F16670642AF711EE000B76A5 /* TildoneUITests.swift */,
-				F16670662AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift */,
-			);
-			path = TildoneUITests;
-			sourceTree = "<group>";
-		};
-		F16670732AF7122F000B76A5 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				F16670782AF7167D000B76A5 /* Constants.swift */,
-				F166704A2AF711EC000B76A5 /* Todo.swift */,
-				F16670752AF7133F000B76A5 /* TodoList.swift */,
-				F1D17AA82B47741900C7A500 /* FocusFilter.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		F16670742AF71273000B76A5 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				D60000000000000000000008 /* App */,
-				F1EA81F92AFEA81700E58A73 /* Common */,
-				D10000000000000000000001 /* Note */,
-				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
-				F17F46952B4A0FE000127AD9 /* Settings.swift */,
-				F1D300202B52061400654241 /* About.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		D10000000000000000000001 /* Note */ = {
-			isa = PBXGroup;
-			children = (
-				D6000000000000000000000D /* Completion */,
-				D6000000000000000000000E /* Core */,
-				D6000000000000000000000F /* Tasks */,
-				D60000000000000000000010 /* Titlebar */,
-				D60000000000000000000011 /* Window */,
-			);
-			path = Note;
 			sourceTree = "<group>";
 		};
 		D60000000000000000000001 /* Lifecycle */ = {
@@ -721,6 +626,7 @@
 				D40000000000000000000106 /* MouseSafeTaskNSTextField.swift */,
 				D40000000000000000000107 /* MouseSafeTaskNSTextFieldCell.swift */,
 				D10000000000000000000110 /* MouseSafeTaskTextField.swift */,
+				F12F7B3830424DB700553CAC /* PizzaSlice.swift */,
 				D40000000000000000000110 /* TaskReorderDropTarget.swift */,
 				D4000000000000000000010B /* TaskReorderFeedback.swift */,
 				D4000000000000000000010E /* TaskReorderHandle.swift */,
@@ -768,6 +674,103 @@
 				D70000000000000000000102 /* WindowAccessorAttachmentView.swift */,
 			);
 			path = Window;
+			sourceTree = "<group>";
+		};
+		F166703A2AF711EC000B76A5 = {
+			isa = PBXGroup;
+			children = (
+				F16670452AF711EC000B76A5 /* Tildone */,
+				F16670592AF711EE000B76A5 /* TildoneTests */,
+				F16670632AF711EE000B76A5 /* TildoneUITests */,
+				A10000000000000000000051 /* TildoneiOS */,
+				A10000000000000000000052 /* TildoneiOSTests */,
+				A10000000000000000000053 /* TildoneiOSUITests */,
+				F16670442AF711EC000B76A5 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F16670442AF711EC000B76A5 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F16670432AF711EC000B76A5 /* Tildone.app */,
+				F16670562AF711EE000B76A5 /* TildoneTests.xctest */,
+				F16670602AF711EE000B76A5 /* TildoneUITests.xctest */,
+				A10000000000000000000010 /* Tildone.app */,
+				A10000000000000000000016 /* TildoneiOSTests.xctest */,
+				A10000000000000000000018 /* TildoneiOSUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F16670452AF711EC000B76A5 /* Tildone */ = {
+			isa = PBXGroup;
+			children = (
+				D20000000000000000000001 /* App */,
+				D30000000000000000000001 /* Store */,
+				F19B3BF22B155711003C094A /* LicenseType.swift */,
+				F166704C2AF711ED000B76A5 /* Assets.xcassets */,
+				F15A835D2F5200B600231A3F /* TildoneIcon.icon */,
+				F13428132B535EA40045343D /* Localizable.xcstrings */,
+				F16670512AF711ED000B76A5 /* Tildone.entitlements */,
+				F16670732AF7122F000B76A5 /* Models */,
+				F16670742AF71273000B76A5 /* Views */,
+				F1D300192B51F16A00654241 /* Services */,
+				B60000000000000000000020 /* Migration */,
+				F166704E2AF711ED000B76A5 /* Preview Content */,
+				F107B17C2F0DE77800D20216 /* Info.plist */,
+			);
+			path = Tildone;
+			sourceTree = "<group>";
+		};
+		F166704E2AF711ED000B76A5 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */,
+				F180D8D92AF850CC002ED6BF /* Mocks.swift */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		F16670592AF711EE000B76A5 /* TildoneTests */ = {
+			isa = PBXGroup;
+			children = (
+				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
+				B60000000000000000000014 /* LegacyMigrationTests.swift */,
+			);
+			path = TildoneTests;
+			sourceTree = "<group>";
+		};
+		F16670632AF711EE000B76A5 /* TildoneUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F16670642AF711EE000B76A5 /* TildoneUITests.swift */,
+				F16670662AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift */,
+			);
+			path = TildoneUITests;
+			sourceTree = "<group>";
+		};
+		F16670732AF7122F000B76A5 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F16670782AF7167D000B76A5 /* Constants.swift */,
+				F166704A2AF711EC000B76A5 /* Todo.swift */,
+				F16670752AF7133F000B76A5 /* TodoList.swift */,
+				F1D17AA82B47741900C7A500 /* FocusFilter.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		F16670742AF71273000B76A5 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D60000000000000000000008 /* App */,
+				F1EA81F92AFEA81700E58A73 /* Common */,
+				D10000000000000000000001 /* Note */,
+				F180D8DB2AF854D7002ED6BF /* Desktop.swift */,
+				F17F46952B4A0FE000127AD9 /* Settings.swift */,
+				F1D300202B52061400654241 /* About.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		F1D300192B51F16A00654241 /* Services */ = {
@@ -1100,6 +1103,7 @@
 				D20000000000000000000206 /* AppNotifications.swift in Sources */,
 				D20000000000000000000207 /* AppDelegate.swift in Sources */,
 				D20000000000000000000208 /* MenuBarController.swift in Sources */,
+				F12F7B3930424E3900553CAC /* PizzaSlice.swift in Sources */,
 				D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */,
 				D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */,
 				D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */,
@@ -1475,8 +1479,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
-				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1508,8 +1512,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
-				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

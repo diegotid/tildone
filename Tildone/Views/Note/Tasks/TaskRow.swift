@@ -51,7 +51,7 @@ struct TaskRow: View {
             }
             .padding(.vertical, 2.4)
 
-            if task.isCompleted && subtaskProgress == nil {
+            if task.isCompleted || subtaskProgress?.fraction == 1 {
                 Text(task.text)
                     .font(.system(size: CGFloat(fontSize)))
                     .lineLimit(1)

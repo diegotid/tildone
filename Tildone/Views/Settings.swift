@@ -824,7 +824,7 @@ private struct LineUpPreview: View {
                         .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .stroke(.white.opacity(0.18), lineWidth: 1)
+                                .stroke(.white.opacity(0.18))
                         }
                     }
                     .buttonStyle(.plain)
