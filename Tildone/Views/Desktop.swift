@@ -69,6 +69,7 @@ struct Desktop: View {
     @State private var clickThroughHintWindows: [NoteID: NSPanel] = [:]
     @State private var commandInteractionNoteID: NoteID?
     @State private var isClickThroughCommandPressed = false
+    @State private var isClickThroughWheelShortcutActive = false
     @State private var isFocusFilterTextBlurred = false
     @State private var focusFilterAllowsBackgroundNotes = false
     @Binding var foregroundNoteID: NoteID? {
@@ -217,15 +218,19 @@ private extension Desktop {
                     modifiers: modifiers,
                     requiredModifiers: AppShortcuts.gather(from: gatherModifiersRawValue).modifiers
                 )
+                updateClickThroughWheelShortcutBypass(modifiers)
             }
         )
     }
 
     func updateClickThroughMonitoring() {
+        if !clickThroughNotes {
+            isClickThroughWheelShortcutActive = false
+        }
         clickThroughMonitor.update(isEnabled: clickThroughNotes) { isCommandPressed in
             isClickThroughCommandPressed = isCommandPressed
             setClickThroughCommandInteractionNote(
-                isCommandPressed ? hoveredNoteWindow()?.noteID : nil
+                isCommandPressed ? clickThroughEligibleNoteID(at: NSEvent.mouseLocation) : nil
             )
             applyClickThroughPreference(isCommandPressed: isCommandPressed)
             updateClickThroughHoverAppearance()
@@ -250,7 +255,7 @@ private extension Desktop {
             setClickThroughHoveredNote(nil)
             return
         }
-        setClickThroughHoveredNote(hoveredNoteWindow(at: point)?.noteID)
+        setClickThroughHoveredNote(clickThroughEligibleNoteID(at: point))
     }
 
     func setClickThroughHoveredNote(_ noteID: NoteID?) {
@@ -300,6 +305,7 @@ private extension Desktop {
     }
 
     func showClickThroughHint(for noteID: NoteID, parent: NSWindow) {
+        guard !isCompactNoteWindow(parent) else { return }
         let hintWindow = clickThroughHintWindows[noteID] ?? makeClickThroughHintWindow()
         clickThroughHintWindows[noteID] = hintWindow
         positionClickThroughHint(hintWindow, over: parent)
@@ -385,11 +391,11 @@ private extension Desktop {
 
     func applyClickThroughPreference(isCommandPressed: Bool = NoteWindowClickThrough.isCommandPressed) {
         let ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
-            isEnabled: clickThroughNotes,
+            isEnabled: clickThroughNotes && !isClickThroughWheelShortcutActive,
             isCommandPressed: isCommandPressed
         )
         for window in noteWindows.values {
-            window.ignoresMouseEvents = ignoresMouseEvents
+            window.ignoresMouseEvents = isCompactNoteWindow(window) ? false : ignoresMouseEvents
         }
     }
 
@@ -514,7 +520,7 @@ private extension Desktop {
         window.setNoteStyle(noteColor: note.color)
         window.level = focusFilterAllowsBackgroundNotes ? .normal : .floating
         window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
-            isEnabled: clickThroughNotes,
+            isEnabled: clickThroughNotes && !isClickThroughWheelShortcutActive,
             isCommandPressed: isClickThroughCommandPressed
         )
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
@@ -776,6 +782,29 @@ private extension Desktop {
         }
         guard let match = hovered.first else { return nil }
         return (match.key, match.value)
+    }
+
+    func clickThroughEligibleNoteID(at point: NSPoint) -> NoteID? {
+        guard let hovered = hoveredNoteWindow(at: point), !isCompactNoteWindow(hovered.window) else {
+            return nil
+        }
+        return hovered.noteID
+    }
+
+    func updateClickThroughWheelShortcutBypass(_ modifiers: NSEvent.ModifierFlags) {
+        let opacityShortcut = AppShortcuts.opacity(from: opacityModifiersRawValue)
+        let gatherShortcut = AppShortcuts.gather(from: gatherModifiersRawValue)
+        let isActive = AppShortcuts.opacityShortcut(opacityShortcut, matches: modifiers)
+            || gatherShortcut.matches(modifiers)
+        guard isClickThroughWheelShortcutActive != isActive else { return }
+        isClickThroughWheelShortcutActive = isActive
+        applyClickThroughPreference()
+    }
+
+    func isCompactNoteWindow(_ window: NSWindow) -> Bool {
+        guard let contentView = window.contentView else { return false }
+        return abs(contentView.bounds.width - Layout.minimizedNoteWidth) < 0.5
+            && abs(contentView.bounds.height - Layout.minimizedNoteHeight) < 0.5
     }
 
     func adjustAllNoteWindowOpacities(by delta: CGFloat) {

@@ -247,6 +247,17 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(AppShortcuts.opacityShortcut(configured, matches: [.option, .control]))
     }
 
+    func testLegacyCommandWheelShortcutsUseOptionDefaults() {
+        XCTAssertEqual(
+            AppShortcuts.opacity(from: Int(NSEvent.ModifierFlags.command.rawValue)).modifiers,
+            [.option]
+        )
+        XCTAssertEqual(
+            AppShortcuts.gather(from: Int(NSEvent.ModifierFlags([.command, .control]).rawValue)).modifiers,
+            [.option, .control]
+        )
+    }
+
     func testConfigurableShortcutsPreserveKeyAndModifierChoices() {
         let gather = AppShortcuts.gather(from: Int(NSEvent.ModifierFlags([.option, .shift]).rawValue))
         let lineUp = AppShortcuts.lineUp(

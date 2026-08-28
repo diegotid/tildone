@@ -21,6 +21,7 @@ extension Note {
         setColorPickerHidden(true)
         setRestoreControlVisible(true)
         noteWindow.setFrame(minimizedFrame(for: noteWindow), display: true, animate: false)
+        noteWindow.ignoresMouseEvents = false
         NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
     }
 
@@ -299,6 +300,10 @@ extension Note {
         }
         setColorPickerHidden(false)
         setRestoreControlVisible(false)
+        noteWindow.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: clickThroughNotes,
+            isCommandPressed: NoteWindowClickThrough.isCommandPressed
+        )
         DispatchQueue.main.async {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2

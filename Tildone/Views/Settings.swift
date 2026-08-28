@@ -52,15 +52,17 @@ enum AppShortcuts {
     static let lineUpKeyStorageKey = "lineUpNotesShortcutKey"
     static let lineUpModifiersStorageKey = "lineUpNotesShortcutModifiers"
 
-    static let defaultOpacity = MacAppShortcut(key: nil, modifiers: [.command])
-    static let defaultGather = MacAppShortcut(key: nil, modifiers: [.command, .control])
+    static let defaultOpacity = MacAppShortcut(key: nil, modifiers: [.option])
+    static let defaultGather = MacAppShortcut(key: nil, modifiers: [.option, .control])
     static let defaultLineUp = MacAppShortcut(key: "a", modifiers: [.command, .shift])
 
     static func opacity(from rawValue: Int) -> MacAppShortcut {
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
             .intersection(MacAppShortcut.significantModifiers)
             .subtracting(.shift)
-        return modifiers.isEmpty ? defaultOpacity : MacAppShortcut(key: nil, modifiers: modifiers)
+        return modifiers.isEmpty || modifiers == [.command]
+            ? defaultOpacity
+            : MacAppShortcut(key: nil, modifiers: modifiers)
     }
 
     static func opacityShortcut(
@@ -76,7 +78,9 @@ enum AppShortcuts {
     static func gather(from rawValue: Int) -> MacAppShortcut {
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
             .intersection(MacAppShortcut.significantModifiers)
-        return modifiers.isEmpty ? defaultGather : MacAppShortcut(key: nil, modifiers: modifiers)
+        return modifiers.isEmpty || modifiers == [.command, .control]
+            ? defaultGather
+            : MacAppShortcut(key: nil, modifiers: modifiers)
     }
 
     static func lineUp(key: String, modifiersRawValue: Int) -> MacAppShortcut {
@@ -102,6 +106,9 @@ struct SettingsForm: View {
     private static let windowWidth: CGFloat = 600
 
     @State private var selectedTab: SettingsTab = .general
+    @State private var opacityShortcutValidationMessage: LocalizedStringKey?
+    @State private var gatherShortcutValidationMessage: LocalizedStringKey?
+    @State private var lineUpShortcutValidationMessage: LocalizedStringKey?
     
     @AppStorage(FontSize.storageKey)
     private var fontSize = Double(FontSize.small.rawValue)
@@ -254,9 +261,11 @@ private extension SettingsForm {
                 LabeledContent("Mouse wheel shortcut") {
                     ShortcutRecorder(
                         shortcut: opacityShortcutBinding,
-                        kind: .modifiers(disallowsShift: true)
+                        kind: .modifiers(disallowsShift: true, disallowsCommand: true),
+                        validationMessage: $opacityShortcutValidationMessage
                     )
                 }
+                shortcutValidationMessage(opacityShortcutValidationMessage)
                 Text("Hold this shortcut and scroll over a note to dim or restore its entire window.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -276,8 +285,13 @@ private extension SettingsForm {
                 Text("Line Up:")
                     .font(.headline)
                 LabeledContent("Keyboard shortcut") {
-                    ShortcutRecorder(shortcut: lineUpShortcutBinding, kind: .key)
+                    ShortcutRecorder(
+                        shortcut: lineUpShortcutBinding,
+                        kind: .key,
+                        validationMessage: $lineUpShortcutValidationMessage
+                    )
                 }
+                shortcutValidationMessage(lineUpShortcutValidationMessage)
                 Text("Place notes in an evenly spaced row or column.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -350,8 +364,13 @@ private extension SettingsForm {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 LabeledContent("Mouse wheel shortcut") {
-                    ShortcutRecorder(shortcut: gatherShortcutBinding, kind: .modifiers(disallowsShift: false))
+                    ShortcutRecorder(
+                        shortcut: gatherShortcutBinding,
+                        kind: .modifiers(disallowsShift: false, disallowsCommand: true),
+                        validationMessage: $gatherShortcutValidationMessage
+                    )
                 }
+                shortcutValidationMessage(gatherShortcutValidationMessage)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             GatherPreview(
@@ -372,6 +391,15 @@ private extension SettingsForm {
                 .foregroundStyle(.secondary)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    func shortcutValidationMessage(_ message: LocalizedStringKey?) -> some View {
+        if let message {
+            Text(message)
+                .font(.caption2)
+                .foregroundStyle(.red)
         }
     }
     
@@ -442,7 +470,9 @@ private extension SettingsForm {
                 if isClickThroughAvailable {
                     Text("When enabled, hold ⌘ while clicking to interact with a transparent note.")
                 } else {
-                    Text("Requires at least 70% note background transparency.")
+                    Text(
+                        "Requires at least \(NoteWindowClickThrough.minimumBackgroundTransparency, format: .percent.precision(.fractionLength(0))) note background transparency."
+                    )
                 }
             }
             .font(.caption)
@@ -959,15 +989,15 @@ private struct GatherPreview: View {
 
 private enum ShortcutRecorderKind: Equatable {
     case key
-    case modifiers(disallowsShift: Bool)
+    case modifiers(disallowsShift: Bool, disallowsCommand: Bool)
 }
 
 private struct ShortcutRecorder: View {
     @Binding var shortcut: MacAppShortcut
     let kind: ShortcutRecorderKind
+    @Binding var validationMessage: LocalizedStringKey?
     @State private var isRecording = false
     @State private var draft = ""
-    @State private var validationMessage: LocalizedStringKey?
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 3) {
@@ -976,9 +1006,19 @@ private struct ShortcutRecorder: View {
                 draft = ""
                 isRecording = true
             } label: {
-                Text(isRecording ? (draft.isEmpty ? "Type shortcut" : draft) : shortcut.displayName)
+                Group {
+                    if isRecording {
+                        if draft.isEmpty {
+                            Text("Type new")
+                        } else {
+                            Text(verbatim: draft)
+                        }
+                    } else {
+                        Text(verbatim: shortcut.displayName)
+                    }
+                }
                     .font(.system(size: 18, weight: .semibold, design: .monospaced))
-                    .tracking(3)
+                    .tracking(isRecording && draft.isEmpty ? 0 : 3)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
                     .frame(width: 56, height: 20)
@@ -992,12 +1032,8 @@ private struct ShortcutRecorder: View {
                     onCommit: commit,
                     onValidationError: { validationMessage = $0 }
                 )
-                .frame(width: 0, height: 0)
-            }
-            if let validationMessage {
-                Text(validationMessage)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
+                .frame(width: 1, height: 1)
+                .opacity(0.01)
             }
         }
     }
@@ -1026,7 +1062,10 @@ private struct ShortcutCaptureView: NSViewRepresentable {
         configure(nsView)
         guard isRecording else { return }
         DispatchQueue.main.async {
-            nsView.window?.makeFirstResponder(nsView)
+            guard nsView.window?.makeFirstResponder(nsView) == true else {
+                isRecording = false
+                return
+            }
         }
     }
 
@@ -1066,8 +1105,7 @@ private final class ShortcutCaptureNSView: NSView {
         }
         let modifiers = event.modifierFlags.intersection(MacAppShortcut.significantModifiers)
         guard !modifiers.isEmpty else {
-            onValidationError?("Include at least one modifier key.")
-            NSSound.beep()
+            reject("Include at least one modifier key.")
             return
         }
         onCommit?(MacAppShortcut(key: String(character).lowercased(), modifiers: modifiers))
@@ -1079,21 +1117,38 @@ private final class ShortcutCaptureNSView: NSView {
         switch kind {
         case .key:
             onDraft?(MacAppShortcut(key: nil, modifiers: modifiers))
-        case .modifiers(let disallowsShift):
+        case .modifiers(let disallowsShift, let disallowsCommand):
             if !modifiers.isEmpty {
-                pendingModifiers = modifiers
-                onDraft?(MacAppShortcut(key: nil, modifiers: modifiers))
+                pendingModifiers.formUnion(modifiers)
+                onDraft?(MacAppShortcut(key: nil, modifiers: pendingModifiers))
                 return
             }
             guard !pendingModifiers.isEmpty else { return }
             defer { pendingModifiers = [] }
             guard !disallowsShift || !pendingModifiers.contains(.shift) else {
-                onValidationError?("Shift is reserved for all notes.")
-                NSSound.beep()
+                reject("Shift is reserved for all notes.")
+                return
+            }
+            guard !disallowsCommand || !pendingModifiers.contains(.command) else {
+                reject("Command is reserved for interacting with click-through notes.")
                 return
             }
             onCommit?(MacAppShortcut(key: nil, modifiers: pendingModifiers))
         }
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigns = super.resignFirstResponder()
+        guard resigns, isRecording else { return resigns }
+        pendingModifiers = []
+        onCancel?()
+        return resigns
+    }
+
+    private func reject(_ message: LocalizedStringKey) {
+        onValidationError?(message)
+        onCancel?()
+        NSSound.beep()
     }
 }
 

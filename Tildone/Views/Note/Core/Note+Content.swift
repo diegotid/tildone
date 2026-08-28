@@ -147,6 +147,11 @@ extension Note {
             }
             .padding(.top, -14)
             .padding(.horizontal, 8)
+            .opacity(isHoveringMinimizedTaskList ? 0 : 1)
+
+            minimizedTaskPreview(note, foreground: foreground)
+                .opacity(isHoveringMinimizedTaskList ? 1 : 0)
+                .allowsHitTesting(false)
 
             if let title = note.title {
                 Text(title).font(.system(size: 12)).foregroundStyle(foreground).bold().lineLimit(1)
@@ -160,9 +165,54 @@ extension Note {
             }
         }
         .frame(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
+        .animation(.easeInOut(duration: 0.2), value: isHoveringMinimizedTaskList)
         .background(WindowAccessor(note: self, window: $noteWindow))
+        .onHover { isHoveringMinimizedTaskList = $0 }
         .onTapGesture(perform: handleBringUp)
         .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
+    }
+
+    private func minimizedTaskPreview(_ note: MacNoteSnapshot, foreground: Color) -> some View {
+        let pendingTasks = note.pendingTasks
+        let maximumLines = taskLineTruncation == .multiple ? 2 : 1
+        return GeometryReader { geometry in
+            ViewThatFits(in: .vertical) {
+                minimizedTaskRows(Array(pendingTasks.prefix(6)), foreground: foreground, maximumLines: maximumLines)
+                minimizedTaskRows(Array(pendingTasks.prefix(5)), foreground: foreground, maximumLines: maximumLines)
+                minimizedTaskRows(Array(pendingTasks.prefix(4)), foreground: foreground, maximumLines: maximumLines)
+                minimizedTaskRows(Array(pendingTasks.prefix(3)), foreground: foreground, maximumLines: maximumLines)
+                minimizedTaskRows(Array(pendingTasks.prefix(2)), foreground: foreground, maximumLines: maximumLines)
+                minimizedTaskRows(Array(pendingTasks.prefix(1)), foreground: foreground, maximumLines: maximumLines)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .opacity(0.6)
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, -3)
+        .clipped()
+    }
+
+    private func minimizedTaskRows(
+        _ tasks: [TildoneDomain.Task],
+        foreground: Color,
+        maximumLines: Int
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(tasks, id: \.id) { task in
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(verbatim: "•")
+                        .accessibilityHidden(true)
+                    Text(task.text)
+                        .lineLimit(maximumLines)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(foreground)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func statusText(complete: Bool, total: Int) -> String {

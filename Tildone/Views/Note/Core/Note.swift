@@ -89,6 +89,7 @@ struct Note: View {
     @State var fadeAwayProgress: TimeInterval = 0
     @State var mutationErrorMessage: String?
     @State var taskDropFeedbackResetToken = UUID()
+    @State var isHoveringMinimizedTaskList = false
     @State var skipsNextTaskCountBottomScroll = false
     @State var completedTaskMovementAnimationID: TaskID?
     @State var keyboardFocusedTaskID: TaskID?
@@ -119,7 +120,10 @@ struct Note: View {
             }
         }
         .onChange(of: note?.color) { _, _ in applyCurrentNoteBackground() }
-        .onChange(of: isMinimized) { _, minimized in setTrafficLightsHidden(minimized) }
+        .onChange(of: isMinimized) { _, minimized in
+            setTrafficLightsHidden(minimized)
+            if minimized { isHoveringMinimizedTaskList = false }
+        }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,
