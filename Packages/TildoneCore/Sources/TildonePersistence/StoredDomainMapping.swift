@@ -83,7 +83,11 @@ enum StoredDomainMapping {
         )
     }
 
-    static func task(from stored: StoredTask, expectedNoteID: NoteID? = nil) throws -> Task {
+    static func task(
+        from stored: StoredTask,
+        indentation: StoredTaskIndentation? = nil,
+        expectedNoteID: NoteID? = nil
+    ) throws -> Task {
         guard let id = TaskID(string: stored.stableID), stored.stableID == id.stringValue else {
             throw malformed(.task, "invalid", "stableID")
         }
@@ -119,6 +123,32 @@ enum StoredDomainMapping {
         } catch {
             throw malformed(.task, id.stringValue, "orderToken")
         }
+        let indentLevel = indentation?.level ?? 0
+        guard indentLevel >= 0 else {
+            throw malformed(.task, id.stringValue, "indentLevel")
+        }
+        let indentVersion: VersionStamp
+        if let indentation {
+            let counter = indentation.versionCounter
+            let replica = indentation.versionReplicaID
+            indentVersion = try stamp(
+                counter: counter,
+                replica: replica,
+                kind: .task,
+                stableID: id.stringValue,
+                field: "indentVersion"
+            )
+        } else {
+            // Flat lists written before indentation use their order stamp as a
+            // deterministic baseline, so any explicit nesting wins the merge.
+            indentVersion = try stamp(
+                counter: stored.orderVersionCounter,
+                replica: stored.orderVersionReplicaID,
+                kind: .task,
+                stableID: id.stringValue,
+                field: "orderVersion"
+            )
+        }
         return Task(
             id: id,
             noteID: noteID,
@@ -147,6 +177,8 @@ enum StoredDomainMapping {
                 stableID: id.stringValue,
                 field: "orderVersion"
             ),
+            indentLevel: indentLevel,
+            indentVersion: indentVersion,
             lifecycle: lifecycle,
             lifecycleVersion: try stamp(
                 counter: stored.lifecycleVersionCounter,
@@ -266,6 +298,26 @@ enum StoredDomainMapping {
         stored.lifecycleVersionCounter = lifecycle.counter
         stored.lifecycleVersionReplicaID = lifecycle.replica
         stored.recordSchemaVersion = task.schemaVersion
+    }
+
+    static func storedTaskIndentation(from task: Task) throws -> StoredTaskIndentation {
+        let version = try parts(task.indentVersion)
+        return StoredTaskIndentation(
+            taskStableID: task.id.stringValue,
+            level: task.indentLevel,
+            versionCounter: version.counter,
+            versionReplicaID: version.replica
+        )
+    }
+
+    static func update(_ stored: StoredTaskIndentation, from task: Task) throws {
+        guard stored.taskStableID == task.id.stringValue else {
+            throw malformed(.task, task.id.stringValue, "indentOwnership")
+        }
+        let version = try parts(task.indentVersion)
+        stored.level = task.indentLevel
+        stored.versionCounter = version.counter
+        stored.versionReplicaID = version.replica
     }
 
     private static func validateSchema(_ version: Int, kind: PersistedEntityKind) throws {

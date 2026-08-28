@@ -1284,6 +1284,65 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testActiveNativeTaskEditorRejectsStaleModelWriteback() {
+        XCTAssertFalse(
+            MouseSafeTaskTextField.shouldApplyModelText(
+                fieldText: "Newest text",
+                modelText: "Newer tex",
+                isActivelyEditing: true
+            )
+        )
+        XCTAssertTrue(
+            MouseSafeTaskTextField.shouldApplyModelText(
+                fieldText: "Newest text",
+                modelText: "Remote text",
+                isActivelyEditing: false
+            )
+        )
+        XCTAssertFalse(
+            MouseSafeTaskTextField.shouldApplyModelText(
+                fieldText: "Same text",
+                modelText: "Same text",
+                isActivelyEditing: false
+            )
+        )
+    }
+
+    @MainActor
+    func testRapidTypingCoalescesWithoutReloadingOlderTaskOrTitleText() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!),
+            now: { Date(timeIntervalSince1970: 2_000) }
+        )
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let task = try await store.addTask(to: note.id, text: "")
+        var failureCount = 0
+        let onFailure: (Error) -> Void = { _ in failureCount += 1 }
+
+        let taskWorker = store.queueTaskTextEdit(task.id, text: "G", onFailure: onFailure)
+        _ = store.queueTaskTextEdit(task.id, text: "Gh", onFailure: onFailure)
+        _ = store.queueTaskTextEdit(task.id, text: "Ghost", onFailure: onFailure)
+        let titleWorker = store.queueNoteTitleEdit(note.id, title: "T", onFailure: onFailure)
+        _ = store.queueNoteTitleEdit(note.id, title: "Title", onFailure: onFailure)
+
+        try await store.reload()
+        XCTAssertEqual(store.note(note.id)?.tasks.first?.text, "Ghost")
+        XCTAssertEqual(store.note(note.id)?.title, "Title")
+
+        await taskWorker.value
+        await titleWorker.value
+        let persistedTask = try await repository.task(id: task.id)
+        let persistedNote = try await repository.note(id: note.id)
+        XCTAssertEqual(persistedTask.text, "Ghost")
+        XCTAssertEqual(persistedNote.title, "Title")
+        XCTAssertEqual(store.note(note.id)?.tasks.first?.text, "Ghost")
+        XCTAssertEqual(store.note(note.id)?.title, "Title")
+        XCTAssertEqual(failureCount, 0)
+    }
+
     func testMacSharedStoreRoutesCRUDThroughDomainRepository() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),
@@ -1629,6 +1688,140 @@ final class TildoneTests: XCTestCase {
         try await store.applyCompletedTaskOrdering(enabled: false)
         let restoredTasks = try await repository.orderedTasks(in: note.id)
         XCTAssertEqual(restoredTasks.map(\.id), [first.id, second.id, third.id, fourth.id])
+    }
+
+    func testMacSharedStoreMovesOnlyTheRootAfterEveryRecursiveLeafIsComplete() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(),
+            now: { Date(timeIntervalSince1970: 4_000) }
+        )
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let nestedParent = try await store.addTask(to: note.id, text: "Nested parent")
+        let grandchild = try await store.addTask(to: note.id, text: "Grandchild")
+        let sibling = try await store.addTask(to: note.id, text: "Sibling")
+        let otherRoot = try await store.addTask(to: note.id, text: "Other root")
+        try await store.setTaskIndentLevels([
+            (id: nestedParent.id, level: 1),
+            (id: grandchild.id, level: 2),
+            (id: sibling.id, level: 1),
+        ])
+
+        try await store.setTaskCompletion(
+            grandchild.id,
+            completed: true,
+            moveToEndWhenCompleted: true
+        )
+        let partiallyCompletedOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            partiallyCompletedOrder.map(\.id),
+            [parent.id, nestedParent.id, grandchild.id, sibling.id, otherRoot.id]
+        )
+
+        try await store.setTaskCompletion(
+            sibling.id,
+            completed: true,
+            moveToEndWhenCompleted: true
+        )
+        let completedOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            completedOrder.map(\.id),
+            [otherRoot.id, parent.id, nestedParent.id, grandchild.id, sibling.id]
+        )
+        XCTAssertEqual(completedOrder.map(\.indentLevel), [0, 0, 1, 2, 1])
+        XCTAssertFalse(completedOrder.first(where: { $0.id == parent.id })?.isCompleted ?? true)
+        XCTAssertFalse(completedOrder.first(where: { $0.id == nestedParent.id })?.isCompleted ?? true)
+    }
+
+    func testApplyingCompletedOrderingKeepsEveryCompletedSubtaskWithItsParent() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(),
+            now: { Date(timeIntervalSince1970: 4_000) }
+        )
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let firstParent = try await store.addTask(to: note.id, text: "First parent")
+        let firstChild = try await store.addTask(to: note.id, text: "First child")
+        let secondParent = try await store.addTask(to: note.id, text: "Second parent")
+        let secondChild = try await store.addTask(to: note.id, text: "Second child")
+        let pendingRoot = try await store.addTask(to: note.id, text: "Pending root")
+        try await store.setTaskIndentLevels([
+            (id: firstChild.id, level: 1),
+            (id: secondChild.id, level: 1),
+        ])
+        try await store.setTaskCompletion(firstChild.id, completed: true)
+        try await store.setTaskCompletion(secondChild.id, completed: true)
+
+        try await store.applyCompletedTaskOrdering(enabled: true)
+
+        let orderedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            orderedTasks.map(\.id),
+            [pendingRoot.id, firstParent.id, firstChild.id, secondParent.id, secondChild.id]
+        )
+        XCTAssertEqual(orderedTasks.map(\.indentLevel), [0, 0, 1, 0, 1])
+    }
+
+    func testApplyingCompletedOrderingRepairsSubtasksDetachedByLegacyOrdering() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(),
+            now: { Date(timeIntervalSince1970: 4_000) }
+        )
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let firstParent = try await store.addTask(to: note.id, text: "First parent")
+        let firstChild = try await store.addTask(to: note.id, text: "First child")
+        let secondParent = try await store.addTask(to: note.id, text: "Second parent")
+        let secondChild = try await store.addTask(to: note.id, text: "Second child")
+        let pendingRoot = try await store.addTask(to: note.id, text: "Pending root")
+        try await store.setTaskIndentLevels([
+            (id: firstChild.id, level: 1),
+            (id: secondChild.id, level: 1),
+        ])
+        try await store.setTaskCompletion(firstChild.id, completed: true)
+        try await store.setTaskCompletion(secondChild.id, completed: true)
+
+        // Reproduce the legacy implementation: remember and move each completed
+        // descendant independently, leaving both children after another root.
+        for child in [firstChild, secondChild] {
+            CompletedTaskOrderPreference.recordOriginalOrderToken(
+                child.orderToken,
+                for: child.id
+            )
+            let currentTasks = try await repository.orderedTasks(in: note.id)
+            let lower = currentTasks.last(where: { $0.id != child.id })?.orderToken
+            _ = try await repository.moveTask(
+                id: child.id,
+                to: try OrderToken.between(lower, nil)
+            )
+        }
+        let legacyOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            legacyOrder.map(\.id),
+            [firstParent.id, secondParent.id, pendingRoot.id, firstChild.id, secondChild.id]
+        )
+
+        try await store.applyCompletedTaskOrdering(enabled: true)
+
+        let repairedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            repairedTasks.map(\.id),
+            [pendingRoot.id, firstParent.id, firstChild.id, secondParent.id, secondChild.id]
+        )
+        XCTAssertEqual(repairedTasks.map(\.indentLevel), [0, 0, 1, 0, 1])
     }
 
     func testMacTaskDragPayloadRejectsCrossNoteAndMalformedDrops() throws {

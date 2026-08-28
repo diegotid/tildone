@@ -38,13 +38,15 @@ public protocol TaskRepository: Sendable {
         to noteID: NoteID,
         createdAt: Date,
         text: String,
-        orderToken: OrderToken
+        orderToken: OrderToken,
+        indentLevel: Int
     ) async throws -> Task
     func task(id: TaskID, includingDeleted: Bool) async throws -> Task
     func orderedTasks(in noteID: NoteID) async throws -> [Task]
     func editTask(id: TaskID, text: String) async throws -> Task
     func setTaskCompletion(id: TaskID, completion: CompletionState) async throws -> Task
     func moveTask(id: TaskID, to orderToken: OrderToken) async throws -> Task
+    func setTaskIndentLevel(id: TaskID, indentLevel: Int) async throws -> Task
     func deleteTask(id: TaskID) async throws
     func restoreTask(id: TaskID) async throws -> Task
     func taskSummary(in noteID: NoteID) async throws -> NoteTaskSummary

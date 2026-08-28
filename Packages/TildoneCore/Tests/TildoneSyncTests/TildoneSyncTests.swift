@@ -190,7 +190,10 @@ final class TildoneSyncTests: XCTestCase {
                 ("\($0.recordType)-\($0.schemaVersion)", $0)
             }
         )
-        XCTAssertEqual(Set(contracts.keys), Set(["TDNote-1", "TDNote-2", "TDTask-1", "TDClient-1"]))
+        XCTAssertEqual(
+            Set(contracts.keys),
+            Set(["TDNote-1", "TDNote-2", "TDTask-1", "TDTask-2", "TDClient-1"])
+        )
 
         let v1Note = Note(
             id: fixture.note.id, createdAt: fixture.note.createdAt,
@@ -200,10 +203,25 @@ final class TildoneSyncTests: XCTestCase {
             lastMeaningfulEditVersion: fixture.note.lastMeaningfulEditVersion,
             schemaVersion: 1
         )
+        let v1Task = TildoneDomain.Task(
+            id: fixture.task.id,
+            noteID: fixture.task.noteID,
+            createdAt: fixture.task.createdAt,
+            text: fixture.task.text,
+            textVersion: fixture.task.textVersion,
+            completion: fixture.task.completion,
+            completionVersion: fixture.task.completionVersion,
+            orderToken: fixture.task.orderToken,
+            orderVersion: fixture.task.orderVersion,
+            lifecycle: fixture.task.lifecycle,
+            lifecycleVersion: fixture.task.lifecycleVersion,
+            schemaVersion: 1
+        )
         let records: [(String, CKRecord)] = [
             ("TDNote-1", mapper.record(from: .note(v1Note))),
             ("TDNote-2", mapper.record(from: .note(fixture.note))),
-            ("TDTask-1", mapper.record(from: .task(fixture.task))),
+            ("TDTask-1", mapper.record(from: .task(v1Task))),
+            ("TDTask-2", mapper.record(from: .task(fixture.task))),
             ("TDClient-1", mapper.clientRecord(replicaID: ReplicaID(UUID(int: 601)), platform: .mac))
         ]
         for (key, record) in records {
@@ -213,7 +231,7 @@ final class TildoneSyncTests: XCTestCase {
 
         let contentManifestFields = Set(
             try XCTUnwrap(contracts["TDNote-2"]).fields.map(\.name) +
-            (try XCTUnwrap(contracts["TDTask-1"])).fields.map(\.name)
+            (try XCTUnwrap(contracts["TDTask-2"])).fields.map(\.name)
         )
         XCTAssertEqual(contentManifestFields, Set(CloudKitRecordMapper.Field.all))
         XCTAssertEqual(DevelopmentCloudKitContractManifest.database, "private")
@@ -225,6 +243,7 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(optionalByRecord["TDNote-1"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDNote-2"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDTask-1"], Set(["completedAt"]))
+        XCTAssertEqual(optionalByRecord["TDTask-2"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDClient-1"], Set<String>())
     }
 
@@ -243,6 +262,23 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(note.schemaVersion, 1)
         XCTAssertEqual(note.color, .yellow)
         XCTAssertEqual(note.colorVersion, note.titleVersion)
+    }
+
+    func testCloudMapperReadsV1TasksWithoutIndentationAndUsesOrderVersion() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        let record = mapper.record(from: .task(fixture.task))
+        record["schemaVersion"] = NSNumber(value: 1)
+        record["indentLevel"] = nil
+        record["indentVersionCounter"] = nil
+        record["indentVersionReplicaID"] = nil
+
+        guard case let .task(task) = try mapper.syncRecord(from: record) else {
+            return XCTFail("Expected a task")
+        }
+        XCTAssertEqual(task.schemaVersion, 1)
+        XCTAssertEqual(task.indentLevel, 0)
+        XCTAssertEqual(task.indentVersion, task.orderVersion)
     }
 
     func testLateV1CloudNoteIsBackfilledAndQueuedAsCurrentSchema() async throws {
@@ -279,6 +315,43 @@ final class TildoneSyncTests: XCTestCase {
         }
         XCTAssertEqual(note.schemaVersion, Note.currentSchemaVersion)
         XCTAssertEqual(note.color, .purple)
+    }
+
+    func testLateV1CloudTaskIsAcceptedUpgradedAndQueuedAsCurrentSchema() async throws {
+        let replica = try Replica(id: 91)
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        _ = try await replica.pipeline.apply([.note(fixture.note)], at: date)
+
+        let record = mapper.record(from: .task(fixture.task))
+        record["schemaVersion"] = NSNumber(value: 1)
+        record["indentLevel"] = nil
+        record["indentVersionCounter"] = nil
+        record["indentVersionReplicaID"] = nil
+        let legacy = try mapper.syncRecord(from: record)
+
+        _ = try await replica.pipeline.apply([legacy], at: date)
+
+        let migrated = try await replica.repository.task(id: fixture.task.id)
+        XCTAssertEqual(migrated.schemaVersion, Task.currentSchemaVersion)
+        XCTAssertEqual(migrated.indentLevel, 0)
+        XCTAssertGreaterThan(migrated.indentVersion, migrated.orderVersion)
+        let pendingCount = try await replica.pipeline.pendingCount()
+        XCTAssertEqual(pendingCount, 1)
+
+        let outbound = try await replica.pipeline.prepareOutboundMutation(
+            recordName: fixture.task.id.recordName,
+            at: date
+        )
+        guard case let .task(task)? = outbound?.record else {
+            return XCTFail("Expected a queued task mutation")
+        }
+        XCTAssertEqual(task.schemaVersion, Task.currentSchemaVersion)
+        XCTAssertEqual(task.indentLevel, 0)
+        let outboundRecord = mapper.record(from: .task(task))
+        XCTAssertNotNil(outboundRecord["indentLevel"])
+        XCTAssertNotNil(outboundRecord["indentVersionCounter"])
+        XCTAssertNotNil(outboundRecord["indentVersionReplicaID"])
     }
 
     func testMacColorBackfillConvergesOverPhoneDefaultInBothUpgradeOrders() async throws {

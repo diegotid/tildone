@@ -30,8 +30,9 @@ public extension TildoneRepository {
     /// Returns every syncable task, including lifecycle tombstones and valid
     /// orphans whose parent has not arrived yet.
     func allSyncTasks() throws -> [Task] {
-        try readContext().fetch(FetchDescriptor<StoredTask>()).map {
-            try StoredDomainMapping.task(from: $0)
+        let context = readContext()
+        return try context.fetch(FetchDescriptor<StoredTask>()).map {
+            try mappedTask(from: $0, in: context)
         }.sorted { $0.id < $1.id }
     }
 
@@ -93,12 +94,14 @@ public extension TildoneRepository {
                 predicate: #Predicate { $0.noteStableID == noteID }
             ))
             for child in children {
-                var task = try StoredDomainMapping.task(from: child, expectedNoteID: merged.id)
+                var task = try mappedTask(from: child, expectedNoteID: merged.id, in: context)
                 guard task.lifecycle == .active else { continue }
                 let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: task))
                 do { try task.delete(version: stamp) }
                 catch { throw PersistenceError.domainInvariant }
+                try promoteTaskToCurrentSchema(&task, version: stamp)
                 try StoredDomainMapping.update(child, from: task)
+                try upsertTaskIndentation(for: task, in: context)
                 try enqueueSyncMutation(.task, stableID: task.id.stringValue, sequence: stamp.logicalCounter, at: date, in: context)
                 generated += 1
             }
@@ -111,7 +114,9 @@ public extension TildoneRepository {
     /// delivered after its parent tombstone is normalized into a newer local
     /// tombstone and queued, preventing stale child resurrection.
     func mergeRemoteTask(_ remote: Task, at date: Date) throws -> RemoteMergeResult {
-        guard remote.schemaVersion == Task.currentSchemaVersion,
+        guard (Task.oldestSupportedSchemaVersion...Task.currentSchemaVersion).contains(
+            remote.schemaVersion
+        ),
               date.timeIntervalSinceReferenceDate.isFinite else {
             throw PersistenceError.unsupportedRecordSchema(.task, remote.schemaVersion)
         }
@@ -126,16 +131,17 @@ public extension TildoneRepository {
 
         var merged: Task
         var changed: Bool
+        let existingIndentation: StoredTaskIndentation?
         if let row = rows.first {
-            let local = try StoredDomainMapping.task(from: row)
+            existingIndentation = try taskIndentation(for: row.stableID, in: context)
+            let local = try StoredDomainMapping.task(from: row, indentation: existingIndentation)
             do { merged = try local.merged(with: remote) }
             catch { throw PersistenceError.domainInvariant }
             changed = merged != local
-            if changed { try StoredDomainMapping.update(row, from: merged) }
         } else {
+            existingIndentation = nil
             merged = remote
             changed = true
-            context.insert(try StoredDomainMapping.storedTask(from: remote))
         }
 
         var generated = 0
@@ -144,19 +150,44 @@ public extension TildoneRepository {
             predicate: #Predicate { $0.stableID == noteID }
         ))
         guard parents.count <= 1 else { throw PersistenceError.duplicateID(.note, noteID) }
-        if let parent = parents.first,
-           try mappedNote(from: parent, in: context).lifecycle == .deleted,
-           merged.lifecycle == .active {
+        let parentRequiresTombstone = try parents.first.map {
+            try mappedNote(from: $0, in: context).lifecycle == .deleted
+        } == true && merged.lifecycle == .active
+        let requiresSchemaBackfill = merged.schemaVersion < Task.currentSchemaVersion ||
+            (rows.first != nil && existingIndentation == nil)
+        var outboundStamp: VersionStamp?
+        if parentRequiresTombstone || requiresSchemaBackfill {
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: merged))
-            do { try merged.delete(version: stamp) }
-            catch { throw PersistenceError.domainInvariant }
-            guard let stored = try context.fetch(FetchDescriptor<StoredTask>(
-                predicate: #Predicate { $0.stableID == id }
-            )).first else { throw PersistenceError.missing(.task, id) }
-            try StoredDomainMapping.update(stored, from: merged)
-            try enqueueSyncMutation(.task, stableID: id, sequence: stamp.logicalCounter, at: date, in: context)
-            generated = 1
+            if requiresSchemaBackfill {
+                if stamp > merged.indentVersion {
+                    do { try merged.setIndentLevel(merged.indentLevel, version: stamp) }
+                    catch { throw PersistenceError.domainInvariant }
+                }
+                try promoteTaskToCurrentSchema(&merged, version: stamp)
+            }
+            if parentRequiresTombstone {
+                do { try merged.delete(version: stamp) }
+                catch { throw PersistenceError.domainInvariant }
+                generated = 1
+            }
+            outboundStamp = stamp
             changed = true
+        }
+
+        if let stored = rows.first {
+            if changed { try StoredDomainMapping.update(stored, from: merged) }
+        } else {
+            context.insert(try StoredDomainMapping.storedTask(from: merged))
+        }
+        try upsertTaskIndentation(for: merged, in: context)
+        if let outboundStamp {
+            try enqueueSyncMutation(
+                .task,
+                stableID: id,
+                sequence: outboundStamp.logicalCounter,
+                at: date,
+                in: context
+            )
         }
         try save(context)
         return RemoteMergeResult(changed: changed, generatedTombstoneMutationCount: generated)
@@ -177,7 +208,7 @@ public extension TildoneRepository {
             try enqueueSyncMutation(.note, stableID: domain.id.stringValue, sequence: sequence, at: date, in: context)
         }
         for task in try context.fetch(FetchDescriptor<StoredTask>()) {
-            let domain = try StoredDomainMapping.task(from: task)
+            let domain = try mappedTask(from: task, in: context)
             let sequence = maxVersion(in: domain).logicalCounter
             try enqueueSyncMutation(.task, stableID: domain.id.stringValue, sequence: sequence, at: date, in: context)
         }
@@ -239,7 +270,7 @@ public extension TildoneRepository {
                 predicate: #Predicate { $0.noteStableID == id }
             ))
             for child in children {
-                var task = try StoredDomainMapping.task(from: child, expectedNoteID: noteID)
+                var task = try mappedTask(from: child, expectedNoteID: noteID, in: context)
                 guard task.lifecycle == .active else { continue }
                 let childStamp = try nextRemoteNormalizationStamp(
                     metadata,
@@ -247,7 +278,9 @@ public extension TildoneRepository {
                 )
                 do { try task.delete(version: childStamp) }
                 catch { throw PersistenceError.domainInvariant }
+                try promoteTaskToCurrentSchema(&task, version: childStamp)
                 try StoredDomainMapping.update(child, from: task)
+                try upsertTaskIndentation(for: task, in: context)
                 try enqueueSyncMutation(
                     .task,
                     stableID: task.id.stringValue,
@@ -263,12 +296,14 @@ public extension TildoneRepository {
             ))
             guard rows.count <= 1 else { throw PersistenceError.duplicateID(.task, id) }
             guard let row = rows.first else { return }
-            var task = try StoredDomainMapping.task(from: row)
+            var task = try mappedTask(from: row, in: context)
             guard task.lifecycle == .active else { return }
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: task))
             do { try task.delete(version: stamp) }
             catch { throw PersistenceError.domainInvariant }
+            try promoteTaskToCurrentSchema(&task, version: stamp)
             try StoredDomainMapping.update(row, from: task)
+            try upsertTaskIndentation(for: task, in: context)
             try enqueueSyncMutation(.task, stableID: id, sequence: stamp.logicalCounter, at: date, in: context)
         } else {
             return
@@ -287,7 +322,8 @@ private extension TildoneRepository {
 
     func observeRemoteVersions(in task: Task, metadata: WorkspaceMetadata) throws {
         try observe([
-            task.textVersion, task.completionVersion, task.orderVersion, task.lifecycleVersion
+            task.textVersion, task.completionVersion, task.orderVersion, task.indentVersion,
+            task.lifecycleVersion
         ], metadata: metadata)
     }
 
@@ -333,7 +369,7 @@ private extension TildoneRepository {
             return
         }
         for row in active {
-            try supersedeActiveMutation(row, with: newID, in: context)
+            try Self.supersedeActiveMutation(row, with: newID, in: context)
         }
         context.insert(PendingMutation(
             mutationID: newID,

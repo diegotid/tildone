@@ -46,10 +46,18 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         context.coordinator.parent = self
         field.taskID = taskID
         field.placesCaretAtStartOnFocus = placesCaretAtStartOnFocus
-        if field.stringValue != text { field.stringValue = text }
+        let editor = field.currentEditor()
+        let isActivelyEditing = editor != nil && field.window?.firstResponder === editor
+        if Self.shouldApplyModelText(
+            fieldText: field.stringValue,
+            modelText: text,
+            isActivelyEditing: isActivelyEditing
+        ) {
+            field.stringValue = text
+        }
         field.font = .systemFont(ofSize: fontSize)
         field.textColor = NSColor(textColor)
-        if let editor = field.currentEditor() as? NSTextView {
+        if let editor = editor as? NSTextView {
             Self.configure(
                 editor,
                 cursorColor: NSColor(cursorColor)
@@ -61,6 +69,14 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             return
         }
         field.window?.makeFirstResponder(field)
+    }
+
+    static func shouldApplyModelText(
+        fieldText: String,
+        modelText: String,
+        isActivelyEditing: Bool
+    ) -> Bool {
+        !isActivelyEditing && fieldText != modelText
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {

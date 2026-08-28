@@ -179,7 +179,8 @@ public struct Note: Codable, Hashable, Sendable {
 }
 
 public struct Task: Codable, Hashable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let oldestSupportedSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public let id: TaskID
     public let noteID: NoteID
@@ -190,6 +191,10 @@ public struct Task: Codable, Hashable, Sendable {
     public private(set) var completionVersion: VersionStamp
     public private(set) var orderToken: OrderToken
     public private(set) var orderVersion: VersionStamp
+    /// A preorder depth. The preceding task at a lower depth is this task's
+    /// visual parent; zero is a top-level task.
+    public private(set) var indentLevel: Int
+    public private(set) var indentVersion: VersionStamp
     public private(set) var lifecycle: LifecycleState
     public private(set) var lifecycleVersion: VersionStamp
     public let schemaVersion: Int
@@ -207,6 +212,8 @@ public struct Task: Codable, Hashable, Sendable {
         completionVersion: VersionStamp,
         orderToken: OrderToken,
         orderVersion: VersionStamp,
+        indentLevel: Int = 0,
+        indentVersion: VersionStamp? = nil,
         lifecycle: LifecycleState = .active,
         lifecycleVersion: VersionStamp,
         schemaVersion: Int = Task.currentSchemaVersion
@@ -220,6 +227,8 @@ public struct Task: Codable, Hashable, Sendable {
         self.completionVersion = completionVersion
         self.orderToken = orderToken
         self.orderVersion = orderVersion
+        self.indentLevel = indentLevel
+        self.indentVersion = indentVersion ?? orderVersion
         self.lifecycle = lifecycle
         self.lifecycleVersion = lifecycleVersion
         self.schemaVersion = schemaVersion
@@ -241,6 +250,14 @@ public struct Task: Codable, Hashable, Sendable {
         guard version > orderVersion else { throw DomainMutationError.versionMustAdvance }
         self.orderToken = orderToken
         orderVersion = version
+    }
+
+    public mutating func setIndentLevel(_ indentLevel: Int, version: VersionStamp) throws {
+        guard indentLevel >= 0, version > indentVersion else {
+            throw DomainMutationError.versionMustAdvance
+        }
+        self.indentLevel = indentLevel
+        indentVersion = version
     }
 
     public mutating func delete(version: VersionStamp) throws {

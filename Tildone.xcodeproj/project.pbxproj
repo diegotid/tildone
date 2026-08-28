@@ -60,6 +60,8 @@
 		D1000000000000000000020D /* NoteColorPickerTitlebarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010D /* NoteColorPickerTitlebarControl.swift */; };
 		D1000000000000000000020E /* ScrollFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010E /* ScrollFrame.swift */; };
 		D1000000000000000000020F /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010F /* TaskRow.swift */; };
+		D90000000000000000000001 /* TaskHierarchy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000011 /* TaskHierarchy.swift */; };
+		D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000012 /* SubtaskProgressGauge.swift */; };
 		D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000110 /* MouseSafeTaskTextField.swift */; };
 		D20000000000000000000201 /* FocusFilterHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000101 /* FocusFilterHelp.swift */; };
 		D20000000000000000000202 /* MacSyncPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000102 /* MacSyncPresentation.swift */; };
@@ -215,6 +217,8 @@
 		D1000000000000000000010E /* ScrollFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollFrame.swift; sourceTree = "<group>"; };
 		D1000000000000000000010F /* TaskRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRow.swift; sourceTree = "<group>"; };
 		D10000000000000000000110 /* MouseSafeTaskTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskTextField.swift; sourceTree = "<group>"; };
+		D90000000000000000000011 /* TaskHierarchy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHierarchy.swift; sourceTree = "<group>"; };
+		D90000000000000000000012 /* SubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskProgressGauge.swift; sourceTree = "<group>"; };
 		D20000000000000000000101 /* FocusFilterHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilterHelp.swift; sourceTree = "<group>"; };
 		D20000000000000000000102 /* MacSyncPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncPresentation.swift; sourceTree = "<group>"; };
 		D20000000000000000000103 /* MacSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncStatusView.swift; sourceTree = "<group>"; };
@@ -723,6 +727,8 @@
 				D4000000000000000000010A /* TaskReorderInsertionLine.swift */,
 				D4000000000000000000010F /* TaskReorderPreview.swift */,
 				D1000000000000000000010F /* TaskRow.swift */,
+				D90000000000000000000011 /* TaskHierarchy.swift */,
+				D90000000000000000000012 /* SubtaskProgressGauge.swift */,
 				D4000000000000000000010D /* TaskRowDropDelegate.swift */,
 				D4000000000000000000010C /* TaskRowDropPlacement.swift */,
 				D40000000000000000000109 /* TaskTextSelectionStyle.swift */,
@@ -1115,6 +1121,8 @@
 				D40000000000000000000205 /* NoteColorPalette.swift in Sources */,
 				D1000000000000000000020E /* ScrollFrame.swift in Sources */,
 				D1000000000000000000020F /* TaskRow.swift in Sources */,
+				D90000000000000000000001 /* TaskHierarchy.swift in Sources */,
+				D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */,
 				D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */,
 				D40000000000000000000206 /* MouseSafeTaskNSTextField.swift in Sources */,
 				D40000000000000000000207 /* MouseSafeTaskNSTextFieldCell.swift in Sources */,

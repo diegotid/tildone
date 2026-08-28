@@ -717,6 +717,13 @@ private extension TildoneSyncCoordinator {
         }
         SyncDiagnostics.failed(category: .cloud(cloudError.code.rawValue))
         switch cloudError.code {
+        case .operationCancelled:
+            // CKSyncEngine cancels an in-flight manual checkpoint when the
+            // coordinator is paused, stopped, or superseded. Its durable
+            // outbox remains intact, so this is not user-actionable.
+            guard !(await coordinatorState.isFrozen()) else { return }
+            let pending = (try? await pipeline.pendingCount()) ?? 0
+            await refreshStatus(activity: pending == 0 ? .idle : .syncing)
         case .networkFailure, .networkUnavailable:
             await refreshStatus(activity: .offline, issue: .network)
         case .serviceUnavailable, .requestRateLimited, .zoneBusy:

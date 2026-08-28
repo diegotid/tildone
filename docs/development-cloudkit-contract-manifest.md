@@ -70,6 +70,32 @@ Record name: `task-<canonical-lowercase-UUID>`
 | `lifecycleVersionCounter` | `Int64` | no |
 | `lifecycleVersionReplicaID` | `String` | no |
 
+## `TDTask` V2
+
+Record name: `task-<canonical-lowercase-UUID>`
+
+| Field | CloudKit type | Optional |
+| --- | --- | --- |
+| `schemaVersion` | `Int64` | no |
+| `noteID` | `String` | no |
+| `createdAt` | `Date/Time` | no |
+| `text` | `String` | no |
+| `textVersionCounter` | `Int64` | no |
+| `textVersionReplicaID` | `String` | no |
+| `isCompleted` | `Boolean` | no |
+| `completedAt` | `Date/Time` | yes |
+| `completionVersionCounter` | `Int64` | no |
+| `completionVersionReplicaID` | `String` | no |
+| `orderToken` | `String` | no |
+| `orderVersionCounter` | `Int64` | no |
+| `orderVersionReplicaID` | `String` | no |
+| `lifecycle` | `String` | no |
+| `lifecycleVersionCounter` | `Int64` | no |
+| `lifecycleVersionReplicaID` | `String` | no |
+| `indentLevel` | `Int64` | no |
+| `indentVersionCounter` | `Int64` | no |
+| `indentVersionReplicaID` | `String` | no |
+
 ## `TDClient` V1
 
 Record name: `client-<canonical-lowercase-replica-UUID>`
@@ -84,6 +110,6 @@ Record name: `client-<canonical-lowercase-replica-UUID>`
 
 - `TDNote` V1 remains readable. Missing V2 color fields decode as yellow at the title version, then the local V3 sidecar migration queues a V2 note atomically.
 - Synthesized color authority is explicit: an existing V2 color wins; otherwise legacy Mac per-note/global color wins over a platform-default backfill; V1 implicit yellow has lowest authority.
-- `TDTask` accepts V1 only. `TDClient` accepts V1 only and is advisory metadata outside the content outbox; last-seen time is CloudKit server modification metadata, not a record field.
+- `TDTask` V1 remains readable as indentation level zero at its order version. V2 adds an independently versioned indentation depth. `TDClient` accepts V1 only and is advisory metadata outside the content outbox; last-seen time is CloudKit server modification metadata, not a record field.
 - Unknown types, future schema versions, malformed identifiers, wrong-zone records, missing required fields, and invalid field types are rejected/quarantined. Content records use lifecycle tombstones; unexpected physical deletions are normalized locally.
 - All records live only in the named custom zone of the private database. Record names contain stable IDs only, never note titles or task text.

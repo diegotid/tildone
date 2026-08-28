@@ -340,7 +340,7 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(durablePending.count, 1)
         let metadata = try await reopened.workspaceSnapshot()
         XCTAssertEqual(metadata.replicaID, replica)
-        XCTAssertEqual(metadata.sharedSchemaVersion, 3)
+        XCTAssertEqual(metadata.sharedSchemaVersion, TildoneRepository.currentSharedSchemaVersion)
         XCTAssertEqual(metadata.futureSyncEngineState, Data([0, 1, 255]))
     }
 
@@ -752,8 +752,10 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaV2.models.count, 7)
         XCTAssertEqual(TildoneSchemaV3.versionIdentifier, Schema.Version(3, 0, 0))
         XCTAssertEqual(TildoneSchemaV3.models.count, 8)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 3)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 2)
+        XCTAssertEqual(TildoneSchemaV4.versionIdentifier, Schema.Version(4, 0, 0))
+        XCTAssertEqual(TildoneSchemaV4.models.count, 9)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 4)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 3)
     }
 
     /// Opt-in provenance helper for the frozen V2 artifact. Ordinary test runs
@@ -925,9 +927,15 @@ final class TildonePersistenceTests: XCTestCase {
 
         XCTAssertEqual(note.title, "V1 fixture 📝")
         XCTAssertEqual(task.text, "Preserved edited task café 漢字")
+        XCTAssertEqual(task.schemaVersion, Task.currentSchemaVersion)
+        XCTAssertEqual(task.indentLevel, 0)
+        XCTAssertGreaterThan(task.indentVersion, task.orderVersion)
         XCTAssertEqual(workspace.replicaID.stringValue, "abcdef00-0000-0000-0000-000000000001")
-        XCTAssertEqual(workspace.logicalCounter, 5)
-        XCTAssertEqual(workspace.sharedSchemaVersion, 3)
+        XCTAssertEqual(workspace.logicalCounter, 6)
+        XCTAssertEqual(
+            workspace.sharedSchemaVersion,
+            TildoneRepository.currentSharedSchemaVersion
+        )
         XCTAssertEqual(workspace.futureSyncEngineState, Data([0x01, 0x02, 0xff]))
         XCTAssertEqual(outbox.count, 3)
         XCTAssertEqual(outbox.filter { $0.supersededBy != nil }.count, 1)

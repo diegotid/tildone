@@ -95,6 +95,10 @@ public extension Task {
             (orderToken, orderVersion),
             (other.orderToken, other.orderVersion)
         )
+        let winningIndent = try mergeVersioned(
+            (indentLevel, indentVersion),
+            (other.indentLevel, other.indentVersion)
+        )
         let winningLifecycle = try mergeVersioned(
             (lifecycle, lifecycleVersion),
             (other.lifecycle, other.lifecycleVersion)
@@ -110,6 +114,8 @@ public extension Task {
             completionVersion: winningCompletion.version,
             orderToken: winningOrder.value,
             orderVersion: winningOrder.version,
+            indentLevel: winningIndent.value,
+            indentVersion: winningIndent.version,
             lifecycle: winningLifecycle.value,
             lifecycleVersion: winningLifecycle.version,
             schemaVersion: max(schemaVersion, other.schemaVersion)

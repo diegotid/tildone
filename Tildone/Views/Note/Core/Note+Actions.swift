@@ -91,14 +91,28 @@ extension Note {
         guard !newTaskText.isEmpty else { return }
         let text = newTaskText.capitalizingFirstLetter()
         newTaskText = ""
-        mutate({ _ = try await store.addTask(to: noteID, text: text) }, message: "Error on task creation")
+        mutate(
+            {
+                _ = try await store.addTask(
+                    to: noteID,
+                    text: text,
+                    indentLevel: tasks.last?.indentLevel ?? 0
+                )
+            },
+            message: "Error on task creation"
+        )
     }
 
     func handleTaskEdit(_ task: TildoneDomain.Task, to text: String) {
-        mutate(
-            { try await store.editTask(task.id, text: text.capitalizingFirstLetter()) },
-            message: "Error on task edit"
-        )
+        store.queueTaskTextEdit(
+            task.id,
+            text: text.capitalizingFirstLetter()
+        ) { error in
+            mutationErrorMessage = Self.mutationFailureMessage(
+                operation: "Error on task edit",
+                error: error
+            )
+        }
     }
 
     func handleTaskToggle(_ task: TildoneDomain.Task) {
@@ -148,7 +162,12 @@ extension Note {
 
     func handleTopicEdit(to topic: String) {
         let title = topic.isEmpty ? nil : topic.capitalizingFirstLetter()
-        mutate({ try await store.renameNote(noteID, to: title) }, message: "Error on topic edit")
+        store.queueNoteTitleEdit(noteID, title: title) { error in
+            mutationErrorMessage = Self.mutationFailureMessage(
+                operation: "Error on topic edit",
+                error: error
+            )
+        }
     }
 
     func handleKeyboard() {
@@ -160,6 +179,10 @@ extension Note {
             }
             if event.keyCode == Keyboard.tabKey, focusedField == .newTask, !newTaskText.isEmpty {
                 handleNewTaskCommit(); return nil
+            }
+            if event.keyCode == Keyboard.tabKey, let taskID = activeFocusedTaskID {
+                handleTaskIndent(taskID, outdent: event.modifierFlags.contains(.shift))
+                return nil
             }
             if event.keyCode == Keyboard.arrowUp { handleMoveUp(); return nil }
             if event.keyCode == Keyboard.arrowDown { handleMoveDown(); return nil }
@@ -180,6 +203,28 @@ extension Note {
         } ?? false
     }
 
+    func handleTaskIndent(_ taskID: TaskID, outdent: Bool) {
+        guard let index = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        let task = tasks[index]
+        let targetDepth: Int
+        if outdent {
+            guard task.indentLevel > 0 else { return }
+            targetDepth = task.indentLevel - 1
+        } else {
+            guard index > 0 else { return }
+            targetDepth = tasks[index - 1].indentLevel + 1
+        }
+        let delta = targetDepth - task.indentLevel
+        guard delta != 0 else { return }
+        let updates = TaskHierarchy.subtreeRange(startingAt: index, in: tasks).map { offset in
+            (id: tasks[offset].id, level: max(0, tasks[offset].indentLevel + delta))
+        }
+        mutate(
+            { try await store.setTaskIndentLevels(updates) },
+            message: "Error changing task indentation"
+        )
+    }
+
     func handleEnter(for task: TildoneDomain.Task) {
         guard let field = textField(forText: task.text),
               let editor = field.currentEditor() as? NSTextView,
@@ -188,16 +233,24 @@ extension Note {
         let insertion = cursor == 0 ? index : index + 1
         insertEmptyTask(
             at: insertion,
-            focusing: cursor == 0 ? task.id : nil
+            focusing: cursor == 0 ? task.id : nil,
+            indentLevel: task.indentLevel
         )
     }
 
-    func insertEmptyTask(at position: Int, focusing taskID: TaskID? = nil) {
+    func insertEmptyTask(
+        at position: Int,
+        focusing taskID: TaskID? = nil,
+        indentLevel: Int? = nil
+    ) {
         skipsNextTaskCountBottomScroll = true
         let emptyTaskIDs = tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id)
         let removedBeforeInsertion = tasks[..<position].filter {
             !$0.isCompleted && $0.text.isEmpty
         }.count
+        let inheritedIndentLevel = indentLevel ?? (
+            position < tasks.count ? tasks[position].indentLevel : tasks.last?.indentLevel ?? 0
+        )
         Swift.Task {
             do {
                 for id in emptyTaskIDs {
@@ -206,7 +259,8 @@ extension Note {
                 let task = try await store.addTask(
                     to: noteID,
                     text: "",
-                    insertingAt: position - removedBeforeInsertion
+                    insertingAt: position - removedBeforeInsertion,
+                    indentLevel: inheritedIndentLevel
                 )
                 focusTaskUsingKeyboard(taskID ?? task.id)
             } catch {
@@ -288,7 +342,12 @@ extension Note {
         mutate({
             try await store.editTask(task.id, text: first)
             for line in lines.dropFirst().reversed() {
-                _ = try await store.addTask(to: noteID, text: line.capitalizingFirstLetter(), insertingAt: index + 1)
+                _ = try await store.addTask(
+                    to: noteID,
+                    text: line.capitalizingFirstLetter(),
+                    insertingAt: index + 1,
+                    indentLevel: task.indentLevel
+                )
             }
         }, message: "Error pasting tasks")
     }

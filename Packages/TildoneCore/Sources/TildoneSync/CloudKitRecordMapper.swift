@@ -179,6 +179,9 @@ extension CloudKitRecordMapper {
         static let orderToken = "orderToken"
         static let orderCounter = "orderVersionCounter"
         static let orderReplica = "orderVersionReplicaID"
+        static let indentLevel = "indentLevel"
+        static let indentCounter = "indentVersionCounter"
+        static let indentReplica = "indentVersionReplicaID"
         static let clientReplicaID = "replicaID"
         static let clientPlatform = "platform"
 
@@ -189,7 +192,7 @@ extension CloudKitRecordMapper {
             meaningfulEditCounter, meaningfulEditReplica, noteID, text,
             textCounter, textReplica, isCompleted, completedAt,
             completionCounter, completionReplica, orderToken, orderCounter,
-            orderReplica
+            orderReplica, indentLevel, indentCounter, indentReplica
         ]
     }
 
@@ -234,6 +237,10 @@ extension CloudKitRecordMapper {
         encode(task.completionVersion, prefixCounter: Field.completionCounter, replica: Field.completionReplica, into: record)
         record[Field.orderToken] = task.orderToken.rawValue as NSString
         encode(task.orderVersion, prefixCounter: Field.orderCounter, replica: Field.orderReplica, into: record)
+        if task.schemaVersion >= 2 {
+            record[Field.indentLevel] = NSNumber(value: task.indentLevel)
+            encode(task.indentVersion, prefixCounter: Field.indentCounter, replica: Field.indentReplica, into: record)
+        }
         record[Field.lifecycle] = task.lifecycle.rawValue as NSString
         encode(task.lifecycleVersion, prefixCounter: Field.lifecycleCounter, replica: Field.lifecycleReplica, into: record)
     }
@@ -291,7 +298,7 @@ extension CloudKitRecordMapper {
             throw CloudRecordMappingError.malformedIdentifier(name)
         }
         let schema = try int(Field.schemaVersion, in: record)
-        guard schema == Task.currentSchemaVersion else {
+        guard (Task.oldestSupportedSchemaVersion...Task.currentSchemaVersion).contains(schema) else {
             throw CloudRecordMappingError.unsupportedSchema(name, schema)
         }
         guard let noteID = NoteID(string: try string(Field.noteID, in: record)) else {
@@ -307,6 +314,18 @@ extension CloudKitRecordMapper {
         guard let order = try? OrderToken(rawValue: rawOrder) else {
             throw CloudRecordMappingError.invalidField(name, Field.orderToken)
         }
+        let indentLevel: Int
+        let indentVersion: VersionStamp
+        if schema >= 2 {
+            indentLevel = try int(Field.indentLevel, in: record)
+            guard indentLevel >= 0 else {
+                throw CloudRecordMappingError.invalidField(name, Field.indentLevel)
+            }
+            indentVersion = try stamp(Field.indentCounter, Field.indentReplica, in: record)
+        } else {
+            indentLevel = 0
+            indentVersion = try stamp(Field.orderCounter, Field.orderReplica, in: record)
+        }
         return Task(
             id: id,
             noteID: noteID,
@@ -317,6 +336,8 @@ extension CloudKitRecordMapper {
             completionVersion: try stamp(Field.completionCounter, Field.completionReplica, in: record),
             orderToken: order,
             orderVersion: try stamp(Field.orderCounter, Field.orderReplica, in: record),
+            indentLevel: indentLevel,
+            indentVersion: indentVersion,
             lifecycle: try lifecycle(in: record),
             lifecycleVersion: try stamp(Field.lifecycleCounter, Field.lifecycleReplica, in: record),
             schemaVersion: schema

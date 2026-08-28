@@ -42,14 +42,28 @@ public enum TildoneSchemaV3: VersionedSchema {
     }
 }
 
+/// V4 adds task indentation as a sidecar keyed by stable task ID, preserving
+/// the established `StoredTask` model hash for existing shared stores.
+public enum TildoneSchemaV4: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(4, 0, 0)
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredNote.self, StoredNoteColor.self, StoredTask.self, StoredTaskIndentation.self, PendingMutation.self,
+            WorkspaceMetadata.self, QuarantinedRecord.self, LegacyMigrationState.self,
+            LegacyIdentityMapping.self
+        ]
+    }
+}
+
 public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self]
+        [TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self, TildoneSchemaV4.self]
     }
     public static var stages: [MigrationStage] {
         [
             .lightweight(fromVersion: TildoneSchemaV1.self, toVersion: TildoneSchemaV2.self),
-            .lightweight(fromVersion: TildoneSchemaV2.self, toVersion: TildoneSchemaV3.self)
+            .lightweight(fromVersion: TildoneSchemaV2.self, toVersion: TildoneSchemaV3.self),
+            .lightweight(fromVersion: TildoneSchemaV3.self, toVersion: TildoneSchemaV4.self)
         ]
     }
 }
@@ -177,6 +191,21 @@ final class StoredTask {
         self.lifecycleVersionCounter = lifecycleVersionCounter
         self.lifecycleVersionReplicaID = lifecycleVersionReplicaID
         self.recordSchemaVersion = recordSchemaVersion
+    }
+}
+
+@Model
+final class StoredTaskIndentation {
+    var taskStableID: String
+    var level: Int
+    var versionCounter: Int64
+    var versionReplicaID: String
+
+    init(taskStableID: String, level: Int, versionCounter: Int64, versionReplicaID: String) {
+        self.taskStableID = taskStableID
+        self.level = level
+        self.versionCounter = versionCounter
+        self.versionReplicaID = versionReplicaID
     }
 }
 
@@ -312,7 +341,7 @@ final class LegacyMigrationState {
         sourceContentDigest = sourceFingerprint.contentDigest
         sourceFileCount = sourceFingerprint.fileCount
         sourceTotalByteCount = Int64(sourceFingerprint.totalByteCount)
-        destinationSchemaVersion = 3
+        destinationSchemaVersion = 4
         sourceEligibleNoteCount = sourceCounts.eligibleNotes
         sourceEligibleTaskCount = sourceCounts.eligibleTasks
         sourceSystemNoteCount = sourceCounts.excludedSystemNotes

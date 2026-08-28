@@ -36,34 +36,48 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         context.autosaveEnabled = false
         do {
             let metadata = try context.fetch(FetchDescriptor<WorkspaceMetadata>())
+            let workspaceMetadata: WorkspaceMetadata
             if metadata.isEmpty {
-                context.insert(WorkspaceMetadata(
+                let created = WorkspaceMetadata(
                     workspaceKindRawValue: descriptor.workspace.kindRawValue,
                     opaqueWorkspaceID: descriptor.workspace.opaqueID,
                     replicaID: replicaID.stringValue,
                     sharedSchemaVersion: Self.currentSharedSchemaVersion
-                ))
-                try context.save()
+                )
+                context.insert(created)
+                workspaceMetadata = created
             } else {
                 guard metadata.count == 1 else { throw PersistenceError.workspaceMismatch }
+                workspaceMetadata = metadata[0]
                 if metadata[0].sharedSchemaVersion < Self.currentSharedSchemaVersion {
                     guard (1..<Self.currentSharedSchemaVersion).contains(
                         metadata[0].sharedSchemaVersion
                     ) else { throw PersistenceError.workspaceMismatch }
                     metadata[0].sharedSchemaVersion = Self.currentSharedSchemaVersion
-                    let migrations = try context.fetch(FetchDescriptor<LegacyMigrationState>())
-                    guard migrations.count <= 1 else { throw PersistenceError.workspaceMismatch }
-                    if migrations.first?.destinationSchemaVersion == 2 {
-                        migrations.first?.destinationSchemaVersion = Self.currentSharedSchemaVersion
-                    }
-                    try context.save()
                 }
-                try Self.validateWorkspaceMetadata(
-                    metadata[0],
-                    expectedWorkspace: descriptor.workspace,
-                    in: context
-                )
+                let migrations = try context.fetch(FetchDescriptor<LegacyMigrationState>())
+                guard migrations.count <= 1 else { throw PersistenceError.workspaceMismatch }
+                if let migration = migrations.first,
+                   migration.destinationSchemaVersion < Self.currentSharedSchemaVersion {
+                    migration.destinationSchemaVersion = Self.currentSharedSchemaVersion
+                }
             }
+            try Self.validateWorkspaceMetadata(
+                workspaceMetadata,
+                expectedWorkspace: descriptor.workspace,
+                in: context
+            )
+            try Self.migrateLegacyTaskSchemas(
+                metadata: workspaceMetadata,
+                createdAt: now(),
+                in: context
+            )
+            try context.save()
+            try Self.validateWorkspaceMetadata(
+                workspaceMetadata,
+                expectedWorkspace: descriptor.workspace,
+                in: context
+            )
         } catch let error as PersistenceError {
             throw error
         } catch {
@@ -102,7 +116,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     private nonisolated static func makeContainer(
         descriptor: PersistenceStoreDescriptor
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: TildoneSchemaV3.self)
+        let schema = Schema(versionedSchema: TildoneSchemaV4.self)
         let configuration: ModelConfiguration
         if descriptor.kind == .inMemory {
             configuration = ModelConfiguration(
@@ -329,12 +343,14 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try enqueue(.note, id: id.stringValue, sequence: noteStamp.logicalCounter, in: context)
 
         for storedTask in try storedTasks(noteID: id, in: context) {
-            var task = try StoredDomainMapping.task(from: storedTask, expectedNoteID: id)
+            var task = try mappedTask(from: storedTask, expectedNoteID: id, in: context)
             guard task.lifecycle == .active else { continue }
             let taskStamp = try nextStamp(metadata, observing: task.lifecycleVersion)
             do { try task.delete(version: taskStamp) }
             catch { throw PersistenceError.domainInvariant }
+            try promoteTaskToCurrentSchema(&task, version: taskStamp)
             try StoredDomainMapping.update(storedTask, from: task)
+            try upsertTaskIndentation(for: task, in: context)
             try enqueue(.task, id: task.id.stringValue, sequence: taskStamp.logicalCounter, in: context)
         }
         try saveMutation(context)
@@ -361,7 +377,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         to noteID: NoteID,
         createdAt: Date,
         text: String,
-        orderToken: OrderToken
+        orderToken: OrderToken,
+        indentLevel: Int = 0
     ) throws -> Task {
         let context = mutationContext()
         guard try storedTask(id: id, in: context) == nil else {
@@ -381,6 +398,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             completionVersion: stamp,
             orderToken: orderToken,
             orderVersion: stamp,
+            indentLevel: indentLevel,
+            indentVersion: stamp,
             lifecycleVersion: stamp
         )
         let meaningfulEditStamp = try nextStamp(
@@ -391,6 +410,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         catch { throw PersistenceError.domainInvariant }
         try StoredDomainMapping.update(storedNote, from: note)
         context.insert(try StoredDomainMapping.storedTask(from: task))
+        context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
         try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try enqueue(.note, id: noteID.stringValue, sequence: meaningfulEditStamp.logicalCounter, in: context)
         try saveMutation(context)
@@ -402,7 +422,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         guard let stored = try storedTask(id: id, in: context) else {
             throw PersistenceError.missing(.task, id.stringValue)
         }
-        let task = try StoredDomainMapping.task(from: stored)
+        let task = try mappedTask(from: stored, in: context)
         guard includingDeleted || task.lifecycle == .active else {
             throw PersistenceError.missing(.task, id.stringValue)
         }
@@ -435,6 +455,12 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try mutateTask(id: id) { task, stamp in try task.move(to: orderToken, version: stamp) }
     }
 
+    public func setTaskIndentLevel(id: TaskID, indentLevel: Int) throws -> Task {
+        try mutateTask(id: id) { task, stamp in
+            try task.setIndentLevel(indentLevel, version: stamp)
+        }
+    }
+
     public func deleteTask(id: TaskID) throws {
         let existing = try task(id: id, includingDeleted: true)
         guard existing.lifecycle == .active else { return }
@@ -462,7 +488,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     ) throws -> Task {
         let context = mutationContext()
         let stored = try requireStoredTask(id: id, in: context)
-        var task = try StoredDomainMapping.task(from: stored)
+        var task = try mappedTask(from: stored, in: context)
         let ownerStored = try requireStoredNote(id: task.noteID, in: context)
         var owner = try mappedNote(from: ownerStored, in: context)
         guard owner.lifecycle == .active, allowDeleted || task.lifecycle == .active else {
@@ -472,6 +498,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         let stamp = try nextStamp(metadata, observing: maxVersion(in: task))
         do { try mutation(&task, stamp) }
         catch { throw PersistenceError.domainInvariant }
+        try promoteTaskToCurrentSchema(&task, version: stamp)
         let meaningfulEditStamp = try nextStamp(
             metadata,
             observing: max(owner.lastMeaningfulEditVersion, stamp)
@@ -480,6 +507,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         catch { throw PersistenceError.domainInvariant }
         try StoredDomainMapping.update(ownerStored, from: owner)
         try StoredDomainMapping.update(stored, from: task)
+        try upsertTaskIndentation(for: task, in: context)
         try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try enqueue(
             .note,
@@ -560,7 +588,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                     .task, "invalid", field: "pendingMutationTarget"
                 )
             }
-            payload = .task(try StoredDomainMapping.task(from: requireStoredTask(id: id, in: context)))
+            payload = .task(try mappedTask(from: requireStoredTask(id: id, in: context), in: context))
         }
         guard row.attemptCount < Int64.max else { throw PersistenceError.counterOverflow }
         row.attemptCount += 1
@@ -749,8 +777,16 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 task.orderVersionCounter,
                 task.lifecycleVersionCounter
             ]
-            guard counters.allSatisfy({ $0 >= 0 }) else { throw PersistenceError.workspaceMismatch }
+            guard counters.allSatisfy({ $0 >= 0 }) else {
+                throw PersistenceError.workspaceMismatch
+            }
             maximum = max(maximum, counters.max() ?? 0)
+        }
+        for indentation in try context.fetch(FetchDescriptor<StoredTaskIndentation>()) {
+            guard indentation.level >= 0, indentation.versionCounter >= 0 else {
+                throw PersistenceError.workspaceMismatch
+            }
+            maximum = max(maximum, indentation.versionCounter)
         }
         for mutation in try context.fetch(FetchDescriptor<PendingMutation>()) {
             guard mutation.sequence >= 0 else { throw PersistenceError.workspaceMismatch }
@@ -799,7 +835,20 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         sequence: UInt64,
         in context: ModelContext
     ) throws {
+        try Self.enqueue(kind, id: id, sequence: sequence, createdAt: now(), in: context)
+    }
+
+    private nonisolated static func enqueue(
+        _ kind: PersistedEntityKind,
+        id: String,
+        sequence: UInt64,
+        createdAt: Date,
+        in context: ModelContext
+    ) throws {
         guard sequence <= UInt64(Int64.max) else { throw PersistenceError.counterOverflow }
+        guard createdAt.timeIntervalSinceReferenceDate.isFinite else {
+            throw PersistenceError.domainInvariant
+        }
         let kindRaw = kind.rawValue
         let active = try context.fetch(FetchDescriptor<PendingMutation>(
             predicate: #Predicate {
@@ -817,7 +866,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             targetKindRawValue: kindRaw,
             targetStableID: id,
             sequence: Int64(sequence),
-            createdAt: now()
+            createdAt: createdAt
         ))
     }
 
@@ -825,7 +874,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     /// of older in-flight mutations. An unsent active row may already be the
     /// successor of an attempted ancestor; deleting it without retargeting that
     /// ancestor leaves a dangling supersession link.
-    func supersedeActiveMutation(
+    nonisolated static func supersedeActiveMutation(
         _ row: PendingMutation,
         with newMutationID: String,
         in context: ModelContext
@@ -1016,7 +1065,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     private func mappedUniqueTasks(noteID: NoteID, in context: ModelContext) throws -> [Task] {
         var identifiers: Set<TaskID> = []
         return try storedTasks(noteID: noteID, in: context).map { stored in
-            let task = try StoredDomainMapping.task(from: stored, expectedNoteID: noteID)
+            let task = try mappedTask(from: stored, expectedNoteID: noteID, in: context)
             guard identifiers.insert(task.id).inserted else {
                 throw PersistenceError.duplicateID(.task, task.id.stringValue)
             }
@@ -1025,7 +1074,128 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     }
 
     func maxVersion(in task: Task) -> VersionStamp {
-        [task.textVersion, task.completionVersion, task.orderVersion, task.lifecycleVersion].max()!
+        [
+            task.textVersion, task.completionVersion, task.orderVersion, task.indentVersion,
+            task.lifecycleVersion
+        ].max()!
+    }
+
+    func mappedTask(
+        from stored: StoredTask,
+        expectedNoteID: NoteID? = nil,
+        in context: ModelContext
+    ) throws -> Task {
+        try StoredDomainMapping.task(
+            from: stored,
+            indentation: try taskIndentation(for: stored.stableID, in: context),
+            expectedNoteID: expectedNoteID
+        )
+    }
+
+    func taskIndentation(for stableID: String, in context: ModelContext) throws -> StoredTaskIndentation? {
+        let rows = try context.fetch(FetchDescriptor<StoredTaskIndentation>(
+            predicate: #Predicate { $0.taskStableID == stableID }
+        ))
+        guard rows.count <= 1 else { throw PersistenceError.duplicateID(.task, stableID) }
+        return rows.first
+    }
+
+    func requireTaskIndentation(for id: TaskID, in context: ModelContext) throws -> StoredTaskIndentation {
+        guard let indentation = try taskIndentation(for: id.stringValue, in: context) else {
+            throw PersistenceError.missing(.task, id.stringValue)
+        }
+        return indentation
+    }
+
+    func promoteTaskToCurrentSchema(_ task: inout Task, version: VersionStamp) throws {
+        guard task.schemaVersion < Task.currentSchemaVersion else { return }
+        if version > task.indentVersion {
+            do { try task.setIndentLevel(task.indentLevel, version: version) }
+            catch { throw PersistenceError.domainInvariant }
+        }
+        task = Self.taskByPromotingToCurrentSchema(task)
+    }
+
+    private nonisolated static func taskByPromotingToCurrentSchema(_ task: Task) -> Task {
+        Task(
+            id: task.id,
+            noteID: task.noteID,
+            createdAt: task.createdAt,
+            text: task.text,
+            textVersion: task.textVersion,
+            completion: task.completion,
+            completionVersion: task.completionVersion,
+            orderToken: task.orderToken,
+            orderVersion: task.orderVersion,
+            indentLevel: task.indentLevel,
+            indentVersion: task.indentVersion,
+            lifecycle: task.lifecycle,
+            lifecycleVersion: task.lifecycleVersion,
+            schemaVersion: Task.currentSchemaVersion
+        )
+    }
+
+    func upsertTaskIndentation(for task: Task, in context: ModelContext) throws {
+        if let indentation = try taskIndentation(for: task.id.stringValue, in: context) {
+            try StoredDomainMapping.update(indentation, from: task)
+        } else {
+            context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
+        }
+    }
+
+    private nonisolated static func migrateLegacyTaskSchemas(
+        metadata: WorkspaceMetadata,
+        createdAt: Date,
+        in context: ModelContext
+    ) throws {
+        let tasks = try context.fetch(FetchDescriptor<StoredTask>())
+        var indentationsByTaskID: [String: StoredTaskIndentation] = [:]
+        for indentation in try context.fetch(FetchDescriptor<StoredTaskIndentation>()) {
+            guard indentationsByTaskID.updateValue(
+                indentation,
+                forKey: indentation.taskStableID
+            ) == nil else {
+                throw PersistenceError.duplicateID(.task, indentation.taskStableID)
+            }
+        }
+        let replica = try validatedReplica(in: metadata)
+        for stored in tasks {
+            let indentation = indentationsByTaskID[stored.stableID]
+            var task = try StoredDomainMapping.task(from: stored, indentation: indentation)
+            guard task.schemaVersion < Task.currentSchemaVersion || indentation == nil else {
+                continue
+            }
+            let maximum = [
+                task.textVersion, task.completionVersion, task.orderVersion,
+                task.indentVersion, task.lifecycleVersion
+            ].max()!
+            let current = max(UInt64(metadata.logicalCounter), maximum.logicalCounter)
+            guard current < UInt64(Int64.max) else { throw PersistenceError.counterOverflow }
+            let stamp = VersionStamp(logicalCounter: current + 1, replicaID: replica)
+            metadata.logicalCounter = Int64(stamp.logicalCounter)
+            if stamp > task.indentVersion {
+                do { try task.setIndentLevel(task.indentLevel, version: stamp) }
+                catch { throw PersistenceError.domainInvariant }
+            }
+            if task.schemaVersion < Task.currentSchemaVersion {
+                task = taskByPromotingToCurrentSchema(task)
+            }
+            try StoredDomainMapping.update(stored, from: task)
+            if let indentation {
+                try StoredDomainMapping.update(indentation, from: task)
+            } else {
+                let inserted = try StoredDomainMapping.storedTaskIndentation(from: task)
+                context.insert(inserted)
+                indentationsByTaskID[stored.stableID] = inserted
+            }
+            try enqueue(
+                .task,
+                id: task.id.stringValue,
+                sequence: stamp.logicalCounter,
+                createdAt: createdAt,
+                in: context
+            )
+        }
     }
 
     func maxVersion(in note: Note) -> VersionStamp {

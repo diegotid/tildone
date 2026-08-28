@@ -17,6 +17,7 @@ struct TaskRow: View {
     let placeholderColor: Color
     let truncation: TaskLineTruncation
     let isFirst: Bool
+    let subtaskProgress: TaskSubtaskProgress?
     let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
     let isActive: Bool
@@ -39,12 +40,18 @@ struct TaskRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Checkbox(checked: task.isCompleted)
-                .disabled(task.text.isEmpty)
-                .onToggle { onToggle() }
-                .padding(.vertical, 2.4)
+            Group {
+                if let subtaskProgress {
+                    SubtaskProgressGauge(progress: subtaskProgress)
+                } else {
+                    Checkbox(checked: task.isCompleted)
+                        .disabled(task.text.isEmpty)
+                        .onToggle { onToggle() }
+                }
+            }
+            .padding(.vertical, 2.4)
 
-            if task.isCompleted {
+            if task.isCompleted && subtaskProgress == nil {
                 Text(task.text)
                     .font(.system(size: CGFloat(fontSize)))
                     .lineLimit(1)
@@ -141,7 +148,7 @@ struct TaskRow: View {
             }
             .padding(.trailing, 8)
         }
-        .padding(.leading, 2)
+        .padding(.leading, 2 + CGFloat(task.indentLevel) * (Layout.checkboxSize + 8))
         .onHover {
             if !$0 { updateReorderControlsHover(false) }
         }

@@ -301,6 +301,7 @@ extension Note {
             placeholderColor: minimizedForeground,
             truncation: taskLineTruncation,
             isFirst: task.id == tasks.first?.id,
+            subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
             feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
             isActive: activeFocusedTaskID == task.id,
@@ -313,7 +314,7 @@ extension Note {
             onPaste: { paste(into: task) },
             onMoveUp: { handleMoveUp(from: task.id) },
             onSubmit: { handleMoveDown(from: task.id) },
-            onInsertAbove: { insertEmptyTask(at: index) },
+            onInsertAbove: { insertEmptyTask(at: index, indentLevel: task.indentLevel) },
             onDrop: { payload, destination in
                 handleTaskDrop(payload, at: destination)
             },
