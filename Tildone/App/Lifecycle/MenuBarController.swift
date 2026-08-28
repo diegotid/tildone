@@ -125,6 +125,17 @@ final class MenuBarController: NSObject {
         bringAllUp.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(bringAllUp)
 
+        let lineUpNotes = item(String(localized: "Line Up Notes"), action: #selector(lineUpNotes), symbolName: "rectangle.3.group")
+        let lineUpShortcut = AppShortcuts.lineUp(
+            key: UserDefaults.standard.string(forKey: AppShortcuts.lineUpKeyStorageKey)
+                ?? AppShortcuts.defaultLineUp.key
+                ?? "a",
+            modifiersRawValue: UserDefaults.standard.integer(forKey: AppShortcuts.lineUpModifiersStorageKey)
+        )
+        lineUpNotes.keyEquivalent = lineUpShortcut.key ?? ""
+        lineUpNotes.keyEquivalentModifierMask = lineUpShortcut.modifiers
+        menu.addItem(lineUpNotes)
+
         menu.addItem(.separator())
         let syncHeader = NSMenuItem(title: String(localized: "iCloud sync is disabled"), action: nil, keyEquivalent: "")
         syncHeader.isEnabled = false
@@ -187,6 +198,7 @@ final class MenuBarController: NSObject {
     @objc private func createNote() { sendToActiveApp(.new) }
     @objc private func minimizeAll() { sendToActiveApp(.minimizeAll) }
     @objc private func bringAllUp() { sendToActiveApp(.bringAllUp) }
+    @objc private func lineUpNotes() { sendToActiveApp(.arrange) }
     @objc private func openSettings() { sendToActiveApp(.openSettings) }
     @objc private func openAbout() { sendToActiveApp(.openAbout) }
     @objc private func openFocusFilterHelp() { sendToActiveApp(.openFocusFilterHelp) }
