@@ -9,16 +9,21 @@ import SwiftUI
 
 struct Checkbox: View {
     var checked: Bool = false
+    var size: CGFloat = Layout.checkboxSize
 
     var disabled: Bool = false
     var onToggle: (() -> Void)?
+
+    private var checkSize: CGFloat {
+        size * Layout.checkboxCheckSize / Layout.checkboxSize
+    }
 
     var body: some View {
         return ZStack {
             Circle()
                 .fill(Color(.checkboxOffFill))
                 .overlay(Circle().stroke(self.checked ? .accentColor : Color(.checkboxBorder)))
-                .frame(width: Layout.checkboxSize, height: Layout.checkboxSize, alignment: .center)
+                .frame(width: size, height: size, alignment: .center)
                 .opacity(disabled ? 0.6 : 1)
                 .onTapGesture(count: 1) {
                     if !disabled, let toggle = onToggle {
@@ -28,8 +33,8 @@ struct Checkbox: View {
             if self.checked {
                 Circle()
                     .fill(Color.accentColor)
-                    .frame(width: Layout.checkboxCheckSize,
-                           height: Layout.checkboxCheckSize,
+                    .frame(width: checkSize,
+                           height: checkSize,
                            alignment: .center)
                     .onTapGesture(count: 1) {
                         if let toggle = onToggle {

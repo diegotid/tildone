@@ -267,7 +267,7 @@ extension Note {
 
     func newListItem() -> some View {
         HStack(spacing: 8) {
-            Checkbox().disabled(true)
+            Checkbox(size: max(10, CGFloat(fontSize) + 1)).disabled(true)
             ZStack(alignment: .leading) {
                 if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(minimizedForeground).opacity(0.35).allowsHitTesting(false) }
                 TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(noteForeground).tint(noteForeground)

@@ -38,18 +38,30 @@ struct TaskRow: View {
     let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
 
+    private var taskControlSize: CGFloat {
+        max(10, CGFloat(fontSize) * 0.9)
+    }
+
+    private var taskLineHeight: CGFloat {
+        max(CGFloat(fontSize) * 1.15, taskControlSize)
+    }
+
+    private var taskControlVerticalPadding: CGFloat {
+        max(0, (taskLineHeight - taskControlSize) / 2)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Group {
                 if let subtaskProgress {
-                    SubtaskProgressGauge(progress: subtaskProgress)
+                    SubtaskProgressGauge(progress: subtaskProgress, size: taskControlSize)
                 } else {
-                    Checkbox(checked: task.isCompleted)
+                    Checkbox(checked: task.isCompleted, size: taskControlSize)
                         .disabled(task.text.isEmpty)
                         .onToggle { onToggle() }
                 }
             }
-            .padding(.vertical, 2.4)
+            .padding(.vertical, taskControlVerticalPadding)
 
             if task.isCompleted || subtaskProgress?.fraction == 1 {
                 Text(task.text)
@@ -65,7 +77,7 @@ struct TaskRow: View {
                             .frame(height: 2)
                             .offset(y: 1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
             } else {
                 ZStack(alignment: .leading) {
                     if task.text.isEmpty {
@@ -88,7 +100,7 @@ struct TaskRow: View {
                             onMoveUp: onMoveUp,
                             onMoveDown: onSubmit
                         )
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, minHeight: taskLineHeight, maxHeight: taskLineHeight, alignment: .leading)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }
@@ -116,7 +128,7 @@ struct TaskRow: View {
                             .onSubmit { onSubmit() }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
             }
 
             HStack(spacing: 2) {
