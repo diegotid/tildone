@@ -136,7 +136,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
         for note in notes {
             let tasks = try await repository.orderedTasks(in: note.id)
-            taskSummaries[note.id] = NoteTaskSummary(noteID: note.id, tasks: tasks)
+            taskSummaries[note.id] = NoteTaskSummary(
+                noteID: note.id,
+                tasks: TaskHierarchy.leafTasks(in: tasks)
+            )
             let oldestTasksFirst = tasks.sorted {
                 $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
             }
@@ -189,15 +192,26 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     @discardableResult
-    func addTask(noteID: NoteID, text: String, after tasks: [Task]) async throws -> Task? {
+    func addTask(
+        noteID: NoteID,
+        text: String,
+        after tasks: [Task],
+        indentLevel: Int? = nil
+    ) async throws -> Task? {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         let initialUpperBound = try initialOrderUpperBound()
         let lastToken = tasks.last?.orderToken ?? OrderToken.before(initialUpperBound)
         let order = OrderToken.after(lastToken)
+        let resolvedIndentLevel = max(0, indentLevel ?? tasks.last?.indentLevel ?? 0)
         let task = try await withRepository { repository in
             try await repository.addTask(
-                id: TaskID(), to: noteID, createdAt: Date(), text: text, orderToken: order
+                id: TaskID(),
+                to: noteID,
+                createdAt: Date(),
+                text: text,
+                orderToken: order,
+                indentLevel: resolvedIndentLevel
             )
         }
         try await didMutate()
@@ -221,22 +235,97 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func delete(taskID: TaskID) async throws {
-        _ = try await withRepository { repository in try await repository.deleteTask(id: taskID) }
+        try await withRepository { repository in
+            let task = try await repository.task(id: taskID, includingDeleted: false)
+            let orderedTasks = try await repository.orderedTasks(in: task.noteID)
+            guard let index = orderedTasks.firstIndex(where: { $0.id == taskID }) else {
+                return try await repository.deleteTask(id: taskID)
+            }
+            for descendant in orderedTasks[TaskHierarchy.subtreeRange(startingAt: index, in: orderedTasks)] {
+                try await repository.deleteTask(id: descendant.id)
+            }
+        }
         try await didMutate()
     }
 
-    func move(taskID: TaskID, in orderedTasks: [Task], from source: IndexSet, to destination: Int) async throws {
-        guard let originalIndex = source.first else { return }
-        var reordered = orderedTasks
-        let moved = reordered.remove(at: originalIndex)
-        let adjustedDestination = destination > originalIndex ? destination - 1 : destination
-        reordered.insert(moved, at: min(adjustedDestination, reordered.count))
-        guard let newIndex = reordered.firstIndex(where: { $0.id == taskID }) else { return }
-        let lower = newIndex > 0 ? reordered[newIndex - 1].orderToken : nil
-        let upper = newIndex + 1 < reordered.count ? reordered[newIndex + 1].orderToken : nil
-        let token = try OrderToken.between(lower, upper)
-        _ = try await withRepository { repository in try await repository.moveTask(id: taskID, to: token) }
+    @discardableResult
+    func changeIndentation(
+        taskID: TaskID,
+        in orderedTasks: [Task],
+        outdent: Bool
+    ) async throws -> Bool {
+        guard let index = orderedTasks.firstIndex(where: { $0.id == taskID }) else { return false }
+        let task = orderedTasks[index]
+        let targetLevel: Int
+        if outdent {
+            guard task.indentLevel > 0 else { return false }
+            targetLevel = task.indentLevel - 1
+        } else {
+            guard index > 0 else { return false }
+            targetLevel = orderedTasks[index - 1].indentLevel + 1
+        }
+        let delta = targetLevel - task.indentLevel
+        guard delta != 0 else { return false }
+
+        let subtree = TaskHierarchy.subtreeRange(startingAt: index, in: orderedTasks)
+        for descendant in orderedTasks[subtree] {
+            _ = try await withRepository { repository in
+                try await repository.setTaskIndentLevel(
+                    id: descendant.id,
+                    indentLevel: max(0, descendant.indentLevel + delta)
+                )
+            }
+        }
         try await didMutate()
+        return true
+    }
+
+    @discardableResult
+    func move(
+        taskID: TaskID,
+        in orderedTasks: [Task],
+        from source: IndexSet,
+        to destination: Int
+    ) async throws -> Bool {
+        guard let originalIndex = orderedTasks.firstIndex(where: { $0.id == taskID }),
+              source.contains(originalIndex),
+              (0...orderedTasks.count).contains(destination) else {
+            return false
+        }
+        let subtree = TaskHierarchy.subtreeRange(startingAt: originalIndex, in: orderedTasks)
+        guard !subtree.isEmpty,
+              destination < subtree.lowerBound || destination > subtree.upperBound else {
+            return false
+        }
+
+        let originalParentID = TaskHierarchy.parentID(at: originalIndex, in: orderedTasks)
+        var reordered = orderedTasks
+        let movedTasks = Array(reordered[subtree])
+        reordered.removeSubrange(subtree)
+        let adjustedDestination = destination > subtree.upperBound
+            ? destination - subtree.count
+            : destination
+        let insertionIndex = min(adjustedDestination, reordered.count)
+        reordered.insert(contentsOf: movedTasks, at: insertionIndex)
+        guard reordered.map(\.id) != orderedTasks.map(\.id),
+              TaskHierarchy.isValidPreorder(reordered),
+              let newIndex = reordered.firstIndex(where: { $0.id == taskID }),
+              TaskHierarchy.parentID(at: newIndex, in: reordered) == originalParentID else {
+            return false
+        }
+
+        var lower = insertionIndex > 0 ? reordered[insertionIndex - 1].orderToken : nil
+        let upperIndex = insertionIndex + movedTasks.count
+        let upper = upperIndex < reordered.count ? reordered[upperIndex].orderToken : nil
+        for task in movedTasks {
+            let token = try OrderToken.between(lower, upper)
+            let moved = try await withRepository { repository in
+                try await repository.moveTask(id: task.id, to: token)
+            }
+            lower = moved.orderToken
+        }
+        try await didMutate()
+        return true
     }
 
     func openForTesting(workspaceID: UUID) async throws {

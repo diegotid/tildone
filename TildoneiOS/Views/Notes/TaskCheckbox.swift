@@ -5,6 +5,7 @@
 //  Created by Diego Rivera on 8/2/26.
 //
 import SwiftUI
+import TildoneDomain
 
 struct TaskCheckbox: View {
     let isChecked: Bool
@@ -58,5 +59,50 @@ struct TaskCheckboxIndicator: View {
 
     private var checkboxBorder: Color {
         Color(red: 0.534, green: 0.507, blue: 0.339)
+    }
+}
+
+struct TaskSubtaskProgressGauge: View {
+    let progress: TaskSubtaskProgress
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.white.opacity(0.5))
+            Circle()
+                .strokeBorder(Color(red: 0.534, green: 0.507, blue: 0.339), lineWidth: 1)
+            if progress.fraction > 0 {
+                TaskProgressSlice(fraction: progress.fraction)
+                    .fill(Color.accentColor)
+            }
+            if progress.fraction == 1 {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 18, height: 18)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Subtask progress")
+        .accessibilityValue("\(progress.completedCount) of \(progress.totalCount)")
+    }
+}
+
+private struct TaskProgressSlice: Shape {
+    let fraction: Double
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: min(rect.width, rect.height) / 2,
+            startAngle: .degrees(-90),
+            endAngle: .degrees(-90 + min(max(fraction, 0), 1) * 360),
+            clockwise: false
+        )
+        path.closeSubpath()
+        return path
     }
 }

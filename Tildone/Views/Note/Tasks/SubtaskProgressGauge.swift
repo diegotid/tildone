@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import TildoneDomain
 
 struct SubtaskProgressGauge: View {
     let progress: TaskSubtaskProgress

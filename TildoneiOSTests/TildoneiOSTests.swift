@@ -71,6 +71,144 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(remaining.map(\.id), [second.id])
     }
 
+    func testIPhoneHierarchyUsesRecursiveLeafProgressAndInheritsIndentation() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Hierarchy")
+        let createdParent = try await model.addTask(noteID: note.id, text: "Parent", after: [])
+        let parent = try XCTUnwrap(createdParent)
+        let createdNestedParent = try await model.addTask(
+            noteID: note.id,
+            text: "Nested parent",
+            after: [parent],
+            indentLevel: 1
+        )
+        let nestedParent = try XCTUnwrap(createdNestedParent)
+        let createdGrandchild = try await model.addTask(
+            noteID: note.id,
+            text: "Grandchild",
+            after: [parent, nestedParent],
+            indentLevel: 2
+        )
+        let grandchild = try XCTUnwrap(createdGrandchild)
+        let createdSibling = try await model.addTask(
+            noteID: note.id,
+            text: "Sibling",
+            after: [parent, nestedParent, grandchild],
+            indentLevel: 1
+        )
+        let sibling = try XCTUnwrap(createdSibling)
+        let createdInheritedSibling = try await model.addTask(
+            noteID: note.id,
+            text: "Inherited sibling",
+            after: [parent, nestedParent, grandchild, sibling]
+        )
+        let inheritedSibling = try XCTUnwrap(createdInheritedSibling)
+
+        XCTAssertEqual(inheritedSibling.indentLevel, 1)
+        try await model.setCompletion(taskID: grandchild.id, completed: true)
+        try await model.setCompletion(taskID: sibling.id, completed: true)
+        try await model.setCompletion(taskID: inheritedSibling.id, completed: true)
+
+        let tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(
+            TaskHierarchy.subtaskProgress(at: 0, in: tasks),
+            TaskSubtaskProgress(completedCount: 3, totalCount: 3)
+        )
+        XCTAssertEqual(
+            TaskHierarchy.subtaskProgress(at: 1, in: tasks),
+            TaskSubtaskProgress(completedCount: 1, totalCount: 1)
+        )
+        XCTAssertEqual(model.taskSummaries[note.id]?.completedCount, 3)
+        XCTAssertEqual(model.taskSummaries[note.id]?.totalCount, 3)
+    }
+
+    func testIPhoneIndentationAndReorderingAlwaysMoveAnIntactSubtree() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Hierarchy")
+        let createdFirstRoot = try await model.addTask(
+            noteID: note.id,
+            text: "First root",
+            after: []
+        )
+        let firstRoot = try XCTUnwrap(createdFirstRoot)
+        let createdChild = try await model.addTask(
+            noteID: note.id,
+            text: "Child",
+            after: [firstRoot]
+        )
+        let child = try XCTUnwrap(createdChild)
+        let createdGrandchild = try await model.addTask(
+            noteID: note.id,
+            text: "Grandchild",
+            after: [firstRoot, child]
+        )
+        let grandchild = try XCTUnwrap(createdGrandchild)
+        let createdSecondRoot = try await model.addTask(
+            noteID: note.id,
+            text: "Second root",
+            after: [firstRoot, child, grandchild]
+        )
+        let secondRoot = try XCTUnwrap(createdSecondRoot)
+
+        var tasks = try await model.tasks(in: note.id)
+        let didIndentChild = try await model.changeIndentation(
+            taskID: child.id,
+            in: tasks,
+            outdent: false
+        )
+        XCTAssertTrue(didIndentChild)
+        tasks = try await model.tasks(in: note.id)
+        let didIndentGrandchild = try await model.changeIndentation(
+            taskID: grandchild.id,
+            in: tasks,
+            outdent: false
+        )
+        XCTAssertTrue(didIndentGrandchild)
+        tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 2, 0])
+
+        let didMoveRoot = try await model.move(
+            taskID: firstRoot.id,
+            in: tasks,
+            from: IndexSet(integer: 0),
+            to: tasks.count
+        )
+        XCTAssertTrue(didMoveRoot)
+        tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [secondRoot.id, firstRoot.id, child.id, grandchild.id])
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 0, 1, 2])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 2, in: tasks), firstRoot.id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 3, in: tasks), child.id)
+
+        let didDetachChild = try await model.move(
+            taskID: child.id,
+            in: tasks,
+            from: IndexSet(integer: 2),
+            to: 0
+        )
+        XCTAssertFalse(didDetachChild)
+        let preservedTasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(
+            preservedTasks.map(\.id),
+            [secondRoot.id, firstRoot.id, child.id, grandchild.id]
+        )
+
+        let didOutdentChild = try await model.changeIndentation(
+            taskID: child.id,
+            in: tasks,
+            outdent: true
+        )
+        XCTAssertTrue(didOutdentChild)
+        let outdented = try await model.tasks(in: note.id)
+        XCTAssertEqual(outdented.map(\.indentLevel), [0, 0, 0, 1])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 3, in: outdented), child.id)
+
+        try await model.delete(taskID: child.id)
+        let afterDeletingParent = try await model.tasks(in: note.id)
+        XCTAssertEqual(afterDeletingParent.map(\.id), [secondRoot.id, firstRoot.id])
+        XCTAssertTrue(TaskHierarchy.isValidPreorder(afterDeletingParent))
+    }
+
     func testRemoteStyleRefreshDoesNotDuplicateRowsAndHidesTombstones() async throws {
         let workspace = UUID()
         let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))

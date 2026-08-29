@@ -99,7 +99,6 @@
 		D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000103 /* NSView+NestedSubviews.swift */; };
 		D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000101 /* NoteCornerConvergence.swift */; };
 		D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000102 /* NoteWindowManualPosition.swift */; };
-		D90000000000000000000001 /* TaskHierarchy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000011 /* TaskHierarchy.swift */; };
 		D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000012 /* SubtaskProgressGauge.swift */; };
 		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
 		F12F7B3930424E3900553CAC /* PizzaSlice.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12F7B3830424DB700553CAC /* PizzaSlice.swift */; };
@@ -255,7 +254,6 @@
 		D70000000000000000000103 /* NSView+NestedSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSView+NestedSubviews.swift"; sourceTree = "<group>"; };
 		D80000000000000000000101 /* NoteCornerConvergence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCornerConvergence.swift; sourceTree = "<group>"; };
 		D80000000000000000000102 /* NoteWindowManualPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManualPosition.swift; sourceTree = "<group>"; };
-		D90000000000000000000011 /* TaskHierarchy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskHierarchy.swift; sourceTree = "<group>"; };
 		D90000000000000000000012 /* SubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskProgressGauge.swift; sourceTree = "<group>"; };
 		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F12F7B3830424DB700553CAC /* PizzaSlice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PizzaSlice.swift; sourceTree = "<group>"; };
@@ -633,7 +631,6 @@
 				D4000000000000000000010A /* TaskReorderInsertionLine.swift */,
 				D4000000000000000000010F /* TaskReorderPreview.swift */,
 				D1000000000000000000010F /* TaskRow.swift */,
-				D90000000000000000000011 /* TaskHierarchy.swift */,
 				D90000000000000000000012 /* SubtaskProgressGauge.swift */,
 				D4000000000000000000010D /* TaskRowDropDelegate.swift */,
 				D4000000000000000000010C /* TaskRowDropPlacement.swift */,
@@ -1125,7 +1122,6 @@
 				D40000000000000000000205 /* NoteColorPalette.swift in Sources */,
 				D1000000000000000000020E /* ScrollFrame.swift in Sources */,
 				D1000000000000000000020F /* TaskRow.swift in Sources */,
-				D90000000000000000000001 /* TaskHierarchy.swift in Sources */,
 				D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */,
 				D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */,
 				D40000000000000000000206 /* MouseSafeTaskNSTextField.swift in Sources */,

@@ -53,9 +53,15 @@ struct ChecklistView: View {
                     }
 
                     Section {
-                        ForEach(tasks, id: \.id) { task in
+                        ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                            let canIndent = index > 0
+                                && task.indentLevel != tasks[index - 1].indentLevel + 1
+                            let canOutdent = task.indentLevel > 0
                             TaskRow(
                                 task: task,
+                                subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
+                                canIndent: canIndent,
+                                canOutdent: canOutdent,
                                 focusedTask: $focusedTask,
                                 onCommit: { value in
                                     try? await appModel.edit(taskID: task.id, text: value)
@@ -64,6 +70,12 @@ struct ChecklistView: View {
                                 onToggle: {
                                     try? await appModel.setCompletion(taskID: task.id, completed: !task.isCompleted)
                                     await reload()
+                                },
+                                onIndent: {
+                                    await changeIndentation(taskID: task.id, outdent: false)
+                                },
+                                onOutdent: {
+                                    await changeIndentation(taskID: task.id, outdent: true)
                                 },
                                 onDelete: {
                                     try? await appModel.delete(taskID: task.id)
@@ -76,6 +88,28 @@ struct ChecklistView: View {
                                     await move(taskID: task.id, by: 1)
                                 }
                             )
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                if canIndent {
+                                    Button {
+                                        Swift.Task {
+                                            await changeIndentation(taskID: task.id, outdent: false)
+                                        }
+                                    } label: {
+                                        Label("Indent", systemImage: "increase.indent")
+                                    }
+                                    .tint(.indigo)
+                                }
+                                if canOutdent {
+                                    Button {
+                                        Swift.Task {
+                                            await changeIndentation(taskID: task.id, outdent: true)
+                                        }
+                                    } label: {
+                                        Label("Outdent", systemImage: "decrease.indent")
+                                    }
+                                    .tint(.blue)
+                                }
+                            }
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", role: .destructive) {
                                     Swift.Task { await delete(taskID: task.id) }
@@ -204,20 +238,47 @@ struct ChecklistView: View {
     private func move(from source: IndexSet, to destination: Int) {
         guard let task = source.first.map({ tasks[$0] }) else { return }
         Swift.Task {
-            try? await appModel.move(taskID: task.id, in: tasks, from: source, to: destination)
+            _ = try? await appModel.move(
+                taskID: task.id,
+                in: tasks,
+                from: source,
+                to: destination
+            )
             await reload()
         }
     }
 
     private func move(taskID: TaskID, by offset: Int) async {
         guard let sourceIndex = tasks.firstIndex(where: { $0.id == taskID }) else { return }
-        let destination = sourceIndex + offset
-        guard tasks.indices.contains(destination) else { return }
-        try? await appModel.move(
+        let parentID = TaskHierarchy.parentID(at: sourceIndex, in: tasks)
+        let siblings = tasks.indices.filter { index in
+            tasks[index].indentLevel == tasks[sourceIndex].indentLevel
+                && TaskHierarchy.parentID(at: index, in: tasks) == parentID
+        }
+        guard let siblingIndex = siblings.firstIndex(of: sourceIndex) else { return }
+        let destination: Int
+        if offset < 0 {
+            guard siblingIndex > siblings.startIndex else { return }
+            destination = siblings[siblingIndex - 1]
+        } else {
+            guard siblingIndex + 1 < siblings.endIndex else { return }
+            let nextSibling = siblings[siblingIndex + 1]
+            destination = TaskHierarchy.subtreeRange(startingAt: nextSibling, in: tasks).upperBound
+        }
+        _ = try? await appModel.move(
             taskID: taskID,
             in: tasks,
             from: IndexSet(integer: sourceIndex),
-            to: offset < 0 ? destination : destination + 1
+            to: destination
+        )
+        await reload()
+    }
+
+    private func changeIndentation(taskID: TaskID, outdent: Bool) async {
+        _ = try? await appModel.changeIndentation(
+            taskID: taskID,
+            in: tasks,
+            outdent: outdent
         )
         await reload()
     }
