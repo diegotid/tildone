@@ -126,14 +126,6 @@ final class MenuBarController: NSObject {
         menu.addItem(bringAllUp)
 
         let lineUpNotes = item(String(localized: "Line Up Notes"), action: #selector(lineUpNotes), symbolName: "rectangle.3.group")
-        let lineUpShortcut = AppShortcuts.lineUp(
-            key: UserDefaults.standard.string(forKey: AppShortcuts.lineUpKeyStorageKey)
-                ?? AppShortcuts.defaultLineUp.key
-                ?? "a",
-            modifiersRawValue: UserDefaults.standard.integer(forKey: AppShortcuts.lineUpModifiersStorageKey)
-        )
-        lineUpNotes.keyEquivalent = lineUpShortcut.key ?? ""
-        lineUpNotes.keyEquivalentModifierMask = lineUpShortcut.modifiers
         menu.addItem(lineUpNotes)
 
         menu.addItem(.separator())

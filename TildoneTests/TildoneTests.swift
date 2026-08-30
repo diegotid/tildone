@@ -272,6 +272,17 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(lineUp.displayName, "⌥⌘L")
     }
 
+    func testLineUpShortcutDefaultsToGlobalShiftCommandL() {
+        XCTAssertEqual(AppShortcuts.defaultLineUp.displayName, "⇧⌘L")
+        XCTAssertEqual(AppShortcuts.defaultLineUp.keyCode, 37)
+
+        let legacyShortcut = AppShortcuts.lineUp(
+            key: "A",
+            modifiersRawValue: Int(NSEvent.ModifierFlags([.command, .shift]).rawValue)
+        )
+        XCTAssertEqual(legacyShortcut.keyCode, 0)
+    }
+
     func testNoteWindowBackgroundStaysAtConfiguredOpacityUntilWindowCrossesIt() {
         XCTAssertEqual(
             NoteWindowBackground.tintAlpha(configuredAlpha: 0.6, windowAlpha: 1),

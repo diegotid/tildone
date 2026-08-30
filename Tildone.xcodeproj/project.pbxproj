@@ -63,6 +63,7 @@
 		D20000000000000000000206 /* AppNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000106 /* AppNotifications.swift */; };
 		D20000000000000000000207 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000107 /* AppDelegate.swift */; };
 		D20000000000000000000208 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000108 /* MenuBarController.swift */; };
+		D20000000000000000000209 /* GlobalLineUpHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000109 /* GlobalLineUpHotKey.swift */; };
 		D30000000000000000000201 /* MacNoteSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000101 /* MacNoteSnapshot.swift */; };
 		D30000000000000000000202 /* MacSharedStoreBootstrapError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000102 /* MacSharedStoreBootstrapError.swift */; };
 		D30000000000000000000203 /* MacRemoteRefreshHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000103 /* MacRemoteRefreshHandler.swift */; };
@@ -217,6 +218,7 @@
 		D20000000000000000000106 /* AppNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotifications.swift; sourceTree = "<group>"; };
 		D20000000000000000000107 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D20000000000000000000108 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
+		D20000000000000000000109 /* GlobalLineUpHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalLineUpHotKey.swift; sourceTree = "<group>"; };
 		D30000000000000000000101 /* MacNoteSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSnapshot.swift; sourceTree = "<group>"; };
 		D30000000000000000000102 /* MacSharedStoreBootstrapError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSharedStoreBootstrapError.swift; sourceTree = "<group>"; };
 		D30000000000000000000103 /* MacRemoteRefreshHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRemoteRefreshHandler.swift; sourceTree = "<group>"; };
@@ -489,6 +491,7 @@
 			children = (
 				D20000000000000000000107 /* AppDelegate.swift */,
 				D20000000000000000000106 /* AppNotifications.swift */,
+				D20000000000000000000109 /* GlobalLineUpHotKey.swift */,
 				D20000000000000000000108 /* MenuBarController.swift */,
 				F16670462AF711EC000B76A5 /* TildoneApp.swift */,
 			);
@@ -1097,6 +1100,7 @@
 				D20000000000000000000206 /* AppNotifications.swift in Sources */,
 				D20000000000000000000207 /* AppDelegate.swift in Sources */,
 				D20000000000000000000208 /* MenuBarController.swift in Sources */,
+				D20000000000000000000209 /* GlobalLineUpHotKey.swift in Sources */,
 				D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */,
 				D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */,
 				D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */,

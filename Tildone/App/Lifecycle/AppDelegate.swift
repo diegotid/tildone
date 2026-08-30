@@ -14,6 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSWindow.allowsAutomaticWindowTabbing = false
         AppAppearance.prepareDockIconPreference()
         applyDockIconVisibility()
+        GlobalLineUpHotKey.shared.start()
         MenuBarController.shared.install()
         coordinatorWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,

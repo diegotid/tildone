@@ -15,6 +15,9 @@ struct MacAppShortcut: Equatable {
     static let significantModifiers: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
 
     var key: String?
+    /// The physical key recorded by AppKit, used for global shortcut registration.
+    /// Older preferences do not have this value and fall back to `AppShortcuts.keyCode(for:)`.
+    var keyCode: UInt16?
     var modifiers: NSEvent.ModifierFlags
 
     var displayName: String {
@@ -28,19 +31,6 @@ struct MacAppShortcut: Equatable {
         return prefix + (key?.uppercased() ?? "")
     }
 
-    var swiftUIModifiers: EventModifiers {
-        var result: EventModifiers = []
-        if modifiers.contains(.command) { result.insert(.command) }
-        if modifiers.contains(.option) { result.insert(.option) }
-        if modifiers.contains(.control) { result.insert(.control) }
-        if modifiers.contains(.shift) { result.insert(.shift) }
-        return result
-    }
-
-    var keyEquivalent: KeyEquivalent {
-        KeyEquivalent(key?.first ?? Character("a"))
-    }
-
     func matches(_ eventModifiers: NSEvent.ModifierFlags) -> Bool {
         eventModifiers.intersection(Self.significantModifiers) == modifiers
     }
@@ -50,11 +40,12 @@ enum AppShortcuts {
     static let opacityModifiersStorageKey = "noteOpacityWheelShortcutModifiers"
     static let gatherModifiersStorageKey = "noteGatherWheelShortcutModifiers"
     static let lineUpKeyStorageKey = "lineUpNotesShortcutKey"
+    static let lineUpKeyCodeStorageKey = "lineUpNotesShortcutKeyCode"
     static let lineUpModifiersStorageKey = "lineUpNotesShortcutModifiers"
 
-    static let defaultOpacity = MacAppShortcut(key: nil, modifiers: [.option])
-    static let defaultGather = MacAppShortcut(key: nil, modifiers: [.option, .control])
-    static let defaultLineUp = MacAppShortcut(key: "a", modifiers: [.command, .shift])
+    static let defaultOpacity = MacAppShortcut(key: nil, keyCode: nil, modifiers: [.option])
+    static let defaultGather = MacAppShortcut(key: nil, keyCode: nil, modifiers: [.option, .control])
+    static let defaultLineUp = MacAppShortcut(key: "l", keyCode: 37, modifiers: [.command, .shift])
 
     static func opacity(from rawValue: Int) -> MacAppShortcut {
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
@@ -62,7 +53,7 @@ enum AppShortcuts {
             .subtracting(.shift)
         return modifiers.isEmpty || modifiers == [.command]
             ? defaultOpacity
-            : MacAppShortcut(key: nil, modifiers: modifiers)
+            : MacAppShortcut(key: nil, keyCode: nil, modifiers: modifiers)
     }
 
     static func opacityShortcut(
@@ -80,18 +71,40 @@ enum AppShortcuts {
             .intersection(MacAppShortcut.significantModifiers)
         return modifiers.isEmpty || modifiers == [.command, .control]
             ? defaultGather
-            : MacAppShortcut(key: nil, modifiers: modifiers)
+            : MacAppShortcut(key: nil, keyCode: nil, modifiers: modifiers)
     }
 
-    static func lineUp(key: String, modifiersRawValue: Int) -> MacAppShortcut {
+    static func lineUp(
+        key: String,
+        keyCodeRawValue: Int = 0,
+        modifiersRawValue: Int
+    ) -> MacAppShortcut {
         let normalizedKey = key.first.map { String($0).lowercased() } ?? defaultLineUp.key!
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(modifiersRawValue))
             .intersection(MacAppShortcut.significantModifiers)
         return MacAppShortcut(
             key: normalizedKey,
+            keyCode: keyCodeRawValue > 0
+                ? UInt16(keyCodeRawValue)
+                : keyCode(for: normalizedKey),
             modifiers: modifiers.isEmpty ? defaultLineUp.modifiers : modifiers
         )
     }
+
+    static func keyCode(for key: String?) -> UInt16? {
+        guard let character = key?.lowercased().first else { return nil }
+        return ansiKeyCodes[character]
+    }
+
+    private static let ansiKeyCodes: [Character: UInt16] = [
+        "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7,
+        "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15,
+        "y": 16, "t": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22,
+        "5": 23, "=": 24, "9": 25, "7": 26, "-": 27, "8": 28, "0": 29,
+        "]": 30, "o": 31, "u": 32, "[": 33, "i": 34, "p": 35, "l": 37,
+        "j": 38, "'": 39, "k": 40, ";": 41, "\\": 42, ",": 43, "/": 44,
+        "n": 45, "m": 46, ".": 47, "`": 50
+    ]
 }
 
 // MARK: Settings view
@@ -109,6 +122,7 @@ struct SettingsForm: View {
     @State private var opacityShortcutValidationMessage: LocalizedStringKey?
     @State private var gatherShortcutValidationMessage: LocalizedStringKey?
     @State private var lineUpShortcutValidationMessage: LocalizedStringKey?
+    @ObservedObject private var globalLineUpHotKey = GlobalLineUpHotKey.shared
     
     @AppStorage(FontSize.storageKey)
     private var fontSize = Double(FontSize.small.rawValue)
@@ -155,6 +169,9 @@ struct SettingsForm: View {
 
     @AppStorage(AppShortcuts.lineUpKeyStorageKey)
     private var lineUpKey = AppShortcuts.defaultLineUp.key!
+
+    @AppStorage(AppShortcuts.lineUpKeyCodeStorageKey)
+    private var lineUpKeyCode = Int(AppShortcuts.defaultLineUp.keyCode ?? 0)
 
     @AppStorage(AppShortcuts.lineUpModifiersStorageKey)
     private var lineUpModifiersRawValue = Int(AppShortcuts.defaultLineUp.modifiers.rawValue)
@@ -292,6 +309,14 @@ private extension SettingsForm {
                     )
                 }
                 shortcutValidationMessage(lineUpShortcutValidationMessage)
+                if globalLineUpHotKey.hasConflict {
+                    Label(
+                        "This shortcut is used by another app. Choose another shortcut to make it work globally.",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                }
                 Text("Place notes in an evenly spaced row or column.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -615,9 +640,16 @@ private extension SettingsForm {
 
     var lineUpShortcutBinding: Binding<MacAppShortcut> {
         Binding(
-            get: { AppShortcuts.lineUp(key: lineUpKey, modifiersRawValue: lineUpModifiersRawValue) },
+            get: {
+                AppShortcuts.lineUp(
+                    key: lineUpKey,
+                    keyCodeRawValue: lineUpKeyCode,
+                    modifiersRawValue: lineUpModifiersRawValue
+                )
+            },
             set: {
                 lineUpKey = $0.key ?? AppShortcuts.defaultLineUp.key!
+                lineUpKeyCode = Int($0.keyCode ?? AppShortcuts.keyCode(for: $0.key) ?? 0)
                 lineUpModifiersRawValue = Int($0.modifiers.rawValue)
             }
         )
@@ -874,7 +906,6 @@ private struct LineUpPreview: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut(shortcut.keyEquivalent, modifiers: shortcut.swiftUIModifiers)
                     .help("Replay Line Up preview")
                     if corner == .bottomRight {
                         Spacer()
@@ -1154,7 +1185,13 @@ private final class ShortcutCaptureNSView: NSView {
             reject("Include at least one modifier key.")
             return
         }
-        onCommit?(MacAppShortcut(key: String(character).lowercased(), modifiers: modifiers))
+        onCommit?(
+            MacAppShortcut(
+                key: String(character).lowercased(),
+                keyCode: event.keyCode,
+                modifiers: modifiers
+            )
+        )
     }
 
     override func flagsChanged(with event: NSEvent) {
@@ -1162,11 +1199,11 @@ private final class ShortcutCaptureNSView: NSView {
         let modifiers = event.modifierFlags.intersection(MacAppShortcut.significantModifiers)
         switch kind {
         case .key:
-            onDraft?(MacAppShortcut(key: nil, modifiers: modifiers))
+            onDraft?(MacAppShortcut(key: nil, keyCode: nil, modifiers: modifiers))
         case .modifiers(let disallowsShift, let disallowsCommand):
             if !modifiers.isEmpty {
                 pendingModifiers.formUnion(modifiers)
-                onDraft?(MacAppShortcut(key: nil, modifiers: pendingModifiers))
+                onDraft?(MacAppShortcut(key: nil, keyCode: nil, modifiers: pendingModifiers))
                 return
             }
             guard !pendingModifiers.isEmpty else { return }
@@ -1179,7 +1216,7 @@ private final class ShortcutCaptureNSView: NSView {
                 reject("Command is reserved for interacting with click-through notes.")
                 return
             }
-            onCommit?(MacAppShortcut(key: nil, modifiers: pendingModifiers))
+            onCommit?(MacAppShortcut(key: nil, keyCode: nil, modifiers: pendingModifiers))
         }
     }
 

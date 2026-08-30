@@ -254,6 +254,7 @@ extension Note {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(noteForeground)
                         Spacer(minLength: 0)
                     }
                     .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)

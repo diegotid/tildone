@@ -14,10 +14,6 @@ struct TildoneApp: App {
     @StateObject private var sharedStoreBootstrapper = MacSharedStoreBootstrapper()
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @AppStorage(AppShortcuts.lineUpKeyStorageKey)
-    private var lineUpKey = AppShortcuts.defaultLineUp.key!
-    @AppStorage(AppShortcuts.lineUpModifiersStorageKey)
-    private var lineUpModifiersRawValue = Int(AppShortcuts.defaultLineUp.modifiers.rawValue)
 
     var isCloseCommandDisabled: Bool {
         if let noteID = foregroundNoteID, let note = sharedStoreBootstrapper.store?.note(noteID) {
@@ -38,10 +34,6 @@ struct TildoneApp: App {
             isUsingNotesOnMacByChoice: sharedStoreBootstrapper.isUsingNotesOnMacByChoice,
             syncNeedsAttention: displayState == .attentionNeeded
         )
-    }
-
-    private var lineUpShortcut: MacAppShortcut {
-        AppShortcuts.lineUp(key: lineUpKey, modifiersRawValue: lineUpModifiersRawValue)
     }
 
     var body: some Scene {
@@ -170,7 +162,6 @@ struct TildoneApp: App {
                 Button("Line Up Notes") {
                     NotificationCenter.default.post(name: .arrange, object: nil)
                 }
-                .keyboardShortcut(lineUpShortcut.keyEquivalent, modifiers: lineUpShortcut.swiftUIModifiers)
             }
         }
         Window("About Tildone.window", id: Id.aboutWindow) {
