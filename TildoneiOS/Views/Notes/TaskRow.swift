@@ -72,10 +72,10 @@ struct TaskRow: View {
         .accessibilityElement(children: .contain)
         .accessibilityActions {
             if canIndent {
-                Button("Indent task") { Swift.Task { await onIndent() } }
+                Button("Make subtask") { Swift.Task { await onIndent() } }
             }
             if canOutdent {
-                Button("Outdent task") { Swift.Task { await onOutdent() } }
+                Button("Promote task") { Swift.Task { await onOutdent() } }
             }
             Button("Move Up") { Swift.Task { await onMoveUp() } }
             Button("Move Down") { Swift.Task { await onMoveDown() } }

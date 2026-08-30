@@ -1513,30 +1513,30 @@
         }
       }
     },
-    "Indent" : {
+    "Make subtask" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Indent"
+            "value" : "Make subtask"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aumentar sangría"
+            "value" : "Crear subtarea"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Augmenter le retrait"
+            "value" : "Créer une sous-tâche"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "增加缩进"
+            "value" : "创建子任务"
           }
         }
       }
@@ -2240,30 +2240,30 @@
         }
       }
     },
-    "Outdent" : {
+    "Promote task" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Outdent"
+            "value" : "Promote task"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reducir sangría"
+            "value" : "Promover tarea"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réduire le retrait"
+            "value" : "Promouvoir la tâche"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "减少缩进"
+            "value" : "提升任务层级"
           }
         }
       }
@@ -3010,8 +3010,33 @@
         }
       }
     },
-    "Task indent" : {
-
+    "Task hierarchy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task hierarchy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jerarquía de tareas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiérarchie des tâches"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务层级"
+          }
+        }
+      }
     },
     "Task text blurred" : {
       "localizations" : {

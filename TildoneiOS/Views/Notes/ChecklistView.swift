@@ -107,10 +107,10 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: false)
                                         }
                                     } label: {
-                                        Image(systemName: "increase.indent")
+                                        Image(systemName: "arrow.turn.down.right")
                                     }
                                     .tint(.indigo)
-                                    .accessibilityLabel("Indent task")
+                                    .accessibilityLabel("Make subtask")
                                 }
                                 if canOutdent {
                                     Button {
@@ -118,10 +118,11 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: true)
                                         }
                                     } label: {
-                                        Image(systemName: "decrease.indent")
+                                        Image(systemName: "arrow.turn.right.down")
+                                            .rotationEffect(.degrees(180))
                                     }
                                     .tint(.blue)
-                                    .accessibilityLabel("Outdent task")
+                                    .accessibilityLabel("Promote task")
                                 }
                             }
                             .swipeActions(edge: .trailing) {

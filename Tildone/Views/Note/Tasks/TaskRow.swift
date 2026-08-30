@@ -161,22 +161,23 @@ struct TaskRow: View {
                 Menu {
                     Button(action: onIndent) {
                         Label {
-                            Text("Indent")
+                            Text("Make subtask")
                         } icon: {
-                            Image(systemName: "increase.indent")
+                            Image(systemName: "arrow.turn.down.right")
                                 .foregroundStyle(.primary)
                         }
                     }
                     Button(action: onOutdent) {
                         Label {
-                            Text("Outdent")
+                            Text("Promote task")
                         } icon: {
-                            Image(systemName: "decrease.indent")
+                            Image(systemName: "arrow.turn.right.down")
+                                .rotationEffect(.degrees(180))
                                 .foregroundStyle(.primary)
                         }
                     }
                 } label: {
-                    Image(systemName: "arrow.left.arrow.right")
+                    Image(systemName: "arrow.turn.down.right")
                         .font(.system(size: taskActionControlSize * 0.6, weight: .semibold))
                         .frame(width: taskActionControlSize, height: taskActionControlSize)
                 }
@@ -188,8 +189,8 @@ struct TaskRow: View {
                 .opacity(isShowingRowControls ? 0.5 : 0)
                 .allowsHitTesting(isShowingRowControls)
                 .scaleEffect(0.75, anchor: .center)
-                .help("Task indent")
-                .accessibilityLabel("Task indent")
+                .help("Task hierarchy")
+                .accessibilityLabel("Task hierarchy")
 
                 Button(action: onInsertAbove) {
                     Image(systemName: "plus")
