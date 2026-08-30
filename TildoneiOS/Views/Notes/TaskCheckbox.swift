@@ -64,45 +64,35 @@ struct TaskCheckboxIndicator: View {
 
 struct TaskSubtaskProgressGauge: View {
     let progress: TaskSubtaskProgress
+    private let size: CGFloat = 18
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(.white.opacity(0.5))
-            Circle()
-                .strokeBorder(Color(red: 0.534, green: 0.507, blue: 0.339), lineWidth: 1)
-            if progress.fraction > 0 {
-                TaskProgressSlice(fraction: progress.fraction)
-                    .fill(Color.accentColor)
-            }
             if progress.fraction == 1 {
+                Circle()
+                    .fill(.accent)
                 Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: size * 0.58, weight: .bold))
                     .foregroundStyle(.white)
+            } else {
+                Circle()
+                    .stroke(checkboxBorder, lineWidth: max(2, size * 0.2))
+                Circle()
+                    .trim(from: 0, to: progress.fraction)
+                    .stroke(
+                        Color.accentColor,
+                        style: StrokeStyle(lineWidth: max(2, size * 0.14), lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
             }
         }
-        .frame(width: 18, height: 18)
+        .frame(width: size, height: size)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Subtask progress")
         .accessibilityValue("\(progress.completedCount) of \(progress.totalCount)")
     }
-}
 
-private struct TaskProgressSlice: Shape {
-    let fraction: Double
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        path.move(to: center)
-        path.addArc(
-            center: center,
-            radius: min(rect.width, rect.height) / 2,
-            startAngle: .degrees(-90),
-            endAngle: .degrees(-90 + min(max(fraction, 0), 1) * 360),
-            clockwise: false
-        )
-        path.closeSubpath()
-        return path
+    private var checkboxBorder: Color {
+        Color(red: 0.534, green: 0.507, blue: 0.339)
     }
 }
