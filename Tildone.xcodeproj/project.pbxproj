@@ -101,7 +101,6 @@
 		D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000102 /* NoteWindowManualPosition.swift */; };
 		D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000012 /* SubtaskProgressGauge.swift */; };
 		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
-		F12F7B3930424E3900553CAC /* PizzaSlice.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12F7B3830424DB700553CAC /* PizzaSlice.swift */; };
 		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
 		F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F15A835D2F5200B600231A3F /* TildoneIcon.icon */; };
@@ -256,7 +255,6 @@
 		D80000000000000000000102 /* NoteWindowManualPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManualPosition.swift; sourceTree = "<group>"; };
 		D90000000000000000000012 /* SubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskProgressGauge.swift; sourceTree = "<group>"; };
 		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F12F7B3830424DB700553CAC /* PizzaSlice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PizzaSlice.swift; sourceTree = "<group>"; };
 		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F15A835D2F5200B600231A3F /* TildoneIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = TildoneIcon.icon; sourceTree = "<group>"; };
@@ -624,7 +622,6 @@
 				D40000000000000000000106 /* MouseSafeTaskNSTextField.swift */,
 				D40000000000000000000107 /* MouseSafeTaskNSTextFieldCell.swift */,
 				D10000000000000000000110 /* MouseSafeTaskTextField.swift */,
-				F12F7B3830424DB700553CAC /* PizzaSlice.swift */,
 				D40000000000000000000110 /* TaskReorderDropTarget.swift */,
 				D4000000000000000000010B /* TaskReorderFeedback.swift */,
 				D4000000000000000000010E /* TaskReorderHandle.swift */,
@@ -1100,7 +1097,6 @@
 				D20000000000000000000206 /* AppNotifications.swift in Sources */,
 				D20000000000000000000207 /* AppDelegate.swift in Sources */,
 				D20000000000000000000208 /* MenuBarController.swift in Sources */,
-				F12F7B3930424E3900553CAC /* PizzaSlice.swift in Sources */,
 				D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */,
 				D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */,
 				D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */,

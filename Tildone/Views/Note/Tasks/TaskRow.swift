@@ -17,16 +17,18 @@ struct TaskRow: View {
     let placeholderColor: Color
     let truncation: TaskLineTruncation
     let isFirst: Bool
+    let isShowingRowControls: Bool
+    let hasSubtasks: Bool
+    let isSubtasksCollapsed: Bool
     let subtaskProgress: TaskSubtaskProgress?
     let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
     let isActive: Bool
     let placesCaretAtStartOnFocus: Bool
     let onNativeFocus: () -> Void
+    let onNativeBlur: () -> Void
     @State private var rowHeight: CGFloat = 0
     @State private var dropPlacement: TaskRowDropPlacement?
-    @State private var isHoveringReorderControls = false
-    @State private var reorderControlsHideWorkItem: DispatchWorkItem?
     let onToggle: () -> Void
     let onEdit: (String) -> Void
     let onEnter: () -> Void
@@ -35,8 +37,12 @@ struct TaskRow: View {
     let onMoveUp: () -> Void
     let onSubmit: () -> Void
     let onInsertAbove: () -> Void
+    let onToggleSubtasks: () -> Void
+    let onIndent: () -> Void
+    let onOutdent: () -> Void
     let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
+    let onRowHover: (Bool) -> Void
 
     private var taskControlSize: CGFloat {
         max(10, CGFloat(fontSize) * 0.9)
@@ -48,6 +54,10 @@ struct TaskRow: View {
 
     private var taskControlVerticalPadding: CGFloat {
         max(0, (taskLineHeight - taskControlSize) / 2)
+    }
+
+    private var taskActionControlSize: CGFloat {
+        max(12, taskLineHeight)
     }
 
     var body: some View {
@@ -96,6 +106,7 @@ struct TaskRow: View {
                             textColor: contentColor,
                             cursorColor: cursorColor,
                             onFocus: onNativeFocus,
+                            onBlur: onNativeBlur,
                             onEnter: onEnter,
                             onMoveUp: onMoveUp,
                             onMoveDown: onSubmit
@@ -132,18 +143,66 @@ struct TaskRow: View {
             }
 
             HStack(spacing: 2) {
+                if hasSubtasks {
+                    Button(action: onToggleSubtasks) {
+                        Image(systemName: isSubtasksCollapsed ? "chevron.right" : "chevron.down")
+                            .font(.system(size: taskActionControlSize * 0.65, weight: .semibold))
+                            .frame(width: taskActionControlSize, height: taskActionControlSize)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(
+                        (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
+                    )
+                    .contentShape(Rectangle())
+                    .help(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
+                    .accessibilityLabel(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
+                }
+
+                Menu {
+                    Button(action: onIndent) {
+                        Label {
+                            Text("Indent")
+                        } icon: {
+                            Image(systemName: "increase.indent")
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    Button(action: onOutdent) {
+                        Label {
+                            Text("Outdent")
+                        } icon: {
+                            Image(systemName: "decrease.indent")
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: taskActionControlSize * 0.6, weight: .semibold))
+                        .frame(width: taskActionControlSize, height: taskActionControlSize)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .contentShape(Rectangle())
+                .padding(.leading, -3)
+                .padding(.trailing, -5)
+                .opacity(isShowingRowControls ? 0.5 : 0)
+                .allowsHitTesting(isShowingRowControls)
+                .scaleEffect(0.75, anchor: .center)
+                .help("Task indent")
+                .accessibilityLabel("Task indent")
+
                 Button(action: onInsertAbove) {
                     Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .semibold))
-                        .frame(width: 18, height: 18)
+                        .font(.system(size: taskActionControlSize * 0.65, weight: .semibold))
+                        .frame(width: taskActionControlSize, height: taskActionControlSize)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(
                     (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
                 )
                 .contentShape(Rectangle())
-                .opacity(isHoveringReorderControls ? 1 : 0)
-                .allowsHitTesting(isHoveringReorderControls)
+                .opacity(isShowingRowControls ? 1 : 0)
+                .allowsHitTesting(isShowingRowControls)
                 .help("Insert task above")
                 .accessibilityLabel("Insert task above")
 
@@ -152,18 +211,25 @@ struct TaskRow: View {
                     taskText: task.text,
                     isCompleted: task.isCompleted,
                     fontSize: fontSize,
-                    isDark: isDark
+                    isDark: isDark,
+                    size: taskActionControlSize * 0.9
                 )
+                .padding(.leading, 2)
             }
-            .onHover {
-                if $0 { updateReorderControlsHover(true) }
-            }
+            .opacity(isShowingRowControls ? 1 : 0)
+            .allowsHitTesting(isShowingRowControls)
             .padding(.trailing, 8)
+            .frame(
+                width: isShowingRowControls ? (hasSubtasks ? 86 : 66) : 0,
+                height: isShowingRowControls ? taskActionControlSize : 0,
+                alignment: .trailing
+            )
+            .clipped()
         }
         .padding(.leading, 2 + CGFloat(task.indentLevel) * (Layout.checkboxSize + 8))
-        .onHover {
-            if !$0 { updateReorderControlsHover(false) }
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onHover(perform: onRowHover)
         .if(isFirst) { $0.onHover { onHover($0) } }
         .background {
             GeometryReader { geometry in
@@ -198,17 +264,4 @@ struct TaskRow: View {
         )
     }
 
-    private func updateReorderControlsHover(_ isHovering: Bool) {
-        reorderControlsHideWorkItem?.cancel()
-        guard !isHovering else {
-            isHoveringReorderControls = true
-            return
-        }
-
-        let workItem = DispatchWorkItem {
-            isHoveringReorderControls = false
-        }
-        reorderControlsHideWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
-    }
 }

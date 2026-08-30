@@ -11,14 +11,15 @@ struct TaskReorderHandle: View {
     let isCompleted: Bool
     let fontSize: Double
     let isDark: Bool
+    let size: CGFloat
 
     var body: some View {
         Image(systemName: "line.3.horizontal")
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: size, weight: .semibold))
             .foregroundStyle(
                 (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.45)
             )
-            .frame(width: 18, height: 18)
+            .frame(width: size, height: size)
             .contentShape(Rectangle())
             .help("Drag to reorder")
             .accessibilityLabel("Reorder task")

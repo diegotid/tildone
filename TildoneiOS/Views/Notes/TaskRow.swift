@@ -10,14 +10,15 @@ import TildoneDomain
 struct TaskRow: View {
     let task: Task
     let subtaskProgress: TaskSubtaskProgress?
+    let subtasksExpanded: Bool?
     let canIndent: Bool
     let canOutdent: Bool
     var focusedTask: FocusState<TaskID?>.Binding
     let onCommit: (String) async -> Void
     let onToggle: () async -> Void
+    let onToggleSubtasks: () -> Void
     let onIndent: () async -> Void
     let onOutdent: () async -> Void
-    let onDelete: () async -> Void
     let onMoveUp: () async -> Void
     let onMoveDown: () async -> Void
     @State private var draft = ""
@@ -52,6 +53,18 @@ struct TaskRow: View {
                 .onChange(of: task.text) { _, remoteText in
                     if focusedTask.wrappedValue != task.id { draft = remoteText }
                 }
+
+            if let subtasksExpanded {
+                Button(action: onToggleSubtasks) {
+                    Image(systemName: subtasksExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: 32, height: 33)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(subtasksExpanded ? "Collapse subtasks" : "Expand subtasks")
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
         .padding(.leading, CGFloat(task.indentLevel) * 24)
@@ -64,7 +77,6 @@ struct TaskRow: View {
             if canOutdent {
                 Button("Outdent task") { Swift.Task { await onOutdent() } }
             }
-            Button("Delete") { Swift.Task { await onDelete() } }
             Button("Move Up") { Swift.Task { await onMoveUp() } }
             Button("Move Down") { Swift.Task { await onMoveDown() } }
         }

@@ -16,6 +16,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let textColor: Color
     let cursorColor: Color
     let onFocus: () -> Void
+    let onBlur: () -> Void
     let onEnter: () -> Void
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
@@ -35,7 +36,10 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.lineBreakMode = .byTruncatingTail
         field.usesSingleLineMode = true
         field.cell?.lineBreakMode = .byTruncatingTail
-        field.cell?.isScrollable = true
+        // Inactive task rows should use their tail-truncation mode. A
+        // scrollable NSTextField clips its right edge instead of drawing an
+        // ellipsis, particularly when indentation leaves little width.
+        field.cell?.isScrollable = false
         field.setContentHuggingPriority(.defaultLow, for: .horizontal)
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = context.coordinator
@@ -57,6 +61,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         }
         field.font = .systemFont(ofSize: fontSize)
         field.textColor = NSColor(textColor)
+        field.cell?.isScrollable = isActivelyEditing
         if let editor = editor as? NSTextView {
             Self.configure(
                 editor,
@@ -92,6 +97,10 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 configure(editor)
             }
             parent.onFocus()
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            parent.onBlur()
         }
 
         private func configure(_ editor: NSTextView) {

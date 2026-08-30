@@ -144,7 +144,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
             }
             let taskTexts = oldestTasksFirst.map(\.text)
-            taskPreviews[note.id] = oldestTasksFirst.map(NoteTaskPreview.init)
+            taskPreviews[note.id] = tasks.map(NoteTaskPreview.init)
             let taskListText = taskTexts.joined(separator: ", ")
             if !taskListText.isEmpty {
                 taskListTexts[note.id] = taskListText
@@ -214,6 +214,36 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 indentLevel: resolvedIndentLevel
             )
         }
+        try await didMutate()
+        return task
+    }
+
+    @discardableResult
+    func addTask(
+        noteID: NoteID,
+        text: String,
+        before targetTaskID: TaskID
+    ) async throws -> Task? {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let task: Task? = try await withRepository { repository in
+            let orderedTasks = try await repository.orderedTasks(in: noteID)
+            guard let targetIndex = orderedTasks.firstIndex(where: { $0.id == targetTaskID }) else {
+                return nil
+            }
+            let target = orderedTasks[targetIndex]
+            let lowerBound = targetIndex > 0 ? orderedTasks[targetIndex - 1].orderToken : nil
+            let order = try OrderToken.between(lowerBound, target.orderToken)
+            return try await repository.addTask(
+                id: TaskID(),
+                to: noteID,
+                createdAt: Date(),
+                text: text,
+                orderToken: order,
+                indentLevel: target.indentLevel
+            )
+        }
+        guard let task else { return nil }
         try await didMutate()
         return task
     }
@@ -546,10 +576,12 @@ struct NoteTaskPreview: Identifiable, Hashable {
     let id: TaskID
     let text: String
     let isCompleted: Bool
+    let indentLevel: Int
 
     init(_ task: Task) {
         id = task.id
         text = task.text
         isCompleted = task.isCompleted
+        indentLevel = task.indentLevel
     }
 }

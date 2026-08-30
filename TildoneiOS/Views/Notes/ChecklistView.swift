@@ -20,8 +20,12 @@ struct ChecklistView: View {
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
+    @State private var collapsedTaskIDs: Set<TaskID> = []
+    @State private var taskInsertionTargetID: TaskID?
+    @State private var taskInsertionText = ""
     @FocusState private var focusedTask: TaskID?
     @FocusState private var isAddingTask: Bool
+    @FocusState private var isAddingTaskAbove: Bool
     @FocusState private var isEditingTitle: Bool
 
     private var isInEditMode: Bool {
@@ -53,13 +57,22 @@ struct ChecklistView: View {
                     }
 
                     Section {
-                        ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                        ForEach(visibleTasks) { visibleTask in
+                            let index = visibleTask.index
+                            let task = visibleTask.task
+                            let hasSubtasks = TaskHierarchy.hasSubtasks(at: index, in: tasks)
                             let canIndent = index > 0
                                 && task.indentLevel != tasks[index - 1].indentLevel + 1
                             let canOutdent = task.indentLevel > 0
+                            if taskInsertionTargetID == task.id {
+                                taskInsertionRow(above: task)
+                            }
                             TaskRow(
                                 task: task,
                                 subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
+                                subtasksExpanded: hasSubtasks
+                                    ? !collapsedTaskIDs.contains(task.id)
+                                    : nil,
                                 canIndent: canIndent,
                                 canOutdent: canOutdent,
                                 focusedTask: $focusedTask,
@@ -71,15 +84,14 @@ struct ChecklistView: View {
                                     try? await appModel.setCompletion(taskID: task.id, completed: !task.isCompleted)
                                     await reload()
                                 },
+                                onToggleSubtasks: {
+                                    toggleSubtasks(at: index)
+                                },
                                 onIndent: {
                                     await changeIndentation(taskID: task.id, outdent: false)
                                 },
                                 onOutdent: {
                                     await changeIndentation(taskID: task.id, outdent: true)
-                                },
-                                onDelete: {
-                                    try? await appModel.delete(taskID: task.id)
-                                    await reload()
                                 },
                                 onMoveUp: {
                                     await move(taskID: task.id, by: -1)
@@ -95,9 +107,10 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: false)
                                         }
                                     } label: {
-                                        Label("Indent", systemImage: "increase.indent")
+                                        Image(systemName: "increase.indent")
                                     }
                                     .tint(.indigo)
+                                    .accessibilityLabel("Indent task")
                                 }
                                 if canOutdent {
                                     Button {
@@ -105,15 +118,20 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: true)
                                         }
                                     } label: {
-                                        Label("Outdent", systemImage: "decrease.indent")
+                                        Image(systemName: "decrease.indent")
                                     }
                                     .tint(.blue)
+                                    .accessibilityLabel("Outdent task")
                                 }
                             }
                             .swipeActions(edge: .trailing) {
-                                Button("Delete", role: .destructive) {
-                                    Swift.Task { await delete(taskID: task.id) }
+                                Button {
+                                    beginAddingTask(above: task.id)
+                                } label: {
+                                    Image(systemName: "plus")
                                 }
+                                .tint(.green)
+                                .accessibilityLabel("Add Above")
                             }
                         }
                         .onMove(perform: move)
@@ -164,6 +182,7 @@ struct ChecklistView: View {
                 .onDisappear {
                     saveTitle()
                     saveNewTaskIfNeeded()
+                    saveTaskAboveIfNeeded()
                 }
             } else {
                 ContentUnavailableView("This note was deleted", systemImage: "trash")
@@ -184,6 +203,10 @@ struct ChecklistView: View {
         note = appModel.notes.first(where: { $0.id == noteID })
         guard note != nil else { return }
         tasks = (try? await appModel.tasks(in: noteID)) ?? []
+        let parentIDs = Set(tasks.indices.compactMap { index in
+            TaskHierarchy.hasSubtasks(at: index, in: tasks) ? tasks[index].id : nil
+        })
+        collapsedTaskIDs.formIntersection(parentIDs)
         if !isEditingTitle || titleBaseline == nil {
             title = note?.title ?? ""
             titleBaseline = Self.normalizedTitle(note?.title)
@@ -235,14 +258,80 @@ struct ChecklistView: View {
         }
     }
 
+    private func beginAddingTask(above taskID: TaskID) {
+        saveTaskAboveIfNeeded()
+        focusedTask = nil
+        taskInsertionText = ""
+        taskInsertionTargetID = taskID
+        Swift.Task {
+            await Swift.Task.yield()
+            guard taskInsertionTargetID == taskID else { return }
+            isAddingTaskAbove = true
+        }
+    }
+
+    private func cancelAddingTaskAbove() {
+        isAddingTaskAbove = false
+        taskInsertionTargetID = nil
+        taskInsertionText = ""
+    }
+
+    private func saveTaskAboveIfNeeded() {
+        guard taskInsertionTargetID != nil else { return }
+        guard !taskInsertionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            cancelAddingTaskAbove()
+            return
+        }
+        addTaskAbove()
+    }
+
+    private func addTaskAbove() {
+        guard let targetTaskID = taskInsertionTargetID else { return }
+        let text = taskInsertionText
+        cancelAddingTaskAbove()
+        Swift.Task {
+            _ = try? await appModel.addTask(
+                noteID: noteID,
+                text: text,
+                before: targetTaskID
+            )
+            await reload()
+        }
+    }
+
+    private func taskInsertionRow(above task: TildoneDomain.Task) -> some View {
+        HStack(spacing: 8) {
+            Color.clear
+                .frame(width: 32, height: 33)
+            TextField("New task", text: $taskInsertionText)
+                .focused($isAddingTaskAbove)
+                .submitLabel(.done)
+                .onSubmit(addTaskAbove)
+                .accessibilityLabel("New task")
+        }
+        .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
+        .padding(.leading, CGFloat(task.indentLevel) * 24)
+        .onChange(of: isAddingTaskAbove) { wasFocused, isFocused in
+            guard wasFocused, !isFocused else { return }
+            saveTaskAboveIfNeeded()
+        }
+    }
+
     private func move(from source: IndexSet, to destination: Int) {
-        guard let task = source.first.map({ tasks[$0] }) else { return }
+        let visibleIndices = visibleTaskIndices
+        guard let visibleSource = source.first,
+              visibleIndices.indices.contains(visibleSource) else { return }
+        let sourceIndex = visibleIndices[visibleSource]
+        let destinationIndex = destination < visibleIndices.count
+            ? visibleIndices[destination]
+            : tasks.count
+        let task = tasks[sourceIndex]
         Swift.Task {
             _ = try? await appModel.move(
                 taskID: task.id,
                 in: tasks,
-                from: source,
-                to: destination
+                from: IndexSet(integer: sourceIndex),
+                to: destinationIndex
             )
             await reload()
         }
@@ -283,9 +372,55 @@ struct ChecklistView: View {
         await reload()
     }
 
-    private func delete(taskID: TaskID) async {
-        try? await appModel.delete(taskID: taskID)
-        await reload()
+    private var visibleTaskIndices: [Int] {
+        Self.visibleTaskIndices(in: tasks, collapsedTaskIDs: collapsedTaskIDs)
+    }
+
+    private var visibleTasks: [VisibleTask] {
+        visibleTaskIndices.map { VisibleTask(index: $0, task: tasks[$0]) }
+    }
+
+    static func visibleTaskIndices(
+        in tasks: [TildoneDomain.Task],
+        collapsedTaskIDs: Set<TaskID>
+    ) -> [Int] {
+        var indices: [Int] = []
+        var collapsedIndentLevel: Int?
+
+        for index in tasks.indices {
+            let task = tasks[index]
+            if let collapsedIndentLevel {
+                if task.indentLevel > collapsedIndentLevel { continue }
+            }
+            collapsedIndentLevel = nil
+            indices.append(index)
+            if collapsedTaskIDs.contains(task.id),
+               TaskHierarchy.hasSubtasks(at: index, in: tasks) {
+                collapsedIndentLevel = task.indentLevel
+            }
+        }
+        return indices
+    }
+
+    private func toggleSubtasks(at index: Int) {
+        guard tasks.indices.contains(index),
+              TaskHierarchy.hasSubtasks(at: index, in: tasks) else { return }
+        let taskID = tasks[index].id
+        if collapsedTaskIDs.remove(taskID) == nil {
+            let subtree = TaskHierarchy.subtreeRange(startingAt: index, in: tasks)
+            if let focusedTask,
+               tasks[subtree].dropFirst().contains(where: { $0.id == focusedTask }) {
+                self.focusedTask = nil
+            }
+            collapsedTaskIDs.insert(taskID)
+        }
+    }
+
+    private struct VisibleTask: Identifiable {
+        let index: Int
+        let task: TildoneDomain.Task
+
+        var id: TaskID { task.id }
     }
 }
 

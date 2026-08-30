@@ -128,11 +128,14 @@ extension Note {
         noteWindow?.makeFirstResponder(nil)
         Swift.Task {
             do {
-                try await store.setTaskCompletion(
+                let movedParentID = try await store.setTaskCompletion(
                     task.id,
                     completed: !task.isCompleted,
                     moveToEndWhenCompleted: moveCheckedTasksToEnd
-            )
+                )
+                if let movedParentID {
+                    collapsedTaskIDs.insert(movedParentID)
+                }
         } catch {
                 if animatesTaskMovement {
                     completedTaskMovementAnimationID = nil
@@ -206,21 +209,36 @@ extension Note {
     func handleTaskIndent(_ taskID: TaskID, outdent: Bool) {
         guard let index = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         let task = tasks[index]
-        let targetDepth: Int
         if outdent {
             guard task.indentLevel > 0 else { return }
-            targetDepth = task.indentLevel - 1
-        } else {
-            guard index > 0 else { return }
-            targetDepth = tasks[index - 1].indentLevel + 1
+            mutate(
+                {
+                    try await store.outdentTask(
+                        taskID,
+                        in: noteID,
+                        moveCompletedGroupsToEnd: moveCheckedTasksToEnd
+                    )
+                },
+                message: "Error changing task indentation"
+            )
+            return
         }
+
+        let targetDepth: Int
+        guard index > 0 else { return }
+        targetDepth = tasks[index - 1].indentLevel + 1
         let delta = targetDepth - task.indentLevel
         guard delta != 0 else { return }
         let updates = TaskHierarchy.subtreeRange(startingAt: index, in: tasks).map { offset in
             (id: tasks[offset].id, level: max(0, tasks[offset].indentLevel + delta))
         }
         mutate(
-            { try await store.setTaskIndentLevels(updates) },
+            {
+                try await store.setTaskIndentLevels(
+                    updates,
+                    moveCompletedGroupsToEnd: moveCheckedTasksToEnd
+                )
+            },
             message: "Error changing task indentation"
         )
     }
@@ -528,6 +546,35 @@ extension Note {
         focusedTaskID = taskID
     }
 
+    func handleNativeTaskBlur(_ taskID: TaskID) {
+        if nativeFocusedTaskID == taskID { nativeFocusedTaskID = nil }
+        if focusedTaskID == taskID { focusedTaskID = nil }
+
+        // Give AppKit a turn to install a newly inserted row as first responder
+        // before removing unfilled placeholders. This preserves Return-created
+        // rows while still clearing an abandoned subtask slot.
+        DispatchQueue.main.async {
+            let preservedTaskID = activeFocusedTaskID.flatMap { focusedID in
+                tasks.contains { $0.id == focusedID && $0.text.isEmpty } ? focusedID : nil
+            }
+            guard tasks.contains(where: {
+                $0.text.isEmpty && $0.id != preservedTaskID
+            }) else {
+                return
+            }
+            skipsNextTaskCountBottomScroll = true
+            mutate(
+                {
+                    try await store.cleanEmptyTasks(
+                        in: noteID,
+                        preserving: preservedTaskID
+                    )
+                },
+                message: "Error cleaning note"
+            )
+        }
+    }
+
     func focusOnTopic() { nativeFocusedTaskID = nil; keyboardFocusedTaskID = nil; focusedTaskID = nil; focusedField = .topic }
     func focusOnNewTask() {
         nativeFocusedTaskID = nil
@@ -538,22 +585,8 @@ extension Note {
     }
 
     func discardUnfilledTaskSlots() {
-        let emptyTaskIDs = tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id)
-        guard !emptyTaskIDs.isEmpty else { return }
         skipsNextTaskCountBottomScroll = true
-        Swift.Task {
-            do {
-                for id in emptyTaskIDs {
-                    try await store.deleteTask(id)
-                }
-            } catch {
-                skipsNextTaskCountBottomScroll = false
-                mutationErrorMessage = Self.mutationFailureMessage(
-                    operation: "Error on task deletion",
-                    error: error
-                )
-            }
-        }
+        mutate({ try await store.cleanEmptyTasks(in: noteID) }, message: "Error on task deletion")
     }
 
     func placeCursor(forText value: String, at position: Int = 0) {

@@ -258,7 +258,7 @@ private extension SettingsForm {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Note dimming:")
                     .font(.headline)
-                LabeledContent("Mouse wheel shortcut") {
+                LabeledContent("Scroll shortcut") {
                     ShortcutRecorder(
                         shortcut: opacityShortcutBinding,
                         kind: .modifiers(disallowsShift: true, disallowsCommand: true),
@@ -363,7 +363,7 @@ private extension SettingsForm {
                 Text("The corner selected for Line Up is also the Gather destination.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                LabeledContent("Mouse wheel shortcut") {
+                LabeledContent("Scroll shortcut") {
                     ShortcutRecorder(
                         shortcut: gatherShortcutBinding,
                         kind: .modifiers(disallowsShift: false, disallowsCommand: true),
@@ -409,13 +409,21 @@ private extension SettingsForm {
             .foregroundColor(.secondary)
             .padding(.top, 3)
         Slider(
-            value: $fontSize,
+            value: fontSizeBinding,
             in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue)
         ) {
             Text("Font size")
         }
         .labelsHidden()
-        .frame(width: 200)
+        .frame(width: FontSizeSliderLayout.width)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(.secondary.opacity(0.65))
+                .frame(width: 1, height: 8)
+                .offset(x: FontSizeSliderLayout.defaultMarkX - 0.5)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
     
     @ViewBuilder
@@ -546,15 +554,34 @@ private extension SettingsForm {
                     from: previousTransparency,
                     to: newTransparency
                 ) {
-                    NSHapticFeedbackManager.defaultPerformer.perform(
-                        .alignment,
-                        performanceTime: .now
-                    )
+                    performSliderMarkerHaptic()
                 }
                 noteBackgroundOpacity = SettingsForm.backgroundOpacity(
                     fromTransparency: newTransparency
                 )
             }
+        )
+    }
+
+    var fontSizeBinding: Binding<Double> {
+        Binding(
+            get: { fontSize },
+            set: { newFontSize in
+                if SettingsForm.crossesFontSizeDefault(
+                    from: fontSize,
+                    to: newFontSize
+                ) {
+                    performSliderMarkerHaptic()
+                }
+                fontSize = newFontSize
+            }
+        )
+    }
+
+    func performSliderMarkerHaptic() {
+        NSHapticFeedbackManager.defaultPerformer.perform(
+            .levelChange,
+            performanceTime: .now
         )
     }
 
@@ -615,10 +642,29 @@ private struct SettingsPreviewCanvas<Content: View>: View {
 }
 
 enum TransparencySliderLayout {
+    static let width = SettingsSliderLayout.width
+    static let thresholdMarkX = SettingsSliderLayout.markX(
+        for: NoteWindowClickThrough.minimumBackgroundTransparency,
+        in: 0...1
+    )
+}
+
+enum FontSizeSliderLayout {
+    static let width = SettingsSliderLayout.width
+    static let defaultMarkX = SettingsSliderLayout.markX(
+        for: Double(FontSize.small.rawValue),
+        in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue)
+    )
+}
+
+private enum SettingsSliderLayout {
     static let width: CGFloat = 200
     private static let thumbInset: CGFloat = 8
-    static let thresholdMarkX = thumbInset
-        + (width - 2 * thumbInset) * NoteWindowClickThrough.minimumBackgroundTransparency
+
+    static func markX(for value: Double, in range: ClosedRange<Double>) -> CGFloat {
+        let progress = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return thumbInset + (width - 2 * thumbInset) * progress
+    }
 }
 
 private struct SettingsPreviewBackground: View {
@@ -1191,9 +1237,24 @@ extension SettingsForm {
     }
 
     static func crossesClickThroughThreshold(from oldValue: Double, to newValue: Double) -> Bool {
-        let threshold = NoteWindowClickThrough.minimumBackgroundTransparency
-        return (oldValue < threshold && newValue >= threshold)
-            || (oldValue >= threshold && newValue < threshold)
+        crossesSliderMarker(
+            from: oldValue,
+            to: newValue,
+            marker: NoteWindowClickThrough.minimumBackgroundTransparency
+        )
+    }
+
+    static func crossesFontSizeDefault(from oldValue: Double, to newValue: Double) -> Bool {
+        crossesSliderMarker(
+            from: oldValue,
+            to: newValue,
+            marker: Double(FontSize.small.rawValue)
+        )
+    }
+
+    static func crossesSliderMarker(from oldValue: Double, to newValue: Double, marker: Double) -> Bool {
+        (oldValue < marker && newValue >= marker)
+            || (oldValue >= marker && newValue < marker)
     }
 
     static func opacityPreviewValue(at date: Date) -> Double {

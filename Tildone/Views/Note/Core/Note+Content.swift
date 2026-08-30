@@ -16,10 +16,10 @@ extension Note {
                         VStack(spacing: 0) {
                             topicListItem()
                             taskDropTarget(at: 0)
-                            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                                taskRow(task, at: index)
-                                    .id(task.id)
-                                taskDropTarget(at: index + 1)
+                            ForEach(visibleTaskEntries, id: \.task.id) { entry in
+                                taskRow(entry.task, at: entry.index)
+                                    .id(entry.task.id)
+                                taskDropTarget(at: entry.index + 1)
                             }
                             newListItem().opacity(isDone || isContentBlurred || isInsertedNewTaskFocused ? 0 : 1)
                             Spacer().id(Id.bottomAnchor)
@@ -301,12 +301,16 @@ extension Note {
             placeholderColor: minimizedForeground,
             truncation: taskLineTruncation,
             isFirst: task.id == tasks.first?.id,
+            isShowingRowControls: hoveredTaskID == task.id,
+            hasSubtasks: TaskHierarchy.hasSubtasks(at: index, in: tasks),
+            isSubtasksCollapsed: collapsedTaskIDs.contains(task.id),
             subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
             feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
             isActive: activeFocusedTaskID == task.id,
             placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
             onNativeFocus: { activateNativeTask(task.id) },
+            onNativeBlur: { handleNativeTaskBlur(task.id) },
             onToggle: { handleTaskToggle(task) },
             onEdit: { handleTaskEdit(task, to: $0) },
             onEnter: { handleEnter(for: task) },
@@ -315,11 +319,27 @@ extension Note {
             onMoveUp: { handleMoveUp(from: task.id) },
             onSubmit: { handleMoveDown(from: task.id) },
             onInsertAbove: { insertEmptyTask(at: index, indentLevel: task.indentLevel) },
+            onToggleSubtasks: {
+                if collapsedTaskIDs.contains(task.id) {
+                    collapsedTaskIDs.remove(task.id)
+                } else {
+                    collapsedTaskIDs.insert(task.id)
+                }
+            },
+            onIndent: { handleTaskIndent(task.id, outdent: false) },
+            onOutdent: { handleTaskIndent(task.id, outdent: true) },
             onDrop: { payload, destination in
                 handleTaskDrop(payload, at: destination)
             },
             onHover: { hovering in
                 if hovering { isTopicHidden = false } else { updateTopicVisibility() }
+            },
+            onRowHover: { hovering in
+                if hovering {
+                    hoveredTaskID = task.id
+                } else if hoveredTaskID == task.id {
+                    hoveredTaskID = nil
+                }
             }
         )
     }

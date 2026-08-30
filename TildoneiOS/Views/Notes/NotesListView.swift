@@ -731,6 +731,7 @@ private struct NoteCardTaskList: View {
                                 .lineLimit(style == .deck ? 2 : 1)
                         }
                         .font(.system(size: baseTaskSize * contentScale))
+                        .padding(.leading, CGFloat(task.indentLevel) * baseCheckboxSize * contentScale)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

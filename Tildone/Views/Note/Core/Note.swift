@@ -92,6 +92,24 @@ struct Note: View {
     @State var isHoveringMinimizedTaskList = false
     @State var skipsNextTaskCountBottomScroll = false
     @State var completedTaskMovementAnimationID: TaskID?
+    @State var hoveredTaskID: TaskID?
+    @State var collapsedTaskIDs: Set<TaskID> = []
+
+    var visibleTaskEntries: [(index: Int, task: TildoneDomain.Task)] {
+        var collapsedDepth: Int?
+        return tasks.enumerated().compactMap { index, task in
+            if let depth = collapsedDepth {
+                if task.indentLevel > depth {
+                    return nil
+                }
+                collapsedDepth = nil
+            }
+            if collapsedTaskIDs.contains(task.id) {
+                collapsedDepth = task.indentLevel
+            }
+            return (index, task)
+        }
+    }
     @State var keyboardFocusedTaskID: TaskID?
     @State var nativeFocusedTaskID: TaskID?
     @FocusState var focusedField: Field?

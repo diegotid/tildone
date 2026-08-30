@@ -122,6 +122,114 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(model.taskSummaries[note.id]?.totalCount, 3)
     }
 
+    func testGridAndDeckTaskPreviewsPreserveHierarchyOrderAndIndentation() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Hierarchy preview")
+        let createdParent = try await model.addTask(noteID: note.id, text: "Parent", after: [])
+        let parent = try XCTUnwrap(createdParent)
+        let createdChild = try await model.addTask(
+            noteID: note.id,
+            text: "Child",
+            after: [parent],
+            indentLevel: 1
+        )
+        let child = try XCTUnwrap(createdChild)
+        let createdSibling = try await model.addTask(
+            noteID: note.id,
+            text: "Sibling",
+            after: [parent, child]
+        )
+        let sibling = try XCTUnwrap(createdSibling)
+
+        let didMoveSibling = try await model.move(
+            taskID: sibling.id,
+            in: [parent, child, sibling],
+            from: IndexSet(integer: 2),
+            to: 1
+        )
+        XCTAssertTrue(didMoveSibling)
+
+        let previews = try XCTUnwrap(model.taskPreviews[note.id])
+        XCTAssertEqual(previews.map(\.id), [parent.id, sibling.id, child.id])
+        XCTAssertEqual(previews.map(\.indentLevel), [0, 1, 1])
+    }
+
+    func testCollapsingTaskRowsHidesTheEntireRecursiveSubtree() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Foldable hierarchy")
+        let createdRoot = try await model.addTask(noteID: note.id, text: "Root", after: [])
+        let root = try XCTUnwrap(createdRoot)
+        let createdChild = try await model.addTask(
+            noteID: note.id,
+            text: "Child",
+            after: [root],
+            indentLevel: 1
+        )
+        let child = try XCTUnwrap(createdChild)
+        let createdGrandchild = try await model.addTask(
+            noteID: note.id,
+            text: "Grandchild",
+            after: [root, child],
+            indentLevel: 2
+        )
+        let grandchild = try XCTUnwrap(createdGrandchild)
+        let createdSiblingRoot = try await model.addTask(
+            noteID: note.id,
+            text: "Sibling root",
+            after: [root, child, grandchild],
+            indentLevel: 0
+        )
+        let siblingRoot = try XCTUnwrap(createdSiblingRoot)
+        let tasks = try await model.tasks(in: note.id)
+
+        XCTAssertEqual(
+            ChecklistView.visibleTaskIndices(in: tasks, collapsedTaskIDs: [child.id]),
+            [0, 1, 3]
+        )
+        XCTAssertEqual(
+            ChecklistView.visibleTaskIndices(
+                in: tasks,
+                collapsedTaskIDs: [root.id, child.id]
+            ),
+            [0, 3]
+        )
+        XCTAssertEqual(tasks[3].id, siblingRoot.id)
+    }
+
+    func testAddingTaskAbovePreservesTheTargetsParentAndIndentation() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Insert above")
+        let createdRoot = try await model.addTask(noteID: note.id, text: "Root", after: [])
+        let root = try XCTUnwrap(createdRoot)
+        let createdParent = try await model.addTask(
+            noteID: note.id,
+            text: "Nested parent",
+            after: [root],
+            indentLevel: 1
+        )
+        let parent = try XCTUnwrap(createdParent)
+        let createdTarget = try await model.addTask(
+            noteID: note.id,
+            text: "Target",
+            after: [root, parent],
+            indentLevel: 2
+        )
+        let target = try XCTUnwrap(createdTarget)
+
+        let createdInserted = try await model.addTask(
+            noteID: note.id,
+            text: "Inserted",
+            before: target.id
+        )
+        let inserted = try XCTUnwrap(createdInserted)
+        let tasks = try await model.tasks(in: note.id)
+
+        XCTAssertEqual(tasks.map(\.id), [root.id, parent.id, inserted.id, target.id])
+        XCTAssertEqual(inserted.indentLevel, target.indentLevel)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 2, in: tasks), parent.id)
+        XCTAssertTrue(TaskHierarchy.isValidPreorder(tasks))
+    }
+
     func testIPhoneIndentationAndReorderingAlwaysMoveAnIntactSubtree() async throws {
         let model = try await makeModel()
         let note = try await model.createNote(title: "Hierarchy")

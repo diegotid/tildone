@@ -177,10 +177,81 @@ final class MacSharedStore: ObservableObject {
         return worker
     }
 
-    func setTaskIndentLevels(_ levels: [(id: TaskID, level: Int)]) async throws {
+    func setTaskIndentLevels(
+        _ levels: [(id: TaskID, level: Int)],
+        moveCompletedGroupsToEnd: Bool = false
+    ) async throws {
+        var affectedNoteIDs = Set<NoteID>()
         for level in levels {
+            let task = try await repository.task(id: level.id)
+            affectedNoteIDs.insert(task.noteID)
             _ = try await repository.setTaskIndentLevel(id: level.id, indentLevel: level.level)
         }
+
+        for noteID in affectedNoteIDs {
+            try await reconcileTaskHierarchy(
+                in: noteID,
+                moveCompletedGroupsToEnd: moveCompletedGroupsToEnd
+            )
+        }
+
+        try await reload()
+        await syncCoordinator?.notifyLocalChanges()
+    }
+
+    /// Promotes a task one level while keeping the former parent's remaining
+    /// descendants together. Moving only its indent level in place would make
+    /// following siblings appear as children of the promoted task.
+    func outdentTask(
+        _ id: TaskID,
+        in noteID: NoteID,
+        moveCompletedGroupsToEnd: Bool = false
+    ) async throws {
+        let ordered = try await repository.orderedTasks(in: noteID)
+        guard let index = ordered.firstIndex(where: { $0.id == id }),
+              ordered[index].indentLevel > 0,
+              let parentIndex = ordered[..<index].lastIndex(
+                where: { $0.indentLevel == ordered[index].indentLevel - 1 }
+              ) else {
+            return
+        }
+
+        let movingRange = TaskHierarchy.subtreeRange(startingAt: index, in: ordered)
+        let movingSubtree = Array(ordered[movingRange])
+        let parentID = ordered[parentIndex].id
+        var remaining = ordered
+        remaining.removeSubrange(movingRange)
+
+        guard let remainingParentIndex = remaining.firstIndex(where: { $0.id == parentID }) else {
+            throw PersistenceError.domainInvariant
+        }
+        let destination = TaskHierarchy.subtreeRange(
+            startingAt: remainingParentIndex,
+            in: remaining
+        ).upperBound
+
+        for task in movingSubtree {
+            _ = try await repository.setTaskIndentLevel(
+                id: task.id,
+                indentLevel: task.indentLevel - 1
+            )
+        }
+
+        let lower = destination > 0 ? remaining[destination - 1].orderToken : nil
+        let upper = destination < remaining.count ? remaining[destination].orderToken : nil
+        var previous = lower
+        for task in movingSubtree {
+            let moved = try await repository.moveTask(
+                id: task.id,
+                to: try OrderToken.between(previous, upper)
+            )
+            previous = moved.orderToken
+        }
+
+        try await reconcileTaskHierarchy(
+            in: noteID,
+            moveCompletedGroupsToEnd: moveCompletedGroupsToEnd
+        )
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
     }
@@ -189,7 +260,7 @@ final class MacSharedStore: ObservableObject {
         _ id: TaskID,
         completed: Bool,
         moveToEndWhenCompleted: Bool = false
-    ) async throws {
+    ) async throws -> TaskID? {
         await waitForPendingTaskTextEdit(for: id)
         let task = try await repository.setTaskCompletion(
             id: id,
@@ -198,19 +269,31 @@ final class MacSharedStore: ObservableObject {
         guard moveToEndWhenCompleted else {
             try await reload()
             await syncCoordinator?.notifyLocalChanges()
-            return
+            return nil
         }
+
+        // Publish the completion immediately. Reordering a large subtree can
+        // require several durable order-token updates, but the checkbox/gauge
+        // should reflect the user's action before that work finishes.
+        try await reload()
 
         let tasks = try await repository.orderedTasks(in: task.noteID)
         let group = topLevelGroup(containing: id, in: tasks)
         guard !group.isEmpty else { throw PersistenceError.domainInvariant }
         if completed, groupIsComplete(group) {
-            try await applyCompletedTaskOrdering(enabled: true)
+            let movedToEnd = tasks.suffix(group.count).map(\.id) != group.map(\.id)
+            if movedToEnd {
+                try await moveCompletedGroupAfterIncompleteGroups(group)
+                try await reload()
+                await syncCoordinator?.notifyLocalChanges()
+                return group.first?.id
+            }
         } else if !completed {
             try await restoreGroup(group)
+            try await reload()
         }
-        try await reload()
         await syncCoordinator?.notifyLocalChanges()
+        return nil
     }
 
     private func topLevelGroup(containing id: TaskID, in tasks: [Task]) -> [Task] {
@@ -244,6 +327,38 @@ final class MacSharedStore: ObservableObject {
         return !leaves.isEmpty && leaves.allSatisfy(\.isCompleted)
     }
 
+    private func reconcileTaskHierarchy(
+        in noteID: NoteID,
+        moveCompletedGroupsToEnd: Bool
+    ) async throws {
+        let tasks = try await repository.orderedTasks(in: noteID)
+        for (index, task) in tasks.enumerated()
+        where task.isCompleted && TaskHierarchy.hasSubtasks(at: index, in: tasks) {
+            _ = try await repository.setTaskCompletion(id: task.id, completion: .incomplete)
+        }
+
+        guard moveCompletedGroupsToEnd else { return }
+
+        // Indentation can expose a previously completed parent as a leaf even
+        // though no checkbox was tapped. Re-evaluate every top-level group in
+        // this note so that case follows the same completion-ordering rule.
+        let completedRootIDs = try topLevelGroups(
+            in: try await repository.orderedTasks(in: noteID)
+        ).compactMap { group in
+            groupIsComplete(group) ? group.first?.id : nil
+        }
+        for rootID in completedRootIDs {
+            let currentTasks = try await repository.orderedTasks(in: noteID)
+            let group = topLevelGroup(containing: rootID, in: currentTasks)
+            guard !group.isEmpty,
+                  groupIsComplete(group),
+                  currentTasks.suffix(group.count).map(\.id) != group.map(\.id) else {
+                continue
+            }
+            try await moveGroupToEnd(group)
+        }
+    }
+
     private func moveGroupToEnd(_ group: [Task]) async throws {
         guard group.first?.indentLevel == 0,
               group.dropFirst().allSatisfy({ $0.indentLevel > 0 }) else {
@@ -252,15 +367,57 @@ final class MacSharedStore: ObservableObject {
         for task in group {
             CompletedTaskOrderPreference.recordOriginalOrderToken(task.orderToken, for: task.id)
         }
-        var previous: OrderToken?
+        let groupIDs = Set(group.map(\.id))
+        let currentTasks = try await repository.orderedTasks(in: group[0].noteID)
+        var previous = currentTasks.last(where: { !groupIDs.contains($0.id) })?.orderToken
         for task in group {
-            let current = try await repository.orderedTasks(in: task.noteID)
-            let lower = previous ?? current.last(where: { candidate in
-                !group.contains(where: { $0.id == candidate.id })
-            })?.orderToken
             let moved = try await repository.moveTask(
                 id: task.id,
-                to: try OrderToken.between(lower, nil)
+                to: try OrderToken.between(previous, nil)
+            )
+            previous = moved.orderToken
+        }
+    }
+
+    /// Keeps the completed section at the bottom while retaining a task's
+    /// original relative position within that section. A task completed later
+    /// must not leapfrog an already completed task that originally followed it.
+    private func moveCompletedGroupAfterIncompleteGroups(_ group: [Task]) async throws {
+        guard let root = group.first,
+              root.indentLevel == 0,
+              group.dropFirst().allSatisfy({ $0.indentLevel > 0 }) else {
+            throw PersistenceError.domainInvariant
+        }
+        for task in group {
+            CompletedTaskOrderPreference.recordOriginalOrderToken(task.orderToken, for: task.id)
+        }
+        let groupOriginalToken = CompletedTaskOrderPreference.originalOrderToken(for: root.id)
+            ?? root.orderToken
+        let groupIDs = Set(group.map(\.id))
+        let currentTasks = try await repository.orderedTasks(in: root.noteID)
+        let remaining = currentTasks.filter { !groupIDs.contains($0.id) }
+        let remainingGroups = try topLevelGroups(in: remaining)
+
+        let destination: Int
+        if let laterCompletedGroup = remainingGroups.first(where: { candidate in
+            guard groupIsComplete(candidate), let candidateRoot = candidate.first else { return false }
+            let candidateOriginalToken = CompletedTaskOrderPreference.originalOrderToken(
+                for: candidateRoot.id
+            ) ?? candidateRoot.orderToken
+            return groupOriginalToken < candidateOriginalToken
+        }), let index = remaining.firstIndex(where: { $0.id == laterCompletedGroup[0].id }) {
+            destination = index
+        } else {
+            destination = remaining.endIndex
+        }
+
+        let lower = destination > 0 ? remaining[destination - 1].orderToken : nil
+        let upper = destination < remaining.count ? remaining[destination].orderToken : nil
+        var previous = lower
+        for task in group {
+            let moved = try await repository.moveTask(
+                id: task.id,
+                to: try OrderToken.between(previous, upper)
             )
             previous = moved.orderToken
         }
@@ -355,22 +512,40 @@ final class MacSharedStore: ObservableObject {
 
     @discardableResult
     func moveTask(_ id: TaskID, in noteID: NoteID, to destination: Int) async throws -> Bool {
-        var reordered = try await repository.orderedTasks(in: noteID)
+        let ordered = try await repository.orderedTasks(in: noteID)
+        var reordered = ordered
         guard (0...reordered.count).contains(destination),
               let originalIndex = reordered.firstIndex(where: { $0.id == id }) else {
             return false
         }
 
-        let moved = reordered.remove(at: originalIndex)
-        let adjustedDestination = destination > originalIndex ? destination - 1 : destination
-        reordered.insert(moved, at: adjustedDestination)
-        guard adjustedDestination != originalIndex else { return false }
+        let taskDepth = reordered[originalIndex].indentLevel
+        let subtreeEnd = reordered[(originalIndex + 1)...].firstIndex {
+            $0.indentLevel <= taskDepth
+        } ?? reordered.endIndex
+        let subtreeRange = originalIndex..<subtreeEnd
+        guard !(subtreeRange.contains(destination) || destination == subtreeEnd) else {
+            return false
+        }
+
+        let movedSubtree = Array(reordered[subtreeRange])
+        reordered.removeSubrange(subtreeRange)
+        let adjustedDestination = destination > subtreeEnd
+            ? destination - movedSubtree.count
+            : destination
+        guard (0...reordered.count).contains(adjustedDestination) else { return false }
 
         let lower = adjustedDestination > 0 ? reordered[adjustedDestination - 1].orderToken : nil
-        let upper = adjustedDestination + 1 < reordered.count
-            ? reordered[adjustedDestination + 1].orderToken
-            : nil
-        _ = try await repository.moveTask(id: id, to: try OrderToken.between(lower, upper))
+        let upper = adjustedDestination < reordered.count ? reordered[adjustedDestination].orderToken : nil
+        var previous = lower
+        for task in movedSubtree {
+            let moved = try await repository.moveTask(
+                id: task.id,
+                to: try OrderToken.between(previous, upper)
+            )
+            previous = moved.orderToken
+        }
+
         try await reload()
         await syncCoordinator?.notifyLocalChanges()
         return true
@@ -393,11 +568,15 @@ final class MacSharedStore: ObservableObject {
         await syncCoordinator?.notifyLocalChanges()
     }
 
-    func cleanEmptyTasks(in noteID: NoteID) async throws {
+    func cleanEmptyTasks(
+        in noteID: NoteID,
+        preserving preservedTaskID: TaskID? = nil
+    ) async throws {
         for taskID in notes.first(where: { $0.id == noteID })?.tasks.map(\.id) ?? [] {
             await waitForPendingTaskTextEdit(for: taskID)
         }
-        for task in try await repository.orderedTasks(in: noteID) where task.text.isEmpty {
+        for task in try await repository.orderedTasks(in: noteID)
+        where task.text.isEmpty && task.id != preservedTaskID {
             try await repository.deleteTask(id: task.id)
         }
         try await reload()
