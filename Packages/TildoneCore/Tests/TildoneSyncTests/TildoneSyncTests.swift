@@ -164,6 +164,64 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(resolved.lastSuccessfulSyncAt, failure.lastSuccessfulSyncAt)
     }
 
+    func testFullReconciliationCannotReportIdleOrAdvanceSuccessfulCheckpoint() {
+        let previousSuccess = date.addingTimeInterval(-10)
+        let current = SyncStatus(
+            availability: .available,
+            activity: .attentionNeeded,
+            pendingMutationCount: 1,
+            lastSuccessfulSyncAt: previousSuccess,
+            issue: .unknown
+        )
+        let requested = SyncStatus(
+            availability: .available,
+            activity: .idle,
+            pendingMutationCount: 0,
+            lastSuccessfulSyncAt: date,
+            issue: nil
+        )
+
+        let resolved = SyncStatusLatchPolicy.resolve(
+            requested: requested,
+            current: current,
+            zoneResetRequired: false,
+            fullReconciliationRequired: true
+        )
+
+        XCTAssertEqual(resolved.availability, .available)
+        XCTAssertEqual(resolved.activity, .syncing)
+        XCTAssertEqual(resolved.lastSuccessfulSyncAt, previousSuccess)
+    }
+
+    func testFrozenFailureTakesPrecedenceOverFullReconciliationStatus() {
+        let current = SyncStatus(
+            availability: .available,
+            activity: .attentionNeeded,
+            pendingMutationCount: 1,
+            lastSuccessfulSyncAt: date.addingTimeInterval(-10),
+            issue: .unknown
+        )
+        let requested = SyncStatus(
+            availability: .available,
+            activity: .idle,
+            pendingMutationCount: 0,
+            lastSuccessfulSyncAt: date,
+            issue: nil
+        )
+
+        let resolved = SyncStatusLatchPolicy.resolve(
+            requested: requested,
+            current: current,
+            zoneResetRequired: false,
+            fullReconciliationRequired: true,
+            coordinatorFrozen: true
+        )
+
+        XCTAssertEqual(resolved.activity, .attentionNeeded)
+        XCTAssertEqual(resolved.issue, .unknown)
+        XCTAssertEqual(resolved.lastSuccessfulSyncAt, current.lastSuccessfulSyncAt)
+    }
+
     func testDomainToCloudRecordRoundTrips() throws {
         let fixture = Fixture()
         let mapper = CloudKitRecordMapper()
@@ -552,6 +610,145 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertTrue(restored.zoneCreated)
         XCTAssertFalse(restored.zoneResetRequired)
         XCTAssertTrue(restored.clientRegistrationsByReplicaID.isEmpty)
+        XCTAssertEqual(restored.completedReconciliationVersion, 0)
+        XCTAssertFalse(restored.fullReconciliationRequired)
+    }
+
+    func testLegacyCheckpointIsInvalidatedOnceWithoutDroppingDurableSyncMetadata() {
+        let replicaID = ReplicaID(UUID(int: 710))
+        let registration = SyncClientRegistration(
+            replicaID: replicaID,
+            platform: .iPhone,
+            lastSeenAt: date
+        )
+        let oldSerialization = Data([1, 2, 3])
+        let systemFields = ["note-system-fields": Data([4, 5, 6])]
+        var state = SyncPersistentState()
+        state.engineSerialization = oldSerialization
+        state.systemFieldsByRecordName = systemFields
+        state.clientRegistrationsByReplicaID = [replicaID.stringValue: registration]
+        state.zoneCreated = true
+
+        XCTAssertTrue(state.prepareForFullReconciliationIfNeeded())
+        XCTAssertNil(state.engineSerialization)
+        XCTAssertTrue(state.fullReconciliationRequired)
+        XCTAssertEqual(state.completedReconciliationVersion, 0)
+        XCTAssertEqual(state.systemFieldsByRecordName, systemFields)
+        XCTAssertEqual(
+            state.clientRegistrationsByReplicaID,
+            [replicaID.stringValue: registration]
+        )
+        XCTAssertTrue(state.zoneCreated)
+
+        state.completeFullReconciliation()
+        state.engineSerialization = oldSerialization
+
+        XCTAssertFalse(state.prepareForFullReconciliationIfNeeded())
+        XCTAssertEqual(state.engineSerialization, oldSerialization)
+        XCTAssertFalse(state.fullReconciliationRequired)
+        XCTAssertEqual(
+            state.completedReconciliationVersion,
+            SyncPersistentState.currentReconciliationVersion
+        )
+    }
+
+    func testFetchStateSerializationIsStagedUntilFetchedContentCanCommit() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID(int: 711)))
+        )
+        let oldSerialization = Data([1, 2, 3])
+        let newSerialization = Data([4, 5, 6])
+        var persistent = SyncPersistentState()
+        persistent.engineSerialization = oldSerialization
+        persistent.completedReconciliationVersion = SyncPersistentState.currentReconciliationVersion
+        try await repository.storeFutureSyncEngineState(persistent.encoded())
+        let state = SyncCoordinatorState(persistent: persistent, repository: repository)
+
+        await state.beginFetch()
+        try await state.updateEncodedEngineSerialization(newSerialization)
+
+        let beforeCommit = SyncPersistentState(
+            data: try await repository.workspaceSnapshot().futureSyncEngineState
+        )
+        XCTAssertEqual(beforeCommit.engineSerialization, oldSerialization)
+
+        try await state.completeFetch()
+
+        let afterCommit = SyncPersistentState(
+            data: try await repository.workspaceSnapshot().futureSyncEngineState
+        )
+        XCTAssertEqual(afterCommit.engineSerialization, newSerialization)
+        XCTAssertFalse(afterCommit.fullReconciliationRequired)
+        XCTAssertEqual(
+            afterCommit.completedReconciliationVersion,
+            SyncPersistentState.currentReconciliationVersion
+        )
+    }
+
+    func testFullReconciliationPreservesRepositoryOutboxTombstonesAndMetadata() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(UUID(int: 712)))
+        )
+        let noteID = NoteID(UUID(int: 713))
+        let taskID = TaskID(UUID(int: 714))
+        _ = try await repository.createNote(id: noteID, createdAt: date, title: "Note")
+        _ = try await repository.addTask(
+            id: taskID,
+            to: noteID,
+            createdAt: date,
+            text: "Task",
+            orderToken: try OrderToken(rawValue: "m")
+        )
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+        try await repository.deleteTask(id: taskID)
+
+        let replicaID = ReplicaID(UUID(int: 715))
+        let registration = SyncClientRegistration(
+            replicaID: replicaID,
+            platform: .mac,
+            lastSeenAt: date
+        )
+        let systemFields = [taskID.recordName: Data([7, 8, 9])]
+        var persistent = SyncPersistentState()
+        persistent.engineSerialization = Data([1, 2, 3])
+        persistent.systemFieldsByRecordName = systemFields
+        persistent.clientRegistrationsByReplicaID = [replicaID.stringValue: registration]
+        persistent.zoneCreated = true
+        persistent.completedReconciliationVersion = SyncPersistentState.currentReconciliationVersion
+        try await repository.storeFutureSyncEngineState(persistent.encoded())
+        let pendingBefore = try await repository.pendingMutations(includeSuperseded: true)
+        let noteBefore = try await repository.note(id: noteID, includingDeleted: true)
+        let taskBefore = try await repository.task(id: taskID, includingDeleted: true)
+        let state = SyncCoordinatorState(persistent: persistent, repository: repository)
+
+        try await state.requireFullReconciliation()
+
+        let stored = SyncPersistentState(
+            data: try await repository.workspaceSnapshot().futureSyncEngineState
+        )
+        XCTAssertNil(stored.engineSerialization)
+        XCTAssertTrue(stored.fullReconciliationRequired)
+        XCTAssertEqual(stored.systemFieldsByRecordName, systemFields)
+        XCTAssertEqual(
+            stored.clientRegistrationsByReplicaID,
+            [replicaID.stringValue: registration]
+        )
+        let pendingAfter = try await repository.pendingMutations(includeSuperseded: true)
+        let noteAfter = try await repository.note(id: noteID, includingDeleted: true)
+        let taskAfter = try await repository.task(id: taskID, includingDeleted: true)
+        XCTAssertEqual(pendingAfter, pendingBefore)
+        XCTAssertEqual(noteAfter, noteBefore)
+        XCTAssertEqual(taskAfter, taskBefore)
+    }
+
+    func testFetchRecoveryPolicyOnlyResetsForCursorInvalidatingFailures() {
+        XCTAssertTrue(SyncFetchRecoveryPolicy.requiresFullReconciliation(.partialFailure))
+        XCTAssertTrue(SyncFetchRecoveryPolicy.requiresFullReconciliation(.changeTokenExpired))
+        XCTAssertFalse(SyncFetchRecoveryPolicy.requiresFullReconciliation(.networkFailure))
+        XCTAssertFalse(SyncFetchRecoveryPolicy.requiresFullReconciliation(.serverRecordChanged))
+        XCTAssertFalse(SyncFetchRecoveryPolicy.requiresFullReconciliation(.operationCancelled))
     }
 
     func testDiagnosticFailureCategoriesDiscardContentBearingErrorDetails() {

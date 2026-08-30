@@ -9,6 +9,7 @@ import TildonePersistence
 
 struct SyncPersistentState: Codable, Hashable, Sendable {
     static let currentVersion = 1
+    static let currentReconciliationVersion = 1
 
     var version = currentVersion
     var engineSerialization: Data?
@@ -16,6 +17,10 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
     var clientRegistrationsByReplicaID: [String: SyncClientRegistration] = [:]
     var zoneCreated = false
     var zoneResetRequired = false
+    /// Version of the recovery pass that last fetched the entire custom zone.
+    var completedReconciliationVersion = 0
+    /// Clears only CKSyncEngine's cursor; domain data and durable metadata stay intact.
+    var fullReconciliationRequired = false
 
     init() {}
 
@@ -26,6 +31,8 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
         case clientRegistrationsByReplicaID
         case zoneCreated
         case zoneResetRequired
+        case completedReconciliationVersion
+        case fullReconciliationRequired
     }
 
     init(from decoder: Decoder) throws {
@@ -44,6 +51,14 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
         zoneResetRequired = try container.decodeIfPresent(
             Bool.self,
             forKey: .zoneResetRequired
+        ) ?? false
+        completedReconciliationVersion = try container.decodeIfPresent(
+            Int.self,
+            forKey: .completedReconciliationVersion
+        ) ?? 0
+        fullReconciliationRequired = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .fullReconciliationRequired
         ) ?? false
     }
 
@@ -66,8 +81,31 @@ struct SyncPersistentState: Codable, Hashable, Sendable {
         )
     }
 
-    mutating func setEngineSerialization(_ serialization: CKSyncEngine.State.Serialization) throws {
-        engineSerialization = try PropertyListEncoder().encode(serialization)
+    static func encodedEngineSerialization(
+        _ serialization: CKSyncEngine.State.Serialization
+    ) throws -> Data {
+        try PropertyListEncoder().encode(serialization)
+    }
+
+    @discardableResult
+    mutating func prepareForFullReconciliationIfNeeded() -> Bool {
+        guard !zoneResetRequired,
+              fullReconciliationRequired ||
+                completedReconciliationVersion < Self.currentReconciliationVersion else {
+            return false
+        }
+        requireFullReconciliation()
+        return true
+    }
+
+    mutating func requireFullReconciliation() {
+        fullReconciliationRequired = true
+        engineSerialization = nil
+    }
+
+    mutating func completeFullReconciliation() {
+        completedReconciliationVersion = Self.currentReconciliationVersion
+        fullReconciliationRequired = false
     }
 
     mutating func storeSystemFields(for record: CKRecord) throws {
@@ -106,6 +144,8 @@ actor SyncCoordinatorState {
     private var inFlight: [String: UUID] = [:]
     private(set) var frozen: Bool
     private let repository: TildoneRepository
+    private var fetchInProgress = false
+    private var stagedEngineSerialization: Data?
 
     init(persistent: SyncPersistentState, repository: TildoneRepository) {
         self.persistent = persistent
@@ -116,6 +156,15 @@ actor SyncCoordinatorState {
     func snapshot() -> SyncPersistentState { persistent }
 
     func isFrozen() -> Bool { frozen }
+
+    func requiresFullReconciliation() -> Bool {
+        persistent.fullReconciliationRequired
+    }
+
+    func beginFetch() {
+        fetchInProgress = true
+        stagedEngineSerialization = nil
+    }
 
     func systemRecord(named name: String) -> CKRecord? {
         persistent.systemRecord(named: name)
@@ -167,7 +216,37 @@ actor SyncCoordinatorState {
     func updateEngineSerialization(
         _ serialization: CKSyncEngine.State.Serialization
     ) async throws {
-        try persistent.setEngineSerialization(serialization)
+        try await updateEncodedEngineSerialization(
+            SyncPersistentState.encodedEngineSerialization(serialization)
+        )
+    }
+
+    func updateEncodedEngineSerialization(_ serialization: Data) async throws {
+        if fetchInProgress {
+            stagedEngineSerialization = serialization
+        } else {
+            persistent.engineSerialization = serialization
+            try await persist()
+        }
+    }
+
+    func completeFetch() async throws {
+        // Domain records are applied before didFetchChanges reaches this
+        // method. Persisting the staged cursor now means a crash can replay
+        // records, but can never leave the cursor ahead of local content.
+        if let stagedEngineSerialization {
+            persistent.engineSerialization = stagedEngineSerialization
+        }
+        persistent.completeFullReconciliation()
+        fetchInProgress = false
+        stagedEngineSerialization = nil
+        try await persist()
+    }
+
+    func requireFullReconciliation() async throws {
+        fetchInProgress = false
+        stagedEngineSerialization = nil
+        persistent.requireFullReconciliation()
         try await persist()
     }
 
