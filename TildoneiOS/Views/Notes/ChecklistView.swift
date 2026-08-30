@@ -118,8 +118,7 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: true)
                                         }
                                     } label: {
-                                        Image(systemName: "arrow.turn.right.down")
-                                            .rotationEffect(.degrees(180))
+                                        Image(systemName: "arrow.turn.left.up")
                                     }
                                     .tint(.blue)
                                     .accessibilityLabel("Promote task")

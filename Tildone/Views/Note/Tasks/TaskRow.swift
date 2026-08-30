@@ -171,8 +171,7 @@ struct TaskRow: View {
                         Label {
                             Text("Promote task")
                         } icon: {
-                            Image(systemName: "arrow.turn.right.down")
-                                .rotationEffect(.degrees(180))
+                            Image(systemName: "arrow.turn.left.up")
                                 .foregroundStyle(.primary)
                         }
                     }
