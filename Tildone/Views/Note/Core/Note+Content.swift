@@ -270,8 +270,14 @@ extension Note {
     }
 
     func newListItem() -> some View {
-        HStack(spacing: 8) {
-            Checkbox(size: max(10, CGFloat(fontSize) + 1)).disabled(true)
+        let taskControlSize = max(10, CGFloat(fontSize) * 0.9)
+        let taskLineHeight = max(CGFloat(fontSize) * 1.15, taskControlSize)
+        let taskControlVerticalPadding = max(0, (taskLineHeight - taskControlSize) / 2)
+
+        return HStack(alignment: .top, spacing: 8) {
+            Checkbox(size: taskControlSize)
+                .disabled(true)
+                .padding(.vertical, taskControlVerticalPadding)
             ZStack(alignment: .leading) {
                 if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(minimizedForeground).opacity(0.35).allowsHitTesting(false) }
                 TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(noteForeground).tint(noteForeground)
@@ -279,6 +285,7 @@ extension Note {
                     .onChange(of: focusedField) { _, field in if field != .newTask && !newTaskText.isEmpty { handleNewTaskCommit() } }
                     .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in handleNewTaskCommit() }
             }
+            .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
             Spacer()
         }
         .padding(.leading, 2)
