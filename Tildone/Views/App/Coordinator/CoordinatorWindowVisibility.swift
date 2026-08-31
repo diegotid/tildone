@@ -9,6 +9,15 @@ import SwiftUI
 struct CoordinatorWindowVisibility: NSViewRepresentable {
     let isVisible: Bool
 
+    static func discardSavedFrame() {
+        NSWindow.removeFrame(usingName: Id.desktopWindow)
+    }
+
+    static func disableRestoration(for window: NSWindow) {
+        window.isRestorable = false
+        window.setFrameAutosaveName("")
+    }
+
     func makeNSView(context: Context) -> CoordinatorView {
         CoordinatorView(isVisible: isVisible)
     }
@@ -38,6 +47,7 @@ struct CoordinatorWindowVisibility: NSViewRepresentable {
 
         private func updateWindowVisibility() {
             guard let window else { return }
+            CoordinatorWindowVisibility.disableRestoration(for: window)
             if isVisible {
                 window.makeKeyAndOrderFront(nil)
             } else {

@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var coordinatorWindowObserver: NSObjectProtocol?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        CoordinatorWindowVisibility.discardSavedFrame()
         NSWindow.allowsAutomaticWindowTabbing = false
         AppAppearance.prepareDockIconPreference()
         applyDockIconVisibility()

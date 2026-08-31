@@ -1316,6 +1316,37 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testCoordinatorWindowDoesNotRestoreItsHiddenZeroWidthFrame() {
+        let autosaveKey = "NSWindow Frame \(Id.desktopWindow)"
+        let defaults = UserDefaults.standard
+        let previousValue = defaults.object(forKey: autosaveKey)
+        defer {
+            if let previousValue {
+                defaults.set(previousValue, forKey: autosaveKey)
+            } else {
+                defaults.removeObject(forKey: autosaveKey)
+            }
+        }
+
+        defaults.set("1264 748 0 32 0 0 2560 1410 ", forKey: autosaveKey)
+        CoordinatorWindowVisibility.discardSavedFrame()
+        XCTAssertNil(defaults.object(forKey: autosaveKey))
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        XCTAssertTrue(window.setFrameAutosaveName(Id.desktopWindow))
+
+        CoordinatorWindowVisibility.disableRestoration(for: window)
+
+        XCTAssertFalse(window.isRestorable)
+        XCTAssertTrue(window.frameAutosaveName.isEmpty)
+    }
+
+    @MainActor
     func testActiveNativeTaskEditorRejectsStaleModelWriteback() {
         XCTAssertFalse(
             MouseSafeTaskTextField.shouldApplyModelText(
