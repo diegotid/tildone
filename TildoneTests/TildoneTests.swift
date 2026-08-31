@@ -35,7 +35,7 @@ final class TildoneTests: XCTestCase {
 
     func testSettingsHeightFollowsContentAndNeverExceedsItsFixedWidth() {
         let hostingView = NSHostingView(rootView: SettingsForm())
-        XCTAssertEqual(hostingView.fittingSize, CGSize(width: 600, height: 250))
+        XCTAssertEqual(hostingView.fittingSize, CGSize(width: 600, height: 188))
 
         XCTAssertEqual(
             SettingsForm.preferredWindowHeight(
@@ -281,6 +281,19 @@ final class TildoneTests: XCTestCase {
             modifiersRawValue: Int(NSEvent.ModifierFlags([.command, .shift]).rawValue)
         )
         XCTAssertEqual(legacyShortcut.keyCode, 0)
+    }
+
+    func testNewNoteShortcutDefaultsToGlobalShiftCommandT() {
+        XCTAssertEqual(AppShortcuts.defaultNewNote.displayName, "⇧⌘T")
+        XCTAssertEqual(AppShortcuts.defaultNewNote.keyCode, 17)
+
+        let configuredShortcut = AppShortcuts.newNote(
+            key: "T",
+            keyCodeRawValue: 17,
+            modifiersRawValue: Int(NSEvent.ModifierFlags([.command, .shift]).rawValue)
+        )
+        XCTAssertEqual(configuredShortcut.displayName, "⇧⌘T")
+        XCTAssertEqual(configuredShortcut.keyCode, 17)
     }
 
     func testNoteWindowBackgroundStaysAtConfiguredOpacityUntilWindowCrossesIt() {

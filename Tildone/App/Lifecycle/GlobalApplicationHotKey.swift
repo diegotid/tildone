@@ -1,5 +1,5 @@
 //
-//  GlobalLineUpHotKey.swift
+//  GlobalApplicationHotKey.swift
 //  Tildone
 //
 
@@ -7,22 +7,72 @@ import AppKit
 import Carbon.HIToolbox
 import Combine
 
-/// Registers the configurable Line Up shortcut with macOS while Tildone is inactive.
+/// Registers a configurable application command shortcut with macOS.
 @MainActor
-final class GlobalLineUpHotKey: ObservableObject {
-    static let shared = GlobalLineUpHotKey()
+final class GlobalApplicationHotKey: ObservableObject {
+    static let lineUp = GlobalApplicationHotKey(action: .lineUp)
+    static let newNote = GlobalApplicationHotKey(action: .newNote)
 
     @Published private(set) var hasConflict = false
 
-    private static let hotKeySignature: OSType = 0x54444C55 // "TDLU"
-    private static let hotKeyIdentifier: UInt32 = 1
+    private enum Action {
+        case lineUp
+        case newNote
 
+        var keyStorageKey: String {
+            switch self {
+            case .lineUp: AppShortcuts.lineUpKeyStorageKey
+            case .newNote: AppShortcuts.newNoteKeyStorageKey
+            }
+        }
+
+        var keyCodeStorageKey: String {
+            switch self {
+            case .lineUp: AppShortcuts.lineUpKeyCodeStorageKey
+            case .newNote: AppShortcuts.newNoteKeyCodeStorageKey
+            }
+        }
+
+        var modifiersStorageKey: String {
+            switch self {
+            case .lineUp: AppShortcuts.lineUpModifiersStorageKey
+            case .newNote: AppShortcuts.newNoteModifiersStorageKey
+            }
+        }
+
+        var defaultShortcut: MacAppShortcut {
+            switch self {
+            case .lineUp: AppShortcuts.defaultLineUp
+            case .newNote: AppShortcuts.defaultNewNote
+            }
+        }
+
+        var signature: OSType {
+            switch self {
+            case .lineUp: 0x54444C55 // "TDLU"
+            case .newNote: 0x54444E4E // "TDNN"
+            }
+        }
+
+        var notification: Notification.Name {
+            switch self {
+            case .lineUp: .arrange
+            case .newNote: .new
+            }
+        }
+    }
+
+    private static let hotKeyIdentifier: UInt32 = 1
+    private static var eventHandler: EventHandlerRef?
+
+    private let action: Action
     private var hotKey: EventHotKeyRef?
-    private var eventHandler: EventHandlerRef?
     private var defaultsObserver: NSObjectProtocol?
     private var registeredShortcut: MacAppShortcut?
 
-    private init() {}
+    private init(action: Action) {
+        self.action = action
+    }
 
     func start() {
         installEventHandlerIfNeeded()
@@ -30,25 +80,8 @@ final class GlobalLineUpHotKey: ObservableObject {
         registerCurrentShortcut()
     }
 
-    func stop() {
-        if let hotKey {
-            UnregisterEventHotKey(hotKey)
-            self.hotKey = nil
-        }
-        if let eventHandler {
-            RemoveEventHandler(eventHandler)
-            self.eventHandler = nil
-        }
-        if let defaultsObserver {
-            NotificationCenter.default.removeObserver(defaultsObserver)
-            self.defaultsObserver = nil
-        }
-        registeredShortcut = nil
-        hasConflict = false
-    }
-
     private func installEventHandlerIfNeeded() {
-        guard eventHandler == nil else { return }
+        guard Self.eventHandler == nil else { return }
 
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
@@ -60,7 +93,7 @@ final class GlobalLineUpHotKey: ObservableObject {
             1,
             &eventType,
             nil,
-            &eventHandler
+            &Self.eventHandler
         )
         assert(status == noErr, "Unable to install the global shortcut event handler.")
     }
@@ -79,12 +112,13 @@ final class GlobalLineUpHotKey: ObservableObject {
     }
 
     private func registerCurrentShortcut() {
-        let shortcut = AppShortcuts.lineUp(
-            key: UserDefaults.standard.string(forKey: AppShortcuts.lineUpKeyStorageKey)
-                ?? AppShortcuts.defaultLineUp.key
-                ?? "l",
-            keyCodeRawValue: UserDefaults.standard.integer(forKey: AppShortcuts.lineUpKeyCodeStorageKey),
-            modifiersRawValue: UserDefaults.standard.integer(forKey: AppShortcuts.lineUpModifiersStorageKey)
+        let shortcut = AppShortcuts.shortcut(
+            key: UserDefaults.standard.string(forKey: action.keyStorageKey)
+                ?? action.defaultShortcut.key
+                ?? "n",
+            keyCodeRawValue: UserDefaults.standard.integer(forKey: action.keyCodeStorageKey),
+            modifiersRawValue: UserDefaults.standard.integer(forKey: action.modifiersStorageKey),
+            defaultShortcut: action.defaultShortcut
         )
         guard shortcut != registeredShortcut || hotKey == nil else { return }
 
@@ -103,7 +137,7 @@ final class GlobalLineUpHotKey: ObservableObject {
         let status = RegisterEventHotKey(
             UInt32(keyCode),
             carbonModifiers(for: shortcut.modifiers),
-            EventHotKeyID(signature: Self.hotKeySignature, id: Self.hotKeyIdentifier),
+            EventHotKeyID(signature: action.signature, id: Self.hotKeyIdentifier),
             GetApplicationEventTarget(),
             0,
             &registeredHotKey
@@ -136,13 +170,23 @@ final class GlobalLineUpHotKey: ObservableObject {
             &hotKeyID
         )
         guard status == noErr,
-              hotKeyID.signature == GlobalLineUpHotKey.hotKeySignature,
-              hotKeyID.id == GlobalLineUpHotKey.hotKeyIdentifier else {
+              hotKeyID.id == GlobalApplicationHotKey.hotKeyIdentifier else {
             return noErr
         }
 
+        let notification: Notification.Name?
+        switch hotKeyID.signature {
+        case Action.lineUp.signature:
+            notification = .arrange
+        case Action.newNote.signature:
+            notification = .new
+        default:
+            notification = nil
+        }
+        guard let notification else { return noErr }
+
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .arrange, object: nil)
+            NotificationCenter.default.post(name: notification, object: nil)
         }
         return noErr
     }

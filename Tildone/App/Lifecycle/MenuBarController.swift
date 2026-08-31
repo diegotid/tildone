@@ -114,7 +114,7 @@ final class MenuBarController: NSObject {
         menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout), symbolName: "info.circle"))
         menu.addItem(.separator())
 
-        menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), keyEquivalent: "n", symbolName: "square.and.pencil"))
+        menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), symbolName: "square.and.pencil"))
 
         let minimizeAll = item(String(localized: "Minimize All"), action: #selector(minimizeAll), keyEquivalent: "m", symbolName: "minus.square")
         minimizeAll.keyEquivalentModifierMask = [.command, .shift]

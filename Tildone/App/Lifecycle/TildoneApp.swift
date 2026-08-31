@@ -122,7 +122,6 @@ struct TildoneApp: App {
                 Button("New Note") {
                     NotificationCenter.default.post(name: .new, object: nil)
                 }
-                .keyboardShortcut("n")
                 Button(foregroundNoteID != nil ? "Discard Empty Note" : "Close window") {
                     NotificationCenter.default.post(name: .close, object: nil)
                 }

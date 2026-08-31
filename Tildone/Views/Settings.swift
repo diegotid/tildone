@@ -42,10 +42,14 @@ enum AppShortcuts {
     static let lineUpKeyStorageKey = "lineUpNotesShortcutKey"
     static let lineUpKeyCodeStorageKey = "lineUpNotesShortcutKeyCode"
     static let lineUpModifiersStorageKey = "lineUpNotesShortcutModifiers"
+    static let newNoteKeyStorageKey = "newNoteShortcutKey"
+    static let newNoteKeyCodeStorageKey = "newNoteShortcutKeyCode"
+    static let newNoteModifiersStorageKey = "newNoteShortcutModifiers"
 
     static let defaultOpacity = MacAppShortcut(key: nil, keyCode: nil, modifiers: [.option])
     static let defaultGather = MacAppShortcut(key: nil, keyCode: nil, modifiers: [.option, .control])
     static let defaultLineUp = MacAppShortcut(key: "l", keyCode: 37, modifiers: [.command, .shift])
+    static let defaultNewNote = MacAppShortcut(key: "t", keyCode: 17, modifiers: [.command, .shift])
 
     static func opacity(from rawValue: Int) -> MacAppShortcut {
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
@@ -79,7 +83,34 @@ enum AppShortcuts {
         keyCodeRawValue: Int = 0,
         modifiersRawValue: Int
     ) -> MacAppShortcut {
-        let normalizedKey = key.first.map { String($0).lowercased() } ?? defaultLineUp.key!
+        shortcut(
+            key: key,
+            keyCodeRawValue: keyCodeRawValue,
+            modifiersRawValue: modifiersRawValue,
+            defaultShortcut: defaultLineUp
+        )
+    }
+
+    static func newNote(
+        key: String,
+        keyCodeRawValue: Int = 0,
+        modifiersRawValue: Int
+    ) -> MacAppShortcut {
+        shortcut(
+            key: key,
+            keyCodeRawValue: keyCodeRawValue,
+            modifiersRawValue: modifiersRawValue,
+            defaultShortcut: defaultNewNote
+        )
+    }
+
+    static func shortcut(
+        key: String,
+        keyCodeRawValue: Int = 0,
+        modifiersRawValue: Int,
+        defaultShortcut: MacAppShortcut
+    ) -> MacAppShortcut {
+        let normalizedKey = key.first.map { String($0).lowercased() } ?? defaultShortcut.key!
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(modifiersRawValue))
             .intersection(MacAppShortcut.significantModifiers)
         return MacAppShortcut(
@@ -87,7 +118,7 @@ enum AppShortcuts {
             keyCode: keyCodeRawValue > 0
                 ? UInt16(keyCodeRawValue)
                 : keyCode(for: normalizedKey),
-            modifiers: modifiers.isEmpty ? defaultLineUp.modifiers : modifiers
+            modifiers: modifiers.isEmpty ? defaultShortcut.modifiers : modifiers
         )
     }
 
@@ -122,7 +153,9 @@ struct SettingsForm: View {
     @State private var opacityShortcutValidationMessage: LocalizedStringKey?
     @State private var gatherShortcutValidationMessage: LocalizedStringKey?
     @State private var lineUpShortcutValidationMessage: LocalizedStringKey?
-    @ObservedObject private var globalLineUpHotKey = GlobalLineUpHotKey.shared
+    @State private var newNoteShortcutValidationMessage: LocalizedStringKey?
+    @ObservedObject private var globalLineUpHotKey = GlobalApplicationHotKey.lineUp
+    @ObservedObject private var globalNewNoteHotKey = GlobalApplicationHotKey.newNote
     
     @AppStorage(FontSize.storageKey)
     private var fontSize = Double(FontSize.small.rawValue)
@@ -175,6 +208,15 @@ struct SettingsForm: View {
 
     @AppStorage(AppShortcuts.lineUpModifiersStorageKey)
     private var lineUpModifiersRawValue = Int(AppShortcuts.defaultLineUp.modifiers.rawValue)
+
+    @AppStorage(AppShortcuts.newNoteKeyStorageKey)
+    private var newNoteKey = AppShortcuts.defaultNewNote.key!
+
+    @AppStorage(AppShortcuts.newNoteKeyCodeStorageKey)
+    private var newNoteKeyCode = Int(AppShortcuts.defaultNewNote.keyCode ?? 0)
+
+    @AppStorage(AppShortcuts.newNoteModifiersStorageKey)
+    private var newNoteModifiersRawValue = Int(AppShortcuts.defaultNewNote.modifiers.rawValue)
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -230,25 +272,45 @@ private extension SettingsForm {
 
     @ViewBuilder
     func generalSettings() -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            settingWithHelp("Start Tildone automatically when you log in.") {
-                Launcher.Toggle()
+        HStack(alignment: .top, spacing: 28) {
+            VStack(alignment: .leading, spacing: 16) {
+                settingWithHelp("Start Tildone automatically when you log in.") {
+                    Launcher.Toggle()
+                }
+                settingWithHelp("Show or hide Tildone in the Dock.") {
+                    Toggle("Show Dock icon", isOn: $showDockIcon)
+                        .onChange(of: showDockIcon) { _, _ in
+                            NSApplication.shared.setActivationPolicy(showDockIcon ? .regular : .accessory)
+                        }
+                }
+                settingWithHelp("Keep unfinished tasks at the top of each list.") {
+                    Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
+                        .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
+                            NotificationCenter.default.post(
+                                name: .updateCompletedTaskOrdering,
+                                object: isEnabled
+                            )
+                        }
+                }
             }
-            settingWithHelp("Show or hide Tildone in the Dock.") {
-                Toggle("Show Dock icon", isOn: $showDockIcon)
-                    .onChange(of: showDockIcon) { _, _ in
-                        NSApplication.shared.setActivationPolicy(showDockIcon ? .regular : .accessory)
-                    }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("New Note")
+                    .font(.headline)
+                LabeledContent("Keyboard shortcut") {
+                    ShortcutRecorder(
+                        shortcut: newNoteShortcutBinding,
+                        kind: .key,
+                        validationMessage: $newNoteShortcutValidationMessage
+                    )
+                }
+                shortcutValidationMessage(newNoteShortcutValidationMessage)
+                if globalNewNoteHotKey.hasConflict {
+                    globalShortcutConflictWarning
+                }
             }
-            settingWithHelp("Keep unfinished tasks at the top of each list.") {
-                Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
-                    .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
-                        NotificationCenter.default.post(
-                            name: .updateCompletedTaskOrdering,
-                            object: isEnabled
-                        )
-                    }
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -310,12 +372,7 @@ private extension SettingsForm {
                 }
                 shortcutValidationMessage(lineUpShortcutValidationMessage)
                 if globalLineUpHotKey.hasConflict {
-                    Label(
-                        "This shortcut is used by another app. Choose another shortcut to make it work globally.",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+                    globalShortcutConflictWarning
                 }
                 Text("Place notes in an evenly spaced row or column.")
                     .font(.caption)
@@ -653,6 +710,32 @@ private extension SettingsForm {
                 lineUpModifiersRawValue = Int($0.modifiers.rawValue)
             }
         )
+    }
+
+    var newNoteShortcutBinding: Binding<MacAppShortcut> {
+        Binding(
+            get: {
+                AppShortcuts.newNote(
+                    key: newNoteKey,
+                    keyCodeRawValue: newNoteKeyCode,
+                    modifiersRawValue: newNoteModifiersRawValue
+                )
+            },
+            set: {
+                newNoteKey = $0.key ?? AppShortcuts.defaultNewNote.key!
+                newNoteKeyCode = Int($0.keyCode ?? AppShortcuts.keyCode(for: $0.key) ?? 0)
+                newNoteModifiersRawValue = Int($0.modifiers.rawValue)
+            }
+        )
+    }
+
+    var globalShortcutConflictWarning: some View {
+        Label(
+            "This shortcut is used by another app. Choose another shortcut to make it work globally.",
+            systemImage: "exclamationmark.triangle"
+        )
+        .font(.caption)
+        .foregroundStyle(.orange)
     }
 }
 
