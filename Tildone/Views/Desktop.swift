@@ -530,8 +530,8 @@ private extension Desktop {
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
-        window.contentView = NSHostingView(rootView: noteWindow(for: note))
-        addNoteColorPicker(to: window, noteID: note.id)
+        window.setNoteContentView(NSHostingView(rootView: noteWindow(for: note)))
+        addNoteTitlebarAccessory(to: window, noteID: note.id)
         window.applyNoteBackgroundColor(
             note.color.nsColor,
             alpha: NoteWindowBackground.tintAlpha(
@@ -829,11 +829,8 @@ private extension Desktop {
         NotificationCenter.default.post(name: .noteWindowOpacityChanged, object: window)
     }
 
-    func addNoteColorPicker(to window: NSWindow, noteID: NoteID) {
-        guard let contentView = window.contentView,
-              let themeFrame = contentView.superview,
-              let closeButton = window.standardWindowButton(.closeButton),
-              let presentation = store.presentation(for: noteID) else {
+    func addNoteTitlebarAccessory(to window: NSWindow, noteID: NoteID) {
+        guard let presentation = store.presentation(for: noteID) else {
             return
         }
 
@@ -842,55 +839,16 @@ private extension Desktop {
             presentation: presentation,
             noteID: noteID
         )
-        let pickerSize = NSSize(
-            width: MacNoteTitlebarLayout.colorPickerWidth,
-            height: MacNoteTitlebarLayout.controlHeight
+        let accessory = MacNoteTitlebarAccessoryController(
+            colorPicker: picker,
+            syncIndicatorState: noteSyncIndicatorState
         )
-        let closeButtonFrame = closeButton.convert(closeButton.bounds, to: themeFrame)
-        picker.frame = NSRect(
-            x: themeFrame.bounds.maxX - pickerSize.width - MacNoteTitlebarLayout.trailingMargin,
-            y: closeButtonFrame.midY - pickerSize.height / 2 - 4,
-            width: pickerSize.width,
-            height: pickerSize.height
-        )
-        picker.autoresizingMask = [.minXMargin, .minYMargin]
-        themeFrame.addSubview(picker, positioned: .above, relativeTo: nil)
-
-        guard noteSyncIndicatorState != .hidden else { return }
-        addNoteSyncIndicator(to: themeFrame, beside: picker, state: noteSyncIndicatorState)
-    }
-
-    func addNoteSyncIndicator(
-        to themeFrame: NSView,
-        beside picker: NSView,
-        state: MacNoteSyncIndicatorState
-    ) {
-        let indicator = MacNoteSyncTitlebarControl(state: state)
-        let indicatorSize = NSSize(
-            width: MacNoteTitlebarLayout.syncIndicatorWidth,
-            height: MacNoteTitlebarLayout.controlHeight
-        )
-        indicator.frame = NSRect(
-            x: picker.frame.minX - indicatorSize.width - MacNoteTitlebarLayout.controlSpacing,
-            y: picker.frame.minY,
-            width: indicatorSize.width,
-            height: indicatorSize.height
-        )
-        indicator.autoresizingMask = [.minXMargin, .minYMargin]
-        themeFrame.addSubview(indicator, positioned: .above, relativeTo: nil)
+        window.addTitlebarAccessoryViewController(accessory)
     }
 
     func setNoteSyncIndicatorState(_ state: MacNoteSyncIndicatorState) {
         for window in noteWindows.values {
-            guard let themeFrame = window.contentView?.superview else { continue }
-            themeFrame.subviews
-                .compactMap { $0 as? MacNoteSyncTitlebarControl }
-                .forEach { $0.removeFromSuperview() }
-            guard state != .hidden,
-                  let picker = themeFrame.subviews.first(where: { $0 is NoteColorPickerTitlebarControl }) else {
-                continue
-            }
-            addNoteSyncIndicator(to: themeFrame, beside: picker, state: state)
+            window.noteTitlebarAccessoryController?.setSyncIndicatorState(state)
         }
     }
 
@@ -908,11 +866,11 @@ private extension Desktop {
         )
         window.identifier = NSUserInterfaceItemIdentifier(Id.updateWindow)
         window.setNoteStyle(noteColor: .green)
-        window.contentView = NSHostingView(rootView: MacSystemReleaseNote(version: version) {
+        window.setNoteContentView(NSHostingView(rootView: MacSystemReleaseNote(version: version) {
             UpdateChecker.dismissPendingReleaseNote()
             window.close()
             updateWindow = nil
-        })
+        }))
         window.applyNoteBackground(isSystem: true)
         window.setFrameAutosaveName("TildoneUpdateNote")
         window.titleVisibility = .hidden

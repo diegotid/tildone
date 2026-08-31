@@ -15,14 +15,36 @@ enum MacNoteTitlebarLayout {
     static let controlSpacing: CGFloat = 2
     static let titleControlSpacing: CGFloat = 6
 
+    static var accessoryWidth: CGFloat {
+        trailingMargin + colorPickerWidth + controlSpacing + syncIndicatorWidth
+    }
+
     static var titleTrailingInset: CGFloat {
-        trailingMargin + colorPickerWidth + controlSpacing + syncIndicatorWidth + titleControlSpacing
+        accessoryWidth + titleControlSpacing
+    }
+
+    static func colorPickerFrame(in bounds: NSRect) -> NSRect {
+        NSRect(
+            x: bounds.maxX - colorPickerWidth - trailingMargin,
+            y: max(bounds.minY, bounds.midY - controlHeight / 2 - 4),
+            width: colorPickerWidth,
+            height: controlHeight
+        )
+    }
+
+    static func syncIndicatorFrame(alignedWith pickerFrame: NSRect) -> NSRect {
+        NSRect(
+            x: pickerFrame.minX - syncIndicatorWidth - controlSpacing,
+            y: pickerFrame.minY,
+            width: syncIndicatorWidth,
+            height: controlHeight
+        )
     }
 
     static func minimizedRestoreFrame(in bounds: NSRect, alignedWith pickerFrame: NSRect) -> NSRect {
         NSRect(
             x: bounds.maxX - minimizedRestoreWidth - trailingMargin,
-            y: bounds.maxY - pickerFrame.height - 8,
+            y: pickerFrame.minY,
             width: minimizedRestoreWidth,
             height: pickerFrame.height
         )

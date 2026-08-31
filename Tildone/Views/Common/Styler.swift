@@ -156,6 +156,43 @@ enum Layout {
     static let defaultNoteYPosition: CGFloat = 90
 }
 
+private final class NoteBackgroundEffectView: NSVisualEffectView {
+    private weak var noteContentView: NSView?
+    private var contentTopConstraint: NSLayoutConstraint?
+
+    func install(noteContentView: NSView, tintView: NSView) {
+        self.noteContentView = noteContentView
+        tintView.translatesAutoresizingMaskIntoConstraints = false
+        noteContentView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(tintView)
+        addSubview(noteContentView, positioned: .above, relativeTo: tintView)
+
+        let contentTopConstraint = noteContentView.topAnchor.constraint(
+            equalTo: safeAreaLayoutGuide.topAnchor
+        )
+        self.contentTopConstraint = contentTopConstraint
+        NSLayoutConstraint.activate([
+            tintView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            tintView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            tintView.topAnchor.constraint(equalTo: topAnchor),
+            tintView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            noteContentView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            noteContentView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            contentTopConstraint,
+            noteContentView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    func setContentExtendsUnderTitlebar(_ extendsUnderTitlebar: Bool) {
+        guard let noteContentView else { return }
+        contentTopConstraint?.isActive = false
+        let topAnchor = extendsUnderTitlebar ? self.topAnchor : safeAreaLayoutGuide.topAnchor
+        let replacement = noteContentView.topAnchor.constraint(equalTo: topAnchor)
+        replacement.isActive = true
+        contentTopConstraint = replacement
+    }
+}
+
 extension NSColor {
     static let noteBackground = #colorLiteral(red: 1, green: 0.9411764706, blue: 0.6274509804, alpha: 1)
     static let systemNoteBackground = #colorLiteral(red: 0.7331673503, green: 0.9972032905, blue: 0.7244514823, alpha: 1)
@@ -171,6 +208,11 @@ extension NSColor {
 
 extension NSWindow {
     func setNoteStyle(noteColor: NoteColor) {
+        if !styleMask.contains(.fullSizeContentView) {
+            let outerFrame = frame
+            styleMask.insert(.fullSizeContentView)
+            setFrame(outerFrame, display: false)
+        }
         self.level = .floating
         self.titlebarAppearsTransparent = true
         self.isReleasedWhenClosed = false
@@ -187,54 +229,36 @@ extension NSWindow {
         applyNoteBackgroundColor(baseColor, alpha: alpha)
     }
 
-    func applyNoteBackgroundColor(_ color: NSColor, alpha: CGFloat = NoteWindowBackground.currentAlpha()) {
-        self.backgroundColor = color.withAlphaComponent(alpha)
-        guard let effectView = noteBackgroundEffectView(),
-              let tintView = noteBackgroundTintView(above: effectView) else {
-            DispatchQueue.main.async { [weak self] in
-                self?.applyNoteBackgroundColor(color, alpha: alpha)
-            }
-            return
-        }
-        tintView.wantsLayer = true
-        tintView.layer?.backgroundColor = color.withAlphaComponent(alpha).cgColor
-    }
-
-    private func noteBackgroundEffectView() -> NSVisualEffectView? {
-        guard let contentView = contentView,
-              let themeFrame = contentView.superview else {
-            return nil
-        }
-        if let existingView = themeFrame.subviews.first(where: {
-            $0.identifier == NoteWindowBackground.blurViewIdentifier
-        }) as? NSVisualEffectView {
-            return existingView
-        }
-        let effectView = NSVisualEffectView(frame: themeFrame.bounds)
+    func setNoteContentView(_ noteContentView: NSView) {
+        let effectView = NoteBackgroundEffectView(frame: noteContentView.frame)
         effectView.identifier = NoteWindowBackground.blurViewIdentifier
-        effectView.autoresizingMask = [.width, .height]
         effectView.blendingMode = .behindWindow
         effectView.material = .hudWindow
         effectView.state = .active
         effectView.wantsLayer = true
-        themeFrame.addSubview(effectView, positioned: .below, relativeTo: nil)
-        return effectView
+
+        let tintView = NSView(frame: effectView.bounds)
+        tintView.identifier = NoteWindowBackground.tintViewIdentifier
+        tintView.wantsLayer = true
+
+        effectView.install(noteContentView: noteContentView, tintView: tintView)
+        contentView = effectView
     }
 
-    private func noteBackgroundTintView(above effectView: NSVisualEffectView) -> NSView? {
-        guard let contentView = contentView,
-              let themeFrame = contentView.superview else {
-            return nil
-        }
-        if let existingView = themeFrame.subviews.first(where: { $0.identifier == NoteWindowBackground.tintViewIdentifier }) {
-            return existingView
-        }
-        let tintView = NSView(frame: themeFrame.bounds)
-        tintView.identifier = NoteWindowBackground.tintViewIdentifier
-        tintView.autoresizingMask = [.width, .height]
+    func setNoteContentExtendsUnderTitlebar(_ extendsUnderTitlebar: Bool) {
+        (contentView as? NoteBackgroundEffectView)?
+            .setContentExtendsUnderTitlebar(extendsUnderTitlebar)
+    }
+
+    func applyNoteBackgroundColor(_ color: NSColor, alpha: CGFloat = NoteWindowBackground.currentAlpha()) {
+        self.backgroundColor = color.withAlphaComponent(alpha)
+        guard let effectView = contentView as? NSVisualEffectView,
+              effectView.identifier == NoteWindowBackground.blurViewIdentifier,
+              let tintView = effectView.subviews.first(where: {
+                  $0.identifier == NoteWindowBackground.tintViewIdentifier
+              }) else { return }
         tintView.wantsLayer = true
-        themeFrame.addSubview(tintView, positioned: .below, relativeTo: contentView)
-        return tintView
+        tintView.layer?.backgroundColor = color.withAlphaComponent(alpha).cgColor
     }
 }
 

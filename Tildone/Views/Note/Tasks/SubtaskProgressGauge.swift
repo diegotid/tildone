@@ -26,7 +26,7 @@ struct SubtaskProgressGauge: View {
                     .trim(from: 0, to: progress.fraction)
                     .stroke(
                         Color.accentColor,
-                        style: StrokeStyle(lineWidth: max(2, size * 0.14), lineCap: .round)
+                        style: StrokeStyle(lineWidth: max(2 * 0.7, size * 0.14), lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
             }

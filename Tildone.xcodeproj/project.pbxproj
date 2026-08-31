@@ -55,6 +55,7 @@
 		D1000000000000000000020E /* ScrollFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010E /* ScrollFrame.swift */; };
 		D1000000000000000000020F /* TaskRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010F /* TaskRow.swift */; };
 		D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000110 /* MouseSafeTaskTextField.swift */; };
+		D10000000000000000000211 /* MacNoteTitlebarAccessoryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000111 /* MacNoteTitlebarAccessoryController.swift */; };
 		D20000000000000000000201 /* FocusFilterHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000101 /* FocusFilterHelp.swift */; };
 		D20000000000000000000202 /* MacSyncPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000102 /* MacSyncPresentation.swift */; };
 		D20000000000000000000203 /* MacSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000103 /* MacSyncStatusView.swift */; };
@@ -211,6 +212,7 @@
 		D1000000000000000000010E /* ScrollFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollFrame.swift; sourceTree = "<group>"; };
 		D1000000000000000000010F /* TaskRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRow.swift; sourceTree = "<group>"; };
 		D10000000000000000000110 /* MouseSafeTaskTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseSafeTaskTextField.swift; sourceTree = "<group>"; };
+		D10000000000000000000111 /* MacNoteTitlebarAccessoryController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteTitlebarAccessoryController.swift; sourceTree = "<group>"; };
 		D20000000000000000000101 /* FocusFilterHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusFilterHelp.swift; sourceTree = "<group>"; };
 		D20000000000000000000102 /* MacSyncPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncPresentation.swift; sourceTree = "<group>"; };
 		D20000000000000000000103 /* MacSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncStatusView.swift; sourceTree = "<group>"; };
@@ -645,6 +647,7 @@
 		D60000000000000000000010 /* Titlebar */ = {
 			isa = PBXGroup;
 			children = (
+				D10000000000000000000111 /* MacNoteTitlebarAccessoryController.swift */,
 				D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */,
 				D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */,
 				D1000000000000000000010A /* MacNoteSyncTitlebarIcon.swift */,
@@ -1128,6 +1131,7 @@
 				D1000000000000000000020F /* TaskRow.swift in Sources */,
 				D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */,
 				D10000000000000000000210 /* MouseSafeTaskTextField.swift in Sources */,
+				D10000000000000000000211 /* MacNoteTitlebarAccessoryController.swift in Sources */,
 				D40000000000000000000206 /* MouseSafeTaskNSTextField.swift in Sources */,
 				D40000000000000000000207 /* MouseSafeTaskNSTextFieldCell.swift in Sources */,
 				D40000000000000000000208 /* MouseSafeTaskFieldEditor.swift in Sources */,

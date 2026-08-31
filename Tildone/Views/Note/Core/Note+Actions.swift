@@ -710,30 +710,13 @@ extension Note {
     }
 
     func setColorPickerHidden(_ hidden: Bool) {
-        guard let themeFrame = noteWindow?.contentView?.superview else { return }
-        themeFrame.subviews
-            .compactMap { $0 as? NoteColorPickerTitlebarControl }
-            .forEach { $0.isHidden = hidden }
+        noteWindow?.noteTitlebarAccessoryController?.setColorPickerHidden(hidden)
     }
 
     func setRestoreControlVisible(_ visible: Bool) {
-        guard let themeFrame = noteWindow?.contentView?.superview else { return }
-        let existing = themeFrame.subviews.compactMap { $0 as? MinimizedNoteRestoreTitlebarControl }
-        guard visible else {
-            existing.forEach { $0.removeFromSuperview() }
-            return
-        }
-        guard existing.isEmpty,
-              let picker = themeFrame.subviews.first(where: { $0 is NoteColorPickerTitlebarControl }) else {
-            return
-        }
-
-        let restore = MinimizedNoteRestoreTitlebarControl { handleBringUp() }
-        restore.frame = MacNoteTitlebarLayout.minimizedRestoreFrame(
-            in: themeFrame.bounds,
-            alignedWith: picker.frame
+        noteWindow?.noteTitlebarAccessoryController?.setRestoreControlVisible(
+            visible,
+            onRestore: { handleBringUp() }
         )
-        restore.autoresizingMask = [.minXMargin, .minYMargin]
-        themeFrame.addSubview(restore, positioned: .above, relativeTo: nil)
     }
 }

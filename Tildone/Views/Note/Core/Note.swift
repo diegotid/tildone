@@ -145,6 +145,7 @@ struct Note: View {
         .onChange(of: note?.color) { _, _ in applyCurrentNoteBackground() }
         .onChange(of: isMinimized) { _, minimized in
             setTrafficLightsHidden(minimized)
+            noteWindow?.setNoteContentExtendsUnderTitlebar(minimized)
             if minimized { isHoveringMinimizedTaskList = false }
         }
         .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }

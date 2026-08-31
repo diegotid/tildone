@@ -22,7 +22,6 @@ final class MenuBarController: NSObject {
         guard let button = statusItem.button else { return }
         button.image = Self.menuBarImage(for: .active, accessibilityDescription: "Tildone")
         button.toolTip = "Tildone"
-        button.setAccessibilityLabel("Tildone")
         button.setAccessibilityHelp(String(localized: "Open Tildone and review iCloud sync status"))
         statusItem.menu = makeMenu()
     }
@@ -81,6 +80,7 @@ final class MenuBarController: NSObject {
         }
         base.isTemplate = true
         base.size = NSSize(width: 16, height: 16)
+        base.accessibilityDescription = accessibilityDescription
         guard let badgeName = MacSyncPresentation.menuBarBadgeSymbol(for: state),
               let badge = NSImage(
                 systemSymbolName: badgeName,
@@ -95,6 +95,7 @@ final class MenuBarController: NSObject {
             return true
         }
         image.isTemplate = true
+        image.accessibilityDescription = accessibilityDescription
         return image
     }
 

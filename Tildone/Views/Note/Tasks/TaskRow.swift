@@ -60,6 +60,10 @@ struct TaskRow: View {
         max(12, taskLineHeight)
     }
 
+    private var taskActionColor: Color {
+        (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Group {
@@ -150,9 +154,7 @@ struct TaskRow: View {
                             .frame(width: taskActionControlSize, height: taskActionControlSize)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(
-                        (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
-                    )
+                    .foregroundStyle(taskActionColor)
                     .contentShape(Rectangle())
                     .help(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
                     .accessibilityLabel(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
@@ -179,15 +181,23 @@ struct TaskRow: View {
                     Image(systemName: "arrow.turn.down.right")
                         .font(.system(size: taskActionControlSize * 0.6, weight: .semibold))
                         .frame(width: taskActionControlSize, height: taskActionControlSize)
+                        .scaleEffect(0.75, anchor: .center)
+                        .hidden()
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .contentShape(Rectangle())
-                .padding(.leading, -3)
-                .padding(.trailing, -5)
-                .opacity(isShowingRowControls ? 0.5 : 0)
+                .overlay {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: taskActionControlSize * 0.65, weight: .semibold))
+                        .foregroundStyle(taskActionColor)
+                        .frame(width: taskActionControlSize, height: taskActionControlSize)
+                        .allowsHitTesting(false)
+                }
+                .padding(.leading, 5)
+                .padding(.trailing, 4)
+                .opacity(isShowingRowControls ? 1 : 0)
                 .allowsHitTesting(isShowingRowControls)
-                .scaleEffect(0.75, anchor: .center)
                 .help("Task hierarchy")
                 .accessibilityLabel("Task hierarchy")
 
@@ -197,9 +207,7 @@ struct TaskRow: View {
                         .frame(width: taskActionControlSize, height: taskActionControlSize)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(
-                    (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
-                )
+                .foregroundStyle(taskActionColor)
                 .contentShape(Rectangle())
                 .opacity(isShowingRowControls ? 1 : 0)
                 .allowsHitTesting(isShowingRowControls)

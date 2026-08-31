@@ -314,6 +314,52 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testNoteBackgroundUsesTheWindowContentRootInsteadOfPrivateThemeFrameSubviews() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 250, height: 300),
+            styleMask: [.titled, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        let noteContent = NSView()
+        let originalFrame = window.frame
+
+        window.setNoteStyle(noteColor: .blue)
+        window.setNoteContentView(noteContent)
+        window.applyNoteBackgroundColor(.noteBlueBackground, alpha: 0.6)
+
+        XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
+        XCTAssertEqual(window.frame, originalFrame)
+        let effectView = try XCTUnwrap(window.contentView as? NSVisualEffectView)
+        XCTAssertEqual(effectView.identifier, NoteWindowBackground.blurViewIdentifier)
+        XCTAssertGreaterThan(effectView.bounds.height, window.contentLayoutRect.height)
+        XCTAssertTrue(noteContent.superview === effectView)
+        let tintView = try XCTUnwrap(effectView.subviews.first(where: {
+            $0.identifier == NoteWindowBackground.tintViewIdentifier
+        }))
+        effectView.layoutSubtreeIfNeeded()
+        XCTAssertEqual(tintView.frame, effectView.bounds)
+        XCTAssertEqual(noteContent.frame, window.contentLayoutRect)
+        XCTAssertNotNil(tintView.layer?.backgroundColor)
+
+        window.setNoteContentExtendsUnderTitlebar(true)
+        effectView.layoutSubtreeIfNeeded()
+        XCTAssertEqual(noteContent.frame, effectView.bounds)
+
+        window.setNoteContentExtendsUnderTitlebar(false)
+        effectView.layoutSubtreeIfNeeded()
+        XCTAssertEqual(noteContent.frame, window.contentLayoutRect)
+
+        let themeFrame = try XCTUnwrap(effectView.superview)
+        XCTAssertFalse(themeFrame.subviews.contains(where: {
+            $0 !== effectView && $0.identifier == NoteWindowBackground.blurViewIdentifier
+        }))
+        XCTAssertFalse(themeFrame.subviews.contains(where: {
+            $0.identifier == NoteWindowBackground.tintViewIdentifier
+        }))
+    }
+
     func testAllNoteOpacityDecreaseStartsAtMostOpaqueWindow() {
         XCTAssertEqual(
             NoteWindowOpacity.adjustedAlphas([1, 0.8, 0.4], by: -0.1),
@@ -776,12 +822,15 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(active.size, NSSize(width: 16, height: 16))
         XCTAssertEqual(attention.size, NSSize(width: 18, height: 18))
         XCTAssertNotEqual(active.tiffRepresentation, attention.tiffRepresentation)
+        XCTAssertEqual(active.accessibilityDescription, "Tildone")
+        XCTAssertEqual(attention.accessibilityDescription, "iCloud sync needs attention")
         XCTAssertTrue(active.isTemplate)
         XCTAssertTrue(attention.isTemplate)
     }
 
     @MainActor
     func testMacNoteSyncIndicatorDistinguishesLocalChoiceAndAttention() {
+        XCTAssertEqual(MacNoteTitlebarLayout.accessoryWidth, 54)
         XCTAssertEqual(MacNoteTitlebarLayout.titleTrailingInset, 60)
         XCTAssertGreaterThan(
             MacNoteTitlebarLayout.titleTrailingInset,
@@ -843,6 +892,53 @@ final class TildoneTests: XCTestCase {
         let restore = MinimizedNoteRestoreTitlebarControl(onRestore: {})
         XCTAssertTrue(restore.acceptsFirstMouse(for: nil))
         XCTAssertFalse(restore.mouseDownCanMoveWindow)
+    }
+
+    @MainActor
+    func testMacNoteControlsUseSupportedTitlebarAccessoryHierarchy() throws {
+        let picker = NSView()
+        let accessory = MacNoteTitlebarAccessoryController(
+            colorPicker: picker,
+            syncIndicatorState: .hidden
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.addTitlebarAccessoryViewController(accessory)
+
+        XCTAssertEqual(accessory.layoutAttribute, .right)
+        XCTAssertTrue(window.noteTitlebarAccessoryController === accessory)
+        XCTAssertTrue(picker.superview === accessory.view)
+        let themeFrame = try XCTUnwrap(window.contentView?.superview)
+        XCTAssertFalse(themeFrame.subviews.contains(where: { $0 === picker }))
+
+        let pickerFrame = picker.frame
+        accessory.view.needsLayout = true
+        accessory.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(picker.frame, pickerFrame)
+
+        accessory.setSyncIndicatorState(.onlyOnThisMac)
+        XCTAssertEqual(accessory.view.subviews.compactMap { $0 as? MacNoteSyncTitlebarControl }.count, 1)
+        accessory.setSyncIndicatorState(.hidden)
+        XCTAssertFalse(accessory.view.subviews.contains(where: { $0 is MacNoteSyncTitlebarControl }))
+
+        var restoreCount = 0
+        accessory.setColorPickerHidden(true)
+        accessory.setRestoreControlVisible(true) { restoreCount += 1 }
+        accessory.setRestoreControlVisible(true) { restoreCount += 10 }
+        let restore = try XCTUnwrap(
+            accessory.view.subviews.compactMap { $0 as? MinimizedNoteRestoreTitlebarControl }.first
+        )
+        XCTAssertTrue(picker.isHidden)
+        XCTAssertTrue(restore.accessibilityPerformPress())
+        XCTAssertEqual(restoreCount, 1)
+
+        accessory.setRestoreControlVisible(false) {}
+        XCTAssertFalse(accessory.view.subviews.contains(where: { $0 is MinimizedNoteRestoreTitlebarControl }))
     }
 
     @MainActor
@@ -1175,8 +1271,8 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(appSource.contains("syncNeedsAttention: displayState == .attentionNeeded"))
         XCTAssertTrue(appSource.contains("publisher(for: .openSyncResolutionOptions)"))
         XCTAssertTrue(appSource.contains("These notes won’t appear on your iPhone or in iCloud. You can combine them later."))
-        XCTAssertTrue(desktopSource.contains("guard noteSyncIndicatorState != .hidden else { return }"))
-        XCTAssertTrue(desktopSource.contains("picker.frame.minX - indicatorSize.width - MacNoteTitlebarLayout.controlSpacing"))
+        XCTAssertTrue(desktopSource.contains("window.addTitlebarAccessoryViewController(accessory)"))
+        XCTAssertFalse(desktopSource.contains("themeFrame.addSubview"))
         XCTAssertTrue(desktopSource.contains(".onChange(of: noteSyncIndicatorState)"))
         XCTAssertTrue(desktopSource.contains("setNoteSyncIndicatorState(state)"))
         XCTAssertTrue(noteSource.contains(".padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)"))
