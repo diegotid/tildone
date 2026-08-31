@@ -174,19 +174,22 @@ final class GlobalApplicationHotKey: ObservableObject {
             return noErr
         }
 
-        let notification: Notification.Name?
+        let command: (notification: Notification.Name, activatesApplication: Bool)?
         switch hotKeyID.signature {
         case Action.lineUp.signature:
-            notification = .arrange
+            command = (.arrange, false)
         case Action.newNote.signature:
-            notification = .new
+            command = (.new, true)
         default:
-            notification = nil
+            command = nil
         }
-        guard let notification else { return noErr }
+        guard let command else { return noErr }
 
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: notification, object: nil)
+            if command.activatesApplication {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            }
+            NotificationCenter.default.post(name: command.notification, object: nil)
         }
         return noErr
     }
