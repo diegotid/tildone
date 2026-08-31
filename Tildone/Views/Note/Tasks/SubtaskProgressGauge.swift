@@ -32,6 +32,7 @@ struct SubtaskProgressGauge: View {
             }
         }
         .frame(width: size, height: size)
+        .scaleEffect(0.92)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Subtask progress")
         .accessibilityValue("\(progress.completedCount) of \(progress.totalCount)")
