@@ -499,12 +499,13 @@ private extension SettingsForm {
         .labelsHidden()
         .frame(width: FontSizeSliderLayout.width)
         .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(.secondary.opacity(0.65))
-                .frame(width: 1, height: 8)
-                .offset(x: FontSizeSliderLayout.defaultMarkX - 0.5)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            SliderTrackMarker(
+                markX: FontSizeSliderLayout.defaultMarkX,
+                thumbX: SettingsSliderLayout.markX(
+                    for: fontSizeBinding.wrappedValue,
+                    in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue)
+                )
+            )
         }
     }
     
@@ -542,12 +543,13 @@ private extension SettingsForm {
         .labelsHidden()
         .frame(width: TransparencySliderLayout.width)
         .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(.secondary.opacity(0.65))
-                .frame(width: 1, height: 8)
-                .offset(x: TransparencySliderLayout.thresholdMarkX - 0.5)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            SliderTrackMarker(
+                markX: TransparencySliderLayout.thresholdMarkX,
+                thumbX: SettingsSliderLayout.markX(
+                    for: noteBackgroundTransparencyBinding.wrappedValue,
+                    in: 0...1
+                )
+            )
         }
     }
 
@@ -779,6 +781,29 @@ private enum SettingsSliderLayout {
     static func markX(for value: Double, in range: ClosedRange<Double>) -> CGFloat {
         let progress = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
         return thumbInset + (width - 2 * thumbInset) * progress
+    }
+}
+
+private struct SliderTrackMarker: View {
+    let markX: CGFloat
+    let thumbX: CGFloat
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Rectangle()
+                .fill(.secondary.opacity(0.65))
+                .frame(width: 1, height: 8)
+                .offset(x: markX - 0.5)
+
+            Circle()
+                .frame(width: 20, height: 20)
+                .offset(x: thumbX - 10)
+                .blendMode(.destinationOut)
+        }
+        .frame(width: SettingsSliderLayout.width, height: 20, alignment: .leading)
+        .compositingGroup()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
