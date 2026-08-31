@@ -282,13 +282,20 @@ extension Note {
                 if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(minimizedForeground).opacity(0.35).allowsHitTesting(false) }
                 TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(noteForeground).tint(noteForeground)
                     .onSubmit { handleNewTaskCommit() }.focused($focusedField, equals: .newTask)
-                    .onChange(of: focusedField) { _, field in if field != .newTask && !newTaskText.isEmpty { handleNewTaskCommit() } }
+                    .onChange(of: focusedField) { _, field in
+                        guard field != .newTask else { return }
+                        if newTaskText.isEmpty {
+                            newTaskIndentLevel = nil
+                        } else {
+                            handleNewTaskCommit()
+                        }
+                    }
                     .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in handleNewTaskCommit() }
             }
             .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
             Spacer()
         }
-        .padding(.leading, 2)
+        .padding(.leading, 2 + CGFloat(newTaskIndentLevel ?? 0) * (Layout.checkboxSize + 8))
         .padding(.bottom, 10)
         .allowsHitTesting(!isInsertedNewTaskFocused)
     }

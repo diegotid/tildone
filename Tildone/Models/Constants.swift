@@ -26,6 +26,7 @@ enum Frame {
 
 enum Keyboard {
     static let tabKey: Int = 48
+    static let returnKey: Int = 36
     static let arrowUp: Int = 126
     static let arrowDown: Int = 125
     static let delete: Int = 117

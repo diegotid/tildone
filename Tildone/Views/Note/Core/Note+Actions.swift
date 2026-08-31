@@ -90,17 +90,63 @@ extension Note {
     func handleNewTaskCommit() {
         guard !newTaskText.isEmpty else { return }
         let text = newTaskText.capitalizingFirstLetter()
+        let indentLevel = newTaskIndentLevel ?? 0
         newTaskText = ""
-        mutate(
-            {
+        Swift.Task {
+            do {
                 _ = try await store.addTask(
                     to: noteID,
                     text: text,
-                    indentLevel: tasks.last?.indentLevel ?? 0
+                    indentLevel: indentLevel
                 )
-            },
-            message: "Error on task creation"
-        )
+                newTaskIndentLevel = nil
+            } catch {
+                newTaskIndentLevel = nil
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task creation",
+                    error: error
+                )
+            }
+        }
+    }
+
+    func handleNewTaskTab(outdent: Bool) {
+        adjustNewTaskDraftIndent(outdent: outdent)
+        guard !newTaskText.isEmpty else { return }
+        let text = newTaskText.capitalizingFirstLetter()
+        let indentLevel = newTaskIndentLevel ?? 0
+        newTaskText = ""
+        focusedField = nil
+
+        Swift.Task {
+            do {
+                let task = try await store.addTask(
+                    to: noteID,
+                    text: text,
+                    indentLevel: indentLevel
+                )
+                focusTaskUsingKeyboard(task.id)
+                newTaskIndentLevel = nil
+            } catch {
+                newTaskIndentLevel = nil
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task creation",
+                    error: error
+                )
+            }
+        }
+    }
+
+    func adjustNewTaskDraftIndent(outdent: Bool) {
+        guard let precedingTask = tasks.last else { return }
+        if outdent {
+            newTaskIndentLevel = max(0, (newTaskIndentLevel ?? 0) - 1)
+        } else {
+            newTaskIndentLevel = min(
+                (newTaskIndentLevel ?? 0) + 1,
+                precedingTask.indentLevel + 1
+            )
+        }
     }
 
     func handleTaskEdit(_ task: TildoneDomain.Task, to text: String) {
@@ -181,11 +227,36 @@ extension Note {
                isEditingNativeTaskField() {
                 return event
             }
-            if event.keyCode == Keyboard.tabKey, focusedField == .newTask, !newTaskText.isEmpty {
-                handleNewTaskCommit(); return nil
+            if event.keyCode == Keyboard.tabKey {
+                // A held Tab key should not turn one deliberate hierarchy action into
+                // several depth changes.
+                guard !event.isARepeat else { return nil }
+                let outdent = event.modifierFlags.contains(.shift)
+                if focusedField == .newTask {
+                    handleNewTaskTab(outdent: outdent)
+                    return nil
+                }
+                if let taskID = activeFocusedTaskID {
+                    // Inserted slots are deliberately empty, so their caret is
+                    // necessarily at the trailing edge. Treat Tab as a hierarchy
+                    // edit instead of moving focus away and causing the slot to be
+                    // discarded.
+                    if tasks.first(where: { $0.id == taskID })?.text.isEmpty == true {
+                        handleTaskIndent(taskID, outdent: outdent)
+                    } else if taskCaretIsAtTrailingEdge() {
+                        outdent ? handleMoveUp(from: taskID) : handleMoveDown(from: taskID)
+                    } else {
+                        handleTaskIndent(taskID, outdent: outdent)
+                    }
+                    return nil
+                }
             }
-            if event.keyCode == Keyboard.tabKey, let taskID = activeFocusedTaskID {
-                handleTaskIndent(taskID, outdent: event.modifierFlags.contains(.shift))
+            if event.keyCode == Keyboard.returnKey,
+               focusedField == .newTask,
+               newTaskText.isEmpty,
+               let newTaskIndentLevel,
+               newTaskIndentLevel > 0 {
+                self.newTaskIndentLevel = newTaskIndentLevel - 1
                 return nil
             }
             if event.keyCode == Keyboard.arrowUp { handleMoveUp(); return nil }
@@ -197,6 +268,13 @@ extension Note {
             }
             return event
         }
+    }
+
+    func taskCaretIsAtTrailingEdge() -> Bool {
+        guard let editor = noteWindow?.firstResponder as? NSTextView else { return false }
+        let selection = editor.selectedRange()
+        return selection.length == 0
+            && selection.location == (editor.string as NSString).length
     }
 
     func stopHandlingKeyboard() {
@@ -242,13 +320,14 @@ extension Note {
             return
         }
 
-        let targetDepth: Int
         guard index > 0 else { return }
-        targetDepth = tasks[index - 1].indentLevel + 1
-        let delta = targetDepth - task.indentLevel
-        guard delta != 0 else { return }
+        // Promote the hierarchy by exactly one level per Tab press. The preceding
+        // row must be at this task's current depth (or deeper) to supply a valid
+        // parent at the next level.
+        guard tasks[index - 1].indentLevel >= task.indentLevel else { return }
+        let delta = 1
         let updates = TaskHierarchy.subtreeRange(startingAt: index, in: tasks).map { offset in
-            (id: tasks[offset].id, level: max(0, tasks[offset].indentLevel + delta))
+            (id: tasks[offset].id, level: tasks[offset].indentLevel + delta)
         }
         let structureUpdates = store.stageTaskIndentLevels(updates, in: noteID)
         mutate(

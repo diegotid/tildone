@@ -78,6 +78,7 @@ struct Note: View {
 
     @State var noteWindow: NSWindow?
     @State var newTaskText = ""
+    @State var newTaskIndentLevel: Int?
     @State var isTextBlurred = false
     @State var isPointerHovering = false
     @State var isClickThroughCommandInteractionActive = false
