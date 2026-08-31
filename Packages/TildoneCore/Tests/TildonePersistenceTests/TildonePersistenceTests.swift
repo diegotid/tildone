@@ -16,6 +16,129 @@ final class TildonePersistenceTests: XCTestCase {
     private let taskID = TaskID(UUID(uuidString: "30000000-0000-0000-0000-000000000001")!)
     private let createdAt = Date(timeIntervalSince1970: 1_000)
 
+    func testTaskStructureBatchRollsBackEveryTaskAndOutboxOnSaveFailure() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        let note = try await repository.createNote(
+            id: NoteID(),
+            createdAt: createdAt,
+            title: nil,
+            color: .yellow
+        )
+        let root = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "Root",
+            orderToken: try OrderToken.between(nil, nil),
+            indentLevel: 0
+        )
+        let first = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "First",
+            orderToken: try OrderToken.between(root.orderToken, nil),
+            indentLevel: 0
+        )
+        let second = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "Second",
+            orderToken: try OrderToken.between(first.orderToken, nil),
+            indentLevel: 0
+        )
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            _ = try await repository.applyTaskStructureUpdates(
+                in: note.id,
+                updates: [
+                    TaskStructureUpdate(id: first.id, indentLevel: 1),
+                    TaskStructureUpdate(id: second.id, indentLevel: 2),
+                ]
+            )
+        }
+
+        let rolledBackTasks = try await repository.orderedTasks(in: note.id)
+        let rolledBackMutations = try await repository.pendingMutations()
+        XCTAssertEqual(rolledBackTasks.map(\.indentLevel), [0, 0, 0])
+        XCTAssertTrue(rolledBackMutations.isEmpty)
+
+        _ = try await repository.applyTaskStructureUpdates(
+            in: note.id,
+            updates: [
+                TaskStructureUpdate(id: first.id, indentLevel: 1),
+                TaskStructureUpdate(id: second.id, indentLevel: 2),
+            ]
+        )
+        let updatedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(updatedTasks.map(\.indentLevel), [0, 1, 2])
+    }
+
+    func testReplacingEmptyTasksAndAddingTaskIsOneAtomicMutation() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        let note = try await repository.createNote(
+            id: NoteID(),
+            createdAt: createdAt,
+            title: nil,
+            color: .yellow
+        )
+        let first = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "",
+            orderToken: try OrderToken.between(nil, nil),
+            indentLevel: 0
+        )
+        let second = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "",
+            orderToken: try OrderToken.between(first.orderToken, nil),
+            indentLevel: 0
+        )
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+        let replacementID = TaskID()
+        let replacementToken = try OrderToken.between(nil, nil)
+
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            _ = try await repository.replaceEmptyTasksAndAddTask(
+                deleting: [first.id, second.id],
+                id: replacementID,
+                to: note.id,
+                createdAt: createdAt,
+                text: "",
+                orderToken: replacementToken,
+                indentLevel: 0
+            )
+        }
+        let rolledBackTasks = try await repository.orderedTasks(in: note.id)
+        let rolledBackMutations = try await repository.pendingMutations()
+        XCTAssertEqual(rolledBackTasks.map(\.id), [first.id, second.id])
+        XCTAssertTrue(rolledBackMutations.isEmpty)
+
+        _ = try await repository.replaceEmptyTasksAndAddTask(
+            deleting: [first.id, second.id],
+            id: replacementID,
+            to: note.id,
+            createdAt: createdAt,
+            text: "",
+            orderToken: replacementToken,
+            indentLevel: 0
+        )
+        let replacedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(replacedTasks.map(\.id), [replacementID])
+    }
+
     func testFullDomainRoundTripPreservesEveryStoredProperty() throws {
         let titleStamp = stamp(2)
         let lifecycleStamp = stamp(3)

@@ -79,6 +79,9 @@ extension Note {
             convertLegacyFontSizeSettingIfNeeded()
             applyInitialFocusIfNeeded()
         }
+        .onDisappear {
+            stopHandlingKeyboard()
+        }
         .onChange(of: noteWindow) { _, _ in
             applyInitialFocusIfNeeded()
             if completionFade.isFading {
@@ -314,7 +317,7 @@ extension Note {
             onNativeBlur: { handleNativeTaskBlur(task.id) },
             onToggle: { handleTaskToggle(task) },
             onEdit: { handleTaskEdit(task, to: $0) },
-            onEnter: { handleEnter(for: task) },
+            onEnter: { handleEnter(for: task, cursor: $0) },
             onCopy: { Copier.copy(task.text, forType: .string) },
             onPaste: { paste(into: task) },
             onMoveUp: { handleMoveUp(from: task.id) },

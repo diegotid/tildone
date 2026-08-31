@@ -380,6 +380,9 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         orderToken: OrderToken,
         indentLevel: Int = 0
     ) throws -> Task {
+        guard indentLevel >= 0 else {
+            throw PersistenceError.domainInvariant
+        }
         let context = mutationContext()
         guard try storedTask(id: id, in: context) == nil else {
             throw PersistenceError.duplicateID(.task, id.stringValue)
@@ -459,6 +462,152 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try mutateTask(id: id) { task, stamp in
             try task.setIndentLevel(indentLevel, version: stamp)
         }
+    }
+
+    /// Applies a hierarchy edit in one transaction. This prevents a subtree
+    /// from being durably visible in a partially indented or partially moved
+    /// state and avoids one SQLite save per descendant.
+    public func applyTaskStructureUpdates(
+        in noteID: NoteID,
+        updates: [TaskStructureUpdate]
+    ) throws -> [Task] {
+        guard !updates.isEmpty else { return try orderedTasks(in: noteID) }
+        guard Set(updates.map(\.id)).count == updates.count else {
+            throw PersistenceError.domainInvariant
+        }
+
+        let context = mutationContext()
+        let ownerStored = try requireStoredNote(id: noteID, in: context)
+        var owner = try mappedNote(from: ownerStored, in: context)
+        guard owner.lifecycle == .active else { throw PersistenceError.domainInvariant }
+        let metadata = try workspaceMetadata(in: context)
+        var changedTasks: [Task] = []
+        changedTasks.reserveCapacity(updates.count)
+
+        for update in updates {
+            let stored = try requireStoredTask(id: update.id, in: context)
+            var task = try mappedTask(from: stored, expectedNoteID: noteID, in: context)
+            guard task.lifecycle == .active else { throw PersistenceError.domainInvariant }
+            let changesOrder = update.orderToken.map { $0 != task.orderToken } ?? false
+            let changesIndent = update.indentLevel.map { $0 != task.indentLevel } ?? false
+            let changesCompletion = update.completion.map { $0 != task.completion } ?? false
+            guard changesOrder || changesIndent || changesCompletion else { continue }
+
+            let stamp = try nextStamp(metadata, observing: maxVersion(in: task))
+            do {
+                if let orderToken = update.orderToken, changesOrder {
+                    try task.move(to: orderToken, version: stamp)
+                }
+                if let indentLevel = update.indentLevel, changesIndent {
+                    try task.setIndentLevel(indentLevel, version: stamp)
+                }
+                if let completion = update.completion, changesCompletion {
+                    try task.setCompletion(completion, version: stamp)
+                }
+            } catch {
+                throw PersistenceError.domainInvariant
+            }
+            try promoteTaskToCurrentSchema(&task, version: stamp)
+            try StoredDomainMapping.update(stored, from: task)
+            try upsertTaskIndentation(for: task, in: context)
+            try enqueue(.task, id: task.id.stringValue, sequence: stamp.logicalCounter, in: context)
+            changedTasks.append(task)
+        }
+
+        if !changedTasks.isEmpty {
+            let meaningfulEditStamp = try nextStamp(
+                metadata,
+                observing: max(
+                    owner.lastMeaningfulEditVersion,
+                    changedTasks.map { maxVersion(in: $0) }.max()!
+                )
+            )
+            do { try owner.recordMeaningfulEdit(at: now(), version: meaningfulEditStamp) }
+            catch { throw PersistenceError.domainInvariant }
+            try StoredDomainMapping.update(ownerStored, from: owner)
+            try enqueue(
+                .note,
+                id: noteID.stringValue,
+                sequence: meaningfulEditStamp.logicalCounter,
+                in: context
+            )
+            try saveMutation(context)
+        }
+        return changedTasks
+    }
+
+    /// Deletes abandoned empty placeholders and inserts their replacement in
+    /// one transaction. The caller supplies the order token it already used for
+    /// its optimistic presentation snapshot.
+    public func replaceEmptyTasksAndAddTask(
+        deleting taskIDs: Set<TaskID>,
+        id: TaskID,
+        to noteID: NoteID,
+        createdAt: Date,
+        text: String,
+        orderToken: OrderToken,
+        indentLevel: Int
+    ) throws -> Task {
+        guard indentLevel >= 0, !taskIDs.contains(id) else {
+            throw PersistenceError.domainInvariant
+        }
+        let context = mutationContext()
+        guard try storedTask(id: id, in: context) == nil else {
+            throw PersistenceError.duplicateID(.task, id.stringValue)
+        }
+        let ownerStored = try requireStoredNote(id: noteID, in: context)
+        var owner = try mappedNote(from: ownerStored, in: context)
+        guard owner.lifecycle == .active else { throw PersistenceError.domainInvariant }
+        let metadata = try workspaceMetadata(in: context)
+
+        for taskID in taskIDs.sorted() {
+            let stored = try requireStoredTask(id: taskID, in: context)
+            var task = try mappedTask(from: stored, expectedNoteID: noteID, in: context)
+            guard task.lifecycle == .active, task.text.isEmpty else {
+                throw PersistenceError.domainInvariant
+            }
+            let stamp = try nextStamp(metadata, observing: maxVersion(in: task))
+            do { try task.delete(version: stamp) }
+            catch { throw PersistenceError.domainInvariant }
+            try promoteTaskToCurrentSchema(&task, version: stamp)
+            try StoredDomainMapping.update(stored, from: task)
+            try upsertTaskIndentation(for: task, in: context)
+            try enqueue(.task, id: task.id.stringValue, sequence: stamp.logicalCounter, in: context)
+        }
+
+        let taskStamp = try nextStamp(metadata)
+        let task = Task(
+            id: id,
+            noteID: noteID,
+            createdAt: createdAt,
+            text: text,
+            textVersion: taskStamp,
+            completionVersion: taskStamp,
+            orderToken: orderToken,
+            orderVersion: taskStamp,
+            indentLevel: indentLevel,
+            indentVersion: taskStamp,
+            lifecycleVersion: taskStamp
+        )
+        context.insert(try StoredDomainMapping.storedTask(from: task))
+        context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
+        try enqueue(.task, id: id.stringValue, sequence: taskStamp.logicalCounter, in: context)
+
+        let meaningfulEditStamp = try nextStamp(
+            metadata,
+            observing: max(owner.lastMeaningfulEditVersion, taskStamp)
+        )
+        do { try owner.recordMeaningfulEdit(at: createdAt, version: meaningfulEditStamp) }
+        catch { throw PersistenceError.domainInvariant }
+        try StoredDomainMapping.update(ownerStored, from: owner)
+        try enqueue(
+            .note,
+            id: noteID.stringValue,
+            sequence: meaningfulEditStamp.logicalCounter,
+            in: context
+        )
+        try saveMutation(context)
+        return task
     }
 
     public func deleteTask(id: TaskID) throws {

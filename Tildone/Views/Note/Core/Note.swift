@@ -9,7 +9,8 @@ import TildoneDomain
 /// A macOS note window backed solely by shared-domain snapshots. AppKit state
 /// (focus, fade, minimization and window styling) deliberately remains here.
 struct Note: View {
-    @ObservedObject var store: MacSharedStore
+    let store: MacSharedStore
+    @ObservedObject var presentation: MacNotePresentation
     let noteID: NoteID
 
     @Environment(\.colorScheme) var colorScheme
@@ -19,7 +20,7 @@ struct Note: View {
     @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey) var moveCheckedTasksToEnd = false
     @AppStorage(NoteWindowClickThrough.storageKey) var clickThroughNotes = false
 
-    var note: MacNoteSnapshot? { store.note(noteID) }
+    var note: MacNoteSnapshot? { presentation.snapshot }
     var tasks: [TildoneDomain.Task] { note?.tasks ?? [] }
     var pendingTasks: [TildoneDomain.Task] { tasks.filter { !$0.isCompleted } }
     var isDark: Bool {
@@ -94,6 +95,7 @@ struct Note: View {
     @State var completedTaskMovementAnimationID: TaskID?
     @State var hoveredTaskID: TaskID?
     @State var collapsedTaskIDs: Set<TaskID> = []
+    @State var keyboardMonitor: Any?
 
     var visibleTaskEntries: [(index: Int, task: TildoneDomain.Task)] {
         var collapsedDepth: Int?
@@ -119,10 +121,12 @@ struct Note: View {
 
     init(
         store: MacSharedStore,
+        presentation: MacNotePresentation,
         noteID: NoteID,
         initialFocusBlurred: Bool = false
     ) {
         self.store = store
+        self.presentation = presentation
         self.noteID = noteID
         _isTextBlurred = State(initialValue: initialFocusBlurred)
     }

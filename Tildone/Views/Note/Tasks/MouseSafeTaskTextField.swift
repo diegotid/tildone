@@ -17,7 +17,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let cursorColor: Color
     let onFocus: () -> Void
     let onBlur: () -> Void
-    let onEnter: () -> Void
+    let onEnter: (Int) -> Void
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
 
@@ -118,7 +118,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             switch commandSelector {
             case #selector(NSResponder.insertNewline(_:)):
-                parent.onEnter()
+                parent.onEnter(textView.selectedRange().location)
                 return true
             case #selector(NSResponder.moveUp(_:)):
                 parent.onMoveUp()

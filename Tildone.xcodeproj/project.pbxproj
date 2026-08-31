@@ -88,6 +88,7 @@
 		D4000000000000000000020B /* TaskReorderFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010B /* TaskReorderFeedback.swift */; };
 		D4000000000000000000020C /* TaskRowDropPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010C /* TaskRowDropPlacement.swift */; };
 		D4000000000000000000020D /* TaskRowDropDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010D /* TaskRowDropDelegate.swift */; };
+		E10000000000000000000201 /* MacNotePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000000000000000000101 /* MacNotePresentation.swift */; };
 		D4000000000000000000020E /* TaskReorderHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010E /* TaskReorderHandle.swift */; };
 		D4000000000000000000020F /* TaskReorderPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4000000000000000000010F /* TaskReorderPreview.swift */; };
 		D40000000000000000000210 /* TaskReorderDropTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000110 /* TaskReorderDropTarget.swift */; };
@@ -243,6 +244,7 @@
 		D4000000000000000000010B /* TaskReorderFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderFeedback.swift; sourceTree = "<group>"; };
 		D4000000000000000000010C /* TaskRowDropPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowDropPlacement.swift; sourceTree = "<group>"; };
 		D4000000000000000000010D /* TaskRowDropDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowDropDelegate.swift; sourceTree = "<group>"; };
+		E10000000000000000000101 /* MacNotePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNotePresentation.swift; sourceTree = "<group>"; };
 		D4000000000000000000010E /* TaskReorderHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderHandle.swift; sourceTree = "<group>"; };
 		D4000000000000000000010F /* TaskReorderPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderPreview.swift; sourceTree = "<group>"; };
 		D40000000000000000000110 /* TaskReorderDropTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskReorderDropTarget.swift; sourceTree = "<group>"; };
@@ -478,6 +480,7 @@
 			children = (
 				B70000000000000000000011 /* MacSharedStore.swift */,
 				D30000000000000000000101 /* MacNoteSnapshot.swift */,
+				E10000000000000000000101 /* MacNotePresentation.swift */,
 				D60000000000000000000004 /* Bootstrap */,
 				D60000000000000000000005 /* Location */,
 				D60000000000000000000006 /* Resolution */,
@@ -1077,6 +1080,7 @@
 				D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */,
 				D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */,
 				D30000000000000000000201 /* MacNoteSnapshot.swift in Sources */,
+				E10000000000000000000201 /* MacNotePresentation.swift in Sources */,
 				D30000000000000000000202 /* MacSharedStoreBootstrapError.swift in Sources */,
 				D30000000000000000000203 /* MacRemoteRefreshHandler.swift in Sources */,
 				D30000000000000000000204 /* MacLocalAdoptionStateStore.swift in Sources */,

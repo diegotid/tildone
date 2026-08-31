@@ -487,8 +487,12 @@ private extension Desktop {
 
 private extension Desktop {
     func noteWindow(for note: MacNoteSnapshot) -> some View {
-        Note(
+        guard let presentation = store.presentation(for: note.id) else {
+            return AnyView(EmptyView())
+        }
+        return AnyView(Note(
             store: store,
+            presentation: presentation,
             noteID: note.id,
             initialFocusBlurred: isFocusFilterTextBlurred
         )
@@ -500,7 +504,7 @@ private extension Desktop {
                 } else if window.identifier?.rawValue == Id.aboutWindow {
                     foregroundNoteID = nil
                 }
-            }
+            })
     }
 
     func openWindow(for note: MacNoteSnapshot, position: CGPoint? = nil) {
@@ -828,11 +832,16 @@ private extension Desktop {
     func addNoteColorPicker(to window: NSWindow, noteID: NoteID) {
         guard let contentView = window.contentView,
               let themeFrame = contentView.superview,
-              let closeButton = window.standardWindowButton(.closeButton) else {
+              let closeButton = window.standardWindowButton(.closeButton),
+              let presentation = store.presentation(for: noteID) else {
             return
         }
 
-        let picker = NoteColorPickerTitlebarControl(store: store, noteID: noteID)
+        let picker = NoteColorPickerTitlebarControl(
+            store: store,
+            presentation: presentation,
+            noteID: noteID
+        )
         let pickerSize = NSSize(
             width: MacNoteTitlebarLayout.colorPickerWidth,
             height: MacNoteTitlebarLayout.controlHeight

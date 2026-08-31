@@ -174,7 +174,8 @@ extension Note {
     }
 
     func handleKeyboard() {
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+        guard keyboardMonitor == nil else { return }
+        keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.window == noteWindow else { return event }
             if (event.keyCode == Keyboard.arrowUp || event.keyCode == Keyboard.arrowDown),
                isEditingNativeTaskField() {
@@ -198,6 +199,12 @@ extension Note {
         }
     }
 
+    func stopHandlingKeyboard() {
+        guard let keyboardMonitor else { return }
+        NSEvent.removeMonitor(keyboardMonitor)
+        self.keyboardMonitor = nil
+    }
+
     func isEditingNativeTaskField() -> Bool {
         guard let firstResponder = noteWindow?.firstResponder else { return false }
         return noteWindow?.contentView?.getNestedSubviews().contains { field in
@@ -211,10 +218,21 @@ extension Note {
         let task = tasks[index]
         if outdent {
             guard task.indentLevel > 0 else { return }
+            let updates: [TaskStructureUpdate]
+            do {
+                updates = try store.stageTaskOutdent(taskID, in: noteID)
+            } catch {
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error changing task indentation",
+                    error: error
+                )
+                return
+            }
+            guard !updates.isEmpty else { return }
             mutate(
                 {
-                    try await store.outdentTask(
-                        taskID,
+                    try await store.commitTaskStructureUpdates(
+                        updates,
                         in: noteID,
                         moveCompletedGroupsToEnd: moveCheckedTasksToEnd
                     )
@@ -232,10 +250,12 @@ extension Note {
         let updates = TaskHierarchy.subtreeRange(startingAt: index, in: tasks).map { offset in
             (id: tasks[offset].id, level: max(0, tasks[offset].indentLevel + delta))
         }
+        let structureUpdates = store.stageTaskIndentLevels(updates, in: noteID)
         mutate(
             {
-                try await store.setTaskIndentLevels(
-                    updates,
+                try await store.commitTaskStructureUpdates(
+                    structureUpdates,
+                    in: noteID,
                     moveCompletedGroupsToEnd: moveCheckedTasksToEnd
                 )
             },
@@ -243,11 +263,9 @@ extension Note {
         )
     }
 
-    func handleEnter(for task: TildoneDomain.Task) {
-        guard let field = textField(forText: task.text),
-              let editor = field.currentEditor() as? NSTextView,
-              let cursor = editor.selectedRanges.first?.rangeValue.location,
-              let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+    func handleEnter(for task: TildoneDomain.Task, cursor: Int?) {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        let cursor = cursor ?? task.text.count
         let insertion = cursor == 0 ? index : index + 1
         insertEmptyTask(
             at: insertion,
@@ -262,25 +280,34 @@ extension Note {
         indentLevel: Int? = nil
     ) {
         skipsNextTaskCountBottomScroll = true
-        let emptyTaskIDs = tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id)
-        let removedBeforeInsertion = tasks[..<position].filter {
-            !$0.isCompleted && $0.text.isEmpty
-        }.count
+        let emptyTaskIDs = Set(tasks.filter { !$0.isCompleted && $0.text.isEmpty }.map(\.id))
         let inheritedIndentLevel = indentLevel ?? (
             position < tasks.count ? tasks[position].indentLevel : tasks.last?.indentLevel ?? 0
         )
+        let stagedTask: TildoneDomain.Task
+        do {
+            stagedTask = try store.stageEmptyTaskInsertion(
+                in: noteID,
+                at: position,
+                deleting: emptyTaskIDs,
+                indentLevel: inheritedIndentLevel
+            )
+        } catch {
+            skipsNextTaskCountBottomScroll = false
+            mutationErrorMessage = Self.mutationFailureMessage(
+                operation: "Error on task creation",
+                error: error
+            )
+            return
+        }
+        let requestedFocusID = taskID.flatMap { emptyTaskIDs.contains($0) ? nil : $0 }
+        focusTaskUsingKeyboard(requestedFocusID ?? stagedTask.id)
         Swift.Task {
             do {
-                for id in emptyTaskIDs {
-                    try await store.deleteTask(id)
-                }
-                let task = try await store.addTask(
-                    to: noteID,
-                    text: "",
-                    insertingAt: position - removedBeforeInsertion,
-                    indentLevel: inheritedIndentLevel
+                try await store.commitStagedTaskInsertion(
+                    stagedTask,
+                    deleting: emptyTaskIDs
                 )
-                focusTaskUsingKeyboard(taskID ?? task.id)
             } catch {
                 skipsNextTaskCountBottomScroll = false
                 mutationErrorMessage = Self.mutationFailureMessage(

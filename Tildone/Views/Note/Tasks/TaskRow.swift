@@ -31,7 +31,7 @@ struct TaskRow: View {
     @State private var dropPlacement: TaskRowDropPlacement?
     let onToggle: () -> Void
     let onEdit: (String) -> Void
-    let onEnter: () -> Void
+    let onEnter: (Int?) -> Void
     let onCopy: () -> Void
     let onPaste: () -> Void
     let onMoveUp: () -> Void
@@ -107,7 +107,7 @@ struct TaskRow: View {
                             cursorColor: cursorColor,
                             onFocus: onNativeFocus,
                             onBlur: onNativeBlur,
-                            onEnter: onEnter,
+                            onEnter: { onEnter($0) },
                             onMoveUp: onMoveUp,
                             onMoveDown: onSubmit
                         )
@@ -127,7 +127,7 @@ struct TaskRow: View {
                             .background(Color.clear)
                             .focused($focusedTaskID, equals: task.id)
                             .onKeyPress(keys: [.return]) { _ in
-                                onEnter()
+                                onEnter(nil)
                                 return .handled
                             }
                             .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in

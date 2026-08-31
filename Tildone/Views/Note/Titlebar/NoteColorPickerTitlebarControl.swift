@@ -9,11 +9,13 @@ import TildoneDomain
 
 final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitlebarIcon> {
     private let store: MacSharedStore
+    private let presentation: MacNotePresentation
     private let noteID: NoteID
     private let popover = NSPopover()
 
     required init(rootView: NoteColorPickerTitlebarIcon) {
         store = rootView.store
+        presentation = rootView.presentation
         noteID = rootView.noteID
         super.init(rootView: rootView)
         toolTip = "Note color"
@@ -22,8 +24,12 @@ final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitleba
         popover.behavior = .transient
     }
 
-    convenience init(store: MacSharedStore, noteID: NoteID) {
-        self.init(rootView: NoteColorPickerTitlebarIcon(store: store, noteID: noteID))
+    convenience init(store: MacSharedStore, presentation: MacNotePresentation, noteID: NoteID) {
+        self.init(rootView: NoteColorPickerTitlebarIcon(
+            store: store,
+            presentation: presentation,
+            noteID: noteID
+        ))
     }
 
     @available(*, unavailable)
@@ -56,7 +62,11 @@ final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitleba
 
         let controller = NSViewController()
         let paletteView = NSHostingView(
-            rootView: NoteColorPickerTitlebarPalette(store: store, noteID: noteID) { [weak self] in
+            rootView: NoteColorPickerTitlebarPalette(
+                store: store,
+                presentation: presentation,
+                noteID: noteID
+            ) { [weak self] in
                 self?.popover.performClose(nil)
             }
             .fixedSize()

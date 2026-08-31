@@ -31,6 +31,27 @@ public enum PersistenceError: Error, Equatable, Sendable {
     case counterOverflow
 }
 
+/// A group of presentation-visible task structure changes that must become
+/// durable together. Nil properties retain the task's current value.
+public struct TaskStructureUpdate: Hashable, Sendable {
+    public let id: TaskID
+    public let orderToken: OrderToken?
+    public let indentLevel: Int?
+    public let completion: CompletionState?
+
+    public init(
+        id: TaskID,
+        orderToken: OrderToken? = nil,
+        indentLevel: Int? = nil,
+        completion: CompletionState? = nil
+    ) {
+        self.id = id
+        self.orderToken = orderToken
+        self.indentLevel = indentLevel
+        self.completion = completion
+    }
+}
+
 public enum WorkspaceIdentity: Hashable, Sendable {
     case localOnly
     /// The UUID is an opaque account-scoped identifier supplied by the caller.

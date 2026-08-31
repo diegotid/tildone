@@ -1405,6 +1405,52 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(failureCount, 0)
     }
 
+    @MainActor
+    func testKeyboardStructureChangesStageBeforePersistenceAndStayNoteLocal() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let editedNote = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let otherNote = try await store.createNote(createdAt: Date(timeIntervalSince1970: 200))
+        let first = try await store.addTask(to: editedNote.id, text: "First")
+        let second = try await store.addTask(to: editedNote.id, text: "Second")
+        let otherPresentation = try XCTUnwrap(store.presentation(for: otherNote.id))
+        let otherSnapshot = otherPresentation.snapshot
+
+        let updates = store.stageTaskIndentLevels(
+            [(id: second.id, level: 1)],
+            in: editedNote.id
+        )
+
+        XCTAssertEqual(store.note(editedNote.id)?.tasks.map(\.indentLevel), [0, 1])
+        let persistedIndentBeforeCommit = try await repository.task(id: second.id).indentLevel
+        XCTAssertEqual(persistedIndentBeforeCommit, 0)
+        XCTAssertTrue(store.presentation(for: otherNote.id) === otherPresentation)
+        XCTAssertEqual(otherPresentation.snapshot.tasks.map(\.id), otherSnapshot.tasks.map(\.id))
+
+        try await store.commitTaskStructureUpdates(
+            updates,
+            in: editedNote.id,
+            moveCompletedGroupsToEnd: false
+        )
+        let persistedIndentAfterCommit = try await repository.task(id: second.id).indentLevel
+        XCTAssertEqual(persistedIndentAfterCommit, 1)
+
+        let abandoned = try await store.addTask(to: editedNote.id, text: "")
+        let staged = try store.stageEmptyTaskInsertion(
+            in: editedNote.id,
+            at: 1,
+            deleting: [abandoned.id],
+            indentLevel: first.indentLevel
+        )
+        XCTAssertEqual(store.note(editedNote.id)?.tasks.map(\.id), [first.id, staged.id, second.id])
+        let tasksBeforeInsertCommit = try await repository.orderedTasks(in: editedNote.id)
+        XCTAssertEqual(tasksBeforeInsertCommit.map(\.id), [first.id, second.id, abandoned.id])
+
+        try await store.commitStagedTaskInsertion(staged, deleting: [abandoned.id])
+        let tasksAfterInsertCommit = try await repository.orderedTasks(in: editedNote.id)
+        XCTAssertEqual(tasksAfterInsertCommit.map(\.id), [first.id, staged.id, second.id])
+    }
+
     func testMacSharedStoreRoutesCRUDThroughDomainRepository() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),
