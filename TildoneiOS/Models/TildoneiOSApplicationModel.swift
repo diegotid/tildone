@@ -153,7 +153,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         latestFullReloadRevision = reloadRevision
         let visibleSnapshots = try await repository.visibleNoteSnapshots()
         let snapshots = visibleSnapshots.map {
-            TildoneiOSNotePresentation.Snapshot(note: $0.note, tasks: $0.tasks)
+            TildoneiOSNoteSnapshot(note: $0.note, tasks: $0.tasks)
         }
         publishFullReload(snapshots, revision: reloadRevision)
     }
@@ -194,7 +194,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         let title = Self.normalizedTitle(title)
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
-        let revision = stage(TildoneiOSNotePresentation.Snapshot(
+        let revision = stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(note, title: title, meaningfulEditAt: Date()),
             tasks: snapshot.tasks
         ))
@@ -213,7 +213,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     func setColor(noteID: NoteID, color: NoteColor) async throws {
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
-        let revision = stage(TildoneiOSNotePresentation.Snapshot(
+        let revision = stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(note, color: color),
             tasks: snapshot.tasks
         ))
@@ -368,7 +368,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         guard let index = snapshot.tasks.firstIndex(where: { $0.id == taskID }) else { return }
         let subtree = TaskHierarchy.subtreeRange(startingAt: index, in: snapshot.tasks)
         let deletedIDs = Set(snapshot.tasks[subtree].map(\.id))
-        let revision = stage(TildoneiOSNotePresentation.Snapshot(
+        let revision = stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(snapshot.note!, meaningfulEditAt: Date()),
             tasks: snapshot.tasks.filter { !deletedIDs.contains($0.id) }
         ))
@@ -571,7 +571,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
             lastMeaningfulEditAt: createdAt,
             lastMeaningfulEditVersion: stamp
         )
-        let revision = stage(TildoneiOSNotePresentation.Snapshot(note: note, tasks: []))
+        let revision = stage(TildoneiOSNoteSnapshot(note: note, tasks: []))
         return (note, revision)
     }
 
@@ -598,7 +598,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     @discardableResult
-    private func stage(_ snapshot: TildoneiOSNotePresentation.Snapshot) -> UInt64 {
+    private func stage(_ snapshot: TildoneiOSNoteSnapshot) -> UInt64 {
         guard let note = snapshot.note else { return nextRevision() }
         let revision = nextRevision()
         latestPresentationMutationRevisions[note.id] = revision
@@ -610,12 +610,12 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     private func stageTaskInsertion(
         _ task: Task,
-        in snapshot: TildoneiOSNotePresentation.Snapshot
+        in snapshot: TildoneiOSNoteSnapshot
     ) -> UInt64 {
         var tasks = snapshot.tasks
         tasks.append(task)
         tasks.sort(by: Task.orderedBefore)
-        return stage(TildoneiOSNotePresentation.Snapshot(
+        return stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(snapshot.note!, meaningfulEditAt: task.createdAt),
             tasks: tasks
         ))
@@ -623,7 +623,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     private func stageTaskUpdates(
         _ updates: [TaskStructureUpdate],
-        in snapshot: TildoneiOSNotePresentation.Snapshot,
+        in snapshot: TildoneiOSNoteSnapshot,
         textOverrides: [TaskID: String] = [:]
     ) -> UInt64 {
         let updatesByID = Dictionary(uniqueKeysWithValues: updates.map { ($0.id, $0) })
@@ -634,7 +634,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 text: textOverrides[task.id]
             )
         }.sorted(by: Task.orderedBefore)
-        return stage(TildoneiOSNotePresentation.Snapshot(
+        return stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(snapshot.note!, meaningfulEditAt: Date()),
             tasks: tasks
         ))
@@ -643,7 +643,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private func publishPersistedNote(_ note: Note, ifCurrentRevision revision: UInt64) {
         guard latestPresentationMutationRevisions[note.id] == revision,
               let snapshot = notePresentations[note.id]?.snapshot else { return }
-        updatePresentation(TildoneiOSNotePresentation.Snapshot(note: note, tasks: snapshot.tasks))
+        updatePresentation(TildoneiOSNoteSnapshot(note: note, tasks: snapshot.tasks))
         finishPendingMutation(note.id, revision: revision)
         refreshOverview(for: note.id)
     }
@@ -678,13 +678,13 @@ final class TildoneiOSApplicationModel: ObservableObject {
         let tasks = try await repository.orderedTasks(in: noteID)
         guard latestPresentationMutationRevisions[noteID] == revision,
               latestNoteReloadRevisions[noteID] == reloadRevision else { return }
-        updatePresentation(TildoneiOSNotePresentation.Snapshot(note: note, tasks: tasks))
+        updatePresentation(TildoneiOSNoteSnapshot(note: note, tasks: tasks))
         finishPendingMutation(noteID, revision: revision)
         refreshOverview(for: noteID)
     }
 
     private func publishFullReload(
-        _ snapshots: [TildoneiOSNotePresentation.Snapshot],
+        _ snapshots: [TildoneiOSNoteSnapshot],
         revision: UInt64
     ) {
         guard latestFullReloadRevision == revision else { return }
@@ -707,7 +707,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         refreshOverview()
     }
 
-    private func updatePresentation(_ snapshot: TildoneiOSNotePresentation.Snapshot) {
+    private func updatePresentation(_ snapshot: TildoneiOSNoteSnapshot) {
         guard let noteID = snapshot.note?.id else { return }
         presentation(for: noteID).update(snapshot)
     }
@@ -746,7 +746,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
             return
         }
 
-        var updated = TildoneiOSOverviewPresentation.Snapshot()
+        var updated = TildoneiOSOverviewSnapshot()
         let snapshots = notePresentations.values.map(\.snapshot).filter { $0.note != nil }
         updated.notes = snapshots.compactMap(\.note).sorted(by: Self.noteOverviewOrder)
         for snapshot in snapshots {
@@ -765,7 +765,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     private static func populateOverview(
-        _ overview: inout TildoneiOSOverviewPresentation.Snapshot,
+        _ overview: inout TildoneiOSOverviewSnapshot,
         note: Note,
         tasks: [Task]
     ) {
@@ -784,7 +784,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }
     }
 
-    private func requireSnapshot(_ noteID: NoteID) throws -> TildoneiOSNotePresentation.Snapshot {
+    private func requireSnapshot(_ noteID: NoteID) throws -> TildoneiOSNoteSnapshot {
         guard let snapshot = notePresentations[noteID]?.snapshot, snapshot.note != nil else {
             throw TildoneiOSPresentationError.noWorkspace
         }
@@ -793,7 +793,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     private func requireSnapshot(
         containing taskID: TaskID
-    ) throws -> (TildoneiOSNotePresentation.Snapshot, Task) {
+    ) throws -> (TildoneiOSNoteSnapshot, Task) {
         for presentation in notePresentations.values {
             let snapshot = presentation.snapshot
             if let task = snapshot.tasks.first(where: { $0.id == taskID }) {
@@ -1065,21 +1065,5 @@ final class TildoneiOSApplicationModel: ObservableObject {
         case .temporarilyUnavailable, .couldNotDetermine:
             SyncStatus(availability: .temporarilyUnavailable, activity: .offline, issue: .service)
         }
-    }
-}
-
-struct NoteTaskPreview: Identifiable, Hashable {
-    let id: TaskID
-    let text: String
-    let isCompleted: Bool
-    let indentLevel: Int
-    let subtaskProgress: TaskSubtaskProgress?
-
-    init(_ task: Task, subtaskProgress: TaskSubtaskProgress? = nil) {
-        id = task.id
-        text = task.text
-        isCompleted = task.isCompleted
-        indentLevel = task.indentLevel
-        self.subtaskProgress = subtaskProgress
     }
 }

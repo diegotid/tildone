@@ -11,16 +11,9 @@ import TildoneSync
 /// stay on the application model and do not invalidate list, grid, or deck rows.
 @MainActor
 final class TildoneiOSOverviewPresentation: ObservableObject {
-    struct Snapshot {
-        var notes: [Note] = []
-        var taskSummaries: [NoteID: NoteTaskSummary] = [:]
-        var taskListTexts: [NoteID: String] = [:]
-        var taskPreviews: [NoteID: [NoteTaskPreview]] = [:]
-    }
+    @Published private(set) var snapshot = TildoneiOSOverviewSnapshot()
 
-    @Published private(set) var snapshot = Snapshot()
-
-    func update(_ snapshot: Snapshot) {
+    func update(_ snapshot: TildoneiOSOverviewSnapshot) {
         self.snapshot = snapshot
     }
 }
@@ -45,20 +38,13 @@ final class TildoneiOSSyncPresentation: ObservableObject {
 /// this snapshot before persistence and sync work is scheduled.
 @MainActor
 final class TildoneiOSNotePresentation: ObservableObject {
-    struct Snapshot: Equatable {
-        let note: Note?
-        let tasks: [Task]
+    @Published private(set) var snapshot: TildoneiOSNoteSnapshot
 
-        static let empty = Snapshot(note: nil, tasks: [])
-    }
-
-    @Published private(set) var snapshot: Snapshot
-
-    init(snapshot: Snapshot = .empty) {
+    init(snapshot: TildoneiOSNoteSnapshot = .empty) {
         self.snapshot = snapshot
     }
 
-    func update(_ snapshot: Snapshot) {
+    func update(_ snapshot: TildoneiOSNoteSnapshot) {
         guard self.snapshot != snapshot else { return }
         self.snapshot = snapshot
     }

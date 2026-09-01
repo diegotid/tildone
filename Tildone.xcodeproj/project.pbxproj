@@ -39,6 +39,28 @@
 		C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001D /* WorkspaceStatusView.swift */; };
 		C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001E /* NoteTaskSummary+Accessibility.swift */; };
 		C1000000000000000000000F /* TaskCheckbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000001F /* TaskCheckbox.swift */; };
+		C10000000000000000000201 /* TildoneiOSOverviewSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000101 /* TildoneiOSOverviewSnapshot.swift */; };
+		C10000000000000000000202 /* TildoneiOSNoteSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000102 /* TildoneiOSNoteSnapshot.swift */; };
+		C10000000000000000000203 /* NoteTaskPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000103 /* NoteTaskPreview.swift */; };
+		C10000000000000000000204 /* TaskControlMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000104 /* TaskControlMetrics.swift */; };
+		C10000000000000000000205 /* TaskCheckboxIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000105 /* TaskCheckboxIndicator.swift */; };
+		C10000000000000000000206 /* TaskSubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000106 /* TaskSubtaskProgressGauge.swift */; };
+		C10000000000000000000207 /* NotesOverviewSyncStatusMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000107 /* NotesOverviewSyncStatusMenu.swift */; };
+		C10000000000000000000208 /* NotesOverviewLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000108 /* NotesOverviewLayout.swift */; };
+		C10000000000000000000209 /* DeckNavigationDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000109 /* DeckNavigationDirection.swift */; };
+		C1000000000000000000020A /* NoteCardLayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000010A /* NoteCardLayoutMetrics.swift */; };
+		C1000000000000000000020B /* NotesGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000010B /* NotesGridView.swift */; };
+		C1000000000000000000020C /* NotesDeckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000010C /* NotesDeckView.swift */; };
+		C1000000000000000000020D /* DeckCarouselGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000010D /* DeckCarouselGroup.swift */; };
+		C1000000000000000000020E /* DeckCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000010E /* DeckCarousel.swift */; };
+		C1000000000000000000020F /* DeckHorizontalPanRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000000000000000000010F /* DeckHorizontalPanRecognizer.swift */; };
+		C10000000000000000000210 /* DeckCardItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000110 /* DeckCardItem.swift */; };
+		C10000000000000000000211 /* DeckCardTransform.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000111 /* DeckCardTransform.swift */; };
+		C10000000000000000000212 /* NoteCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000112 /* NoteCard.swift */; };
+		C10000000000000000000213 /* NoteCardTaskList.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000113 /* NoteCardTaskList.swift */; };
+		C10000000000000000000214 /* VisibleTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000114 /* VisibleTask.swift */; };
+		C10000000000000000000215 /* NoteColorPickerSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000115 /* NoteColorPickerSymbol.swift */; };
+		C10000000000000000000216 /* NoteColorMenuSwatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000116 /* NoteColorMenuSwatch.swift */; };
 		C10000000000000000000040 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000041 /* Localizable.xcstrings */; };
 		D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000101 /* MacTaskDragPayload.swift */; };
 		D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000102 /* MacNoteTitlebarLayout.swift */; };
@@ -262,6 +284,28 @@
 		D80000000000000000000101 /* NoteCornerConvergence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCornerConvergence.swift; sourceTree = "<group>"; };
 		D80000000000000000000102 /* NoteWindowManualPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManualPosition.swift; sourceTree = "<group>"; };
 		D90000000000000000000012 /* SubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtaskProgressGauge.swift; sourceTree = "<group>"; };
+		C10000000000000000000101 /* TildoneiOSOverviewSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSOverviewSnapshot.swift; sourceTree = "<group>"; };
+		C10000000000000000000102 /* TildoneiOSNoteSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSNoteSnapshot.swift; sourceTree = "<group>"; };
+		C10000000000000000000103 /* NoteTaskPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTaskPreview.swift; sourceTree = "<group>"; };
+		C10000000000000000000104 /* TaskControlMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskControlMetrics.swift; sourceTree = "<group>"; };
+		C10000000000000000000105 /* TaskCheckboxIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckboxIndicator.swift; sourceTree = "<group>"; };
+		C10000000000000000000106 /* TaskSubtaskProgressGauge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSubtaskProgressGauge.swift; sourceTree = "<group>"; };
+		C10000000000000000000107 /* NotesOverviewSyncStatusMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesOverviewSyncStatusMenu.swift; sourceTree = "<group>"; };
+		C10000000000000000000108 /* NotesOverviewLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesOverviewLayout.swift; sourceTree = "<group>"; };
+		C10000000000000000000109 /* DeckNavigationDirection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckNavigationDirection.swift; sourceTree = "<group>"; };
+		C1000000000000000000010A /* NoteCardLayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCardLayoutMetrics.swift; sourceTree = "<group>"; };
+		C1000000000000000000010B /* NotesGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesGridView.swift; sourceTree = "<group>"; };
+		C1000000000000000000010C /* NotesDeckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesDeckView.swift; sourceTree = "<group>"; };
+		C1000000000000000000010D /* DeckCarouselGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckCarouselGroup.swift; sourceTree = "<group>"; };
+		C1000000000000000000010E /* DeckCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckCarousel.swift; sourceTree = "<group>"; };
+		C1000000000000000000010F /* DeckHorizontalPanRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckHorizontalPanRecognizer.swift; sourceTree = "<group>"; };
+		C10000000000000000000110 /* DeckCardItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckCardItem.swift; sourceTree = "<group>"; };
+		C10000000000000000000111 /* DeckCardTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckCardTransform.swift; sourceTree = "<group>"; };
+		C10000000000000000000112 /* NoteCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCard.swift; sourceTree = "<group>"; };
+		C10000000000000000000113 /* NoteCardTaskList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCardTaskList.swift; sourceTree = "<group>"; };
+		C10000000000000000000114 /* VisibleTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisibleTask.swift; sourceTree = "<group>"; };
+		C10000000000000000000115 /* NoteColorPickerSymbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorPickerSymbol.swift; sourceTree = "<group>"; };
+		C10000000000000000000116 /* NoteColorMenuSwatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColorMenuSwatch.swift; sourceTree = "<group>"; };
 		F107B17C2F0DE77800D20216 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F13428112B5353070045343D /* Copier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copier.swift; sourceTree = "<group>"; };
 		F13428132B535EA40045343D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -414,6 +458,9 @@
 				C10000000000000000000042 /* TildoneiOSNotePresentation.swift */,
 				C10000000000000000000014 /* TildoneiOSPresentationError.swift */,
 				C10000000000000000000015 /* SyncStatusPresentation.swift */,
+				C10000000000000000000101 /* TildoneiOSOverviewSnapshot.swift */,
+				C10000000000000000000102 /* TildoneiOSNoteSnapshot.swift */,
+				C10000000000000000000103 /* NoteTaskPreview.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -431,14 +478,81 @@
 		C10000000000000000000024 /* Notes */ = {
 			isa = PBXGroup;
 			children = (
+				E10000000000000000000001 /* Overview */,
+				E10000000000000000000002 /* Grid */,
+				E10000000000000000000003 /* Deck */,
+				E10000000000000000000004 /* Cards */,
+				E10000000000000000000005 /* Checklist */,
+				E10000000000000000000006 /* Tasks */,
+			);
+			path = Notes;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000001 /* Overview */ = {
+			isa = PBXGroup;
+			children = (
 				C10000000000000000000017 /* NotesListView.swift */,
 				C10000000000000000000018 /* NoteListRow.swift */,
 				C10000000000000000000019 /* NoteCompletionGauge.swift */,
+				C10000000000000000000107 /* NotesOverviewSyncStatusMenu.swift */,
+				C10000000000000000000108 /* NotesOverviewLayout.swift */,
+			);
+			path = Overview;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000002 /* Grid */ = {
+			isa = PBXGroup;
+			children = (
+				C1000000000000000000010B /* NotesGridView.swift */,
+			);
+			path = Grid;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000003 /* Deck */ = {
+			isa = PBXGroup;
+			children = (
+				C1000000000000000000010C /* NotesDeckView.swift */,
+				C1000000000000000000010D /* DeckCarouselGroup.swift */,
+				C1000000000000000000010E /* DeckCarousel.swift */,
+				C1000000000000000000010F /* DeckHorizontalPanRecognizer.swift */,
+				C10000000000000000000110 /* DeckCardItem.swift */,
+				C10000000000000000000111 /* DeckCardTransform.swift */,
+				C10000000000000000000109 /* DeckNavigationDirection.swift */,
+				C1000000000000000000010A /* NoteCardLayoutMetrics.swift */,
+			);
+			path = Deck;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000004 /* Cards */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000112 /* NoteCard.swift */,
+				C10000000000000000000113 /* NoteCardTaskList.swift */,
+			);
+			path = Cards;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000005 /* Checklist */ = {
+			isa = PBXGroup;
+			children = (
 				C1000000000000000000001A /* ChecklistView.swift */,
+				C10000000000000000000114 /* VisibleTask.swift */,
+				C10000000000000000000115 /* NoteColorPickerSymbol.swift */,
+				C10000000000000000000116 /* NoteColorMenuSwatch.swift */,
+			);
+			path = Checklist;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000006 /* Tasks */ = {
+			isa = PBXGroup;
+			children = (
 				C1000000000000000000001B /* TaskRow.swift */,
 				C1000000000000000000001F /* TaskCheckbox.swift */,
+				C10000000000000000000104 /* TaskControlMetrics.swift */,
+				C10000000000000000000105 /* TaskCheckboxIndicator.swift */,
+				C10000000000000000000106 /* TaskSubtaskProgressGauge.swift */,
 			);
-			path = Notes;
+			path = Tasks;
 			sourceTree = "<group>";
 		};
 		C10000000000000000000025 /* Sync */ = {
@@ -1060,6 +1174,28 @@
 				C1000000000000000000000D /* WorkspaceStatusView.swift in Sources */,
 				C1000000000000000000000E /* NoteTaskSummary+Accessibility.swift in Sources */,
 				C1000000000000000000000F /* TaskCheckbox.swift in Sources */,
+				C10000000000000000000201 /* TildoneiOSOverviewSnapshot.swift in Sources */,
+				C10000000000000000000202 /* TildoneiOSNoteSnapshot.swift in Sources */,
+				C10000000000000000000203 /* NoteTaskPreview.swift in Sources */,
+				C10000000000000000000204 /* TaskControlMetrics.swift in Sources */,
+				C10000000000000000000205 /* TaskCheckboxIndicator.swift in Sources */,
+				C10000000000000000000206 /* TaskSubtaskProgressGauge.swift in Sources */,
+				C10000000000000000000207 /* NotesOverviewSyncStatusMenu.swift in Sources */,
+				C10000000000000000000208 /* NotesOverviewLayout.swift in Sources */,
+				C10000000000000000000209 /* DeckNavigationDirection.swift in Sources */,
+				C1000000000000000000020A /* NoteCardLayoutMetrics.swift in Sources */,
+				C1000000000000000000020B /* NotesGridView.swift in Sources */,
+				C1000000000000000000020C /* NotesDeckView.swift in Sources */,
+				C1000000000000000000020D /* DeckCarouselGroup.swift in Sources */,
+				C1000000000000000000020E /* DeckCarousel.swift in Sources */,
+				C1000000000000000000020F /* DeckHorizontalPanRecognizer.swift in Sources */,
+				C10000000000000000000210 /* DeckCardItem.swift in Sources */,
+				C10000000000000000000211 /* DeckCardTransform.swift in Sources */,
+				C10000000000000000000212 /* NoteCard.swift in Sources */,
+				C10000000000000000000213 /* NoteCardTaskList.swift in Sources */,
+				C10000000000000000000214 /* VisibleTask.swift in Sources */,
+				C10000000000000000000215 /* NoteColorPickerSymbol.swift in Sources */,
+				C10000000000000000000216 /* NoteColorMenuSwatch.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
