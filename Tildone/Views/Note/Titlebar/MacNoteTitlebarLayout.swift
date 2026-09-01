@@ -7,8 +7,9 @@ import AppKit
 
 enum MacNoteTitlebarLayout {
     static let titleLeadingInset: CGFloat = 78
-    static let trailingMargin: CGFloat = 2
+    static let trailingMargin: CGFloat = 3
     static let colorPickerWidth: CGFloat = 26
+    static let colorPickerTopMargin: CGFloat = 5
     static let minimizedRestoreWidth: CGFloat = 19
     static let syncIndicatorWidth: CGFloat = 24
     static let controlHeight: CGFloat = 22
@@ -26,7 +27,7 @@ enum MacNoteTitlebarLayout {
     static func colorPickerFrame(in bounds: NSRect) -> NSRect {
         NSRect(
             x: bounds.maxX - colorPickerWidth - trailingMargin,
-            y: max(bounds.minY, bounds.midY - controlHeight / 2 - 4),
+            y: bounds.maxY - controlHeight - colorPickerTopMargin,
             width: colorPickerWidth,
             height: controlHeight
         )
