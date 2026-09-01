@@ -317,6 +317,45 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(TaskHierarchy.isValidPreorder(afterDeletingParent))
     }
 
+    func testIPhoneIndentationChangesOnlyOneLevelPerAction() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "One level at a time")
+        let createdRoot = try await model.addTask(noteID: note.id, text: "Root", after: [])
+        let root = try XCTUnwrap(createdRoot)
+        let createdParent = try await model.addTask(
+            noteID: note.id,
+            text: "Parent",
+            after: [root],
+            indentLevel: 1
+        )
+        let parent = try XCTUnwrap(createdParent)
+        let createdGrandchild = try await model.addTask(
+            noteID: note.id,
+            text: "Grandchild",
+            after: [root, parent],
+            indentLevel: 2
+        )
+        let grandchild = try XCTUnwrap(createdGrandchild)
+        let createdTarget = try await model.addTask(
+            noteID: note.id,
+            text: "Target",
+            after: [root, parent, grandchild],
+            indentLevel: 0
+        )
+        let target = try XCTUnwrap(createdTarget)
+
+        var tasks = try await model.tasks(in: note.id)
+        let didIndent = try await model.changeIndentation(taskID: target.id, in: tasks, outdent: false)
+        XCTAssertTrue(didIndent)
+        tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 2, 1])
+
+        let didOutdent = try await model.changeIndentation(taskID: target.id, in: tasks, outdent: true)
+        XCTAssertTrue(didOutdent)
+        tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 2, 0])
+    }
+
     func testRemoteStyleRefreshDoesNotDuplicateRowsAndHidesTombstones() async throws {
         let workspace = UUID()
         let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))

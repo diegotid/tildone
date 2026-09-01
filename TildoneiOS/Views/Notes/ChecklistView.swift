@@ -62,7 +62,7 @@ struct ChecklistView: View {
                             let task = visibleTask.task
                             let hasSubtasks = TaskHierarchy.hasSubtasks(at: index, in: tasks)
                             let canIndent = index > 0
-                                && task.indentLevel != tasks[index - 1].indentLevel + 1
+                                && tasks[index - 1].indentLevel >= task.indentLevel
                             let canOutdent = task.indentLevel > 0
                             if taskInsertionTargetID == task.id {
                                 taskInsertionRow(above: task)

@@ -286,23 +286,22 @@ final class TildoneiOSApplicationModel: ObservableObject {
     ) async throws -> Bool {
         guard let index = orderedTasks.firstIndex(where: { $0.id == taskID }) else { return false }
         let task = orderedTasks[index]
-        let targetLevel: Int
         if outdent {
             guard task.indentLevel > 0 else { return false }
-            targetLevel = task.indentLevel - 1
         } else {
-            guard index > 0 else { return false }
-            targetLevel = orderedTasks[index - 1].indentLevel + 1
+            guard index > 0,
+                  orderedTasks[index - 1].indentLevel >= task.indentLevel else {
+                return false
+            }
         }
-        let delta = targetLevel - task.indentLevel
-        guard delta != 0 else { return false }
+        let delta = outdent ? -1 : 1
 
         let subtree = TaskHierarchy.subtreeRange(startingAt: index, in: orderedTasks)
         for descendant in orderedTasks[subtree] {
             _ = try await withRepository { repository in
                 try await repository.setTaskIndentLevel(
                     id: descendant.id,
-                    indentLevel: max(0, descendant.indentLevel + delta)
+                    indentLevel: descendant.indentLevel + delta
                 )
             }
         }
