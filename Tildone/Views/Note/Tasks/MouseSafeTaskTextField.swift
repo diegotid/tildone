@@ -62,6 +62,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.font = .systemFont(ofSize: fontSize)
         field.textColor = NSColor(textColor)
         field.cell?.isScrollable = isActivelyEditing
+        field.updateTruncationTooltip()
         if let editor = editor as? NSTextView {
             Self.configure(
                 editor,

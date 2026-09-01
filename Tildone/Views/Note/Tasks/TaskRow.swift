@@ -97,6 +97,12 @@ struct TaskRow: View {
                             .offset(y: 1)
                     }
                     .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                    .if(truncation == .single) {
+                        $0.modifier(TaskTextTruncationTooltip(
+                            text: task.text,
+                            fontSize: CGFloat(fontSize)
+                        ))
+                    }
             } else {
                 ZStack(alignment: .leading) {
                     if task.text.isEmpty {
@@ -278,4 +284,31 @@ struct TaskRow: View {
         )
     }
 
+}
+
+private struct TaskTextTruncationTooltip: ViewModifier {
+    let text: String
+    let fontSize: CGFloat
+    @State private var availableWidth: CGFloat = 0
+
+    private var isTruncated: Bool {
+        let font = NSFont.systemFont(ofSize: fontSize)
+        let textWidth = (text as NSString).size(withAttributes: [.font: font]).width
+        return textWidth > availableWidth
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                GeometryReader { geometry in
+                    Color.clear
+                        .allowsHitTesting(false)
+                        .onAppear { availableWidth = geometry.size.width }
+                        .onChange(of: geometry.size.width) { _, width in
+                            availableWidth = width
+                        }
+                }
+            }
+            .if(isTruncated) { $0.help(text) }
+    }
 }
