@@ -89,6 +89,8 @@ struct Note: View {
     @State var minimizationState = NoteWindowMinimizationState()
     @State var completionFade = CompletionFadeLifecycle()
     @State var fadeAwayProgress: TimeInterval = 0
+    @State var completionFadeBaseWindowAlpha: CGFloat?
+    @State var didRaiseWindowForCompletionFade = false
     @State var mutationErrorMessage: String?
     @State var taskDropFeedbackResetToken = UUID()
     @State var isHoveringMinimizedTaskList = false

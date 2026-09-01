@@ -613,8 +613,26 @@ extension Note {
     func updateFadeAppearance() {
         windowAlpha = max(0, 1 - fadeAwayProgress / Timeout.noteFadeOutSeconds)
         let disappearing = windowAlpha < 1
+        if disappearing {
+            if completionFadeBaseWindowAlpha == nil {
+                completionFadeBaseWindowAlpha = noteWindow?.alphaValue
+                    ?? NoteWindowOpacity.currentAlpha(for: noteID)
+            }
+            noteWindow?.alphaValue = completionFadeBaseWindowAlpha! * CGFloat(windowAlpha)
+            noteWindow?.level = .floating
+            if !didRaiseWindowForCompletionFade {
+                noteWindow?.orderFront(nil)
+                didRaiseWindowForCompletionFade = true
+            }
+        } else {
+            if let baseAlpha = completionFadeBaseWindowAlpha {
+                noteWindow?.alphaValue = baseAlpha
+                completionFadeBaseWindowAlpha = nil
+            }
+            noteWindow?.level = .floating
+            didRaiseWindowForCompletionFade = false
+        }
         withAnimation {
-            noteWindow?.level = disappearing ? .normal : .floating
             noteWindow?.hasShadow = !disappearing
             setTrafficLightsHidden(disappearing || isMinimized)
             applyCurrentNoteBackground()
@@ -643,7 +661,7 @@ extension Note {
         )
         noteWindow.applyNoteBackgroundColor(
             color,
-            alpha: tintAlpha * CGFloat(windowAlpha)
+            alpha: tintAlpha
         )
     }
 

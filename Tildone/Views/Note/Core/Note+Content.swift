@@ -68,7 +68,7 @@ extension Note {
                 if isTopScrolledOut { scrollingHeader() }
             }
             .blur(radius: isContentBlurred ? 3 : 0)
-            .opacity(windowAlpha / (isDone ? 2 : 1))
+            .opacity(1)
             .animation(
                 .easeInOut(duration: NoteWindowClickThrough.visualTransitionDuration),
                 value: isContentBlurred
@@ -393,6 +393,6 @@ extension Note {
                     }
                 }
             }
-        }.opacity(windowAlpha * 0.9)
+        }.opacity(0.9)
     }
 }
