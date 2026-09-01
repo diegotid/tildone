@@ -227,10 +227,12 @@ private extension Desktop {
         if !clickThroughNotes {
             isClickThroughWheelShortcutActive = false
         }
-        clickThroughMonitor.update(isEnabled: clickThroughNotes) { isCommandPressed in
+        clickThroughMonitor.update(isEnabled: true) { isCommandPressed in
             isClickThroughCommandPressed = isCommandPressed
             setClickThroughCommandInteractionNote(
-                isCommandPressed ? clickThroughEligibleNoteID(at: NSEvent.mouseLocation) : nil
+                clickThroughNotes && isCommandPressed
+                    ? clickThroughEligibleNoteID(at: NSEvent.mouseLocation)
+                    : nil
             )
             applyClickThroughPreference(isCommandPressed: isCommandPressed)
             updateClickThroughHoverAppearance()
@@ -391,9 +393,9 @@ private extension Desktop {
 
     func applyClickThroughPreference(isCommandPressed: Bool = NoteWindowClickThrough.isCommandPressed) {
         let ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
-            isEnabled: clickThroughNotes && !isClickThroughWheelShortcutActive,
+            isEnabled: clickThroughNotes,
             isCommandPressed: isCommandPressed
-        )
+        ) && !isClickThroughWheelShortcutActive
         for window in noteWindows.values {
             window.ignoresMouseEvents = isCompactNoteWindow(window) ? false : ignoresMouseEvents
         }
@@ -524,9 +526,9 @@ private extension Desktop {
         window.setNoteStyle(noteColor: note.color)
         window.level = focusFilterAllowsBackgroundNotes ? .normal : .floating
         window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
-            isEnabled: clickThroughNotes && !isClickThroughWheelShortcutActive,
+            isEnabled: clickThroughNotes,
             isCommandPressed: isClickThroughCommandPressed
-        )
+        ) && !isClickThroughWheelShortcutActive
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable

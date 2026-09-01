@@ -135,7 +135,7 @@ enum NoteWindowClickThrough {
     }
 
     static func shouldIgnoreMouseEvents(isEnabled: Bool, isCommandPressed: Bool) -> Bool {
-        isEnabled && !isCommandPressed
+        isEnabled ? !isCommandPressed : isCommandPressed
     }
 
     static func hoverAlpha(for windowAlpha: CGFloat, isHovered: Bool) -> CGFloat {

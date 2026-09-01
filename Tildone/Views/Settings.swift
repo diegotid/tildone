@@ -560,7 +560,7 @@ private extension SettingsForm {
                 .disabled(!isClickThroughAvailable)
             Group {
                 if isClickThroughAvailable {
-                    Text("When enabled, hold ⌘ while clicking to interact with a transparent note.")
+                    Text("When enabled, hold ⌘ while clicking to interact with a transparent note. (When disabled, press ⌘ while clicking to click through.)")
                 } else {
                     Text(
                         "Requires at least \(NoteWindowClickThrough.minimumBackgroundTransparency, format: .percent.precision(.fractionLength(0))) note background transparency."

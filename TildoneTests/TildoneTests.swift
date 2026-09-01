@@ -396,10 +396,14 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(NoteWindowOpacity.currentAlpha(for: noteID, defaults: defaults), 1)
     }
 
-    func testClickThroughNotesAllowsCommandClickToInteract() {
+    func testClickThroughNotesUsesCommandForTheOppositeInteraction() {
         XCTAssertFalse(NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: false,
             isCommandPressed: false
+        ))
+        XCTAssertTrue(NoteWindowClickThrough.shouldIgnoreMouseEvents(
+            isEnabled: false,
+            isCommandPressed: true
         ))
         XCTAssertTrue(NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: true,
