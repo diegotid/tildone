@@ -202,6 +202,7 @@ extension NSColor {
     static let noteOrangeBackground = #colorLiteral(red: 0.9882352941, green: 0.8392156863, blue: 0.7019607843, alpha: 1)
     static let checkboxBorder = #colorLiteral(red: 0.5338419676, green: 0.5067609549, blue: 0.3392150104, alpha: 1)
     static let checkboxOffFill = #colorLiteral(red: 0.9999960065, green: 1, blue: 1, alpha: 0.5)
+    static let progressGuageOffFill = #colorLiteral(red: 1, green: 1, blue: 1, alpha: 0.75)
     static let primaryFontColor = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
     static let primaryFontWhite = #colorLiteral(red: 0.8039215803, green: 0.8039215803, blue: 0.8039215803, alpha: 1)
 }

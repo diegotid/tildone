@@ -17,6 +17,7 @@ struct TaskRow: View {
     let placeholderColor: Color
     let truncation: TaskLineTruncation
     let isFirst: Bool
+    let followsDeeperTask: Bool
     let isShowingRowControls: Bool
     let hasSubtasks: Bool
     let isSubtasksCollapsed: Bool
@@ -58,6 +59,10 @@ struct TaskRow: View {
 
     private var taskActionControlSize: CGFloat {
         max(12, taskLineHeight)
+    }
+
+    private var hierarchyTransitionTopSpacing: CGFloat {
+        max(2, CGFloat(fontSize) * 0.3)
     }
 
     private var taskActionColor: Color {
@@ -235,6 +240,7 @@ struct TaskRow: View {
             .clipped()
         }
         .padding(.leading, 2 + CGFloat(task.indentLevel) * (Layout.checkboxSize + 8))
+        .padding(.top, followsDeeperTask ? hierarchyTransitionTopSpacing : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onHover(perform: onRowHover)

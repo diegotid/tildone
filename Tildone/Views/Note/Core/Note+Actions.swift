@@ -92,6 +92,7 @@ extension Note {
         let text = newTaskText.capitalizingFirstLetter()
         let indentLevel = newTaskIndentLevel ?? 0
         newTaskText = ""
+        newTaskIndentLevel = indentLevel
         Swift.Task {
             do {
                 _ = try await store.addTask(
@@ -99,7 +100,6 @@ extension Note {
                     text: text,
                     indentLevel: indentLevel
                 )
-                newTaskIndentLevel = nil
             } catch {
                 newTaskIndentLevel = nil
                 mutationErrorMessage = Self.mutationFailureMessage(
