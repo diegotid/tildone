@@ -26,6 +26,18 @@ final class TaskHierarchyTests: XCTestCase {
             TaskHierarchy.subtaskProgress(at: 1, in: tasks),
             TaskSubtaskProgress(completedCount: 1, totalCount: 1)
         )
+        let progresses = TaskHierarchy.subtaskProgresses(in: tasks)
+        XCTAssertEqual(
+            progresses[root.id],
+            TaskSubtaskProgress(completedCount: 1, totalCount: 2)
+        )
+        XCTAssertEqual(
+            progresses[nestedParent.id],
+            TaskSubtaskProgress(completedCount: 1, totalCount: 1)
+        )
+        XCTAssertNil(progresses[grandchild.id])
+        XCTAssertNil(progresses[sibling.id])
+        XCTAssertNil(progresses[otherRoot.id])
         XCTAssertEqual(TaskHierarchy.subtreeRange(startingAt: 0, in: tasks), 0..<4)
         XCTAssertEqual(TaskHierarchy.subtreeRange(startingAt: 1, in: tasks), 1..<3)
         XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), root.id)

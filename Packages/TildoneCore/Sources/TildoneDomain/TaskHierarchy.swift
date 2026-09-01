@@ -3,7 +3,7 @@
 //  TildoneDomain
 //
 
-public struct TaskSubtaskProgress: Equatable, Sendable {
+public struct TaskSubtaskProgress: Equatable, Hashable, Sendable {
     public let completedCount: Int
     public let totalCount: Int
 
@@ -35,6 +35,48 @@ public enum TaskHierarchy {
             completedCount: leaves.lazy.filter(\.isCompleted).count,
             totalCount: leaves.count
         )
+    }
+
+    /// Calculates every parent row's leaf progress in one pass. Views that show
+    /// all rows should prefer this over scanning each parent's subtree separately.
+    public static func subtaskProgresses(in tasks: [Task]) -> [TaskID: TaskSubtaskProgress] {
+        guard !tasks.isEmpty else { return [:] }
+        var parentIndices = Array<Int?>(repeating: nil, count: tasks.count)
+        var ancestorStack: [Int] = []
+        ancestorStack.reserveCapacity(tasks.count)
+
+        for index in tasks.indices {
+            while let ancestor = ancestorStack.last,
+                  tasks[ancestor].indentLevel >= tasks[index].indentLevel {
+                ancestorStack.removeLast()
+            }
+            if let parent = ancestorStack.last,
+               tasks[parent].indentLevel == tasks[index].indentLevel - 1 {
+                parentIndices[index] = parent
+            }
+            ancestorStack.append(index)
+        }
+
+        var totalLeaves = Array(repeating: 0, count: tasks.count)
+        var completedLeaves = Array(repeating: 0, count: tasks.count)
+        for index in tasks.indices where !hasSubtasks(at: index, in: tasks) {
+            totalLeaves[index] = 1
+            completedLeaves[index] = tasks[index].isCompleted ? 1 : 0
+        }
+        for index in tasks.indices.reversed() {
+            guard let parent = parentIndices[index] else { continue }
+            totalLeaves[parent] += totalLeaves[index]
+            completedLeaves[parent] += completedLeaves[index]
+        }
+
+        var result: [TaskID: TaskSubtaskProgress] = [:]
+        for index in tasks.indices where hasSubtasks(at: index, in: tasks) {
+            result[tasks[index].id] = TaskSubtaskProgress(
+                completedCount: completedLeaves[index],
+                totalCount: totalLeaves[index]
+            )
+        }
+        return result
     }
 
     public static func leafTasks(in tasks: [Task]) -> [Task] {

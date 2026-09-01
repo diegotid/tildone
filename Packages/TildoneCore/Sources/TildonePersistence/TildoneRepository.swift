@@ -212,6 +212,68 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         }
     }
 
+    /// Fetches every visible note and task with one context and one fetch per
+    /// stored entity type. This avoids the note-by-note color, task, and
+    /// indentation queries used by the narrower repository APIs.
+    public func visibleNoteSnapshots() throws -> [VisibleNoteSnapshot] {
+        let context = readContext()
+
+        var colorsByNoteID: [String: StoredNoteColor] = [:]
+        for color in try context.fetch(FetchDescriptor<StoredNoteColor>()) {
+            guard colorsByNoteID.updateValue(color, forKey: color.noteStableID) == nil else {
+                throw PersistenceError.duplicateID(.note, color.noteStableID)
+            }
+        }
+
+        var indentationsByTaskID: [String: StoredTaskIndentation] = [:]
+        for indentation in try context.fetch(FetchDescriptor<StoredTaskIndentation>()) {
+            guard indentationsByTaskID.updateValue(
+                indentation,
+                forKey: indentation.taskStableID
+            ) == nil else {
+                throw PersistenceError.duplicateID(.task, indentation.taskStableID)
+            }
+        }
+
+        var taskIDs: Set<TaskID> = []
+        var tasksByNoteID: [NoteID: [Task]] = [:]
+        for stored in try context.fetch(FetchDescriptor<StoredTask>()) {
+            let task = try StoredDomainMapping.task(
+                from: stored,
+                indentation: indentationsByTaskID[stored.stableID]
+            )
+            guard taskIDs.insert(task.id).inserted else {
+                throw PersistenceError.duplicateID(.task, task.id.stringValue)
+            }
+            if task.lifecycle == .active {
+                tasksByNoteID[task.noteID, default: []].append(task)
+            }
+        }
+
+        var noteIDs: Set<NoteID> = []
+        var snapshots: [VisibleNoteSnapshot] = []
+        for stored in try context.fetch(FetchDescriptor<StoredNote>()) {
+            let note = try StoredDomainMapping.note(
+                from: stored,
+                color: colorsByNoteID[stored.stableID]
+            )
+            guard noteIDs.insert(note.id).inserted else {
+                throw PersistenceError.duplicateID(.note, note.id.stringValue)
+            }
+            guard note.lifecycle == .active else { continue }
+            snapshots.append(VisibleNoteSnapshot(
+                note: note,
+                tasks: (tasksByNoteID[note.id] ?? []).sorted(by: Task.orderedBefore)
+            ))
+        }
+        return snapshots.sorted {
+            if $0.note.lastMeaningfulEditAt != $1.note.lastMeaningfulEditAt {
+                return $0.note.lastMeaningfulEditAt > $1.note.lastMeaningfulEditAt
+            }
+            return $0.note.id < $1.note.id
+        }
+    }
+
     public func notesMeaningfullyEdited(since date: Date) throws -> [Note] {
         try visibleNotes().filter { $0.lastMeaningfulEditAt >= date }
     }
@@ -276,6 +338,11 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         authority: NoteColorMigrationAuthority = .platformDefault
     ) throws {
         let context = mutationContext()
+        if colorsByNoteID.isEmpty, authority == .platformDefault {
+            let noteCount = try context.fetchCount(FetchDescriptor<StoredNote>())
+            let colorCount = try context.fetchCount(FetchDescriptor<StoredNoteColor>())
+            if noteCount == colorCount { return }
+        }
         let notes = try context.fetch(FetchDescriptor<StoredNote>())
         let metadata = try workspaceMetadata(in: context)
         var storedColorsByNoteID: [String: StoredNoteColor] = [:]
@@ -616,6 +683,50 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         _ = try mutateTask(id: id, allowDeleted: true) { task, stamp in
             try task.delete(version: stamp)
         }
+    }
+
+    /// Tombstones a task subtree in one transaction. The owning note receives
+    /// one meaningful-edit version and every task retains its own outbox entry.
+    @discardableResult
+    public func deleteTasks(_ ids: Set<TaskID>, in noteID: NoteID) throws -> Note {
+        let context = mutationContext()
+        let ownerStored = try requireStoredNote(id: noteID, in: context)
+        var owner = try mappedNote(from: ownerStored, in: context)
+        guard owner.lifecycle == .active else { throw PersistenceError.domainInvariant }
+        guard !ids.isEmpty else { return owner }
+
+        let metadata = try workspaceMetadata(in: context)
+        var latestTaskStamp: VersionStamp?
+        for id in ids.sorted() {
+            let stored = try requireStoredTask(id: id, in: context)
+            var task = try mappedTask(from: stored, expectedNoteID: noteID, in: context)
+            guard task.lifecycle == .active else { throw PersistenceError.domainInvariant }
+            let stamp = try nextStamp(metadata, observing: maxVersion(in: task))
+            do { try task.delete(version: stamp) }
+            catch { throw PersistenceError.domainInvariant }
+            try promoteTaskToCurrentSchema(&task, version: stamp)
+            try StoredDomainMapping.update(stored, from: task)
+            try upsertTaskIndentation(for: task, in: context)
+            try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+            latestTaskStamp = max(latestTaskStamp ?? stamp, stamp)
+        }
+
+        guard let latestTaskStamp else { return owner }
+        let meaningfulEditStamp = try nextStamp(
+            metadata,
+            observing: max(owner.lastMeaningfulEditVersion, latestTaskStamp)
+        )
+        do { try owner.recordMeaningfulEdit(at: now(), version: meaningfulEditStamp) }
+        catch { throw PersistenceError.domainInvariant }
+        try StoredDomainMapping.update(ownerStored, from: owner)
+        try enqueue(
+            .note,
+            id: noteID.stringValue,
+            sequence: meaningfulEditStamp.logicalCounter,
+            in: context
+        )
+        try saveMutation(context)
+        return owner
     }
 
     public func restoreTask(id: TaskID) throws -> Task {

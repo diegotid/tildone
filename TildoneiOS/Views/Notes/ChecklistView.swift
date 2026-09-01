@@ -11,12 +11,11 @@ import TildoneSync
 import UIKit
 
 struct ChecklistView: View {
-    @ObservedObject var appModel: TildoneiOSApplicationModel
+    let appModel: TildoneiOSApplicationModel
+    @ObservedObject private var presentation: TildoneiOSNotePresentation
     let noteID: NoteID
     @Environment(\.dismiss) private var dismiss
     @Environment(\.editMode) private var editMode
-    @State private var note: Note?
-    @State private var tasks: [Task] = []
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
@@ -27,6 +26,15 @@ struct ChecklistView: View {
     @FocusState private var isAddingTask: Bool
     @FocusState private var isAddingTaskAbove: Bool
     @FocusState private var isEditingTitle: Bool
+
+    init(appModel: TildoneiOSApplicationModel, noteID: NoteID) {
+        self.appModel = appModel
+        self.noteID = noteID
+        _presentation = ObservedObject(wrappedValue: appModel.presentation(for: noteID))
+    }
+
+    private var note: Note? { presentation.snapshot.note }
+    private var tasks: [Task] { presentation.snapshot.tasks }
 
     private var isInEditMode: Bool {
         editMode?.wrappedValue.isEditing == true
@@ -43,6 +51,7 @@ struct ChecklistView: View {
     var body: some View {
         Group {
             if let note {
+                let subtaskProgresses = TaskHierarchy.subtaskProgresses(in: tasks)
                 List {
                     if isInEditMode || isEditingTitle || isUntitled {
                         TextField("Note title", text: $title)
@@ -69,7 +78,7 @@ struct ChecklistView: View {
                             }
                             TaskRow(
                                 task: task,
-                                subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
+                                subtaskProgress: subtaskProgresses[task.id],
                                 subtasksExpanded: hasSubtasks
                                     ? !collapsedTaskIDs.contains(task.id)
                                     : nil,
@@ -78,11 +87,9 @@ struct ChecklistView: View {
                                 focusedTask: $focusedTask,
                                 onCommit: { value in
                                     try? await appModel.edit(taskID: task.id, text: value)
-                                    await reload()
                                 },
                                 onToggle: {
                                     try? await appModel.setCompletion(taskID: task.id, completed: !task.isCompleted)
-                                    await reload()
                                 },
                                 onToggleSubtasks: {
                                     toggleSubtasks(at: index)
@@ -156,7 +163,6 @@ struct ChecklistView: View {
                                 set: { color in
                                     Swift.Task {
                                         try? await appModel.setColor(noteID: noteID, color: color)
-                                        await reload()
                                     }
                                 }
                             )) {
@@ -189,20 +195,18 @@ struct ChecklistView: View {
             }
         }
         .task {
-            await reload()
+            synchronizeWithPresentation()
             isEditingTitle = isUntitled
             isAddingTask = !isUntitled && tasks.isEmpty
         }
-        .onChange(of: appModel.contentRevision) { _, _ in
-            if !appModel.notes.contains(where: { $0.id == noteID }) { dismiss() }
-            else { Swift.Task { await reload() } }
+        .onChange(of: presentation.snapshot) { oldSnapshot, newSnapshot in
+            if oldSnapshot.note != nil, newSnapshot.note == nil { dismiss() }
+            else { synchronizeWithPresentation() }
         }
     }
 
-    private func reload() async {
-        note = appModel.notes.first(where: { $0.id == noteID })
+    private func synchronizeWithPresentation() {
         guard note != nil else { return }
-        tasks = (try? await appModel.tasks(in: noteID)) ?? []
         let parentIDs = Set(tasks.indices.compactMap { index in
             TaskHierarchy.hasSubtasks(at: index, in: tasks) ? tasks[index].id : nil
         })
@@ -219,7 +223,6 @@ struct ChecklistView: View {
         titleBaseline = normalized
         Swift.Task {
             try? await appModel.rename(noteID: noteID, title: normalized)
-            await reload()
         }
     }
 
@@ -243,7 +246,6 @@ struct ChecklistView: View {
         newTaskText = ""
         Swift.Task {
             _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)
-            await reload()
             isAddingTask = true
         }
     }
@@ -254,7 +256,6 @@ struct ChecklistView: View {
         newTaskText = ""
         Swift.Task {
             _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)
-            await reload()
         }
     }
 
@@ -295,7 +296,6 @@ struct ChecklistView: View {
                 text: text,
                 before: targetTaskID
             )
-            await reload()
         }
     }
 
@@ -333,7 +333,6 @@ struct ChecklistView: View {
                 from: IndexSet(integer: sourceIndex),
                 to: destinationIndex
             )
-            await reload()
         }
     }
 
@@ -360,7 +359,6 @@ struct ChecklistView: View {
             from: IndexSet(integer: sourceIndex),
             to: destination
         )
-        await reload()
     }
 
     private func changeIndentation(taskID: TaskID, outdent: Bool) async {
@@ -369,7 +367,6 @@ struct ChecklistView: View {
             in: tasks,
             outdent: outdent
         )
-        await reload()
     }
 
     private var visibleTaskIndices: [Int] {

@@ -8,14 +8,25 @@ import SwiftUI
 import UIKit
 import TildoneDomain
 
+enum NoteListMetrics {
+    static let checboxScale: CGFloat = 0.7
+    static let gaugeScale: CGFloat = 0.5
+}
+
 struct NotesListView: View {
-    @ObservedObject var appModel: TildoneiOSApplicationModel
+    let appModel: TildoneiOSApplicationModel
+    @ObservedObject private var overviewPresentation: TildoneiOSOverviewPresentation
     @AppStorage("notesOverviewLayout") private var layoutRawValue = NotesOverviewLayout.list.rawValue
     @State private var presentedNoteID: NoteID?
     @State private var noteToRename: Note?
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
     @State private var deckOrder: [NoteID] = []
+
+    init(appModel: TildoneiOSApplicationModel) {
+        self.appModel = appModel
+        _overviewPresentation = ObservedObject(wrappedValue: appModel.overviewPresentation)
+    }
 
     private var layout: NotesOverviewLayout {
         get { NotesOverviewLayout(rawValue: layoutRawValue) ?? .list }
@@ -67,14 +78,7 @@ struct NotesListView: View {
             .navigationTitle("Notes")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    SyncStatusMenu(
-                        status: appModel.syncStatus,
-                        transportState: appModel.transportState,
-                        canControlTransport: appModel.canControlTransport,
-                        syncNow: appModel.syncNow,
-                        pause: appModel.pauseTransport,
-                        resume: appModel.resumeTransport
-                    )
+                    TildoneiOSSyncStatusMenu(appModel: appModel)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -125,10 +129,7 @@ struct NotesListView: View {
     }
 
     private func createNote() {
-        Swift.Task {
-            guard let note = try? await appModel.createNote() else { return }
-            presentedNoteID = note.id
-        }
+        presentedNoteID = appModel.createNoteAndPresent()
     }
 
     private func beginRename(_ note: Note) {
@@ -193,6 +194,27 @@ struct NotesListView: View {
     }
 }
 
+private struct TildoneiOSSyncStatusMenu: View {
+    let appModel: TildoneiOSApplicationModel
+    @ObservedObject private var presentation: TildoneiOSSyncPresentation
+
+    init(appModel: TildoneiOSApplicationModel) {
+        self.appModel = appModel
+        _presentation = ObservedObject(wrappedValue: appModel.syncPresentation)
+    }
+
+    var body: some View {
+        SyncStatusMenu(
+            status: presentation.status,
+            transportState: presentation.transportState,
+            canControlTransport: appModel.canControlTransport,
+            syncNow: appModel.syncNow,
+            pause: appModel.pauseTransport,
+            resume: appModel.resumeTransport
+        )
+    }
+}
+
 private enum NotesOverviewLayout: String, CaseIterable, Identifiable {
     case list
     case grid
@@ -251,6 +273,9 @@ private struct NotesGridView: View {
     var body: some View {
         GeometryReader { proxy in
             let cardHeight = NoteCardLayoutMetrics.gridHeight(in: proxy.size.height)
+            let gridCardHeight = NoteCardLayoutMetrics.gridHeight(in: proxy.size.height)
+            let contentScale = cardHeight / gridCardHeight
+            
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(notes, id: \.id) { note in
@@ -260,7 +285,7 @@ private struct NotesGridView: View {
                             tasks: taskPreviews[note.id] ?? [],
                             style: .grid,
                             height: cardHeight,
-                            contentScale: 1,
+                            contentScale: contentScale,
                             rename: { rename(note) },
                             delete: { delete(note) }
                         )
@@ -666,7 +691,7 @@ private struct NoteCard: View {
                 HStack(alignment: .center, spacing: 14 * contentScale) {
                     NoteCompletionGauge(summary: summary, labelColor: .black)
                         .foregroundStyle(.black)
-                        .scaleEffect(gaugeSize / 40)
+                        .scaleEffect(gaugeSize / 30)
                         .frame(width: gaugeSize, height: gaugeSize)
                     Image(systemName: "chevron.right")
                         .font(.system(size: baseChevronSize * contentScale, weight: .semibold))
@@ -721,17 +746,24 @@ private struct NoteCardTaskList: View {
                 LazyVStack(alignment: .leading, spacing: 8 * contentScale) {
                     ForEach(tasks) { task in
                         HStack(alignment: .top, spacing: 7 * contentScale) {
-                            TaskCheckboxIndicator(
-                                isChecked: task.isCompleted,
-                                diameter: baseCheckboxSize * contentScale
-                            )
+                            if let subtaskProgress = task.subtaskProgress {
+                                TaskSubtaskProgressGauge(
+                                    progress: subtaskProgress,
+                                    size: baseCheckboxSize * contentScale * NoteListMetrics.gaugeScale
+                                )
+                            } else {
+                                TaskCheckboxIndicator(
+                                    isChecked: task.isCompleted,
+                                    diameter: baseCheckboxSize * contentScale * NoteListMetrics.checboxScale
+                                )
+                            }
                             Text(task.text)
-                                .strikethrough(task.isCompleted)
+                                .strikethrough(task.isCompleted || task.subtaskProgress?.fraction == 1)
                                 .foregroundStyle(.black)
                                 .lineLimit(style == .deck ? 2 : 1)
                         }
                         .font(.system(size: baseTaskSize * contentScale))
-                        .padding(.leading, CGFloat(task.indentLevel) * baseCheckboxSize * contentScale)
+                        .padding(.leading, 1 + CGFloat(task.indentLevel) * baseCheckboxSize * contentScale)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

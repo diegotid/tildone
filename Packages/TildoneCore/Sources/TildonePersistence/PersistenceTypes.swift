@@ -157,6 +157,18 @@ public enum PendingMutationPayload: Hashable, Sendable {
     case task(Task)
 }
 
+/// One visible note and its visible tasks, fetched from a single consistent
+/// repository read. Presentation clients use this to avoid per-note queries.
+public struct VisibleNoteSnapshot: Hashable, Sendable {
+    public let note: Note
+    public let tasks: [Task]
+
+    public init(note: Note, tasks: [Task]) {
+        self.note = note
+        self.tasks = tasks
+    }
+}
+
 public struct PreparedPendingMutation: Hashable, Sendable {
     public let mutationID: UUID
     public let payload: PendingMutationPayload

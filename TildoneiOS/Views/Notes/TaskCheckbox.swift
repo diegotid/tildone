@@ -7,13 +7,17 @@
 import SwiftUI
 import TildoneDomain
 
+enum TaskControlMetrics {
+    static let diameter: CGFloat = 16
+}
+
 struct TaskCheckbox: View {
     let isChecked: Bool
     let toggle: () -> Void
 
     var body: some View {
         Button(action: toggle) {
-            TaskCheckboxIndicator(isChecked: isChecked, diameter: 18)
+            TaskCheckboxIndicator(isChecked: isChecked, diameter: TaskControlMetrics.diameter)
                 .frame(width: 32, height: 33)
                 .contentShape(Rectangle())
         }
@@ -29,7 +33,7 @@ struct TaskCheckboxIndicator: View {
 
     var body: some View {
         let resolvedDiameter = pixelAligned(diameter)
-        let lineWidth = pixelAligned(max(1, diameter / 18))
+        let lineWidth = pixelAligned(max(1, diameter / TaskControlMetrics.diameter))
         let checkDiameter = pixelAligned(diameter * 5 / 9)
 
         ZStack {
@@ -64,13 +68,19 @@ struct TaskCheckboxIndicator: View {
 
 struct TaskSubtaskProgressGauge: View {
     let progress: TaskSubtaskProgress
-    private let size: CGFloat = 18
+    let size: CGFloat
+
+    init(progress: TaskSubtaskProgress, size: CGFloat = TaskControlMetrics.diameter) {
+        self.progress = progress
+        self.size = size
+    }
 
     var body: some View {
         ZStack {
             if progress.fraction == 1 {
                 Circle()
                     .fill(.accent)
+                    .frame(width: size, height: size)
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.58, weight: .bold))
                     .foregroundStyle(.white)
@@ -93,6 +103,6 @@ struct TaskSubtaskProgressGauge: View {
     }
 
     private var checkboxBorder: Color {
-        Color(red: 0.534, green: 0.507, blue: 0.339)
+        .gray.opacity(0.35)
     }
 }

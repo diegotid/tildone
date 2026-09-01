@@ -19,10 +19,24 @@ struct TildoneiOSRootView: View {
             } else if appModel.isResolvingWorkspace {
                 ProgressView("Opening Tildone…")
             } else {
-                WorkspaceStatusView(status: appModel.syncStatus) {
-                    appModel.start()
-                }
+                TildoneiOSWorkspaceStatus(appModel: appModel)
             }
+        }
+    }
+}
+
+private struct TildoneiOSWorkspaceStatus: View {
+    let appModel: TildoneiOSApplicationModel
+    @ObservedObject private var syncPresentation: TildoneiOSSyncPresentation
+
+    init(appModel: TildoneiOSApplicationModel) {
+        self.appModel = appModel
+        _syncPresentation = ObservedObject(wrappedValue: appModel.syncPresentation)
+    }
+
+    var body: some View {
+        WorkspaceStatusView(status: syncPresentation.status) {
+            appModel.start()
         }
     }
 }

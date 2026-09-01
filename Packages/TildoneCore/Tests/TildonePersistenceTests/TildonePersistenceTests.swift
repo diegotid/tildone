@@ -16,6 +16,93 @@ final class TildonePersistenceTests: XCTestCase {
     private let taskID = TaskID(UUID(uuidString: "30000000-0000-0000-0000-000000000001")!)
     private let createdAt = Date(timeIntervalSince1970: 1_000)
 
+    func testVisibleNoteSnapshotsMatchNarrowReadsAndExcludeTombstones() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        let firstNote = try await repository.createNote(
+            id: NoteID(), createdAt: createdAt, title: "First", color: .green
+        )
+        let secondNote = try await repository.createNote(
+            id: NoteID(), createdAt: createdAt.addingTimeInterval(1), title: "Second", color: .pink
+        )
+        let firstTask = try await repository.addTask(
+            id: TaskID(),
+            to: firstNote.id,
+            createdAt: createdAt,
+            text: "First task",
+            orderToken: try OrderToken(rawValue: "m"),
+            indentLevel: 0
+        )
+        let deletedTask = try await repository.addTask(
+            id: TaskID(),
+            to: firstNote.id,
+            createdAt: createdAt,
+            text: "Deleted task",
+            orderToken: try OrderToken(rawValue: "t"),
+            indentLevel: 1
+        )
+        _ = try await repository.addTask(
+            id: TaskID(),
+            to: secondNote.id,
+            createdAt: createdAt,
+            text: "Hidden with note",
+            orderToken: try OrderToken(rawValue: "m"),
+            indentLevel: 0
+        )
+        _ = try await repository.deleteTask(id: deletedTask.id)
+        try await repository.deleteNote(id: secondNote.id)
+
+        let snapshots = try await repository.visibleNoteSnapshots()
+        let visibleNotes = try await repository.visibleNotes()
+        let narrowTasks = try await repository.orderedTasks(in: firstNote.id)
+
+        XCTAssertEqual(snapshots.map(\.note), visibleNotes)
+        XCTAssertEqual(snapshots.count, 1)
+        XCTAssertEqual(snapshots[0].note.color, .green)
+        XCTAssertEqual(snapshots[0].tasks, [firstTask])
+        XCTAssertEqual(snapshots[0].tasks, narrowTasks)
+    }
+
+    func testTaskSubtreeDeletionIsOneAtomicMutation() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        let note = try await repository.createNote(
+            id: NoteID(), createdAt: createdAt, title: nil, color: .yellow
+        )
+        let parent = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "Parent",
+            orderToken: try OrderToken.between(nil, nil),
+            indentLevel: 0
+        )
+        let child = try await repository.addTask(
+            id: TaskID(),
+            to: note.id,
+            createdAt: createdAt,
+            text: "Child",
+            orderToken: try OrderToken.between(parent.orderToken, nil),
+            indentLevel: 1
+        )
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            _ = try await repository.deleteTasks([parent.id, child.id], in: note.id)
+        }
+        let rolledBackTasks = try await repository.orderedTasks(in: note.id)
+        let rolledBackMutations = try await repository.pendingMutations()
+        XCTAssertEqual(rolledBackTasks.map(\.id), [parent.id, child.id])
+        XCTAssertTrue(rolledBackMutations.isEmpty)
+
+        _ = try await repository.deleteTasks([parent.id, child.id], in: note.id)
+        let remainingTasks = try await repository.orderedTasks(in: note.id)
+        let pendingMutations = try await repository.pendingMutations()
+        XCTAssertTrue(remainingTasks.isEmpty)
+        XCTAssertEqual(pendingMutations.count, 3)
+    }
+
     func testTaskStructureBatchRollsBackEveryTaskAndOutboxOnSaveFailure() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         let note = try await repository.createNote(

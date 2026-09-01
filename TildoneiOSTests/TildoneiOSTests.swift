@@ -6,6 +6,7 @@
 //
 import XCTest
 import CloudKit
+import Combine
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
@@ -15,6 +16,28 @@ import TildoneSync
 final class TildoneiOSTests: XCTestCase {
     func testIPhoneTransportIsDisabledUnderTests() {
         XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
+    }
+
+    func testContentAndSyncPublicationsDoNotInvalidateApplicationShell() async throws {
+        let model = try await makeModel()
+        var shellPublicationCount = 0
+        var overviewPublicationCount = 0
+        var syncPublicationCount = 0
+        let shellSubscription = model.objectWillChange.sink { shellPublicationCount += 1 }
+        let overviewSubscription = model.overviewPresentation.objectWillChange.sink {
+            overviewPublicationCount += 1
+        }
+        let syncSubscription = model.syncPresentation.objectWillChange.sink {
+            syncPublicationCount += 1
+        }
+
+        _ = try await model.createNote(title: "Isolated")
+        model.present(status: SyncStatus(availability: .available, activity: .syncing))
+
+        XCTAssertEqual(shellPublicationCount, 0)
+        XCTAssertGreaterThan(overviewPublicationCount, 0)
+        XCTAssertGreaterThan(syncPublicationCount, 0)
+        withExtendedLifetime([shellSubscription, overviewSubscription, syncSubscription]) {}
     }
 
     func testNotesArePresentedInMeaningfulEditOrderWithUntitledFallback() async throws {
@@ -45,6 +68,46 @@ final class TildoneiOSTests: XCTestCase {
 
         try await model.delete(noteID: note.id)
         XCTAssertTrue(model.notes.isEmpty)
+    }
+
+    func testCreateButtonPublishesNoteBeforeBackgroundCommitFinishes() async throws {
+        let workspace = UUID()
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(workspace))
+        )
+        let model = try await makeModel(repository: repository)
+
+        let noteID = model.createNoteAndPresent(title: "Immediate")
+
+        XCTAssertEqual(model.notes.first?.id, noteID)
+        XCTAssertEqual(model.presentation(for: noteID).snapshot.note?.title, "Immediate")
+
+        var persisted: Note?
+        for _ in 0..<100 where persisted == nil {
+            persisted = try? await repository.note(id: noteID)
+            if persisted == nil { await Swift.Task.yield() }
+        }
+        XCTAssertEqual(try XCTUnwrap(persisted).id, noteID)
+    }
+
+    func testOptimisticTaskCompletionReconcilesWithPersistence() async throws {
+        let workspace = UUID()
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(workspace))
+        )
+        let model = try await makeModel(repository: repository)
+        let note = try await model.createNote(title: "Responsive")
+        let createdTask = try await model.addTask(noteID: note.id, text: "Tap", after: [])
+        let task = try XCTUnwrap(createdTask)
+
+        let completion = Swift.Task {
+            try await model.setCompletion(taskID: task.id, completed: true)
+        }
+        await Swift.Task.yield()
+        XCTAssertTrue(model.presentation(for: note.id).snapshot.tasks[0].isCompleted)
+        try await completion.value
+        let persistedTask = try await repository.task(id: task.id)
+        XCTAssertTrue(persistedTask.isCompleted)
     }
 
     func testTaskEditingCompletionDeletionAndOrderingUseDomainCommands() async throws {
@@ -116,6 +179,15 @@ final class TildoneiOSTests: XCTestCase {
         )
         XCTAssertEqual(
             TaskHierarchy.subtaskProgress(at: 1, in: tasks),
+            TaskSubtaskProgress(completedCount: 1, totalCount: 1)
+        )
+        let previews = try XCTUnwrap(model.taskPreviews[note.id])
+        XCTAssertEqual(
+            previews.first(where: { $0.id == parent.id })?.subtaskProgress,
+            TaskSubtaskProgress(completedCount: 3, totalCount: 3)
+        )
+        XCTAssertEqual(
+            previews.first(where: { $0.id == nestedParent.id })?.subtaskProgress,
             TaskSubtaskProgress(completedCount: 1, totalCount: 1)
         )
         XCTAssertEqual(model.taskSummaries[note.id]?.completedCount, 3)
@@ -272,6 +344,14 @@ final class TildoneiOSTests: XCTestCase {
             outdent: false
         )
         XCTAssertTrue(didIndentGrandchild)
+        tasks = try await model.tasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 1, 0])
+        let didIndentGrandchildAgain = try await model.changeIndentation(
+            taskID: grandchild.id,
+            in: tasks,
+            outdent: false
+        )
+        XCTAssertTrue(didIndentGrandchildAgain)
         tasks = try await model.tasks(in: note.id)
         XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 2, 0])
 

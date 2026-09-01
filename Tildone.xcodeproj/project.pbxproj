@@ -26,6 +26,7 @@
 		C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* TildoneiOSAppDelegate.swift */; };
 		C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */; };
 		C10000000000000000000003 /* TildoneiOSApplicationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000013 /* TildoneiOSApplicationModel.swift */; };
+		C10000000000000000000043 /* TildoneiOSNotePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000042 /* TildoneiOSNotePresentation.swift */; };
 		C10000000000000000000004 /* TildoneiOSPresentationError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000014 /* TildoneiOSPresentationError.swift */; };
 		C10000000000000000000005 /* SyncStatusPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000015 /* SyncStatusPresentation.swift */; };
 		C10000000000000000000006 /* TildoneiOSRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000016 /* TildoneiOSRootView.swift */; };
@@ -183,6 +184,7 @@
 		C10000000000000000000011 /* TildoneiOSAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSAppDelegate.swift; sourceTree = "<group>"; };
 		C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSSyncBootstrapper.swift; sourceTree = "<group>"; };
 		C10000000000000000000013 /* TildoneiOSApplicationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApplicationModel.swift; sourceTree = "<group>"; };
+		C10000000000000000000042 /* TildoneiOSNotePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSNotePresentation.swift; sourceTree = "<group>"; };
 		C10000000000000000000014 /* TildoneiOSPresentationError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSPresentationError.swift; sourceTree = "<group>"; };
 		C10000000000000000000015 /* SyncStatusPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusPresentation.swift; sourceTree = "<group>"; };
 		C10000000000000000000016 /* TildoneiOSRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSRootView.swift; sourceTree = "<group>"; };
@@ -409,6 +411,7 @@
 			isa = PBXGroup;
 			children = (
 				C10000000000000000000013 /* TildoneiOSApplicationModel.swift */,
+				C10000000000000000000042 /* TildoneiOSNotePresentation.swift */,
 				C10000000000000000000014 /* TildoneiOSPresentationError.swift */,
 				C10000000000000000000015 /* SyncStatusPresentation.swift */,
 			);
@@ -1044,6 +1047,7 @@
 				C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */,
 				C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */,
 				C10000000000000000000003 /* TildoneiOSApplicationModel.swift in Sources */,
+				C10000000000000000000043 /* TildoneiOSNotePresentation.swift in Sources */,
 				C10000000000000000000004 /* TildoneiOSPresentationError.swift in Sources */,
 				C10000000000000000000005 /* SyncStatusPresentation.swift in Sources */,
 				C10000000000000000000006 /* TildoneiOSRootView.swift in Sources */,
