@@ -3,6 +3,7 @@
 //  Tildone
 //
 
+import AppKit
 import SwiftUI
 import TildoneDomain
 import TildoneSync
@@ -145,7 +146,9 @@ struct TildoneApp: App {
                     .keyboardShortcut("c", modifiers: [.shift, .command])
                 }
                 Button("Paste") {
-                    NotificationCenter.default.post(name: .paste, object: nil)
+                    if !NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) {
+                        NotificationCenter.default.post(name: .paste, object: nil)
+                    }
                 }
                 .keyboardShortcut("v")
             }

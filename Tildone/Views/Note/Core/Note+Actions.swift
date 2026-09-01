@@ -458,7 +458,7 @@ extension Note {
     }
 
     func paste(into task: TildoneDomain.Task) {
-        guard let clipboard = NSPasteboard.general.string(forType: .string) else { return }
+        guard let clipboard = pastedText() else { return }
         let lines = clipboard.components(separatedBy: "\n").map {
             $0.trimmingCharacters(in: .whitespaces)
         }.filter { !$0.isEmpty }
@@ -474,6 +474,22 @@ extension Note {
                 )
             }
         }, message: "Error pasting tasks")
+    }
+
+    func pasteIntoNewTask() {
+        guard let clipboard = pastedText() else { return }
+        newTaskText = clipboard
+    }
+
+    private func pastedText() -> String? {
+        let pasteboard = NSPasteboard.general
+        if let text = pasteboard.string(forType: .string) {
+            return text
+        }
+        if let text = pasteboard.string(forType: .URL) {
+            return text
+        }
+        return (pasteboard.readObjects(forClasses: [NSURL.self])?.first as? URL)?.absoluteString
     }
 
     func handleBringUp() {

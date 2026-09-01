@@ -3,6 +3,7 @@
 //  Tildone
 //
 
+import Foundation
 import SwiftUI
 import TildoneDomain
 
@@ -28,6 +29,7 @@ struct TaskRow: View {
     let placesCaretAtStartOnFocus: Bool
     let onNativeFocus: () -> Void
     let onNativeBlur: () -> Void
+    let onEditLink: () -> Void
     @State private var rowHeight: CGFloat = 0
     @State private var dropPlacement: TaskRowDropPlacement?
     let onToggle: () -> Void
@@ -69,6 +71,14 @@ struct TaskRow: View {
         (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
     }
 
+    private var linkedTaskText: TaskTextLinkPresentation? {
+        TaskTextLinks.presentation(for: task.text)
+    }
+
+    private var showsCompletedAppearance: Bool {
+        task.isCompleted || subtaskProgress?.fraction == 1
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Group {
@@ -82,7 +92,24 @@ struct TaskRow: View {
             }
             .padding(.vertical, taskControlVerticalPadding)
 
-            if task.isCompleted || subtaskProgress?.fraction == 1 {
+            if let linkedTaskText, showsCompletedAppearance || !isActive {
+                TaskTextLinksView(
+                    text: linkedTaskText.attributedText,
+                    fontSize: CGFloat(fontSize),
+                    foregroundColor: showsCompletedAppearance ? contentColor.opacity(0.6) : contentColor,
+                    isCompleted: showsCompletedAppearance,
+                    truncation: truncation,
+                    onEdit: showsCompletedAppearance ? nil : onEditLink,
+                    onPaste: showsCompletedAppearance || !isShowingRowControls ? nil : onPaste
+                )
+                .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                .if(truncation == .single) {
+                    $0.modifier(TaskTextTruncationTooltip(
+                        text: linkedTaskText.plainText,
+                        fontSize: CGFloat(fontSize)
+                    ))
+                }
+            } else if showsCompletedAppearance {
                 Text(task.text)
                     .font(.system(size: CGFloat(fontSize)))
                     .lineLimit(1)
@@ -284,6 +311,88 @@ struct TaskRow: View {
         )
     }
 
+}
+
+private enum TaskTextLinks {
+    private static let detector = try? NSDataDetector(
+        types: NSTextCheckingResult.CheckingType.link.rawValue
+    )
+
+    static func presentation(for text: String) -> TaskTextLinkPresentation? {
+        guard let detector else { return nil }
+        let matches = detector.matches(
+            in: text,
+            range: NSRange(text.startIndex..., in: text)
+        )
+        var displayText = AttributedString()
+        var plainText = ""
+        var cursor = text.startIndex
+        var foundURL = false
+
+        for match in matches {
+            guard let range = Range(match.range, in: text),
+                  let destination = match.url,
+                  let scheme = destination.scheme?.lowercased(),
+                  ["http", "https"].contains(scheme),
+                  let host = destination.host,
+                  !host.isEmpty else {
+                continue
+            }
+            let displayHost = host.lowercased().hasPrefix("www.")
+                ? String(host.dropFirst(4))
+                : host
+            displayText += AttributedString(String(text[cursor..<range.lowerBound]))
+            plainText += String(text[cursor..<range.lowerBound])
+            var linkText = AttributedString(displayHost)
+            linkText.link = destination
+            linkText.foregroundColor = .accentColor
+            displayText += linkText
+            plainText += displayHost
+            cursor = range.upperBound
+            foundURL = true
+        }
+
+        guard foundURL else { return nil }
+        displayText += AttributedString(String(text[cursor...]))
+        plainText += String(text[cursor...])
+        return TaskTextLinkPresentation(attributedText: displayText, plainText: plainText)
+    }
+}
+
+private struct TaskTextLinkPresentation {
+    let attributedText: AttributedString
+    let plainText: String
+}
+
+private struct TaskTextLinksView: View {
+    let text: AttributedString
+    let fontSize: CGFloat
+    let foregroundColor: Color
+    let isCompleted: Bool
+    let truncation: TaskLineTruncation
+    let onEdit: (() -> Void)?
+    let onPaste: (() -> Void)?
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: fontSize))
+            .lineLimit(truncation == .single ? 1 : nil)
+            .truncationMode(.tail)
+            .foregroundStyle(foregroundColor)
+            .strikethrough(isCompleted, color: .accentColor)
+            .contentShape(Rectangle())
+        .if(onEdit != nil) {
+            $0.highPriorityGesture(
+                TapGesture(count: 2)
+                    .onEnded { onEdit?() }
+            )
+        }
+        .if(onPaste != nil) {
+            $0.onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                onPaste?()
+            }
+        }
+    }
 }
 
 private struct TaskTextTruncationTooltip: ViewModifier {

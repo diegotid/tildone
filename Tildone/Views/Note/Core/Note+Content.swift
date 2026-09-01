@@ -41,6 +41,10 @@ extension Note {
                             if note.title == nil { focusOnTopic() } else { focusOnNewTask() }
                             applyInitialFocusIfNeeded()
                         }
+                        .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                            guard focusedField == .newTask else { return }
+                            pasteIntoNewTask()
+                        }
                         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
                     }
                     .onChange(of: focusedTaskID) { _, taskID in
@@ -330,6 +334,7 @@ extension Note {
             placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
             onNativeFocus: { activateNativeTask(task.id) },
             onNativeBlur: { handleNativeTaskBlur(task.id) },
+            onEditLink: { focusTaskUsingKeyboard(task.id) },
             onToggle: { handleTaskToggle(task) },
             onEdit: { handleTaskEdit(task, to: $0) },
             onEnter: { handleEnter(for: task, cursor: $0) },
