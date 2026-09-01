@@ -21,7 +21,7 @@ struct TaskSubtaskProgressGauge: View {
                 Circle().stroke(checkboxBorder, lineWidth: max(2, size * 0.2))
                 Circle().trim(from: 0, to: progress.fraction)
                     .stroke(Color.accentColor, style: StrokeStyle(lineWidth: max(2, size * 0.14), lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+                    .rotationEffect(.degrees(90))
             }
         }
         .frame(width: size, height: size)

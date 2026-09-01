@@ -140,6 +140,10 @@ struct ChecklistView: View {
                                 .tint(.green)
                                 .accessibilityLabel("Add Above")
                             }
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .alignmentGuide(.listRowSeparatorLeading) { dimensions in
+                                dimensions[.leading] + CGFloat(task.indentLevel) * 24
+                            }
                         }
                         .onMove(perform: move)
 
