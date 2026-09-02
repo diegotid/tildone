@@ -11,10 +11,16 @@ import TildoneDomain
 public struct RemoteMergeResult: Hashable, Sendable {
     public let changed: Bool
     public let generatedTombstoneMutationCount: Int
+    public let changedRecords: Set<DomainRecordID>
 
-    public init(changed: Bool, generatedTombstoneMutationCount: Int) {
+    public init(
+        changed: Bool,
+        generatedTombstoneMutationCount: Int,
+        changedRecords: Set<DomainRecordID> = []
+    ) {
         self.changed = changed
         self.generatedTombstoneMutationCount = generatedTombstoneMutationCount
+        self.changedRecords = changedRecords
     }
 }
 
@@ -88,6 +94,7 @@ public extension TildoneRepository {
         }
 
         var generated = 0
+        var changedRecords: Set<DomainRecordID> = changed ? [.note(merged.id)] : []
         if merged.lifecycle == .deleted {
             let noteID = merged.id.stringValue
             let children = try context.fetch(FetchDescriptor<StoredTask>(
@@ -104,10 +111,15 @@ public extension TildoneRepository {
                 try upsertTaskIndentation(for: task, in: context)
                 try enqueueSyncMutation(.task, stableID: task.id.stringValue, sequence: stamp.logicalCounter, at: date, in: context)
                 generated += 1
+                changedRecords.insert(.task(task.id))
             }
         }
         try save(context)
-        return RemoteMergeResult(changed: changed || generated > 0, generatedTombstoneMutationCount: generated)
+        return RemoteMergeResult(
+            changed: changed || generated > 0,
+            generatedTombstoneMutationCount: generated,
+            changedRecords: changedRecords
+        )
     }
 
     /// Applies one remote task without echoing ordinary field changes. A task
@@ -190,7 +202,11 @@ public extension TildoneRepository {
             )
         }
         try save(context)
-        return RemoteMergeResult(changed: changed, generatedTombstoneMutationCount: generated)
+        return RemoteMergeResult(
+            changed: changed,
+            generatedTombstoneMutationCount: generated,
+            changedRecords: changed ? [.task(merged.id)] : []
+        )
     }
 
     /// Explicit adoption/seeding operation. It is intentionally separate from
@@ -249,23 +265,29 @@ public extension TildoneRepository {
     /// Converts an unexpected physical CloudKit deletion into the model's
     /// durable lifecycle tombstone. Cloud records are normally never deleted;
     /// this path exists for compatibility and defensive recovery.
-    func tombstoneAfterRemotePhysicalDeletion(recordName: String, at date: Date) throws {
+    @discardableResult
+    func tombstoneAfterRemotePhysicalDeletion(
+        recordName: String,
+        at date: Date
+    ) throws -> Set<DomainRecordID> {
         let context = mutationContext()
         let metadata = try workspaceMetadata(in: context)
+        var changedRecords: Set<DomainRecordID> = []
         if let noteID = NoteID(recordName: recordName) {
             let id = noteID.stringValue
             let rows = try context.fetch(FetchDescriptor<StoredNote>(
                 predicate: #Predicate { $0.stableID == id }
             ))
             guard rows.count <= 1 else { throw PersistenceError.duplicateID(.note, id) }
-            guard let row = rows.first else { return }
+            guard let row = rows.first else { return [] }
             var note = try mappedNote(from: row, in: context)
-            guard note.lifecycle == .active else { return }
+            guard note.lifecycle == .active else { return [] }
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: note))
             do { try note.delete(version: stamp) }
             catch { throw PersistenceError.domainInvariant }
             try StoredDomainMapping.update(row, from: note)
             try enqueueSyncMutation(.note, stableID: id, sequence: stamp.logicalCounter, at: date, in: context)
+            changedRecords.insert(.note(noteID))
             let children = try context.fetch(FetchDescriptor<StoredTask>(
                 predicate: #Predicate { $0.noteStableID == id }
             ))
@@ -288,6 +310,7 @@ public extension TildoneRepository {
                     at: date,
                     in: context
                 )
+                changedRecords.insert(.task(task.id))
             }
         } else if let taskID = TaskID(recordName: recordName) {
             let id = taskID.stringValue
@@ -295,9 +318,9 @@ public extension TildoneRepository {
                 predicate: #Predicate { $0.stableID == id }
             ))
             guard rows.count <= 1 else { throw PersistenceError.duplicateID(.task, id) }
-            guard let row = rows.first else { return }
+            guard let row = rows.first else { return [] }
             var task = try mappedTask(from: row, in: context)
-            guard task.lifecycle == .active else { return }
+            guard task.lifecycle == .active else { return [] }
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: task))
             do { try task.delete(version: stamp) }
             catch { throw PersistenceError.domainInvariant }
@@ -305,10 +328,12 @@ public extension TildoneRepository {
             try StoredDomainMapping.update(row, from: task)
             try upsertTaskIndentation(for: task, in: context)
             try enqueueSyncMutation(.task, stableID: id, sequence: stamp.logicalCounter, at: date, in: context)
+            changedRecords.insert(.task(taskID))
         } else {
-            return
+            return []
         }
         try save(context)
+        return changedRecords
     }
 }
 

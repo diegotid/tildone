@@ -312,7 +312,8 @@ extension Note {
                     try await store.commitTaskStructureUpdates(
                         updates,
                         in: noteID,
-                        moveCompletedGroupsToEnd: moveCheckedTasksToEnd
+                        moveCompletedGroupsToEnd: moveCheckedTasksToEnd,
+                        undoDirection: .outdent
                     )
                 },
                 message: "Error changing task indentation"
@@ -335,7 +336,8 @@ extension Note {
                 try await store.commitTaskStructureUpdates(
                     structureUpdates,
                     in: noteID,
-                    moveCompletedGroupsToEnd: moveCheckedTasksToEnd
+                    moveCompletedGroupsToEnd: moveCheckedTasksToEnd,
+                    undoDirection: .indent
                 )
             },
             message: "Error changing task indentation"

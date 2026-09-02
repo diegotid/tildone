@@ -100,6 +100,19 @@ enum CompletedTaskOrderPreference {
         UserDefaults.standard.removeObject(forKey: originalOrderTokensStorageKey)
     }
 
+    static func snapshot(for taskIDs: Set<TaskID>) -> [TaskID: OrderToken] {
+        Dictionary(uniqueKeysWithValues: taskIDs.compactMap { taskID in
+            originalOrderToken(for: taskID).map { (taskID, $0) }
+        })
+    }
+
+    static func restore(_ snapshot: [TaskID: OrderToken], for taskIDs: Set<TaskID>) {
+        for taskID in taskIDs { removeOriginalOrderToken(for: taskID) }
+        for (taskID, orderToken) in snapshot {
+            recordOriginalOrderToken(orderToken, for: taskID)
+        }
+    }
+
     private static func originalOrderTokens() -> [String: String] {
         UserDefaults.standard.dictionary(forKey: originalOrderTokensStorageKey) as? [String: String] ?? [:]
     }

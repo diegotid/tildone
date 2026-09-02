@@ -9,15 +9,27 @@ import TildoneDomain
 import TildonePersistence
 import TildoneSync
 
+enum MacTaskIndentationUndoDirection: Equatable {
+    case indent
+    case outdent
+}
+
 @MainActor
 final class MacSharedStore: ObservableObject {
     @Published private var orderedNoteIDs: [NoteID] = []
+    @Published private(set) var undoAction: ConsequentialActionKind?
 
     var notes: [MacNoteSnapshot] {
         orderedNoteIDs.compactMap { notePresentations[$0]?.snapshot }
     }
 
     private let repository: TildoneRepository
+    private let undoController: ConsequentialActionUndoController
+    private var isUndoEnabled = true
+    private var indentationPreferenceUndo: (
+        taskIDs: Set<TaskID>,
+        originalTokens: [TaskID: OrderToken]
+    )?
     private var syncCoordinator: TildoneSyncCoordinator?
     private var nextReloadRevision: UInt64 = 0
     private var latestFullReloadRevision: UInt64 = 0
@@ -43,6 +55,7 @@ final class MacSharedStore: ObservableObject {
 
     init(repository: TildoneRepository) {
         self.repository = repository
+        undoController = ConsequentialActionUndoController(repository: repository)
     }
 
     func attachSyncCoordinator(_ coordinator: TildoneSyncCoordinator?) {
@@ -151,7 +164,14 @@ final class MacSharedStore: ObservableObject {
     }
 
     func setColor(_ color: NoteColor, for id: NoteID) async throws {
+        guard let previousColor = note(id)?.color, previousColor != color else { return }
         _ = try await repository.setNoteColor(id: id, color: color)
+        undoController.recordNoteColor(
+            noteID: id,
+            previousColor: previousColor,
+            newColor: color
+        )
+        refreshUndoAction()
         try await reload(id)
         scheduleSyncNotification()
     }
@@ -272,7 +292,8 @@ final class MacSharedStore: ObservableObject {
 
     func setTaskIndentLevels(
         _ levels: [(id: TaskID, level: Int)],
-        moveCompletedGroupsToEnd: Bool = false
+        moveCompletedGroupsToEnd: Bool = false,
+        undoDirection: MacTaskIndentationUndoDirection? = nil
     ) async throws {
         guard let noteID = levels.first.flatMap({ noteID(containing: $0.id) }) else { return }
         let updates = levels.map { TaskStructureUpdate(id: $0.id, indentLevel: $0.level) }
@@ -280,7 +301,8 @@ final class MacSharedStore: ObservableObject {
         try await commitTaskStructureUpdates(
             updates,
             in: noteID,
-            moveCompletedGroupsToEnd: moveCompletedGroupsToEnd
+            moveCompletedGroupsToEnd: moveCompletedGroupsToEnd,
+            undoDirection: undoDirection
         )
     }
 
@@ -297,7 +319,8 @@ final class MacSharedStore: ObservableObject {
         try await commitTaskStructureUpdates(
             updates,
             in: noteID,
-            moveCompletedGroupsToEnd: moveCompletedGroupsToEnd
+            moveCompletedGroupsToEnd: moveCompletedGroupsToEnd,
+            undoDirection: .outdent
         )
     }
 
@@ -351,14 +374,27 @@ final class MacSharedStore: ObservableObject {
     func commitTaskStructureUpdates(
         _ updates: [TaskStructureUpdate],
         in noteID: NoteID,
-        moveCompletedGroupsToEnd: Bool
+        moveCompletedGroupsToEnd: Bool,
+        undoDirection: MacTaskIndentationUndoDirection? = nil
     ) async throws {
+        let before = undoDirection == nil ? [] : try await repository.orderedTasks(in: noteID)
+        let taskIDs = Set(before.map(\.id))
+        let originalPreferenceTokens = CompletedTaskOrderPreference.snapshot(for: taskIDs)
         do {
             _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
             try await reconcileTaskHierarchy(
                 in: noteID,
                 moveCompletedGroupsToEnd: moveCompletedGroupsToEnd
             )
+            if let undoDirection,
+               undoController.recordTaskIndentation(
+                   before: before,
+                   after: try await repository.orderedTasks(in: noteID),
+                   performedOutdent: undoDirection == .outdent
+               ) {
+                indentationPreferenceUndo = (taskIDs, originalPreferenceTokens)
+                refreshUndoAction()
+            }
             try await reload(noteID)
             scheduleSyncNotification()
         } catch {
@@ -373,11 +409,15 @@ final class MacSharedStore: ObservableObject {
         moveToEndWhenCompleted: Bool = false
     ) async throws -> TaskID? {
         await waitForPendingTaskTextEdit(for: id)
+        let beforeTasks = try await repository.orderedTasks(
+            in: try await repository.task(id: id).noteID
+        )
         let task = try await repository.setTaskCompletion(
             id: id,
             completion: completed ? .completed(at: Date()) : .incomplete
         )
         guard moveToEndWhenCompleted else {
+            try await recordTaskCompletion(before: beforeTasks, taskID: id)
             try await reload(task.noteID)
             scheduleSyncNotification()
             return nil
@@ -387,6 +427,7 @@ final class MacSharedStore: ObservableObject {
         // require several durable order-token updates, but the checkbox/gauge
         // should reflect the user's action before that work finishes.
         try await reload(task.noteID)
+        try await recordTaskCompletion(before: beforeTasks, taskID: id)
 
         let tasks = try await repository.orderedTasks(in: task.noteID)
         let group = topLevelGroup(containing: id, in: tasks)
@@ -395,12 +436,14 @@ final class MacSharedStore: ObservableObject {
             let movedToEnd = tasks.suffix(group.count).map(\.id) != group.map(\.id)
             if movedToEnd {
                 try await moveCompletedGroupAfterIncompleteGroups(group)
+                try await recordTaskCompletion(before: beforeTasks, taskID: id)
                 try await reload(task.noteID)
                 scheduleSyncNotification()
                 return group.first?.id
             }
         } else if !completed {
             try await restoreGroup(group)
+            try await recordTaskCompletion(before: beforeTasks, taskID: id)
             try await reload(task.noteID)
         }
         scheduleSyncNotification()
@@ -670,6 +713,11 @@ final class MacSharedStore: ObservableObject {
         }
         presentTaskStructureUpdates(updates, in: noteID)
         _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
+        undoController.recordTaskReorder(
+            before: ordered,
+            after: try await repository.orderedTasks(in: noteID)
+        )
+        refreshUndoAction()
 
         try await reload(noteID)
         scheduleSyncNotification()
@@ -677,21 +725,60 @@ final class MacSharedStore: ObservableObject {
     }
 
     func deleteTask(_ id: TaskID) async throws {
-        let noteID = try await repository.task(id: id).noteID
+        let task = try await repository.task(id: id)
+        let noteID = task.noteID
         await waitForPendingTaskTextEdit(for: id)
         try await repository.deleteTask(id: id)
+        undoController.recordTaskDeletion(noteID: noteID, tasks: [task])
+        refreshUndoAction()
         try await reload(noteID)
         scheduleSyncNotification()
     }
 
     func deleteNote(_ id: NoteID) async throws {
+        guard let deletedSnapshot = note(id) else { return }
         await waitForPendingTitleEdit(for: id)
         for taskID in notes.first(where: { $0.id == id })?.tasks.map(\.id) ?? [] {
             await waitForPendingTaskTextEdit(for: taskID)
         }
         try await repository.deleteNote(id: id)
+        undoController.recordNoteDeletion(
+            note: deletedSnapshot.note,
+            tasks: deletedSnapshot.tasks
+        )
+        refreshUndoAction()
         removePresentation(for: id)
         scheduleSyncNotification()
+    }
+
+    func undoLatestAction() async throws {
+        let action = try await undoController.undo()
+        if action == .indentTask || action == .outdentTask,
+           let indentationPreferenceUndo {
+            CompletedTaskOrderPreference.restore(
+                indentationPreferenceUndo.originalTokens,
+                for: indentationPreferenceUndo.taskIDs
+            )
+        }
+        refreshUndoAction()
+        try await reload()
+        scheduleSyncNotification()
+    }
+
+    func discardUndo() {
+        undoController.discard()
+        refreshUndoAction()
+    }
+
+    func discardUndoIfAffected(by records: Set<DomainRecordID>) {
+        undoController.discardIfAffected(by: records)
+        refreshUndoAction()
+    }
+
+    func setUndoEnabled(_ enabled: Bool) {
+        isUndoEnabled = enabled
+        if !enabled { undoController.discard() }
+        refreshUndoAction()
     }
 
     func cleanEmptyTasks(
@@ -712,6 +799,25 @@ final class MacSharedStore: ObservableObject {
 }
 
 private extension MacSharedStore {
+    func recordTaskCompletion(before: [Task], taskID: TaskID) async throws {
+        guard let noteID = before.first?.noteID else { return }
+        undoController.recordTaskCompletion(
+            before: before,
+            after: try await repository.orderedTasks(in: noteID),
+            taskID: taskID
+        )
+        refreshUndoAction()
+    }
+
+    func refreshUndoAction() {
+        if !isUndoEnabled { undoController.discard() }
+        let action = undoController.availableAction
+        if action != .indentTask && action != .outdentTask {
+            indentationPreferenceUndo = nil
+        }
+        undoAction = action
+    }
+
     func nextEditRevision() -> UInt64 {
         nextPresentationEditRevision &+= 1
         return nextPresentationEditRevision

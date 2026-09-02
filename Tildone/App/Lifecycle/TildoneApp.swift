@@ -12,6 +12,7 @@ import TildoneSync
 struct TildoneApp: App {
     @State private var foregroundNoteID: NoteID?
     @State private var showsSyncResolutionOptions = false
+    @State private var undoErrorMessage: String?
     @StateObject private var sharedStoreBootstrapper = MacSharedStoreBootstrapper()
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -100,12 +101,31 @@ struct TildoneApp: App {
                 showsSyncResolutionOptions = true
                 openWindow(id: Id.syncStatusWindow)
             }
+            .alert("Couldn’t undo this change", isPresented: Binding(
+                get: { undoErrorMessage != nil },
+                set: { if !$0 { undoErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { undoErrorMessage = nil }
+            } message: {
+                Text(undoErrorMessage ?? "")
+            }
         }
         .environment(\.license, .free)
         .windowStyle(HiddenTitleBarWindowStyle())
         .windowResizability(.contentSize)
         .commandsRemoved()
         .commandsReplaced {
+            CommandGroup(replacing: .undoRedo) {
+                if let store = sharedStoreBootstrapper.store {
+                    MacUndoMenuButton(store: store) { _ in
+                        undoErrorMessage = String(localized: "The change could not be undone. Your notes were not otherwise changed.")
+                    }
+                } else {
+                    Button("Undo") {}
+                        .disabled(true)
+                        .keyboardShortcut("z", modifiers: .command)
+                }
+            }
             CommandGroup(replacing: .appInfo) {
                 Button("About Tildone") {
                     openWindow(id: Id.aboutWindow)

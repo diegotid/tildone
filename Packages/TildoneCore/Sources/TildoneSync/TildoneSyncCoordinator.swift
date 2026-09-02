@@ -79,7 +79,7 @@ enum SyncZoneBootstrapPolicy {
 
 public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Sendable {
     public typealias AccountChangeHandler = @Sendable (SyncAccountChange) -> Void
-    public typealias RemoteChangeHandler = @Sendable () async throws -> Void
+    public typealias RemoteChangeHandler = @Sendable (RemoteContentChange) async throws -> Void
 
     public let statusModel: SyncStatusModel
 
@@ -102,7 +102,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         now: @escaping @Sendable () -> Date = { Date() },
         clientPlatform: SyncClientPlatform,
         onAccountChange: @escaping AccountChangeHandler = { _ in },
-        onRemoteChange: @escaping RemoteChangeHandler = {}
+        onRemoteChange: @escaping RemoteChangeHandler = { _ in }
     ) async throws {
         let workspace = try await repository.workspaceSnapshot()
         guard workspace.identityKind == "account", workspace.opaqueWorkspaceID != nil else {
@@ -138,6 +138,29 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             engine = CKSyncEngine(configuration)
             try await bootstrapPendingChanges()
         }
+    }
+
+    /// Source-compatible adapter for clients that only need a refresh signal.
+    /// New clients can use `RemoteChangeHandler` to invalidate record-scoped
+    /// presentation state before refreshing.
+    public convenience init(
+        repository: TildoneRepository,
+        container: CKContainer = CKContainer(identifier: TildoneCloudSchema.containerIdentifier),
+        statusModel: SyncStatusModel = SyncStatusModel(),
+        now: @escaping @Sendable () -> Date = { Date() },
+        clientPlatform: SyncClientPlatform,
+        onAccountChange: @escaping AccountChangeHandler = { _ in },
+        onRemoteChange: @escaping @Sendable () async throws -> Void
+    ) async throws {
+        try await self.init(
+            repository: repository,
+            container: container,
+            statusModel: statusModel,
+            now: now,
+            clientPlatform: clientPlatform,
+            onAccountChange: onAccountChange,
+            onRemoteChange: { _ in try await onRemoteChange() }
+        )
     }
 
     /// Starts an immediate checkpoint while leaving normal scheduling to
@@ -498,8 +521,10 @@ private extension TildoneSyncCoordinator {
             }
         }
         do {
+            var changedRecords: Set<DomainRecordID> = []
             if !decoded.isEmpty {
-                _ = try await pipeline.apply(decoded, at: now())
+                let result = try await pipeline.apply(decoded, at: now())
+                changedRecords.formUnion(result.changedRecords)
             }
             for deletion in event.deletions where deletion.recordID.zoneID == TildoneCloudSchema.zoneID {
                 if SyncClientRegistration.replicaID(
@@ -509,17 +534,19 @@ private extension TildoneSyncCoordinator {
                         .removeClientRegistration(recordName: deletion.recordID.recordName) ||
                         clientRegistrationsChanged
                 } else {
-                    try await pipeline.applyPhysicalDeletion(
+                    changedRecords.formUnion(try await pipeline.applyPhysicalDeletion(
                         recordName: deletion.recordID.recordName,
                         at: now()
-                    )
+                    ))
                 }
             }
             if !decoded.isEmpty || !event.deletions.isEmpty {
                 if !decoded.isEmpty || event.deletions.contains(where: {
                     SyncClientRegistration.replicaID(recordName: $0.recordID.recordName) == nil
                 }) {
-                    try await onRemoteChange()
+                    try await onRemoteChange(RemoteContentChange(
+                        changedRecords: changedRecords
+                    ))
                 }
                 // The presentation callback may perform an idempotent local
                 // schema backfill for a legacy record. Refresh afterwards so
@@ -612,9 +639,11 @@ private extension TildoneSyncCoordinator {
                         )
                     } else {
                         let remote = try mapper.syncRecord(from: serverRecord)
-                        _ = try await pipeline.apply([remote], at: now())
+                        let result = try await pipeline.apply([remote], at: now())
                         try await coordinatorState.storeSystemFields(serverRecord)
-                        try await onRemoteChange()
+                        try await onRemoteChange(RemoteContentChange(
+                            changedRecords: result.changedRecords
+                        ))
                     }
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(serverRecord.recordID)])
                 } catch let mappingError as CloudRecordMappingError {

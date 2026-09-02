@@ -12,9 +12,15 @@ import TildoneSync
 
 @MainActor
 final class MacSharedStoreBootstrapper: ObservableObject {
-    @Published private(set) var store: MacSharedStore?
+    @Published private(set) var store: MacSharedStore? {
+        didSet { store?.setUndoEnabled(!Self.requiresAttention(syncStatus)) }
+    }
     @Published private(set) var error: Error?
-    @Published private(set) var syncStatus: SyncStatus = .disabled
+    @Published private(set) var syncStatus: SyncStatus = .disabled {
+        didSet {
+            store?.setUndoEnabled(!Self.requiresAttention(syncStatus))
+        }
+    }
     @Published private(set) var transportState: SyncTransportState = .active
     @Published private(set) var hasResolvedAccountWorkspace = false
     @Published private(set) var isUsingAccountWorkspace = false
@@ -229,6 +235,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
               let accountRepository,
               let accountWorkspaceID,
               let container = cloudContainer else { return }
+        store?.discardUndo()
         isTransportActionInProgress = true
         didJustChooseNotesOnMac = false
         resolutionActionFailed = false
@@ -506,8 +513,12 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 guard change.requiresWorkspaceInvalidation else { return }
                 Swift.Task { @MainActor in self?.invalidateForAccountChange() }
             },
-            onRemoteChange: { [weak store, repository] in
+            onRemoteChange: { [weak store, repository] remoteChange in
                 try await MacRemoteRefreshHandler.run(
+                    remoteChange: remoteChange,
+                    invalidateUndo: { records in
+                        await store?.discardUndoIfAffected(by: records)
+                    },
                     migrateColors: {
                         try await Self.migrateSharedNoteColors(in: repository)
                     },

@@ -1125,6 +1125,8 @@ final class TildoneTests: XCTestCase {
         var reloadAttempted = false
         do {
             try await MacRemoteRefreshHandler.run(
+                remoteChange: RemoteContentChange(changedRecords: []),
+                invalidateUndo: { _ in },
                 migrateColors: { throw FixtureError.migration },
                 reloadSnapshots: { reloadAttempted = true }
             )
@@ -1136,6 +1138,8 @@ final class TildoneTests: XCTestCase {
 
         do {
             try await MacRemoteRefreshHandler.run(
+                remoteChange: RemoteContentChange(changedRecords: []),
+                invalidateUndo: { _ in },
                 migrateColors: {},
                 reloadSnapshots: { throw FixtureError.reload }
             )
@@ -1143,6 +1147,102 @@ final class TildoneTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? FixtureError, .reload)
         }
+    }
+
+    @MainActor
+    func testMacStorePublishesActionSpecificOneLevelUndo() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let task = try await store.addTask(to: note.id, text: "Task")
+        XCTAssertNil(store.undoAction)
+
+        try await store.setColor(.blue, for: note.id)
+        XCTAssertEqual(store.undoAction, .changeNoteColor)
+        _ = try await store.setTaskCompletion(task.id, completed: true)
+        XCTAssertEqual(store.undoAction, .completeTask)
+
+        try await store.undoLatestAction()
+        let restoredTask = try await repository.task(id: task.id)
+        let preservedNote = try await repository.note(id: note.id)
+        XCTAssertFalse(restoredTask.isCompleted)
+        XCTAssertEqual(preservedNote.color, .blue)
+        XCTAssertNil(store.undoAction)
+
+        store.setUndoEnabled(false)
+        try await store.setColor(.pink, for: note.id)
+        XCTAssertNil(store.undoAction)
+        store.setUndoEnabled(true)
+        try await store.setColor(.green, for: note.id)
+        XCTAssertEqual(store.undoAction, .changeNoteColor)
+    }
+
+    @MainActor
+    func testMacUndoIndentRestoresHierarchyAndClearedParentCompletion() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        _ = try await store.setTaskCompletion(parent.id, completed: true)
+        let original = try await repository.orderedTasks(in: note.id)
+
+        let updates = store.stageTaskIndentLevels([(id: child.id, level: 1)], in: note.id)
+        try await store.commitTaskStructureUpdates(
+            updates,
+            in: note.id,
+            moveCompletedGroupsToEnd: false,
+            undoDirection: .indent
+        )
+
+        let indented = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(store.undoAction, .indentTask)
+        XCTAssertEqual(indented.map(\.indentLevel), [0, 1])
+        XCTAssertFalse(indented[0].isCompleted)
+
+        try await store.undoLatestAction()
+
+        let restored = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(restored.map(\.indentLevel), original.map(\.indentLevel))
+        XCTAssertEqual(restored.map(\.orderToken), original.map(\.orderToken))
+        XCTAssertEqual(restored.map(\.completion), original.map(\.completion))
+    }
+
+    @MainActor
+    func testMacUndoOutdentRestoresExactPositionAndCompletedOrderPreference() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        _ = try await store.addTask(to: note.id, text: "Other")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+        _ = try await store.setTaskCompletion(parent.id, completed: true)
+        let original = try await repository.orderedTasks(in: note.id)
+
+        try await store.outdentTask(
+            child.id,
+            in: note.id,
+            moveCompletedGroupsToEnd: true
+        )
+
+        XCTAssertEqual(store.undoAction, .outdentTask)
+        XCTAssertNotNil(CompletedTaskOrderPreference.originalOrderToken(for: parent.id))
+
+        try await store.undoLatestAction()
+
+        let restored = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(restored.map(\.id), original.map(\.id))
+        XCTAssertEqual(restored.map(\.indentLevel), original.map(\.indentLevel))
+        XCTAssertEqual(restored.map(\.orderToken), original.map(\.orderToken))
+        XCTAssertEqual(restored.map(\.completion), original.map(\.completion))
+        XCTAssertNil(CompletedTaskOrderPreference.originalOrderToken(for: parent.id))
     }
 
     func testMacSyncPresentationDistinguishesActivePausedAndAttention() {
@@ -1866,6 +1966,34 @@ final class TildoneTests: XCTestCase {
         try await store.applyCompletedTaskOrdering(enabled: false)
         let restoredOrder = try await repository.orderedTasks(in: note.id)
         XCTAssertEqual(restoredOrder.map(\.id), [first.id, second.id, third.id])
+    }
+
+    func testMacUndoCompletionRestoresTaskMovedToCompletedSection() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        addTeardownBlock { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+        let original = try await repository.orderedTasks(in: note.id)
+
+        _ = try await store.setTaskCompletion(
+            second.id,
+            completed: true,
+            moveToEndWhenCompleted: true
+        )
+        let completed = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(completed.map(\.id), [first.id, third.id, second.id])
+
+        try await store.undoLatestAction()
+
+        let restored = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(restored.map(\.id), original.map(\.id))
+        XCTAssertEqual(restored.map(\.orderToken), original.map(\.orderToken))
+        XCTAssertFalse(try XCTUnwrap(restored.first { $0.id == second.id }).isCompleted)
     }
 
     func testIndentingUnderCompletedLeafClearsItsStoredCompletion() async throws {

@@ -73,6 +73,7 @@ public actor SyncPipeline {
     public func apply(_ records: [SyncRecord], at date: Date) async throws -> RemoteMergeResult {
         var changed = false
         var generated = 0
+        var changedRecords: Set<DomainRecordID> = []
         // Parents first makes a same-batch parent tombstone authoritative even
         // when CloudKit delivered child modifications before it.
         for record in records where record.kind == .note {
@@ -80,17 +81,27 @@ public actor SyncPipeline {
             let result = try await repository.mergeRemoteNote(note, at: date)
             changed = changed || result.changed
             generated += result.generatedTombstoneMutationCount
+            changedRecords.formUnion(result.changedRecords)
         }
         for record in records where record.kind == .task {
             guard case let .task(task) = record else { continue }
             let result = try await repository.mergeRemoteTask(task, at: date)
             changed = changed || result.changed
             generated += result.generatedTombstoneMutationCount
+            changedRecords.formUnion(result.changedRecords)
         }
-        return RemoteMergeResult(changed: changed, generatedTombstoneMutationCount: generated)
+        return RemoteMergeResult(
+            changed: changed,
+            generatedTombstoneMutationCount: generated,
+            changedRecords: changedRecords
+        )
     }
 
-    public func applyPhysicalDeletion(recordName: String, at date: Date) async throws {
+    @discardableResult
+    public func applyPhysicalDeletion(
+        recordName: String,
+        at date: Date
+    ) async throws -> Set<DomainRecordID> {
         try await repository.tombstoneAfterRemotePhysicalDeletion(
             recordName: recordName,
             at: date
