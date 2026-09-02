@@ -19,6 +19,7 @@ struct ChecklistView: View {
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
+    @State private var keepsTitleInputVisible = false
     @State private var collapsedTaskIDs: Set<TaskID> = []
     @State private var taskInsertionTargetID: TaskID?
     @State private var taskInsertionText = ""
@@ -48,12 +49,20 @@ struct ChecklistView: View {
         Self.normalizedTitle(title) != nil || !tasks.isEmpty
     }
 
+    private var showsTitleInput: Bool {
+        isInEditMode || isEditingTitle || isUntitled || keepsTitleInputVisible
+    }
+
+    private var usesInlineNavigationTitle: Bool {
+        showsTitleInput
+    }
+
     var body: some View {
         Group {
             if let note {
                 let subtaskProgresses = TaskHierarchy.subtaskProgresses(in: tasks)
                 List {
-                    if isInEditMode || isEditingTitle || isUntitled {
+                    if showsTitleInput {
                         TextField("Note title", text: $title)
                             .focused($isEditingTitle)
                             .font(.title2.weight(.semibold))
@@ -107,6 +116,7 @@ struct ChecklistView: View {
                                     await move(taskID: task.id, by: 1)
                                 }
                             )
+                            .deleteDisabled(!task.isCompleted)
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 if canIndent {
                                     Button {
@@ -132,8 +142,10 @@ struct ChecklistView: View {
                                 }
                             }
                             .swipeActions(edge: .trailing) {
-                                Button("Delete", role: .destructive) {
-                                    deleteTask(task.id)
+                                if task.isCompleted {
+                                    Button("Delete", role: .destructive) {
+                                        deleteTask(task.id)
+                                    }
                                 }
                                 Button {
                                     beginAddingTask(above: task.id)
@@ -161,8 +173,8 @@ struct ChecklistView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(note.color.swiftUIColor.opacity(0.22))
-                .navigationTitle(isUntitled ? "" : note.title!)
-                .navigationBarTitleDisplayMode(isUntitled ? .inline : .large)
+                .navigationTitle(usesInlineNavigationTitle ? "" : note.title!)
+                .navigationBarTitleDisplayMode(usesInlineNavigationTitle ? .inline : .large)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
@@ -210,6 +222,7 @@ struct ChecklistView: View {
         }
         .task {
             synchronizeWithPresentation()
+            keepsTitleInputVisible = isUntitled
             isEditingTitle = isUntitled
             isAddingTask = !isUntitled && tasks.isEmpty
         }
@@ -246,6 +259,9 @@ struct ChecklistView: View {
             titleBaseline = Self.normalizedTitle(note?.title)
         } else {
             saveTitle()
+        }
+        if keepsTitleInputVisible, Self.normalizedTitle(title) != nil {
+            isAddingTask = true
         }
     }
 

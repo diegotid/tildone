@@ -82,12 +82,6 @@ struct NotesListView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        TildoneiOSUndoMenuButton(
-                            presentation: appModel.undoPresentation
-                        ) {
-                            try await appModel.undoLatestAction()
-                        }
-                        Divider()
                         Picker("Layout", selection: Binding(
                             get: { layout }, set: { layout = $0 }
                         )) {
@@ -97,9 +91,16 @@ struct NotesListView: View {
                             }
                         }
                     } label: {
-                        Label("More options", systemImage: "ellipsis.circle")
+                        Label("Choose layout", systemImage: layout.systemImage)
                     }
-                    .accessibilityLabel("More options")
+                    .accessibilityLabel("Choose notes layout")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    TildoneiOSUndoMenuButton(
+                        presentation: appModel.undoPresentation
+                    ) {
+                        try await appModel.undoLatestAction()
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: createNote) { Label("New Note", systemImage: "plus") }
@@ -157,7 +158,10 @@ struct NotesListView: View {
                 }
                 .contextMenu { noteActions(for: note) }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Delete", role: .destructive) { noteToDelete = note }
+                    if let summary = appModel.taskSummaries[note.id],
+                       summary.isComplete || summary.isEmpty {
+                        Button("Delete", role: .destructive) { noteToDelete = note }
+                    }
                     Button("Rename") { beginRename(note) }.tint(.orange)
                 }
             }

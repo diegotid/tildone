@@ -69,7 +69,9 @@ struct NoteCard: View {
         .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .contextMenu {
             Button("Rename", action: rename)
-            Button("Delete", role: .destructive, action: delete)
+            if summary?.isEmpty == true {
+                Button("Delete", role: .destructive, action: delete)
+            }
         }
         .accessibilityLabel(title)
         .accessibilityValue(summary?.accessibilityDescription ?? String(localized: "No tasks"))

@@ -33,7 +33,7 @@ struct TaskRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Group {
                 if let subtaskProgress {
                     TaskSubtaskProgressGauge(progress: subtaskProgress)
@@ -85,7 +85,7 @@ struct TaskRow: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
-        .padding(.leading, CGFloat(task.indentLevel) * 24)
+        .padding(.leading, 24 * CGFloat(task.indentLevel) - 6)
         .onAppear { draft = task.text }
         .accessibilityElement(children: .contain)
         .accessibilityActions {
