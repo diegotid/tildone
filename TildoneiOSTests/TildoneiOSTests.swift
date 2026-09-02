@@ -7,6 +7,8 @@
 import XCTest
 import CloudKit
 import Combine
+import SwiftUI
+import UIKit
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
@@ -132,6 +134,211 @@ final class TildoneiOSTests: XCTestCase {
         try await model.delete(taskID: first.id)
         let remaining = try await model.tasks(in: note.id)
         XCTAssertEqual(remaining.map(\.id), [second.id])
+    }
+
+    func testIPhoneUndoControlReplacesOneLevelAndClearsForAttentionAndWorkspaceChange() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Undo")
+        let createdTask = try await model.addTask(noteID: note.id, text: "Task", after: [])
+        let task = try XCTUnwrap(createdTask)
+        XCTAssertNil(model.undoPresentation.action)
+
+        try await model.setColor(noteID: note.id, color: .blue)
+        XCTAssertEqual(model.undoPresentation.action, .changeNoteColor)
+        XCTAssertFalse(model.undoPresentation.isControlVisible)
+
+        try await model.setCompletion(taskID: task.id, completed: true)
+        XCTAssertEqual(model.undoPresentation.action, .completeTask)
+        try await model.undoLatestAction()
+        let restoredTasks = try await model.tasks(in: note.id)
+        XCTAssertFalse(restoredTasks[0].isCompleted)
+        XCTAssertEqual(model.notes.first?.color, .blue)
+        XCTAssertNil(model.undoPresentation.action)
+
+        try await model.setColor(noteID: note.id, color: .pink)
+        model.present(status: SyncStatus(
+            availability: .incompatibleRemoteData,
+            activity: .attentionNeeded,
+            issue: .futureSchema
+        ))
+        XCTAssertNil(model.undoPresentation.action)
+
+        try await model.setColor(noteID: note.id, color: .green)
+        XCTAssertNil(model.undoPresentation.action)
+
+        model.present(status: .disabled)
+        try await model.setColor(noteID: note.id, color: .purple)
+        XCTAssertEqual(model.undoPresentation.action, .changeNoteColor)
+        model.present(status: SyncStatus(
+            availability: .accountChanged,
+            activity: .attentionNeeded,
+            issue: .accountChanged
+        ))
+        XCTAssertNil(model.undoPresentation.action)
+
+        try await model.openForTesting(workspaceID: UUID())
+        try await model.setColor(noteID: note.id, color: .yellow)
+        XCTAssertEqual(model.undoPresentation.action, .changeNoteColor)
+        try await model.openForTesting(workspaceID: UUID())
+        XCTAssertNil(model.undoPresentation.action)
+    }
+
+    func testIPhoneUndoCoversEveryScopedActionAndOnlyDeletionShowsThePill() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Every inverse")
+        let createdFirst = try await model.addTask(noteID: note.id, text: "First", after: [])
+        let first = try XCTUnwrap(createdFirst)
+        let createdSecond = try await model.addTask(noteID: note.id, text: "Second", after: [first])
+        let second = try XCTUnwrap(createdSecond)
+        let createdThird = try await model.addTask(
+            noteID: note.id,
+            text: "Third",
+            after: [first, second]
+        )
+        let third = try XCTUnwrap(createdThird)
+
+        try await model.setColor(noteID: note.id, color: .blue)
+        assertUndoPresentation(model, action: .changeNoteColor, showsPill: false)
+        try await model.undoLatestAction()
+        XCTAssertEqual(model.notes.first?.color, note.color)
+
+        try await model.setCompletion(taskID: first.id, completed: true)
+        assertUndoPresentation(model, action: .completeTask, showsPill: false)
+        try await model.undoLatestAction()
+        let afterCompletionUndo = try await model.tasks(in: note.id)
+        XCTAssertFalse(try XCTUnwrap(afterCompletionUndo.first).isCompleted)
+
+        try await model.setCompletion(taskID: first.id, completed: true)
+        try await model.setCompletion(taskID: first.id, completed: false)
+        assertUndoPresentation(model, action: .uncompleteTask, showsPill: false)
+        try await model.undoLatestAction()
+        let afterUncompletionUndo = try await model.tasks(in: note.id)
+        XCTAssertTrue(
+            try XCTUnwrap(
+                afterUncompletionUndo.first(where: { $0.id == first.id })
+            ).isCompleted
+        )
+        try await model.setCompletion(taskID: first.id, completed: false)
+
+        let beforeMove = try await model.tasks(in: note.id)
+        let movedTask = try XCTUnwrap(beforeMove.last)
+        let didMove = try await model.move(
+            taskID: movedTask.id,
+            in: beforeMove,
+            from: IndexSet(integer: beforeMove.count - 1),
+            to: 0
+        )
+        XCTAssertTrue(didMove)
+        assertUndoPresentation(model, action: .reorderTask, showsPill: false)
+        try await model.undoLatestAction()
+        let restoredMove = try await model.tasks(in: note.id)
+        XCTAssertEqual(restoredMove.map(\.id), beforeMove.map(\.id))
+        XCTAssertEqual(restoredMove.map(\.orderToken), beforeMove.map(\.orderToken))
+
+        var beforeIndent = try await model.tasks(in: note.id)
+        let indentationTarget = beforeIndent[1]
+        let didIndent = try await model.changeIndentation(
+            taskID: indentationTarget.id,
+            in: beforeIndent,
+            outdent: false
+        )
+        XCTAssertTrue(didIndent)
+        assertUndoPresentation(model, action: .indentTask, showsPill: false)
+        try await model.undoLatestAction()
+        let afterIndentUndo = try await model.tasks(in: note.id)
+        XCTAssertEqual(
+            try XCTUnwrap(
+                afterIndentUndo.first(where: { $0.id == indentationTarget.id })
+            ).indentLevel,
+            indentationTarget.indentLevel
+        )
+
+        beforeIndent = try await model.tasks(in: note.id)
+        let didPrepareOutdent = try await model.changeIndentation(
+            taskID: indentationTarget.id,
+            in: beforeIndent,
+            outdent: false
+        )
+        XCTAssertTrue(didPrepareOutdent)
+        let beforeOutdent = try await model.tasks(in: note.id)
+        let didOutdent = try await model.changeIndentation(
+            taskID: indentationTarget.id,
+            in: beforeOutdent,
+            outdent: true
+        )
+        XCTAssertTrue(didOutdent)
+        assertUndoPresentation(model, action: .outdentTask, showsPill: false)
+        try await model.undoLatestAction()
+        let afterOutdentUndo = try await model.tasks(in: note.id)
+        XCTAssertEqual(
+            try XCTUnwrap(
+                afterOutdentUndo.first(where: { $0.id == indentationTarget.id })
+            ).indentLevel,
+            1
+        )
+
+        try await model.delete(taskID: indentationTarget.id)
+        assertUndoPresentation(model, action: .deleteTask, showsPill: true)
+        try await model.undoLatestAction()
+        let afterTaskDeletionUndo = try await model.tasks(in: note.id)
+        XCTAssertNotNil(afterTaskDeletionUndo.first(where: { $0.id == indentationTarget.id }))
+
+        try await model.delete(noteID: note.id)
+        assertUndoPresentation(model, action: .deleteNote, showsPill: true)
+        try await model.undoLatestAction()
+        XCTAssertEqual(model.notes.map(\.id), [note.id])
+        let afterNoteDeletionUndo = try await model.tasks(in: note.id)
+        XCTAssertEqual(Set(afterNoteDeletionUndo.map(\.id)), [first.id, second.id, third.id])
+    }
+
+    func testIPhoneUndoLabelsAndDeletionPresentationAreActionSpecific() {
+        let presentation = TildoneiOSUndoPresentation()
+        let actions: [ConsequentialActionKind] = [
+            .deleteNote, .deleteTask, .completeTask, .uncompleteTask,
+            .reorderTask, .indentTask, .outdentTask, .changeNoteColor,
+        ]
+
+        for action in actions {
+            presentation.present(action)
+            XCTAssertFalse(action.localizedUndoTitle.isEmpty)
+            XCTAssertFalse(action.localizedUndoActionName.isEmpty)
+            XCTAssertEqual(
+                presentation.isControlVisible,
+                action == .deleteNote || action == .deleteTask
+            )
+        }
+    }
+
+    func testIPhoneShakeResponderBecomesFirstResponderAndInvokesUndo() async throws {
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let presentation = TildoneiOSUndoPresentation()
+        presentation.present(.completeTask)
+        var undoInvocationCount = 0
+        let hostingController = UIHostingController(rootView: TildoneiOSUndoOverlay(
+            presentation: presentation
+        ) {
+            undoInvocationCount += 1
+        })
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = hostingController
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        hostingController.view.setNeedsLayout()
+        hostingController.view.layoutIfNeeded()
+
+        for _ in 0..<10 { await Swift.Task.yield() }
+        let responder = try XCTUnwrap(
+            descendantViewControllers(of: hostingController)
+                .compactMap { $0 as? TildoneiOSShakeUndoResponder.Controller }
+                .first
+        )
+        XCTAssertTrue(responder.isFirstResponder)
+
+        responder.motionEnded(.motionShake, with: nil)
+        for _ in 0..<10 where undoInvocationCount == 0 { await Swift.Task.yield() }
+        XCTAssertEqual(undoInvocationCount, 1)
     }
 
     func testIPhoneHierarchyUsesRecursiveLeafProgressAndInheritsIndentation() async throws {
@@ -642,7 +849,7 @@ final class TildoneiOSTests: XCTestCase {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("TildoneiOS/Views/Notes/NotesListView.swift")
+            .appendingPathComponent("TildoneiOS/Views/Notes/Overview/NotesListView.swift")
         let listSource = try String(contentsOf: sourceURL, encoding: .utf8)
         let noteRowURL = sourceURL
             .deletingLastPathComponent()
@@ -714,5 +921,20 @@ final class TildoneiOSTests: XCTestCase {
         )
         try await model.openForTesting(workspaceID: workspace)
         return model
+    }
+
+    private func assertUndoPresentation(
+        _ model: TildoneiOSApplicationModel,
+        action: ConsequentialActionKind,
+        showsPill: Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(model.undoPresentation.action, action, file: file, line: line)
+        XCTAssertEqual(model.undoPresentation.isControlVisible, showsPill, file: file, line: line)
+    }
+
+    private func descendantViewControllers(of root: UIViewController) -> [UIViewController] {
+        root.children + root.children.flatMap(descendantViewControllers)
     }
 }

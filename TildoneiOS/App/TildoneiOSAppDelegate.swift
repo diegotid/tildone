@@ -11,6 +11,7 @@ final class TildoneiOSAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        application.applicationSupportsShakeToEdit = true
         if TildoneiOSSyncBootstrapper.featureEnabled {
             application.registerForRemoteNotifications()
         }

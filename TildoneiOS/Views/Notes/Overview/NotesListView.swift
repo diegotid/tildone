@@ -82,6 +82,12 @@ struct NotesListView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        TildoneiOSUndoMenuButton(
+                            presentation: appModel.undoPresentation
+                        ) {
+                            try await appModel.undoLatestAction()
+                        }
+                        Divider()
                         Picker("Layout", selection: Binding(
                             get: { layout }, set: { layout = $0 }
                         )) {
@@ -91,9 +97,9 @@ struct NotesListView: View {
                             }
                         }
                     } label: {
-                        Label("Choose layout", systemImage: layout.systemImage)
+                        Label("More options", systemImage: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Choose notes layout")
+                    .accessibilityLabel("More options")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: createNote) { Label("New Note", systemImage: "plus") }

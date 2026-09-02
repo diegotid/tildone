@@ -16,6 +16,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     let overviewPresentation = TildoneiOSOverviewPresentation()
     let syncPresentation = TildoneiOSSyncPresentation()
+    let undoPresentation = TildoneiOSUndoPresentation()
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
     private(set) var contentRevision: UInt64 = 0
@@ -26,7 +27,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
     var taskPreviews: [NoteID: [NoteTaskPreview]] { overviewPresentation.snapshot.taskPreviews }
     private(set) var syncStatus: SyncStatus {
         get { syncPresentation.status }
-        set { syncPresentation.update(status: newValue) }
+        set {
+            syncPresentation.update(status: newValue)
+            if Self.requiresUndoInvalidation(newValue) { discardUndo() }
+        }
     }
     private(set) var transportState: SyncTransportState {
         get { syncPresentation.transportState }
@@ -38,6 +42,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private let synchronizationEnabled: Bool
     private let transportStateStore: SyncTransportStateStore
     private var repository: TildoneRepository?
+    private var undoController: ConsequentialActionUndoController?
     private var coordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
     private var workspaceResolutionTask: Swift.Task<Void, Never>?
@@ -115,6 +120,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 authority: .platformDefault
             )
             self.repository = repository
+            undoController = ConsequentialActionUndoController(repository: repository)
             activeWorkspace = workspaceID
             hasWorkspace = true
             transportState = transportStateStore.state(for: workspaceID)
@@ -222,6 +228,12 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 try await repository.setNoteColor(id: noteID, color: color)
             }
             publishPersistedNote(persisted, ifCurrentRevision: revision)
+            undoController?.recordNoteColor(
+                noteID: noteID,
+                previousColor: note.color,
+                newColor: color
+            )
+            publishUndoAvailability()
             scheduleSyncNotification()
         } catch {
             await rollback(noteID, revision: revision)
@@ -230,13 +242,16 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func delete(noteID: NoteID) async throws {
-        guard notePresentations[noteID]?.snapshot.note != nil else { return }
+        guard let snapshot = notePresentations[noteID]?.snapshot,
+              let note = snapshot.note else { return }
         let revision = nextRevision()
         latestPresentationMutationRevisions[noteID] = revision
         pendingPresentationMutationRevisions[noteID] = revision
         removePresentation(for: noteID)
         do {
             try await withRepository { repository in try await repository.deleteNote(id: noteID) }
+            undoController?.recordNoteDeletion(note: note, tasks: snapshot.tasks)
+            publishUndoAvailability()
             finishPendingMutation(noteID, revision: revision)
             scheduleSyncNotification()
         } catch {
@@ -356,6 +371,15 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 try await repository.setTaskCompletion(id: taskID, completion: completion)
             }
             await reconcileSuccessfulMutation(task.noteID, revision: revision)
+            let after = try await withRepository { repository in
+                try await repository.orderedTasks(in: task.noteID)
+            }
+            undoController?.recordTaskCompletion(
+                before: snapshot.tasks,
+                after: after,
+                taskID: taskID
+            )
+            publishUndoAvailability()
             scheduleSyncNotification()
         } catch {
             await rollback(task.noteID, revision: revision)
@@ -368,6 +392,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         guard let index = snapshot.tasks.firstIndex(where: { $0.id == taskID }) else { return }
         let subtree = TaskHierarchy.subtreeRange(startingAt: index, in: snapshot.tasks)
         let deletedIDs = Set(snapshot.tasks[subtree].map(\.id))
+        let deletedTasks = Array(snapshot.tasks[subtree])
         let revision = stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(snapshot.note!, meaningfulEditAt: Date()),
             tasks: snapshot.tasks.filter { !deletedIDs.contains($0.id) }
@@ -376,6 +401,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
             let owner = try await withRepository { repository in
                 try await repository.deleteTasks(deletedIDs, in: task.noteID)
             }
+            undoController?.recordTaskDeletion(noteID: task.noteID, tasks: deletedTasks)
+            publishUndoAvailability()
             publishPersistedNote(owner, ifCurrentRevision: revision)
             scheduleSyncNotification()
         } catch {
@@ -412,6 +439,15 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 try await repository.applyTaskStructureUpdates(in: task.noteID, updates: updates)
             }
             await reconcileSuccessfulMutation(task.noteID, revision: revision)
+            let after = try await withRepository { repository in
+                try await repository.orderedTasks(in: task.noteID)
+            }
+            undoController?.recordTaskIndentation(
+                before: orderedTasks,
+                after: after,
+                performedOutdent: outdent
+            )
+            publishUndoAvailability()
             scheduleSyncNotification()
             return true
         } catch {
@@ -472,6 +508,11 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
             }
             await reconcileSuccessfulMutation(noteID, revision: revision)
+            let after = try await withRepository { repository in
+                try await repository.orderedTasks(in: noteID)
+            }
+            undoController?.recordTaskReorder(before: orderedTasks, after: after)
+            publishUndoAvailability()
             scheduleSyncNotification()
             return true
         } catch {
@@ -482,8 +523,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     func openForTesting(workspaceID: UUID) async throws {
         await closeWorkspace(status: .disabled)
-        repository = try await repositoryFactory(.account(workspaceID))
-        try await repository?.migrateMissingNoteColors(
+        let openedRepository = try await repositoryFactory(.account(workspaceID))
+        repository = openedRepository
+        undoController = ConsequentialActionUndoController(repository: openedRepository)
+        try await openedRepository.migrateMissingNoteColors(
             colorsByNoteID: [:],
             authority: .platformDefault
         )
@@ -549,6 +592,24 @@ final class TildoneiOSApplicationModel: ObservableObject {
             hasWorkspace = false
             clearPresentationState()
         }
+    }
+
+    func undoLatestAction() async throws {
+        guard let undoController else { throw ConsequentialActionUndoError.unavailable }
+        _ = try await undoController.undo()
+        undoPresentation.clear()
+        try await reloadNotes()
+        scheduleSyncNotification()
+    }
+
+    func discardUndo() {
+        undoController?.discard()
+        undoPresentation.clear()
+    }
+
+    func discardUndoIfAffected(by records: Set<DomainRecordID>) {
+        undoController?.discardIfAffected(by: records)
+        if undoController?.availableAction == nil { undoPresentation.clear() }
     }
 
     private func nextRevision() -> UInt64 {
@@ -860,8 +921,11 @@ final class TildoneiOSApplicationModel: ObservableObject {
                     ))
                 }
             },
-            onRemoteChange: { [weak self] in
-                await self?.requestRemoteContentReload(for: workspaceID)
+            onRemoteChange: { [weak self] remoteChange in
+                await self?.requestRemoteContentReload(
+                    for: workspaceID,
+                    changedRecords: remoteChange.changedRecords
+                )
             }
         )
         self.coordinator = coordinator
@@ -872,7 +936,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 guard !Swift.Task.isCancelled else { return }
                 await MainActor.run { [weak self] in
                     guard self?.activeWorkspace == workspaceID else { return }
-                    self?.syncStatus = status
+                    self?.present(status: status)
                 }
             }
         }
@@ -888,6 +952,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
         if let coordinator { await coordinator.stop() }
         coordinator = nil
         repository = nil
+        undoController = nil
+        undoPresentation.clear()
         activeWorkspace = nil
         transportState = .active
         clearPresentationState()
@@ -914,8 +980,12 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }
     }
 
-    private func requestRemoteContentReload(for workspaceID: UUID) async {
+    private func requestRemoteContentReload(
+        for workspaceID: UUID,
+        changedRecords: Set<DomainRecordID>
+    ) async {
         guard activeWorkspace == workspaceID else { return }
+        discardUndoIfAffected(by: changedRecords)
         remoteReloadRequested = true
         let task: Swift.Task<Void, Never>
         if let remoteReloadTask {
@@ -951,6 +1021,27 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 descriptor: .persistent(baseDirectory: baseDirectory, workspace: workspace)
             )
         }.value
+    }
+
+    private func publishUndoAvailability() {
+        guard !Self.requiresUndoInvalidation(syncStatus) else {
+            discardUndo()
+            return
+        }
+        guard let action = undoController?.availableAction else {
+            undoPresentation.clear()
+            return
+        }
+        undoPresentation.present(action)
+    }
+
+    private static func requiresUndoInvalidation(_ status: SyncStatus) -> Bool {
+        status.activity == .attentionNeeded || [
+            .adoptionRequired,
+            .accountChanged,
+            .zoneResetRequired,
+            .incompatibleRemoteData,
+        ].contains(status.availability)
     }
 
     private static func normalizedTitle(_ title: String?) -> String? {

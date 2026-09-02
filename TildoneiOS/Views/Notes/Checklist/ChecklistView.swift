@@ -132,6 +132,9 @@ struct ChecklistView: View {
                                 }
                             }
                             .swipeActions(edge: .trailing) {
+                                Button("Delete", role: .destructive) {
+                                    deleteTask(task.id)
+                                }
                                 Button {
                                     beginAddingTask(above: task.id)
                                 } label: {
@@ -145,6 +148,7 @@ struct ChecklistView: View {
                                 dimensions[.leading] + CGFloat(task.indentLevel) * 24
                             }
                         }
+                        .onDelete(perform: deleteTasks)
                         .onMove(perform: move)
 
                         TextField("New task", text: $newTaskText)
@@ -162,6 +166,12 @@ struct ChecklistView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
+                            TildoneiOSUndoMenuButton(
+                                presentation: appModel.undoPresentation
+                            ) {
+                                try await appModel.undoLatestAction()
+                            }
+                            Divider()
                             Picker("Note color", selection: Binding(
                                 get: { note.color },
                                 set: { color in
@@ -338,6 +348,16 @@ struct ChecklistView: View {
                 to: destinationIndex
             )
         }
+    }
+
+    private func deleteTasks(at offsets: IndexSet) {
+        let visible = visibleTasks
+        guard let offset = offsets.first, visible.indices.contains(offset) else { return }
+        deleteTask(visible[offset].task.id)
+    }
+
+    private func deleteTask(_ taskID: TaskID) {
+        Swift.Task { try? await appModel.delete(taskID: taskID) }
     }
 
     private func move(taskID: TaskID, by offset: Int) async {

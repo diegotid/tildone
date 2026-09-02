@@ -22,6 +22,11 @@ struct TildoneiOSRootView: View {
                 TildoneiOSWorkspaceStatus(appModel: appModel)
             }
         }
+        .overlay {
+            TildoneiOSUndoOverlay(presentation: appModel.undoPresentation) {
+                try await appModel.undoLatestAction()
+            }
+        }
     }
 }
 
