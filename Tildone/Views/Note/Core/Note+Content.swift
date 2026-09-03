@@ -24,6 +24,7 @@ extension Note {
                             newListItem().opacity(isDone || isContentBlurred || isInsertedNewTaskFocused ? 0 : 1)
                             Spacer().id(Id.bottomAnchor)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .animation(
                             completedTaskMovementAnimationID == nil
                                 ? nil

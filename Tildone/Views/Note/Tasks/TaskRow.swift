@@ -79,6 +79,10 @@ struct TaskRow: View {
         task.isCompleted || subtaskProgress?.fraction == 1
     }
 
+    private var showsHoverControls: Bool {
+        isShowingRowControls && !isActive
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Group {
@@ -161,24 +165,35 @@ struct TaskRow: View {
                             if focusedTaskID == task.id { onPaste() }
                         }
                     } else {
-                        TextField("", text: Binding(get: { task.text }, set: onEdit), axis: .vertical)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: CGFloat(fontSize)))
-                            .foregroundColor(contentColor)
-                            .tint(cursorColor)
-                            .background(Color.clear)
-                            .focused($focusedTaskID, equals: task.id)
-                            .onKeyPress(keys: [.return]) { _ in
-                                onEnter(nil)
-                                return .handled
-                            }
-                            .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                                if focusedTaskID == task.id { onCopy() }
-                            }
-                            .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                                if focusedTaskID == task.id { onPaste() }
-                            }
-                            .onSubmit { onSubmit() }
+                        if isShowingRowControls, !isActive {
+                            FirstLineTruncatingWrappedTaskText(
+                                text: task.text,
+                                fontSize: CGFloat(fontSize),
+                                color: contentColor,
+                                reservedTrailingWidth: hasSubtasks ? 86 : 66
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture(perform: onEditLink)
+                        } else {
+                            TextField("", text: Binding(get: { task.text }, set: onEdit), axis: .vertical)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: CGFloat(fontSize)))
+                                .foregroundColor(contentColor)
+                                .tint(cursorColor)
+                                .background(Color.clear)
+                                .focused($focusedTaskID, equals: task.id)
+                                .onKeyPress(keys: [.return]) { _ in
+                                    onEnter(nil)
+                                    return .handled
+                                }
+                                .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                                    if focusedTaskID == task.id { onCopy() }
+                                }
+                                .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                                    if focusedTaskID == task.id { onPaste() }
+                                }
+                                .onSubmit { onSubmit() }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
@@ -234,8 +249,8 @@ struct TaskRow: View {
                 }
                 .padding(.leading, 5)
                 .padding(.trailing, 4)
-                .opacity(isShowingRowControls ? 1 : 0)
-                .allowsHitTesting(isShowingRowControls)
+                .opacity(showsHoverControls ? 1 : 0)
+                .allowsHitTesting(showsHoverControls)
                 .help("Task hierarchy")
                 .accessibilityLabel("Task hierarchy")
 
@@ -247,8 +262,8 @@ struct TaskRow: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(taskActionColor)
                 .contentShape(Rectangle())
-                .opacity(isShowingRowControls ? 1 : 0)
-                .allowsHitTesting(isShowingRowControls)
+                .opacity(showsHoverControls ? 1 : 0)
+                .allowsHitTesting(showsHoverControls)
                 .help("Insert task above")
                 .accessibilityLabel("Insert task above")
 
@@ -262,15 +277,16 @@ struct TaskRow: View {
                 )
                 .padding(.leading, 2)
             }
-            .opacity(isShowingRowControls ? 1 : 0)
-            .allowsHitTesting(isShowingRowControls)
+            .opacity(showsHoverControls ? 1 : 0)
+            .allowsHitTesting(showsHoverControls)
             .padding(.trailing, 8)
             .frame(
-                width: isShowingRowControls ? (hasSubtasks ? 86 : 66) : 0,
-                height: isShowingRowControls ? taskActionControlSize : 0,
+                width: truncation == .single && showsHoverControls ? (hasSubtasks ? 86 : 66) : 0,
+                height: showsHoverControls ? taskActionControlSize : 0,
                 alignment: .trailing
             )
-            .clipped()
+            .offset(y: truncation == .multiple ? 1 : 0)
+            .if(truncation == .single) { $0.clipped() }
         }
         .padding(.leading, 2 + CGFloat(task.indentLevel) * (Layout.checkboxSize + 8))
         .padding(.top, followsDeeperTask ? hierarchyTransitionTopSpacing : 0)

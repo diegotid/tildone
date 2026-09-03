@@ -1,83 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Couldn’t undo this change" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se ha podido deshacer este cambio" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible d’annuler cette modification" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法撤销此更改" } }
-      }
-    },
-    "The change could not be undone. Your notes were not otherwise changed." : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo deshacer el cambio. Tus notas no se modificaron de ninguna otra forma." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La modification n’a pas pu être annulée. Vos notes n’ont pas été modifiées autrement." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法撤销此更改。您的笔记未发生其他变化。" } }
-      }
-    },
-    "Undo Change Note Color" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer cambio de color de la nota" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le changement de couleur de la note" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销更改笔记颜色" } }
-      }
-    },
-    "Undo Complete Task" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer completar tarea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler l’achèvement de la tâche" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销完成任务" } }
-      }
-    },
-    "Undo Delete Note" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer eliminar nota" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler la suppression de la note" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销删除笔记" } }
-      }
-    },
-    "Undo Delete Task" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer eliminar tarea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler la suppression de la tâche" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销删除任务" } }
-      }
-    },
-    "Undo Indent Task" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer aumentar sangría de tarea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler l’indentation de la tâche" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销缩进任务" } }
-      }
-    },
-    "Undo Outdent Task" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer reducir sangría de tarea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler la diminution du retrait de la tâche" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销减少任务缩进" } }
-      }
-    },
-    "Undo Reorder Task" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer reordenar tarea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler la réorganisation de la tâche" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销任务重新排序" } }
-      }
-    },
-    "Undo Uncomplete Task" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer marcar tarea como pendiente" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler le marquage de la tâche comme non terminée" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销将任务标为未完成" } }
-      }
-    },
-    "Undo" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Deshacer" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "撤销" } }
-      }
-    },
     "" : {
       "localizations" : {
         "en" : {
@@ -966,6 +889,28 @@
         }
       }
     },
+    "Couldn’t undo this change" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido deshacer este cambio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’annuler cette modification"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法撤销此更改"
+          }
+        }
+      }
+    },
     "cuatro.studio" : {
       "localizations" : {
         "es" : {
@@ -1608,34 +1553,6 @@
         }
       }
     },
-    "Make subtask" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Make subtask"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Crear subtarea"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Créer une sous-tâche"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "创建子任务"
-          }
-        }
-      }
-    },
     "Insert task above" : {
       "comment" : "A tooltip that describes the action of inserting a task above the current task.",
       "isCommentAutoGenerated" : true,
@@ -1799,28 +1716,6 @@
         }
       }
     },
-    "This shortcut is used by another app. Choose another shortcut to make it work globally." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este atajo lo usa otra app. Elige otro para que funcione globalmente."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce raccourci est utilisé par une autre app. Choisissez-en un autre pour qu’il fonctionne globalement."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "此快捷键已被其他应用使用。请选择其他快捷键以使其全局生效。"
-          }
-        }
-      }
-    },
     "Line Up:" : {
       "comment" : "A label for the Line Up settings.",
       "isCommentAutoGenerated" : true,
@@ -1841,6 +1736,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "排列："
+          }
+        }
+      }
+    },
+    "Make subtask" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make subtask"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear subtarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer une sous-tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建子任务"
           }
         }
       }
@@ -1958,30 +1881,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "最小"
-          }
-        }
-      }
-    },
-    "Scroll shortcut" : {
-      "comment" : "A label that displays a shortcut used with a scrolling gesture.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Atajo de desplazamiento"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Raccourci de défilement"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "滚动快捷键"
           }
         }
       }
@@ -2357,34 +2256,6 @@
         }
       }
     },
-    "Promote task" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promote task"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promover tarea"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promouvoir la tâche"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "提升任务层级"
-          }
-        }
-      }
-    },
     "Paste" : {
       "localizations" : {
         "es" : {
@@ -2546,6 +2417,34 @@
         }
       }
     },
+    "Promote task" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promote task"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promover tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promouvoir la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提升任务层级"
+          }
+        }
+      }
+    },
     "Purple" : {
       "localizations" : {
         "es" : {
@@ -2702,6 +2601,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看选项…"
+          }
+        }
+      }
+    },
+    "Scroll shortcut" : {
+      "comment" : "A label that displays a shortcut used with a scrolling gesture.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo de desplazamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raccourci de défilement"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动快捷键"
           }
         }
       }
@@ -3170,6 +3093,28 @@
         }
       }
     },
+    "The change could not be undone. Your notes were not otherwise changed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo deshacer el cambio. Tus notas no se modificaron de ninguna otra forma."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La modification n’a pas pu être annulée. Vos notes n’ont pas été modifiées autrement."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法撤销此更改。您的笔记未发生其他变化。"
+          }
+        }
+      }
+    },
     "The corner selected for Line Up is also the Gather destination." : {
       "comment" : "A description of the Gather feature.",
       "isCommentAutoGenerated" : true,
@@ -3256,6 +3201,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这些笔记不会显示在你的 iPhone 或 iCloud 中。你可以稍后合并它们。"
+          }
+        }
+      }
+    },
+    "This shortcut is used by another app. Choose another shortcut to make it work globally." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este atajo lo usa otra app. Elige otro para que funcione globalmente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce raccourci est utilisé par une autre app. Choisissez-en un autre pour qu’il fonctionne globalement."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此快捷键已被其他应用使用。请选择其他快捷键以使其全局生效。"
           }
         }
       }
@@ -3658,6 +3625,204 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在“专注模式过滤条件”下，点按“添加过滤条件”，然后选择 Tildone。"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销"
+          }
+        }
+      }
+    },
+    "Undo Change Note Color" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer cambio de color de la nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler le changement de couleur de la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销更改笔记颜色"
+          }
+        }
+      }
+    },
+    "Undo Complete Task" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer completar tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler l’achèvement de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销完成任务"
+          }
+        }
+      }
+    },
+    "Undo Delete Note" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer eliminar nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler la suppression de la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销删除笔记"
+          }
+        }
+      }
+    },
+    "Undo Delete Task" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer eliminar tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler la suppression de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销删除任务"
+          }
+        }
+      }
+    },
+    "Undo Indent Task" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer aumentar sangría de tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler l’indentation de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销缩进任务"
+          }
+        }
+      }
+    },
+    "Undo Outdent Task" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer reducir sangría de tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler la diminution du retrait de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销减少任务缩进"
+          }
+        }
+      }
+    },
+    "Undo Reorder Task" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer reordenar tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler la réorganisation de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销任务重新排序"
+          }
+        }
+      }
+    },
+    "Undo Uncomplete Task" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer marcar tarea como pendiente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler le marquage de la tâche comme non terminée"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销将任务标为未完成"
           }
         }
       }
