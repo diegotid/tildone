@@ -18,8 +18,21 @@ final class MinimizedNoteRestoreTitlebarControl: NSHostingView<MinimizedNoteRest
         setAccessibilityRole(.button)
     }
 
-    convenience init(onRestore: @escaping () -> Void) {
-        self.init(rootView: MinimizedNoteRestoreTitlebarIcon(onRestore: onRestore))
+    convenience init(
+        onRestore: @escaping () -> Void,
+        foreground: Color = Color(nsColor: .secondaryLabelColor)
+    ) {
+        self.init(rootView: MinimizedNoteRestoreTitlebarIcon(
+            onRestore: onRestore,
+            foreground: foreground
+        ))
+    }
+
+    func setForeground(_ foreground: Color) {
+        rootView = MinimizedNoteRestoreTitlebarIcon(
+            onRestore: onRestore,
+            foreground: foreground
+        )
     }
 
     @available(*, unavailable)

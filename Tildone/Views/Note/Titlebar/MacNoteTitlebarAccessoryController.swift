@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import SwiftUI
 
 /// Hosts Tildone's custom controls through AppKit's supported titlebar API.
 /// Direct children of `NSThemeFrame` are private AppKit implementation details.
@@ -52,19 +53,33 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         colorPicker.isHidden = hidden
     }
 
-    func setRestoreControlVisible(_ visible: Bool, onRestore: @escaping () -> Void) {
+    func setRestoreControlVisible(
+        _ visible: Bool,
+        foreground: Color,
+        onRestore: @escaping () -> Void
+    ) {
         loadViewIfNeeded()
         guard visible else {
             restoreControl?.removeFromSuperview()
             restoreControl = nil
             return
         }
-        guard restoreControl == nil else { return }
-        let restoreControl = MinimizedNoteRestoreTitlebarControl(onRestore: onRestore)
+        guard restoreControl == nil else {
+            restoreControl?.setForeground(foreground)
+            return
+        }
+        let restoreControl = MinimizedNoteRestoreTitlebarControl(
+            onRestore: onRestore,
+            foreground: foreground
+        )
         restoreControl.autoresizingMask = [.minXMargin, .minYMargin]
         view.addSubview(restoreControl)
         self.restoreControl = restoreControl
         layoutControls()
+    }
+
+    func setRestoreControlForeground(_ foreground: Color) {
+        restoreControl?.setForeground(foreground)
     }
 
     private func installSyncIndicator(for state: MacNoteSyncIndicatorState) {

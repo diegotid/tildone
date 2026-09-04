@@ -53,7 +53,11 @@ struct Note: View {
         let backdropLuminance: CGFloat = colorScheme == .dark ? 0 : 1
         let opacity = CGFloat(noteBackgroundOpacity * windowAlpha)
         let backgroundLuminance = colorLuminance * opacity + backdropLuminance * (1 - opacity)
-        return backgroundLuminance > 0.55 ? .black.opacity(0.75) : .white.opacity(0.75)
+        // Pastel note colors still appear light at the normal note opacity,
+        // even when they are composited over the dark desktop. Keep their
+        // minimized content dark; reserve light content for genuinely dark
+        // or heavily transparent notes.
+        return backgroundLuminance > 0.45 ? .black.opacity(0.75) : .white.opacity(0.75)
     }
     var isDone: Bool { completionFade.showsCompletionOverlay }
     var isContentBlurred: Bool {
@@ -144,17 +148,24 @@ struct Note: View {
                 }
             }
         }
-        .onChange(of: note?.color) { _, _ in applyCurrentNoteBackground() }
+        .onChange(of: note?.color) { _, _ in
+            applyCurrentNoteBackground()
+            updateRestoreControlForeground()
+        }
         .onChange(of: isMinimized) { _, minimized in
             setTrafficLightsHidden(minimized)
             noteWindow?.setNoteContentExtendsUnderTitlebar(minimized)
             if minimized { isHoveringMinimizedTaskList = false }
         }
-        .onChange(of: noteBackgroundOpacity) { _, _ in applyCurrentNoteBackground() }
+        .onChange(of: noteBackgroundOpacity) { _, _ in
+            applyCurrentNoteBackground()
+            updateRestoreControlForeground()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,
                   changedWindow === noteWindow else { return }
             applyCurrentNoteBackground()
+            updateRestoreControlForeground()
         }
         .onAppear {
             synchronizeCompletionFade(completedAt: note?.completedAt)

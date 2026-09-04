@@ -752,7 +752,12 @@ extension Note {
     func setRestoreControlVisible(_ visible: Bool) {
         noteWindow?.noteTitlebarAccessoryController?.setRestoreControlVisible(
             visible,
+            foreground: minimizedForeground,
             onRestore: { handleBringUp() }
         )
+    }
+
+    func updateRestoreControlForeground() {
+        noteWindow?.noteTitlebarAccessoryController?.setRestoreControlForeground(minimizedForeground)
     }
 }
