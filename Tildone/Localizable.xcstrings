@@ -365,6 +365,105 @@
         }
       }
     },
+    "Apply" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appliquer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用"
+          }
+        }
+      }
+    },
+    "Couldn’t apply the completed-task setting." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo aplicar el ajuste de tareas completadas." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible d’appliquer le réglage des tâches terminées." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法应用已完成任务设置。" } }
+      }
+    },
+    "Days" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Días" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Jours" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "天数" } }
+      }
+    },
+    "For" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Durante" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pendant" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保留" } }
+      }
+    },
+    "days, then delete" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "días y después eliminar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "jours, puis supprimer" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "天，然后删除" } }
+      }
+    },
+    "Keep completed tasks forever" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conservar las tareas completadas para siempre" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conserver les tâches terminées indéfiniment" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "永久保留已完成的任务" } }
+      }
+    },
+    "Keep completed tasks for a limited time, then delete" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conservar temporalmente las tareas completadas y después eliminarlas" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conserver temporairement les tâches terminées, puis les supprimer" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂时保留已完成的任务，然后删除" } }
+      }
+    },
+    "Forever" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Siempre" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Toujours" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "永久" } }
+      }
+    },
+    "Keep completed tasks" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conservar tareas completadas" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Conserver les tâches terminées" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保留已完成的任务" } }
+      }
+    },
+    "Tasks" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tareas" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tâches" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任务" } }
+      }
+    },
+    "This setting permanently deletes tasks. They cannot be recovered." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este ajuste elimina tareas permanentemente. No se pueden recuperar." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce réglage supprime définitivement des tâches. Elles ne peuvent pas être récupérées." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "此设置会永久删除任务，且无法恢复。" } }
+      }
+    },
+    "Tasks that will be permanently deleted: %lld" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tareas que se eliminarán permanentemente: %1$lld" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tâches qui seront définitivement supprimées : %1$lld" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "将被永久删除的任务数：%1$lld" } }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "es" : {

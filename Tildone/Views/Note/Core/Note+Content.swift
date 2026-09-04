@@ -120,7 +120,7 @@ extension Note {
 
     func taskListProgress(_ note: MacNoteSnapshot) -> some View {
         let pending = note.pendingTasks.count
-        let total = note.tasks.count
+        let total = note.progressTasks.count
         let complete = pending == 0 && total > 0
         let foreground = minimizedForeground
         return ZStack(alignment: .topLeading) {

@@ -35,7 +35,10 @@ final class TildoneTests: XCTestCase {
 
     func testSettingsHeightFollowsContentAndNeverExceedsItsFixedWidth() {
         let hostingView = NSHostingView(rootView: SettingsForm())
-        XCTAssertEqual(hostingView.fittingSize, CGSize(width: 600, height: 188))
+        XCTAssertEqual(
+            hostingView.fittingSize,
+            CGSize(width: 600, height: SettingsForm.generalPaneHeight)
+        )
 
         XCTAssertEqual(
             SettingsForm.preferredWindowHeight(
@@ -1673,6 +1676,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(snapshot.color, .purple)
         XCTAssertEqual(snapshot.tasks.map(\.text), ["First", "Changed"])
         XCTAssertEqual(snapshot.pendingTasks.map(\.id), [last.id])
+        XCTAssertEqual(snapshot.progressTasks.map(\.id), [first.id, last.id])
 
         try await store.deleteTask(first.id)
         try await store.deleteTask(last.id)
@@ -1966,6 +1970,111 @@ final class TildoneTests: XCTestCase {
         try await store.applyCompletedTaskOrdering(enabled: false)
         let restoredOrder = try await repository.orderedTasks(in: note.id)
         XCTAssertEqual(restoredOrder.map(\.id), [first.id, second.id, third.id])
+    }
+
+    func testCompletedTaskRetentionDefaultsToForeverAndThreeDays() throws {
+        let suiteName = "CompletedTaskRetentionTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        XCTAssertTrue(CompletedTaskRetention.keepsForever(defaults: defaults))
+        XCTAssertEqual(CompletedTaskRetention.days(defaults: defaults), 3)
+
+        defaults.set(false, forKey: CompletedTaskRetention.keepForeverStorageKey)
+        defaults.set(0, forKey: CompletedTaskRetention.daysStorageKey)
+        XCTAssertFalse(CompletedTaskRetention.keepsForever(defaults: defaults))
+        XCTAssertEqual(CompletedTaskRetention.days(defaults: defaults), 1)
+    }
+
+    @MainActor
+    func testCompletedTaskRetentionDeletesOnlyExpiredRootGroupsWithTheirChildren() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 10))
+        let expiredRoot = try await store.addTask(to: note.id, text: "Expired root")
+        let expiredChild = try await store.addTask(to: note.id, text: "Expired child")
+        let recentRoot = try await store.addTask(to: note.id, text: "Recent root")
+        let pendingRoot = try await store.addTask(to: note.id, text: "Pending root")
+        try await store.setTaskIndentLevels([(id: expiredChild.id, level: 1)])
+
+        let oldCompletion = Date(timeIntervalSince1970: 100)
+        let recentCompletion = Date(timeIntervalSince1970: 300_000)
+        _ = try await repository.setTaskCompletion(
+            id: expiredChild.id,
+            completion: .completed(at: oldCompletion)
+        )
+        _ = try await repository.setTaskCompletion(
+            id: recentRoot.id,
+            completion: .completed(at: recentCompletion)
+        )
+        try await store.reload(note.id)
+
+        XCTAssertEqual(
+            store.completedTaskDeletionCount(
+                now: Date(timeIntervalSince1970: 400_000),
+                retentionDays: 3
+            ),
+            2
+        )
+
+        let nextExpiration = try await store.deleteExpiredCompletedTaskGroups(
+            now: Date(timeIntervalSince1970: 400_000),
+            retentionDays: 3
+        )
+
+        let remaining = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(remaining.map(\.id), [recentRoot.id, pendingRoot.id])
+        XCTAssertEqual(
+            nextExpiration,
+            recentCompletion.addingTimeInterval(CompletedTaskRetention.retentionInterval(days: 3))
+        )
+        do {
+            _ = try await repository.task(id: expiredRoot.id)
+            XCTFail("Expected the expired root to be deleted")
+        } catch {}
+        do {
+            _ = try await repository.task(id: expiredChild.id)
+            XCTFail("Expected the expired child to be deleted")
+        } catch {}
+
+        _ = try await store.deleteExpiredCompletedTaskGroups(
+            now: recentCompletion.addingTimeInterval(
+                CompletedTaskRetention.retentionInterval(days: 3)
+            ),
+            retentionDays: 3
+        )
+        let pendingOnlySnapshot = try XCTUnwrap(store.note(note.id))
+        XCTAssertEqual(pendingOnlySnapshot.progressTasks.map(\.id), [pendingRoot.id])
+        XCTAssertEqual(pendingOnlySnapshot.pendingTasks.map(\.id), [pendingRoot.id])
+    }
+
+    @MainActor
+    func testCompletedTaskRetentionKeepsCompletedChildWhenSiblingIsPending() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 10))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let completedChild = try await store.addTask(to: note.id, text: "Completed child")
+        let pendingChild = try await store.addTask(to: note.id, text: "Pending child")
+        try await store.setTaskIndentLevels([
+            (id: completedChild.id, level: 1),
+            (id: pendingChild.id, level: 1)
+        ])
+        _ = try await repository.setTaskCompletion(
+            id: completedChild.id,
+            completion: .completed(at: Date(timeIntervalSince1970: 100))
+        )
+        try await store.reload(note.id)
+
+        let now = Date(timeIntervalSince1970: 400_000)
+        XCTAssertEqual(
+            store.completedTaskDeletionCount(now: now, retentionDays: 3),
+            0
+        )
+        _ = try await store.deleteExpiredCompletedTaskGroups(now: now, retentionDays: 3)
+
+        let remaining = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(remaining.map(\.id), [parent.id, completedChild.id, pendingChild.id])
     }
 
     func testMacUndoCompletionRestoresTaskMovedToCompletedSection() async throws {

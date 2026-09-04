@@ -72,6 +72,7 @@ struct Desktop: View {
     @State private var isClickThroughWheelShortcutActive = false
     @State private var isFocusFilterTextBlurred = false
     @State private var focusFilterAllowsBackgroundNotes = false
+    @State private var completedTaskRetentionTask: Swift.Task<Void, Never>?
     @Binding var foregroundNoteID: NoteID? {
         didSet { cleanUnfocusedNotes() }
     }
@@ -93,6 +94,10 @@ struct Desktop: View {
 
     private static let appWindowIDs = [Id.aboutWindow, Id.syncStatusWindow, Id.updateWindow]
 
+    private var taskCompletionDates: [Date?] {
+        store.notes.flatMap { note in note.tasks.map(\.completedAt) }
+    }
+
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
@@ -108,6 +113,7 @@ struct Desktop: View {
                         forKey: AppAppearance.moveCheckedTasksToEndStorageKey
                     )
                 )
+                scheduleCompletedTaskRetention()
                 installScrollMonitor()
                 updateClickThroughMonitoring()
                 updateClickThroughHoverMonitoring()
@@ -115,6 +121,10 @@ struct Desktop: View {
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 resetCornerConvergence()
                 reconcileNoteWindows()
+                scheduleCompletedTaskRetention()
+            }
+            .onChange(of: taskCompletionDates) { _, _ in
+                scheduleCompletedTaskRetention()
             }
             .onChange(of: noteSyncIndicatorState) { _, state in
                 setNoteSyncIndicatorState(state)
@@ -158,6 +168,9 @@ struct Desktop: View {
                 guard let isEnabled = notification.object as? Bool else { return }
                 updateCompletedTaskOrdering(isEnabled: isEnabled)
             }
+            .onReceive(NotificationCenter.default.publisher(for: .updateCompletedTaskRetention)) { _ in
+                scheduleCompletedTaskRetention()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .openAbout)) { _ in
                 openWindow(id: Id.aboutWindow)
             }
@@ -174,6 +187,7 @@ struct Desktop: View {
                 updateClickThroughHintPosition(for: event)
             }
             .onDisappear {
+                completedTaskRetentionTask?.cancel()
                 noteScrollMonitor.stop()
                 clickThroughMonitor.stop()
                 clickThroughHoverMonitor.stop()
@@ -183,6 +197,28 @@ struct Desktop: View {
 }
 
 private extension Desktop {
+    func scheduleCompletedTaskRetention() {
+        completedTaskRetentionTask?.cancel()
+        guard !CompletedTaskRetention.keepsForever() else { return }
+        let days = CompletedTaskRetention.days()
+        completedTaskRetentionTask = Swift.Task {
+            do {
+                let nextExpiration = try await store.deleteExpiredCompletedTaskGroups(
+                    retentionDays: days
+                )
+                guard !Swift.Task.isCancelled, let nextExpiration else { return }
+                let delay = max(nextExpiration.timeIntervalSinceNow, 0)
+                try await Swift.Task.sleep(for: .seconds(delay))
+                guard !Swift.Task.isCancelled else { return }
+                scheduleCompletedTaskRetention()
+            } catch is CancellationError {
+                return
+            } catch {
+                return
+            }
+        }
+    }
+
     func updateCompletedTaskOrdering(isEnabled: Bool) {
         Swift.Task {
             do {

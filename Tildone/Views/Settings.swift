@@ -142,18 +142,28 @@ enum AppShortcuts {
 
 private enum SettingsTab: Hashable {
     case general
+    case tasks
     case appearance
     case positioning
 }
 
 struct SettingsForm: View {
     private static let windowWidth: CGFloat = 600
+    static let generalPaneHeight: CGFloat = 148
+    static let tasksPaneHeight: CGFloat = 244
+
+    let store: MacSharedStore?
 
     @State private var selectedTab: SettingsTab = .general
     @State private var opacityShortcutValidationMessage: LocalizedStringKey?
     @State private var gatherShortcutValidationMessage: LocalizedStringKey?
     @State private var lineUpShortcutValidationMessage: LocalizedStringKey?
     @State private var newNoteShortcutValidationMessage: LocalizedStringKey?
+    @State private var keepCompletedTasksForever: Bool
+    @State private var completedTaskRetentionDays: Int
+    @State private var completedTaskDeletionCount = 0
+    @State private var isApplyingTaskRetention = false
+    @State private var taskRetentionErrorMessage: LocalizedStringKey?
     @ObservedObject private var globalLineUpHotKey = GlobalApplicationHotKey.lineUp
     @ObservedObject private var globalNewNoteHotKey = GlobalApplicationHotKey.newNote
     
@@ -218,11 +228,53 @@ struct SettingsForm: View {
     @AppStorage(AppShortcuts.newNoteModifiersStorageKey)
     private var newNoteModifiersRawValue = Int(AppShortcuts.defaultNewNote.modifiers.rawValue)
 
+    init(store: MacSharedStore? = nil) {
+        self.store = store
+        _keepCompletedTasksForever = State(initialValue: CompletedTaskRetention.keepsForever())
+        _completedTaskRetentionDays = State(initialValue: CompletedTaskRetention.days())
+    }
+
+    private struct RadioButton: NSViewRepresentable {
+        @Binding var isSelected: Bool
+        let title: String
+        let accessibilityLabel: String
+
+        func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+        func makeNSView(context: Context) -> NSButton {
+            let button = NSButton(
+                radioButtonWithTitle: title,
+                target: context.coordinator,
+                action: #selector(Coordinator.select)
+            )
+            button.setAccessibilityLabel(accessibilityLabel)
+            return button
+        }
+
+        func updateNSView(_ button: NSButton, context: Context) {
+            context.coordinator.parent = self
+            button.title = title
+            button.state = isSelected ? .on : .off
+            button.setAccessibilityLabel(accessibilityLabel)
+        }
+
+        final class Coordinator: NSObject {
+            var parent: RadioButton
+
+            init(_ parent: RadioButton) { self.parent = parent }
+
+            @objc func select() { parent.isSelected = true }
+        }
+    }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             settingsPane { generalSettings() }
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .tag(SettingsTab.general)
+            settingsPane { taskSettings() }
+                .tabItem { Label("Tasks", systemImage: "checklist") }
+                .tag(SettingsTab.tasks)
             settingsPane { appearanceSettings() }
                 .tabItem { Label("Appearance", systemImage: "paintpalette") }
                 .tag(SettingsTab.appearance)
@@ -241,7 +293,8 @@ struct SettingsForm: View {
     private var preferredWindowHeight: CGFloat {
         let paneHeight: CGFloat
         switch selectedTab {
-        case .general: paneHeight = 188
+        case .general: paneHeight = Self.generalPaneHeight
+        case .tasks: paneHeight = Self.tasksPaneHeight
         case .appearance: paneHeight = 504
         case .positioning: paneHeight = 474
         }
@@ -283,15 +336,6 @@ private extension SettingsForm {
                             NSApplication.shared.setActivationPolicy(showDockIcon ? .regular : .accessory)
                         }
                 }
-                settingWithHelp("Keep unfinished tasks at the top of each list.") {
-                    Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
-                        .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
-                            NotificationCenter.default.post(
-                                name: .updateCompletedTaskOrdering,
-                                object: isEnabled
-                            )
-                        }
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -313,6 +357,132 @@ private extension SettingsForm {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    func taskSettings() -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            settingWithHelp("Keep unfinished tasks at the top of each list.") {
+                Toggle("Move checked tasks to the end", isOn: $moveCheckedTasksToEnd)
+                    .onChange(of: moveCheckedTasksToEnd) { _, isEnabled in
+                        NotificationCenter.default.post(
+                            name: .updateCompletedTaskOrdering,
+                            object: isEnabled
+                        )
+                    }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Keep completed tasks")
+                    .font(.headline)
+                RadioButton(
+                    isSelected: $keepCompletedTasksForever,
+                    title: String(localized: "Forever"),
+                    accessibilityLabel: String(localized: "Keep completed tasks forever")
+                )
+                .fixedSize()
+
+                HStack(spacing: 6) {
+                    RadioButton(
+                        isSelected: Binding(
+                            get: { !keepCompletedTasksForever },
+                            set: { if $0 { keepCompletedTasksForever = false } }
+                        ),
+                        title: "",
+                        accessibilityLabel: String(localized: "Keep completed tasks for a limited time, then delete")
+                    )
+                    .fixedSize()
+                    Text("For")
+                    Stepper(
+                        value: $completedTaskRetentionDays,
+                        in: CompletedTaskRetention.minimumDays...CompletedTaskRetention.maximumDays
+                    ) {
+                        TextField("Days", value: $completedTaskRetentionDays, format: .number)
+                            .frame(width: 54)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .fixedSize()
+                    .disabled(keepCompletedTasksForever)
+                    Text("days, then delete")
+                    Button("Apply") { applyCompletedTaskRetention() }
+                        .disabled(
+                            isApplyingTaskRetention
+                                || (!taskRetentionHasChanges && completedTaskDeletionCount == 0)
+                        )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text("This setting permanently deletes tasks. They cannot be recovered.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Label(
+                    "Tasks that will be permanently deleted: \(completedTaskDeletionCount)",
+                    systemImage: completedTaskDeletionCount > 0 ? "exclamationmark.triangle.fill" : "info.circle"
+                )
+                .font(.caption)
+                .foregroundStyle(completedTaskDeletionCount > 0 ? .orange : .secondary)
+
+                if let taskRetentionErrorMessage {
+                    Text(taskRetentionErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .onAppear(perform: refreshCompletedTaskDeletionCount)
+        .onChange(of: keepCompletedTasksForever) { _, _ in
+            taskRetentionErrorMessage = nil
+            refreshCompletedTaskDeletionCount()
+        }
+        .onChange(of: completedTaskRetentionDays) { _, days in
+            let clamped = CompletedTaskRetention.clampedDays(days)
+            if completedTaskRetentionDays != clamped {
+                completedTaskRetentionDays = clamped
+            }
+            taskRetentionErrorMessage = nil
+            refreshCompletedTaskDeletionCount()
+        }
+    }
+
+    var taskRetentionHasChanges: Bool {
+        keepCompletedTasksForever != CompletedTaskRetention.keepsForever()
+            || CompletedTaskRetention.clampedDays(completedTaskRetentionDays) != CompletedTaskRetention.days()
+    }
+
+    func refreshCompletedTaskDeletionCount() {
+        guard !keepCompletedTasksForever else {
+            completedTaskDeletionCount = 0
+            return
+        }
+        completedTaskDeletionCount = store?.completedTaskDeletionCount(
+            retentionDays: completedTaskRetentionDays
+        ) ?? 0
+    }
+
+    func applyCompletedTaskRetention() {
+        guard !isApplyingTaskRetention else { return }
+        isApplyingTaskRetention = true
+        taskRetentionErrorMessage = nil
+        let keepsForever = keepCompletedTasksForever
+        let days = CompletedTaskRetention.clampedDays(completedTaskRetentionDays)
+        Swift.Task {
+            do {
+                if !keepsForever {
+                    _ = try await store?.deleteExpiredCompletedTaskGroups(retentionDays: days)
+                }
+                UserDefaults.standard.set(
+                    keepsForever,
+                    forKey: CompletedTaskRetention.keepForeverStorageKey
+                )
+                UserDefaults.standard.set(days, forKey: CompletedTaskRetention.daysStorageKey)
+                completedTaskRetentionDays = days
+                refreshCompletedTaskDeletionCount()
+                NotificationCenter.default.post(name: .updateCompletedTaskRetention, object: nil)
+            } catch {
+                taskRetentionErrorMessage = "Couldn’t apply the completed-task setting."
+            }
+            isApplyingTaskRetention = false
+        }
     }
 
     @ViewBuilder

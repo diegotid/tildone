@@ -73,6 +73,32 @@ enum AppAppearance {
     }
 }
 
+enum CompletedTaskRetention {
+    static let keepForeverStorageKey = "keepCompletedTasksForever"
+    static let daysStorageKey = "completedTaskRetentionDays"
+    static let defaultDays = 3
+    static let minimumDays = 1
+    static let maximumDays = 3_650
+
+    static func clampedDays(_ days: Int) -> Int {
+        min(max(days, minimumDays), maximumDays)
+    }
+
+    static func retentionInterval(days: Int) -> TimeInterval {
+        TimeInterval(clampedDays(days)) * 24 * 60 * 60
+    }
+
+    static func keepsForever(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: keepForeverStorageKey) != nil else { return true }
+        return defaults.bool(forKey: keepForeverStorageKey)
+    }
+
+    static func days(defaults: UserDefaults = .standard) -> Int {
+        guard defaults.object(forKey: daysStorageKey) != nil else { return defaultDays }
+        return clampedDays(defaults.integer(forKey: daysStorageKey))
+    }
+}
+
 /// Installation-local restoration data for the optional completed-task ordering.
 /// It deliberately stays out of the shared task model and iCloud sync payload.
 enum CompletedTaskOrderPreference {

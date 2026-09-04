@@ -112,6 +112,70 @@ final class MacSharedStore: ObservableObject {
         scheduleSyncNotification()
     }
 
+    /// Permanently removes expired, fully completed top-level task groups and
+    /// returns the next time a retained group becomes eligible for deletion.
+    func deleteExpiredCompletedTaskGroups(
+        now: Date = Date(),
+        retentionDays: Int
+    ) async throws -> Date? {
+        let interval = CompletedTaskRetention.retentionInterval(days: retentionDays)
+        var nextExpiration: Date?
+        var didDelete = false
+
+        for note in notes {
+            let tasks = note.tasks
+            var expiredIDs: Set<TaskID> = []
+            for rootIndex in tasks.indices where tasks[rootIndex].indentLevel == 0 {
+                let group = Array(tasks[TaskHierarchy.subtreeRange(startingAt: rootIndex, in: tasks)])
+                let leaves = TaskHierarchy.leafTasks(in: group)
+                guard !leaves.isEmpty,
+                      leaves.allSatisfy(\.isCompleted),
+                      let completedAt = leaves.compactMap(\.completedAt).max() else { continue }
+                let expiration = completedAt.addingTimeInterval(interval)
+                if expiration <= now {
+                    expiredIDs.formUnion(group.map(\.id))
+                } else if nextExpiration == nil || expiration < nextExpiration! {
+                    nextExpiration = expiration
+                }
+            }
+
+            guard !expiredIDs.isEmpty else { continue }
+            for id in expiredIDs {
+                await waitForPendingTaskTextEdit(for: id)
+                CompletedTaskOrderPreference.removeOriginalOrderToken(for: id)
+            }
+            _ = try await repository.deleteTasks(expiredIDs, in: note.id)
+            didDelete = true
+        }
+
+        if didDelete {
+            undoController.discard()
+            refreshUndoAction()
+            try await reload()
+            scheduleSyncNotification()
+        }
+        return nextExpiration
+    }
+
+    func completedTaskDeletionCount(
+        now: Date = Date(),
+        retentionDays: Int
+    ) -> Int {
+        let interval = CompletedTaskRetention.retentionInterval(days: retentionDays)
+        return notes.reduce(into: 0) { count, note in
+            let tasks = note.tasks
+            for rootIndex in tasks.indices where tasks[rootIndex].indentLevel == 0 {
+                let group = Array(tasks[TaskHierarchy.subtreeRange(startingAt: rootIndex, in: tasks)])
+                let leaves = TaskHierarchy.leafTasks(in: group)
+                guard !leaves.isEmpty,
+                      leaves.allSatisfy(\.isCompleted),
+                      let completedAt = leaves.compactMap(\.completedAt).max(),
+                      completedAt.addingTimeInterval(interval) <= now else { continue }
+                count += group.count
+            }
+        }
+    }
+
     func note(_ id: NoteID) -> MacNoteSnapshot? {
         notePresentations[id]?.snapshot
     }

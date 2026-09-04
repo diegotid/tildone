@@ -206,7 +206,7 @@ struct TildoneApp: App {
         .windowResizability(.contentSize)
         .commandsRemoved()
         Settings {
-            SettingsForm()
+            SettingsForm(store: sharedStoreBootstrapper.store)
         }
         .windowResizability(.contentSize)
         .commandsRemoved()
