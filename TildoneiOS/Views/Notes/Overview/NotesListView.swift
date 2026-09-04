@@ -42,7 +42,15 @@ struct NotesListView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if activeNotes.isEmpty {
+                if activeNotes.isEmpty && appModel.isCheckingCloudForNotes {
+                    ContentUnavailableView {
+                        ProgressView()
+                    } description: {
+                        Text("Loading Notes…")
+                    }
+                } else if activeNotes.isEmpty && !appModel.isEmptyStateConfirmed {
+                    UnconfirmedEmptyWorkspaceStatus(appModel: appModel)
+                } else if activeNotes.isEmpty {
                     ContentUnavailableView {
                         Label("No Notes Yet", systemImage: "checklist")
                     } description: {
@@ -78,7 +86,10 @@ struct NotesListView: View {
             .navigationTitle("Notes")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    TildoneiOSSyncStatusMenu(appModel: appModel)
+                    TildoneiOSSyncStatusMenu(
+                        appModel: appModel,
+                        showsLaunchProgress: appModel.isCheckingCloudForNotes && !activeNotes.isEmpty
+                    )
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -105,6 +116,7 @@ struct NotesListView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: createNote) { Label("New Note", systemImage: "plus") }
                         .accessibilityLabel("Create note")
+                        .disabled(!appModel.hasWorkspace)
                 }
             }
             .navigationDestination(item: $presentedNoteID) { noteID in
@@ -113,6 +125,34 @@ struct NotesListView: View {
         }
         .onAppear { reconcileDeckOrder() }
         .onChange(of: activeNotes.map(\.id)) { _, _ in reconcileDeckOrder() }
+        .alert("Use iCloud for Tildone?", isPresented: Binding(
+            get: { appModel.shouldOfferCloudAdoption },
+            set: { if !$0 { appModel.dismissCloudAdoptionOffer() } }
+        )) {
+            Button("Keep on This iPhone", role: .cancel) {
+                appModel.keepNotesOnThisIPhone()
+            }
+            Button("Use iCloud") {
+                appModel.useICloudAndCombineNotes()
+            }
+        } message: {
+            Text("Tildone can combine the notes on this iPhone with your private iCloud notes. The originals will remain on this iPhone.")
+        }
+        .overlay {
+            if appModel.isWorkspaceTransitionInProgress {
+                ProgressView("Copying Notes to iCloud…")
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+        .alert("Couldn’t Use iCloud", isPresented: Binding(
+            get: { appModel.workspaceTransitionFailed },
+            set: { if !$0 { appModel.dismissWorkspaceTransitionError() } }
+        )) {
+            Button("OK") { appModel.dismissWorkspaceTransitionError() }
+        } message: {
+            Text("Your notes are still safe on this iPhone. Please try again later.")
+        }
         .alert("Rename Note", isPresented: Binding(
             get: { noteToRename != nil }, set: { if !$0 { noteToRename = nil } }
         )) {
@@ -201,5 +241,21 @@ struct NotesListView: View {
         let retainedIDs = deckOrder.filter(activeIDs.contains)
         let newIDs = activeNotes.map(\.id).filter { !retainedIDs.contains($0) }
         deckOrder = retainedIDs + newIDs
+    }
+}
+
+private struct UnconfirmedEmptyWorkspaceStatus: View {
+    let appModel: TildoneiOSApplicationModel
+    @ObservedObject private var syncPresentation: TildoneiOSSyncPresentation
+
+    init(appModel: TildoneiOSApplicationModel) {
+        self.appModel = appModel
+        _syncPresentation = ObservedObject(wrappedValue: appModel.syncPresentation)
+    }
+
+    var body: some View {
+        WorkspaceStatusView(status: syncPresentation.status) {
+            appModel.syncNow()
+        }
     }
 }

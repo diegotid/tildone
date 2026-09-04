@@ -20,6 +20,92 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
     }
 
+    func testLaunchKeepsEmptyStatePendingUntilWorkspaceCheckCompletes() async {
+        let workspace = UUID()
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { identity in
+                try TildoneRepository(descriptor: .inMemory(workspace: identity))
+            },
+            accountResolver: {
+                CloudAccountSnapshot(state: .available, workspaceID: workspace)
+            },
+            synchronizationEnabled: false
+        )
+
+        XCTAssertTrue(model.isCheckingCloudForNotes)
+        await model.resolveAndOpenCurrentWorkspace()
+        XCTAssertTrue(model.hasWorkspace)
+        XCTAssertTrue(model.notes.isEmpty)
+        XCTAssertFalse(model.isCheckingCloudForNotes)
+        XCTAssertTrue(model.isEmptyStateConfirmed)
+    }
+
+    func testNoICloudAccountOpensEditableLocalWorkspace() async throws {
+        let localRepository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .localOnly)
+        )
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { workspace in
+                guard workspace == .localOnly else { throw PersistenceError.workspaceMismatch }
+                return localRepository
+            },
+            accountResolver: { CloudAccountSnapshot(state: .noAccount, workspaceID: nil) },
+            synchronizationEnabled: false
+        )
+
+        await model.resolveAndOpenCurrentWorkspace()
+        let note = try await model.createNote(title: "Local note")
+        let persistedLocalNoteIDs = try await localRepository.visibleNotes().map(\.id)
+
+        XCTAssertTrue(model.hasWorkspace)
+        XCTAssertTrue(model.isUsingLocalWorkspace)
+        XCTAssertEqual(model.notes.map(\.id), [note.id])
+        XCTAssertEqual(persistedLocalNoteIDs, [note.id])
+        XCTAssertEqual(model.syncStatus.availability, .noAccount)
+    }
+
+    func testLaterICloudSignInRequiresConsentAndPreservesLocalSource() async throws {
+        let suiteName = "TildoneiOSLocalAdoptionTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let workspaceID = UUID()
+        let localRepository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .localOnly)
+        )
+        let accountRepository = try TildoneRepository(
+            descriptor: .inMemory(workspace: .account(workspaceID))
+        )
+        var account = CloudAccountSnapshot(state: .noAccount, workspaceID: nil)
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { workspace in
+                workspace == .localOnly ? localRepository : accountRepository
+            },
+            accountResolver: { account },
+            synchronizationEnabled: false,
+            defaults: defaults
+        )
+
+        await model.resolveAndOpenCurrentWorkspace()
+        let localNote = try await model.createNote(title: "Keep me")
+        account = CloudAccountSnapshot(state: .available, workspaceID: workspaceID)
+        await model.resolveAndOpenCurrentWorkspace()
+        let accountNotesBeforeConsent = try await accountRepository.visibleNotes()
+
+        XCTAssertTrue(model.isUsingLocalWorkspace)
+        XCTAssertTrue(model.shouldOfferCloudAdoption)
+        XCTAssertTrue(accountNotesBeforeConsent.isEmpty)
+
+        model.useICloudAndCombineNotes()
+        while model.isWorkspaceTransitionInProgress { await Swift.Task.yield() }
+        let accountNoteIDs = try await accountRepository.visibleNotes().map(\.id)
+        let localNoteIDs = try await localRepository.visibleNotes().map(\.id)
+
+        XCTAssertFalse(model.workspaceTransitionFailed)
+        XCTAssertFalse(model.isUsingLocalWorkspace)
+        XCTAssertEqual(accountNoteIDs, [localNote.id])
+        XCTAssertEqual(localNoteIDs, [localNote.id])
+    }
+
     func testContentAndSyncPublicationsDoNotInvalidateApplicationShell() async throws {
         let model = try await makeModel()
         var shellPublicationCount = 0
@@ -822,10 +908,12 @@ final class TildoneiOSTests: XCTestCase {
         let workspaceB = UUID()
         let repositoryA = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceA)))
         let repositoryB = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceB)))
+        let localRepository = try TildoneRepository(descriptor: .inMemory(workspace: .localOnly))
         var account = CloudAccountSnapshot(state: .available, workspaceID: workspaceA)
         let model = TildoneiOSApplicationModel(
             repositoryFactory: { workspace in
                 switch workspace {
+                case .localOnly: return localRepository
                 case let .account(id) where id == workspaceA: return repositoryA
                 case let .account(id) where id == workspaceB: return repositoryB
                 default: throw PersistenceError.workspaceMismatch

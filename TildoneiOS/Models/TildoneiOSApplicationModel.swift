@@ -19,6 +19,12 @@ final class TildoneiOSApplicationModel: ObservableObject {
     let undoPresentation = TildoneiOSUndoPresentation()
     @Published private(set) var isResolvingWorkspace = true
     @Published private(set) var hasWorkspace = false
+    @Published private(set) var isCheckingCloudForNotes = true
+    @Published private(set) var isEmptyStateConfirmed = false
+    @Published private(set) var isUsingLocalWorkspace = false
+    @Published private(set) var shouldOfferCloudAdoption = false
+    @Published private(set) var isWorkspaceTransitionInProgress = false
+    @Published private(set) var workspaceTransitionFailed = false
     private(set) var contentRevision: UInt64 = 0
 
     var notes: [Note] { overviewPresentation.snapshot.notes }
@@ -41,12 +47,16 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private let accountResolver: () async -> CloudAccountSnapshot
     private let synchronizationEnabled: Bool
     private let transportStateStore: SyncTransportStateStore
+    private let defaults: UserDefaults
     private var repository: TildoneRepository?
+    private var localRepository: TildoneRepository?
+    private var accountRepository: TildoneRepository?
     private var undoController: ConsequentialActionUndoController?
     private var coordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
     private var workspaceResolutionTask: Swift.Task<Void, Never>?
     private var activeWorkspace: UUID?
+    private var accountWorkspaceID: UUID?
     private var notePresentations: [NoteID: TildoneiOSNotePresentation] = [:]
     private var nextPresentationRevision: UInt64 = 0
     private var latestPresentationMutationRevisions: [NoteID: UInt64] = [:]
@@ -62,12 +72,14 @@ final class TildoneiOSApplicationModel: ObservableObject {
             await CloudAccountResolver().resolve()
         },
         synchronizationEnabled: Bool = TildoneiOSSyncBootstrapper.featureEnabled,
-        transportStateStore: SyncTransportStateStore = SyncTransportStateStore()
+        transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
+        defaults: UserDefaults = .standard
     ) {
         self.repositoryFactory = repositoryFactory
         self.accountResolver = accountResolver
         self.synchronizationEnabled = synchronizationEnabled
         self.transportStateStore = transportStateStore
+        self.defaults = defaults
     }
 
     deinit {
@@ -94,54 +106,92 @@ final class TildoneiOSApplicationModel: ObservableObject {
             guard let self, let coordinator else { return }
             await coordinator.start()
             try? await reloadNotes()
+            let checkpointStatus = await coordinator.statusModel.snapshot()
+            if checkpointStatus.lastSuccessfulSyncAt != nil {
+                isEmptyStateConfirmed = true
+            }
         }
     }
 
     func resolveAndOpenCurrentWorkspace() async {
+        let isInitialOpen = repository == nil
         isResolvingWorkspace = true
+        if isInitialOpen {
+            isCheckingCloudForNotes = true
+            isEmptyStateConfirmed = false
+        }
         let account = await accountResolver()
         guard account.state == .available, let workspaceID = account.workspaceID else {
-            await closeWorkspace(status: Self.status(for: account.state))
+            if [.temporarilyUnavailable, .couldNotDetermine].contains(account.state),
+               repository != nil {
+                syncStatus = Self.status(for: account.state)
+                isResolvingWorkspace = false
+                isCheckingCloudForNotes = false
+                return
+            }
+            if !isUsingLocalWorkspace || repository == nil {
+                await closeWorkspace(status: Self.status(for: account.state))
+                do {
+                    try await openLocalWorkspace(status: Self.status(for: account.state))
+                } catch {
+                    await closeWorkspace(status: SyncStatus(
+                        availability: .temporarilyUnavailable,
+                        activity: .attentionNeeded,
+                        issue: .unknown
+                    ))
+                }
+            } else {
+                syncStatus = Self.status(for: account.state)
+            }
             isResolvingWorkspace = false
+            isCheckingCloudForNotes = false
             return
         }
 
         if activeWorkspace == workspaceID, repository != nil {
             isResolvingWorkspace = false
+            isCheckingCloudForNotes = false
             syncNow()
             return
         }
 
+        if isUsingLocalWorkspace, accountWorkspaceID == workspaceID {
+            isResolvingWorkspace = false
+            isCheckingCloudForNotes = false
+            return
+        }
+
+        if isUsingLocalWorkspace { isCheckingCloudForNotes = true }
         await closeWorkspace(status: .disabled)
         do {
-            let repository = try await repositoryFactory(.account(workspaceID))
-            try await repository.migrateMissingNoteColors(
+            let localRepository = try await repositoryFactory(.localOnly)
+            try await localRepository.migrateMissingNoteColors(
                 colorsByNoteID: [:],
                 authority: .platformDefault
             )
-            self.repository = repository
-            undoController = ConsequentialActionUndoController(repository: repository)
-            activeWorkspace = workspaceID
-            hasWorkspace = true
-            transportState = transportStateStore.state(for: workspaceID)
-            if !synchronizationEnabled {
-                syncStatus = .disabled
-            } else if transportState == .paused {
-                syncStatus = SyncStatus(
-                    availability: .available,
-                    activity: .paused,
-                    pendingMutationCount: try await repository.pendingMutations().count
+            let accountRepository = try await repositoryFactory(.account(workspaceID))
+            try await accountRepository.migrateMissingNoteColors(
+                colorsByNoteID: [:],
+                authority: .platformDefault
+            )
+            self.localRepository = localRepository
+            self.accountRepository = accountRepository
+            accountWorkspaceID = workspaceID
+
+            let localHasContent = try await localRepository.hasSyncContent()
+            switch localWorkspaceChoice(for: workspaceID) {
+            case .useICloud:
+                try await activateAccountWorkspace(accountRepository, workspaceID: workspaceID)
+            case _ where !localHasContent:
+                try await activateAccountWorkspace(accountRepository, workspaceID: workspaceID)
+            case .stayLocal:
+                try await activateLocalWorkspace(localRepository, status: .disabled)
+            case .none:
+                try await activateLocalWorkspace(
+                    localRepository,
+                    status: SyncStatus(availability: .adoptionRequired, activity: .attentionNeeded)
                 )
-            } else {
-                syncStatus = SyncStatus(availability: .available, activity: .idle)
-            }
-            try await reloadNotes()
-            await Swift.Task.yield()
-            if SyncTransportActivationPolicy.shouldActivate(
-                enabledByDefault: synchronizationEnabled,
-                persistedState: transportState
-            ) {
-                try await startCoordinator(for: repository, workspaceID: workspaceID)
+                shouldOfferCloudAdoption = true
             }
         } catch {
             await closeWorkspace(status: SyncStatus(
@@ -151,6 +201,57 @@ final class TildoneiOSApplicationModel: ObservableObject {
             ))
         }
         isResolvingWorkspace = false
+        isCheckingCloudForNotes = false
+    }
+
+    func keepNotesOnThisIPhone() {
+        guard let workspaceID = accountWorkspaceID else { return }
+        setLocalWorkspaceChoice(.stayLocal, for: workspaceID)
+        shouldOfferCloudAdoption = false
+        workspaceTransitionFailed = false
+        syncStatus = .disabled
+    }
+
+    func offerCloudAdoption() {
+        guard isUsingLocalWorkspace, accountWorkspaceID != nil else { return }
+        shouldOfferCloudAdoption = true
+        workspaceTransitionFailed = false
+    }
+
+    func dismissCloudAdoptionOffer() {
+        shouldOfferCloudAdoption = false
+    }
+
+    func dismissWorkspaceTransitionError() {
+        workspaceTransitionFailed = false
+    }
+
+    var canOfferCloudAdoption: Bool {
+        isUsingLocalWorkspace && accountWorkspaceID != nil
+    }
+
+    func useICloudAndCombineNotes() {
+        guard !isWorkspaceTransitionInProgress,
+              let localRepository,
+              let accountRepository,
+              let workspaceID = accountWorkspaceID else { return }
+        isWorkspaceTransitionInProgress = true
+        workspaceTransitionFailed = false
+        Swift.Task { [weak self] in
+            guard let self else { return }
+            do {
+                let notes = try await localRepository.allSyncNotes()
+                let tasks = try await localRepository.allSyncTasks()
+                try await accountRepository.adoptSyncContent(notes: notes, tasks: tasks, at: Date())
+                try await localRepository.markCloudSeedingBegun(at: Date())
+                try await activateAccountWorkspace(accountRepository, workspaceID: workspaceID)
+                setLocalWorkspaceChoice(.useICloud, for: workspaceID)
+                shouldOfferCloudAdoption = false
+            } catch {
+                workspaceTransitionFailed = true
+            }
+            isWorkspaceTransitionInProgress = false
+        }
     }
 
     func reloadNotes() async throws {
@@ -534,6 +635,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
         transportState = transportStateStore.state(for: workspaceID)
         hasWorkspace = true
         isResolvingWorkspace = false
+        isCheckingCloudForNotes = false
+        isEmptyStateConfirmed = true
         try await reloadNotes()
     }
 
@@ -908,7 +1011,92 @@ final class TildoneiOSApplicationModel: ObservableObject {
         return try await operation(repository)
     }
 
-    private func startCoordinator(for repository: TildoneRepository, workspaceID: UUID) async throws {
+    private func openLocalWorkspace(status: SyncStatus) async throws {
+        let localRepository = try await repositoryFactory(.localOnly)
+        try await localRepository.migrateMissingNoteColors(
+            colorsByNoteID: [:],
+            authority: .platformDefault
+        )
+        self.localRepository = localRepository
+        try await activateLocalWorkspace(localRepository, status: status)
+    }
+
+    private func activateLocalWorkspace(
+        _ localRepository: TildoneRepository,
+        status: SyncStatus
+    ) async throws {
+        repository = localRepository
+        undoController = ConsequentialActionUndoController(repository: localRepository)
+        activeWorkspace = nil
+        isUsingLocalWorkspace = true
+        hasWorkspace = true
+        transportState = .active
+        syncStatus = status
+        isEmptyStateConfirmed = true
+        clearPresentationState()
+        try await reloadNotes()
+    }
+
+    private func activateAccountWorkspace(
+        _ accountRepository: TildoneRepository,
+        workspaceID: UUID
+    ) async throws {
+        repository = accountRepository
+        undoController = ConsequentialActionUndoController(repository: accountRepository)
+        activeWorkspace = workspaceID
+        accountWorkspaceID = workspaceID
+        isUsingLocalWorkspace = false
+        hasWorkspace = true
+        transportState = transportStateStore.state(for: workspaceID)
+        clearPresentationState()
+        if !synchronizationEnabled {
+            syncStatus = .disabled
+            isEmptyStateConfirmed = true
+        } else if transportState == .paused {
+            syncStatus = SyncStatus(
+                availability: .available,
+                activity: .paused,
+                pendingMutationCount: try await accountRepository.pendingMutations().count
+            )
+            isEmptyStateConfirmed = true
+        } else {
+            syncStatus = SyncStatus(availability: .available, activity: .idle)
+            isEmptyStateConfirmed = false
+        }
+        try await reloadNotes()
+        await Swift.Task.yield()
+        if SyncTransportActivationPolicy.shouldActivate(
+            enabledByDefault: synchronizationEnabled,
+            persistedState: transportState
+        ) {
+            let checkpointStatus = try await startCoordinator(
+                for: accountRepository,
+                workspaceID: workspaceID
+            )
+            try await reloadNotes()
+            isEmptyStateConfirmed = checkpointStatus.lastSuccessfulSyncAt != nil
+        }
+    }
+
+    private enum LocalWorkspaceChoice: String {
+        case stayLocal
+        case useICloud
+    }
+
+    private func localWorkspaceChoice(for workspaceID: UUID) -> LocalWorkspaceChoice? {
+        let key = "iOSLocalWorkspaceChoice.\(workspaceID.uuidString.lowercased())"
+        return defaults.string(forKey: key).flatMap(LocalWorkspaceChoice.init(rawValue:))
+    }
+
+    private func setLocalWorkspaceChoice(_ choice: LocalWorkspaceChoice, for workspaceID: UUID) {
+        let key = "iOSLocalWorkspaceChoice.\(workspaceID.uuidString.lowercased())"
+        defaults.set(choice.rawValue, forKey: key)
+    }
+
+    private func startCoordinator(
+        for repository: TildoneRepository,
+        workspaceID: UUID
+    ) async throws -> SyncStatus {
         let coordinator = try await TildoneSyncCoordinator(
             repository: repository,
             clientPlatform: .iPhone,
@@ -941,6 +1129,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
             }
         }
         await coordinator.start()
+        let checkpointStatus = await coordinator.statusModel.snapshot()
+        present(status: checkpointStatus)
+        return checkpointStatus
     }
 
     private func closeWorkspace(status: SyncStatus) async {
@@ -952,12 +1143,18 @@ final class TildoneiOSApplicationModel: ObservableObject {
         if let coordinator { await coordinator.stop() }
         coordinator = nil
         repository = nil
+        localRepository = nil
+        accountRepository = nil
         undoController = nil
         undoPresentation.clear()
         activeWorkspace = nil
+        accountWorkspaceID = nil
+        isUsingLocalWorkspace = false
+        shouldOfferCloudAdoption = false
         transportState = .active
         clearPresentationState()
         hasWorkspace = false
+        isEmptyStateConfirmed = false
         syncStatus = status
     }
 

@@ -14,10 +14,8 @@ struct TildoneiOSRootView: View {
 
     var body: some View {
         Group {
-            if appModel.hasWorkspace {
+            if appModel.hasWorkspace || appModel.isResolvingWorkspace {
                 NotesListView(appModel: appModel)
-            } else if appModel.isResolvingWorkspace {
-                ProgressView("Opening Tildone…")
             } else {
                 TildoneiOSWorkspaceStatus(appModel: appModel)
             }

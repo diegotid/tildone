@@ -12,9 +12,11 @@ struct SyncStatusMenu: View {
     let status: SyncStatus
     let transportState: SyncTransportState
     let canControlTransport: Bool
+    let canOfferCloudAdoption: Bool
     let syncNow: () -> Void
     let pause: () -> Void
     let resume: () -> Void
+    let offerCloudAdoption: () -> Void
 
     var body: some View {
         Menu {
@@ -38,6 +40,12 @@ struct SyncStatusMenu: View {
                     if canControlTransport {
                         Button("Pause Sync", systemImage: "pause.fill", action: pause)
                     }
+                }
+            }
+            if canOfferCloudAdoption {
+                Divider()
+                Button("Use iCloud…", systemImage: "icloud") {
+                    offerCloudAdoption()
                 }
             }
         } label: {
