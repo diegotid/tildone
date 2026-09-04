@@ -23,6 +23,8 @@ struct ChecklistView: View {
     @State private var collapsedTaskIDs: Set<TaskID> = []
     @State private var taskInsertionTargetID: TaskID?
     @State private var taskInsertionText = ""
+    @State private var pendingTaskInsertionID: TaskID?
+    @State private var showsInsertionHint = false
     @FocusState private var focusedTask: TaskID?
     @FocusState private var isAddingTask: Bool
     @FocusState private var isAddingTaskAbove: Bool
@@ -61,6 +63,7 @@ struct ChecklistView: View {
         Group {
             if let note {
                 let subtaskProgresses = TaskHierarchy.subtaskProgresses(in: tasks)
+                ScrollViewReader { scrollProxy in
                 List {
                     if showsTitleInput {
                         TextField("Note title", text: $title)
@@ -84,6 +87,7 @@ struct ChecklistView: View {
                             let canOutdent = task.indentLevel > 0
                             if taskInsertionTargetID == task.id {
                                 taskInsertionRow(above: task)
+                                    .id("task-insertion-\(task.id)")
                             }
                             TaskRow(
                                 task: task,
@@ -116,6 +120,7 @@ struct ChecklistView: View {
                                     await move(taskID: task.id, by: 1)
                                 }
                             )
+                            .id(task.id)
                             .deleteDisabled(!task.isCompleted)
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 if canIndent {
@@ -124,7 +129,7 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: false)
                                         }
                                     } label: {
-                                        Image(systemName: "arrow.turn.down.right")
+                                        swipeActionLabel("Make subtask", systemImage: "arrow.turn.down.right")
                                     }
                                     .tint(.indigo)
                                     .accessibilityLabel("Make subtask")
@@ -135,7 +140,7 @@ struct ChecklistView: View {
                                             await changeIndentation(taskID: task.id, outdent: true)
                                         }
                                     } label: {
-                                        Image(systemName: "arrow.turn.left.up")
+                                        swipeActionLabel("Promote task", systemImage: "arrow.turn.left.up")
                                     }
                                     .tint(.blue)
                                     .accessibilityLabel("Promote task")
@@ -143,17 +148,19 @@ struct ChecklistView: View {
                             }
                             .swipeActions(edge: .trailing) {
                                 if task.isCompleted {
-                                    Button("Delete", role: .destructive) {
+                                    Button(role: .destructive) {
                                         deleteTask(task.id)
+                                    } label: {
+                                        swipeActionLabel("Delete", systemImage: "trash")
                                     }
                                 }
                                 Button {
                                     beginAddingTask(above: task.id)
                                 } label: {
-                                    Image(systemName: "plus")
+                                    swipeActionLabel("Add above", systemImage: "plus")
                                 }
                                 .tint(.green)
-                                .accessibilityLabel("Add Above")
+                                .accessibilityLabel("Add above")
                             }
                             .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                             .alignmentGuide(.listRowSeparatorLeading) { dimensions in
@@ -163,20 +170,38 @@ struct ChecklistView: View {
                         .onDelete(perform: deleteTasks)
                         .onMove(perform: move)
 
-                        TextField("New task", text: $newTaskText)
-                            .focused($isAddingTask)
-                            .submitLabel(.next)
-                            .onSubmit { addTask() }
-                            .accessibilityLabel("New task")
-                            .frame(minHeight: 33, maxHeight: 33)
+                        if taskInsertionTargetID == nil || !taskInsertionText.isEmpty {
+                            TextField("New task", text: $newTaskText)
+                                .focused($isAddingTask)
+                                .submitLabel(.next)
+                                .onSubmit { addTask() }
+                                .accessibilityLabel("New task")
+                                .frame(minHeight: 33, maxHeight: 33)
+                                .id(Self.newTaskSlotID)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        }
+                    } footer: {
+                        if showsInsertionHint {
+                            Text("To insert anywhere, swipe a task and tap Add above.")
+                        }
                     }
                 }
-                .scrollContentBackground(.hidden)
-                .background(note.color.swiftUIColor.opacity(0.22))
                 .navigationTitle(usesInlineNavigationTitle ? "" : note.title!)
                 .navigationBarTitleDisplayMode(usesInlineNavigationTitle ? .inline : .large)
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if canEditTasks {
+                            Button {
+                                addTaskFromHeader(scrollProxy: scrollProxy)
+                            } label: {
+                                Image(systemName: "plus")
+                            }
+                            .accessibilityLabel("Add task")
+                        }
+                        if canEditTasks {
+                            EditButton()
+                        }
+
                         Menu {
                             TildoneiOSUndoMenuButton(
                                 presentation: appModel.undoPresentation
@@ -207,14 +232,12 @@ struct ChecklistView: View {
                         }
                         .accessibilityLabel("Note color")
                     }
-                    if canEditTasks {
-                        ToolbarItem(placement: .topBarTrailing) { EditButton() }
-                    }
                 }
                 .onDisappear {
                     saveTitle()
                     saveNewTaskIfNeeded()
                     saveTaskAboveIfNeeded()
+                }
                 }
             } else {
                 ContentUnavailableView("This note was deleted", systemImage: "trash")
@@ -229,6 +252,11 @@ struct ChecklistView: View {
         .onChange(of: presentation.snapshot) { oldSnapshot, newSnapshot in
             if oldSnapshot.note != nil, newSnapshot.note == nil { dismiss() }
             else { synchronizeWithPresentation() }
+        }
+        .onChange(of: newTaskText) { _, text in
+            if !text.isEmpty {
+                showsInsertionHint = false
+            }
         }
     }
 
@@ -280,6 +308,15 @@ struct ChecklistView: View {
         }
     }
 
+    private func addTaskFromHeader(scrollProxy: ScrollViewProxy) {
+        showsInsertionHint = newTaskText.isEmpty
+        focusedTask = nil
+        withAnimation {
+            scrollProxy.scrollTo(Self.newTaskSlotID, anchor: .bottom)
+        }
+        isAddingTask = true
+    }
+
     private func saveNewTaskIfNeeded() {
         let text = newTaskText
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -293,15 +330,20 @@ struct ChecklistView: View {
         saveTaskAboveIfNeeded()
         focusedTask = nil
         taskInsertionText = ""
-        taskInsertionTargetID = taskID
+        pendingTaskInsertionID = taskID
         Swift.Task {
+            try? await Swift.Task.sleep(nanoseconds: 800_000_000)
+            guard pendingTaskInsertionID == taskID else { return }
+            taskInsertionTargetID = taskID
             await Swift.Task.yield()
-            guard taskInsertionTargetID == taskID else { return }
+            guard pendingTaskInsertionID == taskID,
+                  taskInsertionTargetID == taskID else { return }
             isAddingTaskAbove = true
         }
     }
 
     private func cancelAddingTaskAbove() {
+        pendingTaskInsertionID = nil
         isAddingTaskAbove = false
         taskInsertionTargetID = nil
         taskInsertionText = ""
@@ -341,11 +383,23 @@ struct ChecklistView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
         .padding(.leading, CGFloat(task.indentLevel) * 24)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
         .onChange(of: isAddingTaskAbove) { wasFocused, isFocused in
             guard wasFocused, !isFocused else { return }
             saveTaskAboveIfNeeded()
         }
     }
+
+    private func swipeActionLabel(_ title: LocalizedStringKey, systemImage: String) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: systemImage)
+            Text(title)
+                .font(.caption2)
+                .lineLimit(1)
+        }
+    }
+
+    private static let newTaskSlotID = "new-task-slot"
 
     private func move(from source: IndexSet, to destination: Int) {
         let visibleIndices = visibleTaskIndices
