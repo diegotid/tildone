@@ -1458,6 +1458,7 @@
       }
     },
     "Hide all" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

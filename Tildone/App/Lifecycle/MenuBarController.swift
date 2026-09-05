@@ -113,6 +113,7 @@ final class MenuBarController: NSObject {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.minimumWidth = NoteColorFilterMenuView.preferredMenuWidth
         menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout), symbolName: "info.circle"))
         menu.addItem(.separator())
 
@@ -220,14 +221,16 @@ final class MenuBarController: NSObject {
 }
 
 private final class NoteColorFilterMenuView: NSView {
-    private let discSize: CGFloat = 18
+    static let preferredMenuWidth: CGFloat = 244
+
+    private let discSize: CGFloat = 21.6
     private let spacing: CGFloat = 7
-    private let sideInset: CGFloat = 18
-    private let clearSize: CGFloat = 18
-    private let clearLabel = String(localized: "Hide all")
+    private var hoveredIndex: Int?
+    private var trackingArea: NSTrackingArea?
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 244, height: 34))
+        super.init(frame: NSRect(x: 0, y: 0, width: Self.preferredMenuWidth, height: 38))
+        autoresizingMask = [.width]
         toolTip = String(localized: "Choose which note colors are displayed")
     }
 
@@ -235,63 +238,117 @@ private final class NoteColorFilterMenuView: NSView {
 
     override var isFlipped: Bool { true }
 
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: Self.preferredMenuWidth, height: 38)
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        if let superview {
+            frame.size.width = superview.bounds.width
+        }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.acceptsMouseMovedEvents = true
+        updateTrackingAreas()
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.activeAlways, .inVisibleRect, .mouseMoved, .mouseEnteredAndExited],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        self.trackingArea = trackingArea
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         let selected = NoteColorDisplayFilter.selectedColors
         for (index, color) in NoteColor.allCases.enumerated() {
             let rect = discRect(at: index)
-            let colorDisc = rect.insetBy(dx: 3, dy: 3)
-            color.nsColor.withAlphaComponent(selected.contains(color) ? 1 : 0.75).setFill()
+            let isSelected = selected.contains(color)
+            let colorDisc = rect.insetBy(dx: 3.6, dy: 3.6)
+            color.nsColor.setFill()
             NSBezierPath(ovalIn: colorDisc).fill()
-            (selected.contains(color) ? NSColor.controlAccentColor : NSColor.separatorColor).setStroke()
-            let path = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
-            path.lineWidth = selected.contains(color) ? 2.5 : 0.75
-            path.stroke()
+            if isSelected {
+                NSColor.controlAccentColor.setStroke()
+                let path = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
+                path.lineWidth = 2.875
+                path.stroke()
+            }
+            if hoveredIndex == index {
+                drawHoverSymbol(in: colorDisc, isSelected: isSelected)
+            }
         }
 
-        let clearRect = self.clearRect
-        NSColor.secondaryLabelColor.setStroke()
-        let cross = NSBezierPath()
-        cross.lineWidth = 1.5
-        cross.move(to: NSPoint(x: clearRect.minX + 4, y: clearRect.minY + 4))
-        cross.line(to: NSPoint(x: clearRect.maxX - 4, y: clearRect.maxY - 4))
-        cross.move(to: NSPoint(x: clearRect.maxX - 4, y: clearRect.minY + 4))
-        cross.line(to: NSPoint(x: clearRect.minX + 4, y: clearRect.maxY - 4))
-        cross.stroke()
-        let labelRect = NSRect(x: clearRect.maxX + 4, y: 9, width: 78, height: 16)
-        clearLabel.draw(
-            in: labelRect,
-            withAttributes: [
-                .font: NSFont.menuFont(ofSize: 12),
-                .foregroundColor: NSColor.secondaryLabelColor
-            ]
-        )
     }
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if clearHitRect.contains(point) {
-            NoteColorDisplayFilter.deselectAll()
-        } else if let index = NoteColor.allCases.indices.first(where: { discRect(at: $0).insetBy(dx: -4, dy: -4).contains(point) }) {
+        if let index = NoteColor.allCases.indices.first(where: { discRect(at: $0).insetBy(dx: -4, dy: -4).contains(point) }) {
             NoteColorDisplayFilter.toggle(NoteColor.allCases[index])
         }
         needsDisplay = true
     }
 
+    override func mouseMoved(with event: NSEvent) {
+        updateHoveredIndex(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        updateHoveredIndex(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        guard hoveredIndex != nil else { return }
+        hoveredIndex = nil
+        needsDisplay = true
+    }
+
     override func resetCursorRects() {
         for index in NoteColor.allCases.indices { addCursorRect(discRect(at: index), cursor: .pointingHand) }
-        addCursorRect(clearHitRect, cursor: .pointingHand)
     }
 
     private func discRect(at index: Int) -> NSRect {
-        NSRect(x: sideInset + CGFloat(index) * (discSize + spacing), y: 8, width: discSize, height: discSize)
+        let groupWidth = CGFloat(NoteColor.allCases.count) * discSize
+            + CGFloat(NoteColor.allCases.count - 1) * spacing
+        return NSRect(
+            x: bounds.midX - groupWidth / 2 + CGFloat(index) * (discSize + spacing),
+            y: bounds.midY - discSize / 2,
+            width: discSize,
+            height: discSize
+        )
     }
 
-    private var clearRect: NSRect {
-        NSRect(x: 177, y: 8, width: clearSize, height: clearSize)
+    private func drawHoverSymbol(in rect: NSRect, isSelected: Bool) {
+        NSColor.labelColor.setStroke()
+        let inset = rect.width * 0.28
+        let symbolRect = rect.insetBy(dx: inset, dy: inset)
+        let symbol = NSBezierPath()
+        symbol.lineWidth = 1.8
+        symbol.lineCapStyle = .round
+        symbol.move(to: NSPoint(x: symbolRect.minX, y: symbolRect.midY))
+        symbol.line(to: NSPoint(x: symbolRect.maxX, y: symbolRect.midY))
+        if !isSelected {
+            symbol.move(to: NSPoint(x: symbolRect.midX, y: symbolRect.minY))
+            symbol.line(to: NSPoint(x: symbolRect.midX, y: symbolRect.maxY))
+        }
+        symbol.stroke()
     }
 
-    private var clearHitRect: NSRect {
-        NSRect(x: clearRect.minX - 4, y: 4, width: 64, height: 26)
+    private func updateHoveredIndex(at point: NSPoint) {
+        let newHoveredIndex = NoteColor.allCases.indices.first {
+            discRect(at: $0).insetBy(dx: -4, dy: -4).contains(point)
+        }
+        guard hoveredIndex != newHoveredIndex else { return }
+        hoveredIndex = newHoveredIndex
+        needsDisplay = true
     }
 }
