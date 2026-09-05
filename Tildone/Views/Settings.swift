@@ -31,6 +31,20 @@ struct MacAppShortcut: Equatable {
         return prefix + (key?.uppercased() ?? "")
     }
 
+    var keySymbols: [String] {
+        let modifierSymbols = [
+            (NSEvent.ModifierFlags.control, "⌃"),
+            (.option, "⌥"),
+            (.shift, "⇧"),
+            (.command, "⌘")
+        ]
+        var symbols = modifierSymbols.compactMap { modifiers.contains($0.0) ? $0.1 : nil }
+        if let key, !key.isEmpty {
+            symbols.append(key.uppercased())
+        }
+        return symbols
+    }
+
     func matches(_ eventModifiers: NSEvent.ModifierFlags) -> Bool {
         eventModifiers.intersection(Self.significantModifiers) == modifiers
     }
@@ -342,13 +356,12 @@ private extension SettingsForm {
             VStack(alignment: .leading, spacing: 10) {
                 Text("New Note")
                     .font(.headline)
-                LabeledContent("Keyboard shortcut") {
-                    ShortcutRecorder(
-                        shortcut: newNoteShortcutBinding,
-                        kind: .key,
-                        validationMessage: $newNoteShortcutValidationMessage
-                    )
-                }
+                ShortcutSettingRow(
+                    "Keyboard shortcut",
+                    shortcut: newNoteShortcutBinding,
+                    kind: .key,
+                    validationMessage: $newNoteShortcutValidationMessage
+                )
                 shortcutValidationMessage(newNoteShortcutValidationMessage)
                 if globalNewNoteHotKey.hasConflict {
                     globalShortcutConflictWarning
@@ -507,13 +520,12 @@ private extension SettingsForm {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Note dimming:")
                     .font(.headline)
-                LabeledContent("Scroll shortcut") {
-                    ShortcutRecorder(
-                        shortcut: opacityShortcutBinding,
-                        kind: .modifiers(disallowsShift: true, disallowsCommand: true),
-                        validationMessage: $opacityShortcutValidationMessage
-                    )
-                }
+                ShortcutSettingRow(
+                    "Scroll shortcut",
+                    shortcut: opacityShortcutBinding,
+                    kind: .modifiers(disallowsShift: true, disallowsCommand: true),
+                    validationMessage: $opacityShortcutValidationMessage
+                )
                 shortcutValidationMessage(opacityShortcutValidationMessage)
                 Text("Hold this shortcut and scroll over a note to dim or restore its entire window.")
                     .font(.caption)
@@ -533,13 +545,12 @@ private extension SettingsForm {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Line Up:")
                     .font(.headline)
-                LabeledContent("Keyboard shortcut") {
-                    ShortcutRecorder(
-                        shortcut: lineUpShortcutBinding,
-                        kind: .key,
-                        validationMessage: $lineUpShortcutValidationMessage
-                    )
-                }
+                ShortcutSettingRow(
+                    "Keyboard shortcut",
+                    shortcut: lineUpShortcutBinding,
+                    kind: .key,
+                    validationMessage: $lineUpShortcutValidationMessage
+                )
                 shortcutValidationMessage(lineUpShortcutValidationMessage)
                 if globalLineUpHotKey.hasConflict {
                     globalShortcutConflictWarning
@@ -615,13 +626,12 @@ private extension SettingsForm {
                 Text("The corner selected for Line Up is also the Gather destination.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                LabeledContent("Scroll shortcut") {
-                    ShortcutRecorder(
-                        shortcut: gatherShortcutBinding,
-                        kind: .modifiers(disallowsShift: false, disallowsCommand: true),
-                        validationMessage: $gatherShortcutValidationMessage
-                    )
-                }
+                ShortcutSettingRow(
+                    "Scroll shortcut",
+                    shortcut: gatherShortcutBinding,
+                    kind: .modifiers(disallowsShift: false, disallowsCommand: true),
+                    validationMessage: $gatherShortcutValidationMessage
+                )
                 shortcutValidationMessage(gatherShortcutValidationMessage)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1347,43 +1357,86 @@ private enum ShortcutRecorderKind: Equatable {
     case modifiers(disallowsShift: Bool, disallowsCommand: Bool)
 }
 
+private struct ShortcutSettingRow: View {
+    let label: LocalizedStringKey
+    @Binding var shortcut: MacAppShortcut
+    let kind: ShortcutRecorderKind
+    @Binding var validationMessage: LocalizedStringKey?
+
+    init(
+        _ label: LocalizedStringKey,
+        shortcut: Binding<MacAppShortcut>,
+        kind: ShortcutRecorderKind,
+        validationMessage: Binding<LocalizedStringKey?>
+    ) {
+        self.label = label
+        _shortcut = shortcut
+        self.kind = kind
+        _validationMessage = validationMessage
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 8)
+
+            ShortcutRecorder(
+                shortcut: $shortcut,
+                kind: kind,
+                validationMessage: $validationMessage
+            )
+            .fixedSize()
+            .layoutPriority(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct ShortcutRecorder: View {
     @Binding var shortcut: MacAppShortcut
     let kind: ShortcutRecorderKind
     @Binding var validationMessage: LocalizedStringKey?
     @State private var isRecording = false
-    @State private var draft = ""
+    @State private var recorderID = UUID()
+    @State private var isRecordingLabelDimmed = false
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 3) {
+        HStack(spacing: 8) {
+            if isRecording {
+                Text("Recording...")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.red)
+                    .opacity(isRecordingLabelDimmed ? 0.5 : 1)
+                    .frame(minWidth: 76, minHeight: 22)
+                    .padding(.horizontal, 6)
+                    .background(.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            } else {
+                ShortcutKeyCombination(symbols: shortcut.keySymbols)
+            }
+
             Button {
                 validationMessage = nil
-                draft = ""
                 isRecording = true
             } label: {
-                Group {
-                    if isRecording {
-                        if draft.isEmpty {
-                            Text("Type new")
-                        } else {
-                            Text(verbatim: draft)
-                        }
-                    } else {
-                        Text(verbatim: shortcut.displayName)
-                    }
-                }
-                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
-                    .tracking(isRecording && draft.isEmpty ? 0 : 3)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.55)
-                    .frame(width: 56, height: 20)
+                Image(systemName: "record.circle")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(.red)
+                    .frame(width: 24, height: 24)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
+            .disabled(isRecording)
+            .help("Record keyboard shortcut")
+            .accessibilityLabel("Record keyboard shortcut")
             .background {
                 ShortcutCaptureView(
                     isRecording: $isRecording,
+                    recorderID: recorderID,
                     kind: kind,
-                    onDraft: { draft = $0.displayName },
+                    onDraft: { _ in },
                     onCommit: commit,
                     onValidationError: { validationMessage = $0 }
                 )
@@ -1391,6 +1444,16 @@ private struct ShortcutRecorder: View {
                 .opacity(0.01)
             }
         }
+        .onChange(of: isRecording) { _, isRecording in
+            if isRecording {
+                GlobalApplicationHotKey.isShortcutRecording = true
+                startRecordingLabelPulse()
+            } else {
+                GlobalApplicationHotKey.endShortcutRecording(id: recorderID)
+                stopRecordingLabelPulse()
+            }
+        }
+        .onDisappear { GlobalApplicationHotKey.endShortcutRecording(id: recorderID) }
     }
 
     private func commit(_ newShortcut: MacAppShortcut) {
@@ -1398,10 +1461,51 @@ private struct ShortcutRecorder: View {
         validationMessage = nil
         isRecording = false
     }
+
+    private func startRecordingLabelPulse() {
+        var resetTransaction = Transaction()
+        resetTransaction.disablesAnimations = true
+        withTransaction(resetTransaction) {
+            isRecordingLabelDimmed = false
+        }
+        withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+            isRecordingLabelDimmed = true
+        }
+    }
+
+    private func stopRecordingLabelPulse() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isRecordingLabelDimmed = false
+        }
+    }
+}
+
+private struct ShortcutKeyCombination: View {
+    let symbols: [String]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(symbols.enumerated()), id: \.offset) { _, symbol in
+                Text(verbatim: symbol)
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .frame(minWidth: 22, minHeight: 22)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(.secondary.opacity(0.65), lineWidth: 1)
+                    }
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(symbols.joined(separator: " "))
+    }
 }
 
 private struct ShortcutCaptureView: NSViewRepresentable {
     @Binding var isRecording: Bool
+    let recorderID: UUID
     let kind: ShortcutRecorderKind
     let onDraft: (MacAppShortcut) -> Void
     let onCommit: (MacAppShortcut) -> Void
@@ -1431,6 +1535,16 @@ private struct ShortcutCaptureView: NSViewRepresentable {
         view.onCommit = onCommit
         view.onCancel = { isRecording = false }
         view.onValidationError = onValidationError
+        if isRecording {
+            GlobalApplicationHotKey.beginShortcutRecording(
+                id: recorderID,
+                handler: kind == .key
+                    ? { [weak view] in view?.captureRegisteredHotKey($0) }
+                    : nil
+            )
+        } else {
+            GlobalApplicationHotKey.endShortcutRecording(id: recorderID)
+        }
     }
 }
 
@@ -1504,6 +1618,11 @@ private final class ShortcutCaptureNSView: NSView {
         pendingModifiers = []
         onCancel?()
         return resigns
+    }
+
+    func captureRegisteredHotKey(_ shortcut: MacAppShortcut) {
+        guard isRecording, kind == .key else { return }
+        onCommit?(shortcut)
     }
 
     private func reject(_ message: LocalizedStringKey) {

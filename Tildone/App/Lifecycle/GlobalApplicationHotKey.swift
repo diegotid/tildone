@@ -12,6 +12,9 @@ import Combine
 final class GlobalApplicationHotKey: ObservableObject {
     static let lineUp = GlobalApplicationHotKey(action: .lineUp)
     static let newNote = GlobalApplicationHotKey(action: .newNote)
+    static var isShortcutRecording = false
+    private static var recordingSessionID: UUID?
+    private static var recordingHandler: ((MacAppShortcut) -> Void)?
 
     @Published private(set) var hasConflict = false
 
@@ -78,6 +81,22 @@ final class GlobalApplicationHotKey: ObservableObject {
         installEventHandlerIfNeeded()
         observeShortcutChangesIfNeeded()
         registerCurrentShortcut()
+    }
+
+    static func beginShortcutRecording(
+        id: UUID,
+        handler: ((MacAppShortcut) -> Void)?
+    ) {
+        isShortcutRecording = true
+        recordingSessionID = id
+        recordingHandler = handler
+    }
+
+    static func endShortcutRecording(id: UUID) {
+        guard recordingSessionID == id else { return }
+        isShortcutRecording = false
+        recordingSessionID = nil
+        recordingHandler = nil
     }
 
     private func installEventHandlerIfNeeded() {
@@ -171,6 +190,24 @@ final class GlobalApplicationHotKey: ObservableObject {
         )
         guard status == noErr,
               hotKeyID.id == GlobalApplicationHotKey.hotKeyIdentifier else {
+            return noErr
+        }
+
+        if isShortcutRecording {
+            let shortcut: MacAppShortcut?
+            switch hotKeyID.signature {
+            case Action.lineUp.signature:
+                shortcut = lineUp.registeredShortcut
+            case Action.newNote.signature:
+                shortcut = newNote.registeredShortcut
+            default:
+                shortcut = nil
+            }
+            if let shortcut, let handler = recordingHandler {
+                DispatchQueue.main.async {
+                    handler(shortcut)
+                }
+            }
             return noErr
         }
 
