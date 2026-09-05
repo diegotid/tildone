@@ -12,6 +12,34 @@
       },
       "shouldTranslate" : false
     },
+    "Choose which note colors are displayed" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige qué colores de notas se muestran" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisissez les couleurs de notes à afficher" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择要显示的便笺颜色" } }
+      }
+    },
+    "Hide all" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ocultar todo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tout masquer" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全部隐藏" } }
+      }
+    },
+    "Filter notes by color" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Filtrar notas por color" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Filtrer les notes par couleur" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按颜色筛选便笺" } }
+      }
+    },
+    "Show %@ notes" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar notas %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les notes %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示%@便笺" } }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "es" : {

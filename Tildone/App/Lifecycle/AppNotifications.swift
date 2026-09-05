@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import TildoneDomain
 
 extension Notification.Name {
     static let new = Notification.Name("new")
@@ -28,4 +29,36 @@ extension Notification.Name {
     static let updateCompletedTaskRetention = Notification.Name("updateCompletedTaskRetention")
     static let noteWindowOpacityChanged = Notification.Name("noteWindowOpacityChanged")
     static let noteWindowClickThroughCommandChanged = Notification.Name("noteWindowClickThroughCommandChanged")
+    static let noteColorFilterChanged = Notification.Name("noteColorFilterChanged")
+}
+
+enum NoteColorDisplayFilter {
+    private static let storageKey = "displayedNoteColors"
+
+    static var selectedColors: Set<NoteColor> {
+        let defaults = UserDefaults.standard
+        guard let stored = defaults.array(forKey: storageKey) as? [String] else {
+            return Set(NoteColor.allCases)
+        }
+        return Set(stored.compactMap(NoteColor.init(rawValue:)))
+    }
+
+    static func toggle(_ color: NoteColor) {
+        var colors = selectedColors
+        if colors.contains(color) {
+            colors.remove(color)
+        } else {
+            colors.insert(color)
+        }
+        setSelectedColors(colors)
+    }
+
+    static func setSelectedColors(_ colors: Set<NoteColor>) {
+        UserDefaults.standard.set(colors.map(\.rawValue), forKey: storageKey)
+        NotificationCenter.default.post(name: .noteColorFilterChanged, object: colors)
+    }
+
+    static func deselectAll() {
+        setSelectedColors([])
+    }
 }

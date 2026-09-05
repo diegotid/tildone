@@ -5,6 +5,7 @@
 
 import AppKit
 import Foundation
+import TildoneDomain
 import TildoneSync
 
 /// AppKit exposes the status button, which lets a new empty menu-bar-only
@@ -130,6 +131,14 @@ final class MenuBarController: NSObject {
         menu.addItem(lineUpNotes)
 
         menu.addItem(.separator())
+        let colorFilterHeader = NSMenuItem(title: String(localized: "Filter notes by color"), action: nil, keyEquivalent: "")
+        colorFilterHeader.isEnabled = false
+        menu.addItem(colorFilterHeader)
+        let colorFilter = NSMenuItem()
+        colorFilter.view = NoteColorFilterMenuView()
+        menu.addItem(colorFilter)
+
+        menu.addItem(.separator())
         let syncHeader = NSMenuItem(title: String(localized: "iCloud sync is disabled"), action: nil, keyEquivalent: "")
         syncHeader.isEnabled = false
         syncHeaderItem = syncHeader
@@ -207,5 +216,82 @@ final class MenuBarController: NSObject {
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: name, object: nil)
         }
+    }
+}
+
+private final class NoteColorFilterMenuView: NSView {
+    private let discSize: CGFloat = 18
+    private let spacing: CGFloat = 7
+    private let sideInset: CGFloat = 18
+    private let clearSize: CGFloat = 18
+    private let clearLabel = String(localized: "Hide all")
+
+    init() {
+        super.init(frame: NSRect(x: 0, y: 0, width: 244, height: 34))
+        toolTip = String(localized: "Choose which note colors are displayed")
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        let selected = NoteColorDisplayFilter.selectedColors
+        for (index, color) in NoteColor.allCases.enumerated() {
+            let rect = discRect(at: index)
+            let colorDisc = rect.insetBy(dx: 3, dy: 3)
+            color.nsColor.withAlphaComponent(selected.contains(color) ? 1 : 0.75).setFill()
+            NSBezierPath(ovalIn: colorDisc).fill()
+            (selected.contains(color) ? NSColor.controlAccentColor : NSColor.separatorColor).setStroke()
+            let path = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
+            path.lineWidth = selected.contains(color) ? 2.5 : 0.75
+            path.stroke()
+        }
+
+        let clearRect = self.clearRect
+        NSColor.secondaryLabelColor.setStroke()
+        let cross = NSBezierPath()
+        cross.lineWidth = 1.5
+        cross.move(to: NSPoint(x: clearRect.minX + 4, y: clearRect.minY + 4))
+        cross.line(to: NSPoint(x: clearRect.maxX - 4, y: clearRect.maxY - 4))
+        cross.move(to: NSPoint(x: clearRect.maxX - 4, y: clearRect.minY + 4))
+        cross.line(to: NSPoint(x: clearRect.minX + 4, y: clearRect.maxY - 4))
+        cross.stroke()
+        let labelRect = NSRect(x: clearRect.maxX + 4, y: 9, width: 78, height: 16)
+        clearLabel.draw(
+            in: labelRect,
+            withAttributes: [
+                .font: NSFont.menuFont(ofSize: 12),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        )
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if clearHitRect.contains(point) {
+            NoteColorDisplayFilter.deselectAll()
+        } else if let index = NoteColor.allCases.indices.first(where: { discRect(at: $0).insetBy(dx: -4, dy: -4).contains(point) }) {
+            NoteColorDisplayFilter.toggle(NoteColor.allCases[index])
+        }
+        needsDisplay = true
+    }
+
+    override func resetCursorRects() {
+        for index in NoteColor.allCases.indices { addCursorRect(discRect(at: index), cursor: .pointingHand) }
+        addCursorRect(clearHitRect, cursor: .pointingHand)
+    }
+
+    private func discRect(at index: Int) -> NSRect {
+        NSRect(x: sideInset + CGFloat(index) * (discSize + spacing), y: 8, width: discSize, height: discSize)
+    }
+
+    private var clearRect: NSRect {
+        NSRect(x: 177, y: 8, width: clearSize, height: clearSize)
+    }
+
+    private var clearHitRect: NSRect {
+        NSRect(x: clearRect.minX - 4, y: 4, width: 64, height: 26)
     }
 }

@@ -56,6 +56,8 @@ struct Desktop: View {
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
     @State private var noteWindows: [NoteID: NSWindow] = [:]
+    @State private var colorFolderWindows: [NoteColor: NSPanel] = [:]
+    @State private var colorFolderOrigins: [NoteColor: NSPoint] = [:]
     @State private var closedNoteIDs: Set<NoteID> = []
     @State private var foregroundWindow: NSWindow?
     @State private var updateWindow: NSWindow?
@@ -99,6 +101,14 @@ struct Desktop: View {
     }
 
     var body: some View {
+        desktopView
+    }
+
+    private var desktopView: some View {
+        withWindowEvents(withUserEvents(withModelUpdates(lifecycleView)))
+    }
+
+    private var lifecycleView: some View {
         Color.clear
             .frame(width: 0, height: 0)
             .onAppear {
@@ -118,10 +128,24 @@ struct Desktop: View {
                 updateClickThroughMonitoring()
                 updateClickThroughHoverMonitoring()
             }
+            .onDisappear {
+                completedTaskRetentionTask?.cancel()
+                noteScrollMonitor.stop()
+                clickThroughMonitor.stop()
+                clickThroughHoverMonitor.stop()
+                closeManagedNoteWindows()
+            }
+    }
+
+    private func withModelUpdates<V: View>(_ view: V) -> some View {
+        view
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 resetCornerConvergence()
                 reconcileNoteWindows()
                 scheduleCompletedTaskRetention()
+            }
+            .onChange(of: store.notes.map(\.color)) { _, _ in
+                reconcileNoteWindows()
             }
             .onChange(of: taskCompletionDates) { _, _ in
                 scheduleCompletedTaskRetention()
@@ -145,10 +169,17 @@ struct Desktop: View {
                 updateClickThroughMonitoring()
                 updateClickThroughHoverMonitoring()
             }
+    }
+
+    private func withUserEvents<V: View>(_ view: V) -> some View {
+        view
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 arrangeNotes()
             }
             .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in arrangeNotes() }
+            .onReceive(NotificationCenter.default.publisher(for: .noteColorFilterChanged)) { _ in
+                reconcileNoteWindows()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .arrangeMinimized)) { _ in
                 arrangeNotes(onlyMinimized: true)
             }
@@ -177,6 +208,10 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: .openFocusFilterHelp)) { _ in
                 openWindow(id: Id.focusFilterHelpWindow)
             }
+    }
+
+    private func withWindowEvents<V: View>(_ view: V) -> some View {
+        view
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 if let window = event.object as? NSWindow { handleFocus(window) }
             }
@@ -185,13 +220,6 @@ struct Desktop: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { event in
                 updateClickThroughHintPosition(for: event)
-            }
-            .onDisappear {
-                completedTaskRetentionTask?.cancel()
-                noteScrollMonitor.stop()
-                clickThroughMonitor.stop()
-                clickThroughHoverMonitor.stop()
-                closeManagedNoteWindows()
             }
     }
 }
@@ -238,7 +266,10 @@ private extension Desktop {
         setClickThroughCommandInteractionNote(nil)
         closeClickThroughHintWindows()
         for window in noteWindows.values { window.close() }
+        for window in colorFolderWindows.values { window.close() }
         noteWindows.removeAll()
+        colorFolderWindows.removeAll()
+        colorFolderOrigins.removeAll()
         closedNoteIDs.removeAll()
         foregroundWindow = nil
         foregroundNoteID = nil
@@ -460,9 +491,22 @@ private extension Desktop {
             noteWindows[id] = nil
             closedNoteIDs.remove(id)
         }
-        for note in store.notes where noteWindows[note.id] == nil && !closedNoteIDs.contains(note.id) {
+        let selectedColors = NoteColorDisplayFilter.selectedColors
+        for (noteID, window) in noteWindows {
+            guard let note = store.note(noteID), !selectedColors.contains(note.color) else { continue }
+            colorFolderOrigins[note.color] = window.frame.origin
+            if noteID == hoveredClickThroughNoteID { setClickThroughHoveredNote(nil) }
+            if noteID == commandInteractionNoteID { setClickThroughCommandInteractionNote(nil) }
+            clickThroughHintWindows.removeValue(forKey: noteID)?.close()
+            clickThroughBaseAlphas.removeValue(forKey: noteID)
+            window.close()
+            noteWindows[noteID] = nil
+        }
+        for note in store.notes where selectedColors.contains(note.color)
+            && noteWindows[note.id] == nil && !closedNoteIDs.contains(note.id) {
             openWindow(for: note)
         }
+        reconcileColorFolderWindows(selectedColors: selectedColors)
     }
 
     func createAndShowNewNote(at position: CGPoint) {
@@ -524,6 +568,93 @@ private extension Desktop {
 }
 
 private extension Desktop {
+    func reconcileColorFolderWindows(selectedColors: Set<NoteColor>) {
+        let hiddenGroups = Dictionary(grouping: store.notes.filter {
+            !selectedColors.contains($0.color)
+        }, by: \.color)
+
+        for color in colorFolderWindows.keys.filter({ hiddenGroups[$0] == nil }) {
+            colorFolderWindows[color]?.close()
+            colorFolderWindows[color] = nil
+            colorFolderOrigins[color] = nil
+        }
+        for (color, notes) in hiddenGroups {
+            if let window = colorFolderWindows[color] {
+                let size = colorFolderWindowSize()
+                window.setFrame(NSRect(origin: window.frame.origin, size: size), display: false)
+                window.contentView = NSHostingView(
+                    rootView: colorFolderWindow(for: color, noteCount: notes.count, size: size)
+                )
+            } else {
+                openColorFolderWindow(for: color, noteCount: notes.count)
+            }
+        }
+        arrangeNotes(onlyMinimized: true)
+    }
+
+    func openColorFolderWindow(for color: NoteColor, noteCount: Int) {
+        let frameSize = colorFolderWindowSize()
+        let window = NSPanel(
+            contentRect: NSRect(origin: .zero, size: frameSize),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        window.level = focusFilterAllowsBackgroundNotes ? .normal : .floating
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.contentView = NSHostingView(
+            rootView: colorFolderWindow(for: color, noteCount: noteCount, size: frameSize)
+        )
+        // Match the outer frame used by a minimized titled note. A borderless
+        // panel has no titlebar inset, so its content must use that frame size.
+        window.setFrame(NSRect(origin: .zero, size: frameSize), display: false)
+        let origin = colorFolderOrigins[color] ?? CGPoint(
+            x: NSScreen.main?.visibleFrame.midX ?? 0,
+            y: NSScreen.main?.visibleFrame.midY ?? 0
+        )
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(origin) }) ?? NSScreen.screens[0]
+        window.setFrameOrigin(clampedOrigin(for: window, desiredOrigin: origin, on: screen))
+        colorFolderWindows[color] = window
+        window.orderFrontRegardless()
+    }
+
+    func minimizedNoteFrameSize() -> NSSize {
+        if let minimizedWindow = noteWindows.values.first(where: { $0.title.starts(with: "_") }) {
+            return minimizedWindow.frame.size
+        }
+        let content = NSRect(
+            origin: .zero,
+            size: NSSize(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
+        )
+        if let noteWindow = noteWindows.values.first {
+            return noteWindow.frameRect(forContentRect: content).size
+        }
+        let referenceWindow = NSWindow(
+            contentRect: content,
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
+            backing: .buffered,
+            defer: true
+        )
+        return referenceWindow.frameRect(forContentRect: content).size
+    }
+
+    func colorFolderWindowSize() -> NSSize {
+        let minimizedSize = minimizedNoteFrameSize()
+        let side = max(minimizedSize.width, minimizedSize.height)
+        return NSSize(width: side, height: side)
+    }
+
+    func colorFolderWindow(for color: NoteColor, noteCount: Int, size: NSSize) -> some View {
+        NoteColorFolderView(color: color, noteCount: noteCount, size: size) {
+            var selected = NoteColorDisplayFilter.selectedColors
+            selected.insert(color)
+            NoteColorDisplayFilter.setSelectedColors(selected)
+        }
+    }
+
     func noteWindow(for note: MacNoteSnapshot) -> some View {
         guard let presentation = store.presentation(for: note.id) else {
             return AnyView(EmptyView())
@@ -925,7 +1056,7 @@ private extension Desktop {
         let inverse = horizontal
             ? [.bottomRight, .topRight].contains(selectedArrangementCorner)
             : [.topLeft, .topRight].contains(selectedArrangementCorner)
-        for windows in noteWindowScreenMap().values {
+        for windows in noteWindowScreenMap(onlyMinimized: onlyMinimized).values {
             let sorted = windows.sorted {
                 switch (horizontal, inverse) {
                 case (true, true): $0.frame.origin.x > $1.frame.origin.x
@@ -933,13 +1064,18 @@ private extension Desktop {
                 case (false, true): $0.frame.origin.y > $1.frame.origin.y
                 case (false, false): $0.frame.origin.y < $1.frame.origin.y
                 }
-            }.filter { !onlyMinimized || $0.title.starts(with: "_") }
+            }
             positionOnScreen(sorted)
         }
     }
 
-    func noteWindowScreenMap() -> [NSScreen: [NSWindow]] {
-        Dictionary(grouping: noteWindows.values.compactMap { $0.screen == nil ? nil : $0 }, by: { $0.screen! })
+    func noteWindowScreenMap(onlyMinimized: Bool) -> [NSScreen: [NSWindow]] {
+        let regularNotes = noteWindows.values.filter { !onlyMinimized || $0.title.starts(with: "_") }
+        let folders = colorFolderWindows.values.map { $0 as NSWindow }
+        return Dictionary(
+            grouping: (regularNotes + folders).compactMap { $0.screen == nil ? nil : $0 },
+            by: { $0.screen! }
+        )
     }
 
     func positionOnScreen(_ windows: [NSWindow], from: Int = 0) {
@@ -947,7 +1083,7 @@ private extension Desktop {
         let margin = from > 0 ? selectedArrangementSpacing.rawValue : selectedArrangementCornerMargin.rawValue
         let newPosition = from + margin
         let horizontal = selectedArrangementAlignment == .horizontal
-        let origin = MacDesktopPlacement.origin(
+        let placedOrigin = MacDesktopPlacement.origin(
             for: window.frame.size,
             on: screenFrame,
             corner: selectedArrangementCorner,
@@ -955,9 +1091,27 @@ private extension Desktop {
             position: newPosition,
             cornerMargin: selectedArrangementCornerMargin.rawValue
         )
+        let origin = isColorFolderWindow(window)
+            ? inwardFolderOrigin(from: placedOrigin)
+            : placedOrigin
         let frame = NSRect(origin: origin, size: window.frame.size)
         DispatchQueue.main.async { withAnimation { window.setFrame(frame, display: false, animate: true) } }
         positionOnScreen(Array(windows.dropFirst()), from: newPosition + Int(horizontal ? window.frame.width : window.frame.height))
+    }
+
+    func isColorFolderWindow(_ window: NSWindow) -> Bool {
+        colorFolderWindows.values.contains(where: { $0 === window })
+    }
+
+    func inwardFolderOrigin(from origin: CGPoint) -> CGPoint {
+        let verticalOffset: CGFloat = 3
+        let horizontalOffset: CGFloat = 1
+        let movesRight = selectedArrangementCorner == .bottomLeft || selectedArrangementCorner == .topLeft
+        let movesUp = selectedArrangementCorner == .bottomLeft || selectedArrangementCorner == .bottomRight
+        return CGPoint(
+            x: origin.x + (movesRight ? horizontalOffset : -horizontalOffset),
+            y: origin.y + (movesUp ? verticalOffset : -verticalOffset)
+        )
     }
 
     func screenForNewWindow(at position: CGPoint?) -> NSScreen {
@@ -1154,6 +1308,74 @@ private struct ClickThroughHint: View {
         .offset(y: -1)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .allowsHitTesting(false)
+    }
+}
+
+private struct NoteColorFolderView: View {
+    let color: NoteColor
+    let noteCount: Int
+    let size: NSSize
+    let restore: () -> Void
+
+    private var previewCount: Int { min(noteCount, 4) }
+    private let tileSize: CGFloat = 28
+    private let tileSpacing: CGFloat = 6
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .opacity(0.15)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .stroke(Color.white.opacity(0.32), lineWidth: 0.7)
+                }
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.fixed(tileSize), spacing: tileSpacing),
+                    GridItem(.fixed(tileSize), spacing: tileSpacing)
+                ],
+                spacing: tileSpacing
+            ) {
+                ForEach(0..<previewCount, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color(nsColor: color.nsColor).opacity(0.92))
+                        .overlay {
+                            if index == 3 && noteCount > 4 {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.primary.opacity(0.75))
+                            }
+                        }
+                        .frame(width: tileSize, height: tileSize)
+                }
+            }
+            .frame(
+                width: tileSize * 2 + tileSpacing,
+                height: tileSize * 2 + tileSpacing,
+                alignment: .bottomLeading
+            )
+            .padding(.leading, 15)
+            .padding(.bottom, 13)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+
+            Button(action: restore) {
+                Image("MaximizeIcon")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 10, height: 10)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "Show \(color.localizedLabel) notes"))
+            .accessibilityLabel(String(localized: "Show \(color.localizedLabel) notes"))
+            .padding(.top, 1)
+            .padding(.trailing, 1)
+        }
+        .frame(width: size.width, height: size.height)
     }
 }
 
