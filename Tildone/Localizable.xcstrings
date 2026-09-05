@@ -1253,24 +1253,24 @@
         }
       }
     },
-    "Filter notes by color" : {
+    "Visible note colors" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtrar notas por color"
+            "value" : "Colores de notas visibles"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtrer les notes par couleur"
+            "value" : "Couleurs de notes visibles"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "按颜色筛选便笺"
+            "value" : "可见便笺颜色"
           }
         }
       }
@@ -1458,6 +1458,7 @@
       }
     },
     "Hide all" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

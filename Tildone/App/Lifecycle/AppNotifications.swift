@@ -58,7 +58,4 @@ enum NoteColorDisplayFilter {
         NotificationCenter.default.post(name: .noteColorFilterChanged, object: colors)
     }
 
-    static func deselectAll() {
-        setSelectedColors([])
-    }
 }
