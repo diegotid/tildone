@@ -170,7 +170,7 @@ struct ChecklistView: View {
                         .onDelete(perform: deleteTasks)
                         .onMove(perform: move)
 
-                        if taskInsertionTargetID == nil || !taskInsertionText.isEmpty {
+                        if !isInEditMode && (taskInsertionTargetID == nil || !taskInsertionText.isEmpty) {
                             TextField("New task", text: $newTaskText)
                                 .focused($isAddingTask)
                                 .submitLabel(.next)
@@ -190,7 +190,7 @@ struct ChecklistView: View {
                 .navigationBarTitleDisplayMode(usesInlineNavigationTitle ? .inline : .large)
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
-                        if canEditTasks {
+                        if canEditTasks && !isInEditMode {
                             Button {
                                 addTaskFromHeader(scrollProxy: scrollProxy)
                             } label: {
@@ -199,38 +199,52 @@ struct ChecklistView: View {
                             .accessibilityLabel("Add task")
                         }
                         if canEditTasks {
-                            EditButton()
+                            Button {
+                                withAnimation {
+                                    editMode?.wrappedValue = isInEditMode ? .inactive : .active
+                                }
+                            } label: {
+                                Image(systemName: isInEditMode ? "checkmark" : "pencil")
+                            }
+                            .accessibilityLabel(isInEditMode ? "Done" : "Edit")
                         }
+                    }
 
-                        Menu {
-                            TildoneiOSUndoMenuButton(
-                                presentation: appModel.undoPresentation
-                            ) {
-                                try await appModel.undoLatestAction()
-                            }
-                            Divider()
-                            Picker("Note color", selection: Binding(
-                                get: { note.color },
-                                set: { color in
-                                    Swift.Task {
-                                        try? await appModel.setColor(noteID: noteID, color: color)
-                                    }
-                                }
-                            )) {
-                                ForEach(NoteColor.allCases) { color in
-                                    Label {
-                                        Text(color.localizedLabel)
-                                    } icon: {
-                                        Image(uiImage: NoteColorMenuSwatch.image(for: color))
-                                            .renderingMode(.original)
-                                    }
-                                    .tag(color)
-                                }
-                            }
-                        } label: {
-                            NoteColorPickerSymbol(color: note.color)
+                    if !isInEditMode {
+                        if #available(iOS 26.0, *) {
+                            ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         }
-                        .accessibilityLabel("Note color")
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                TildoneiOSUndoMenuButton(
+                                    presentation: appModel.undoPresentation
+                                ) {
+                                    try await appModel.undoLatestAction()
+                                }
+                                Divider()
+                                Picker("Note color", selection: Binding(
+                                    get: { note.color },
+                                    set: { color in
+                                        Swift.Task {
+                                            try? await appModel.setColor(noteID: noteID, color: color)
+                                        }
+                                    }
+                                )) {
+                                    ForEach(NoteColor.allCases) { color in
+                                        Label {
+                                            Text(color.localizedLabel)
+                                        } icon: {
+                                            Image(uiImage: NoteColorMenuSwatch.image(for: color))
+                                                .renderingMode(.original)
+                                        }
+                                        .tag(color)
+                                    }
+                                }
+                            } label: {
+                                NoteColorPickerSymbol(color: note.color)
+                            }
+                            .accessibilityLabel("Note color")
+                        }
                     }
                 }
                 .onDisappear {
@@ -372,7 +386,7 @@ struct ChecklistView: View {
     }
 
     private func taskInsertionRow(above task: TildoneDomain.Task) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Color.clear
                 .frame(width: 32, height: 33)
             TextField("New task", text: $taskInsertionText)
@@ -382,7 +396,7 @@ struct ChecklistView: View {
                 .accessibilityLabel("New task")
         }
         .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
-        .padding(.leading, CGFloat(task.indentLevel) * 24)
+        .padding(.leading, CGFloat(task.indentLevel) * 24 - 6)
         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
         .onChange(of: isAddingTaskAbove) { wasFocused, isFocused in
             guard wasFocused, !isFocused else { return }
