@@ -876,7 +876,8 @@ private extension Desktop {
                 NoteCornerConvergence.Item(
                     noteID: noteID,
                     startFrame: startFrames[noteID] ?? window.frame,
-                    pendingTaskCount: store.note(noteID)?.pendingTasks.count ?? 0
+                    pendingTaskCount: store.note(noteID)?.pendingTasks.count ?? 0,
+                    isMinimized: window.title.starts(with: "_")
                 )
             }
             result.merge(
@@ -934,11 +935,15 @@ private extension Desktop {
             return NoteCornerConvergence.Item(
                 noteID: noteID,
                 startFrame: window.frame,
-                pendingTaskCount: store.note(noteID)?.pendingTasks.count ?? 0
+                pendingTaskCount: store.note(noteID)?.pendingTasks.count ?? 0,
+                isMinimized: window.title.starts(with: "_")
             )
         }
         for item in NoteCornerConvergence.orderedBackToFront(items, hoveredNoteID: hoveredNoteID) {
             noteWindows[item.noteID]?.orderFront(nil)
+        }
+        for window in colorFolderWindows.values where window.isVisible && window.isOnActiveSpace {
+            window.orderFront(nil)
         }
     }
 
@@ -1058,11 +1063,16 @@ private extension Desktop {
             : [.topLeft, .topRight].contains(selectedArrangementCorner)
         for windows in noteWindowScreenMap(onlyMinimized: onlyMinimized).values {
             let sorted = windows.sorted {
+                let lhsPriority = arrangementPriority(for: $0)
+                let rhsPriority = arrangementPriority(for: $1)
+                if lhsPriority != rhsPriority {
+                    return lhsPriority < rhsPriority
+                }
                 switch (horizontal, inverse) {
-                case (true, true): $0.frame.origin.x > $1.frame.origin.x
-                case (true, false): $0.frame.origin.x < $1.frame.origin.x
-                case (false, true): $0.frame.origin.y > $1.frame.origin.y
-                case (false, false): $0.frame.origin.y < $1.frame.origin.y
+                case (true, true): return $0.frame.origin.x > $1.frame.origin.x
+                case (true, false): return $0.frame.origin.x < $1.frame.origin.x
+                case (false, true): return $0.frame.origin.y > $1.frame.origin.y
+                case (false, false): return $0.frame.origin.y < $1.frame.origin.y
                 }
             }
             positionOnScreen(sorted)
@@ -1101,6 +1111,12 @@ private extension Desktop {
 
     func isColorFolderWindow(_ window: NSWindow) -> Bool {
         colorFolderWindows.values.contains(where: { $0 === window })
+    }
+
+    func arrangementPriority(for window: NSWindow) -> Int {
+        if isColorFolderWindow(window) { return 0 }
+        if window.title.starts(with: "_") { return 1 }
+        return 2
     }
 
     func inwardFolderOrigin(from origin: CGPoint) -> CGPoint {
@@ -1372,8 +1388,6 @@ private struct NoteColorFolderView: View {
             .buttonStyle(.plain)
             .help(String(localized: "Show \(color.localizedLabel) notes"))
             .accessibilityLabel(String(localized: "Show \(color.localizedLabel) notes"))
-            .padding(.top, 1)
-            .padding(.trailing, 1)
         }
         .frame(width: size.width, height: size.height)
     }

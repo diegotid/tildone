@@ -11,6 +11,19 @@ struct NoteCornerConvergence {
         let noteID: NoteID
         let startFrame: NSRect
         let pendingTaskCount: Int
+        let isMinimized: Bool
+
+        init(
+            noteID: NoteID,
+            startFrame: NSRect,
+            pendingTaskCount: Int,
+            isMinimized: Bool = false
+        ) {
+            self.noteID = noteID
+            self.startFrame = startFrame
+            self.pendingTaskCount = pendingTaskCount
+            self.isMinimized = isMinimized
+        }
     }
 
     struct ScrollSession {
@@ -135,6 +148,9 @@ struct NoteCornerConvergence {
 
     static func orderedBackToFront(_ items: [Item], hoveredNoteID: NoteID? = nil) -> [Item] {
         items.sorted { lhs, rhs in
+            if lhs.isMinimized != rhs.isMinimized {
+                return !lhs.isMinimized
+            }
             let lhsArea = lhs.startFrame.width * lhs.startFrame.height
             let rhsArea = rhs.startFrame.width * rhs.startFrame.height
             if lhsArea != rhsArea {

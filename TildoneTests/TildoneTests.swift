@@ -660,6 +660,29 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    func testCornerConvergenceZOrderKeepsMinimizedNotesAboveRegularNotes() {
+        let regularID = NoteID()
+        let minimizedID = NoteID()
+        let items = [
+            NoteCornerConvergence.Item(
+                noteID: minimizedID,
+                startFrame: .zero,
+                pendingTaskCount: 0,
+                isMinimized: true
+            ),
+            NoteCornerConvergence.Item(
+                noteID: regularID,
+                startFrame: .zero,
+                pendingTaskCount: 10
+            )
+        ]
+
+        XCTAssertEqual(
+            NoteCornerConvergence.orderedBackToFront(items).map(\.noteID),
+            [regularID, minimizedID]
+        )
+    }
+
     func testCornerConvergenceZOrderPutsSmallerNotesInFrontOfLargerNotes() {
         let largeHoveredID = NoteID()
         let mediumID = NoteID()
