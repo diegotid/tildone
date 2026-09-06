@@ -349,6 +349,21 @@ final class TildoneTests: XCTestCase {
         window.setNoteContentExtendsUnderTitlebar(true)
         effectView.layoutSubtreeIfNeeded()
         XCTAssertEqual(noteContent.frame, effectView.bounds)
+        let extendedTopConstraint = try XCTUnwrap(effectView.constraints.first(where: {
+            ($0.firstItem as? NSView) === noteContent && $0.firstAttribute == .top
+        }))
+
+        window.setNoteContentExtendsUnderTitlebar(true)
+        effectView.layoutSubtreeIfNeeded()
+        XCTAssertTrue(effectView.constraints.contains(where: { $0 === extendedTopConstraint }))
+
+        let compactContentRect = NSRect(
+            origin: .zero,
+            size: NSSize(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
+        )
+        window.setFrame(window.frameRect(forContentRect: compactContentRect), display: false)
+        effectView.layoutSubtreeIfNeeded()
+        XCTAssertEqual(noteContent.frame, effectView.bounds)
 
         window.setNoteContentExtendsUnderTitlebar(false)
         effectView.layoutSubtreeIfNeeded()
@@ -361,6 +376,113 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(themeFrame.subviews.contains(where: {
             $0.identifier == NoteWindowBackground.tintViewIdentifier
         }))
+    }
+
+    @MainActor
+    func testHostedNoteCanTransitionToCompactWindowWithoutConstraintFeedback() async throws {
+        let defaults = UserDefaults.standard
+        let previousScale = defaults.object(forKey: CompactNoteScale.storageKey)
+        defer {
+            if let previousScale {
+                defaults.set(previousScale, forKey: CompactNoteScale.storageKey)
+            } else {
+                defaults.removeObject(forKey: CompactNoteScale.storageKey)
+            }
+        }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let snapshot = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        try await store.renameNote(snapshot.id, to: "Compact")
+        _ = try await store.addTask(to: snapshot.id, text: "Task")
+        let presentation = try XCTUnwrap(store.presentation(for: snapshot.id))
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 250, height: 300),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.setNoteStyle(noteColor: presentation.snapshot.color)
+        window.contentMinSize = NSSize(width: Layout.minNoteWidth, height: Layout.minNoteHeight)
+        let hostingView = NSHostingView(rootView: Note(
+            store: store,
+            presentation: presentation,
+            noteID: snapshot.id
+        ))
+        window.setNoteHostingContentView(hostingView)
+        XCTAssertTrue(hostingView.sizingOptions.isEmpty)
+        window.addTitlebarAccessoryViewController(MacNoteTitlebarAccessoryController(
+            colorPicker: NSView(),
+            syncIndicatorState: .hidden
+        ))
+        window.title = snapshot.id.stringValue
+
+        for _ in 0..<10 {
+            window.contentView?.layoutSubtreeIfNeeded()
+            await Swift.Task<Never, Never>.yield()
+        }
+
+        let minimizeButton = try XCTUnwrap(window.standardWindowButton(.miniaturizeButton))
+        XCTAssertTrue(minimizeButton.target is NoteWindowButtonActionController)
+        let expectedFrameSize = window.frameRect(forContentRect: NSRect(
+            origin: .zero,
+            size: CompactNoteScale.contentSize()
+        )).size
+        minimizeButton.performClick(nil)
+        window.contentView?.layoutSubtreeIfNeeded()
+
+        XCTAssertTrue(window.title.starts(with: "_"))
+        XCTAssertEqual(window.frame.size, expectedFrameSize)
+        XCTAssertEqual(window.contentMinSize, CompactNoteScale.contentSize())
+        XCTAssertEqual(window.styleMask, .borderless)
+        XCTAssertEqual(window.backgroundColor, .clear)
+        XCTAssertEqual(
+            window.contentView?.layer?.cornerRadius,
+            CompactNoteScale.cornerRadius()
+        )
+        XCTAssertEqual(window.contentView?.layer?.masksToBounds, true)
+
+        for _ in 0..<3 {
+            await Swift.Task<Never, Never>.yield()
+            window.contentView?.layoutSubtreeIfNeeded()
+        }
+
+        for scale in [0.51, 0.97602812576605, 1.041, 1.49] {
+            defaults.set(scale, forKey: CompactNoteScale.storageKey)
+            let origin = window.frame.origin
+            let contentSize = CompactNoteScale.contentSize()
+            let expectedCornerRadius = CompactNoteScale.baseCornerRadius
+                * contentSize.width
+                / Layout.minimizedNoteWidth
+            XCTAssertEqual(contentSize.width, contentSize.height)
+            window.contentMinSize = .zero
+            let frameSize = window.frameRect(forContentRect: NSRect(
+                origin: .zero,
+                size: contentSize
+            )).size
+            window.setFrame(NSRect(origin: origin, size: frameSize), display: false)
+            window.contentMinSize = contentSize
+            window.updateCompactCornerRadius(CompactNoteScale.cornerRadius())
+            window.contentView?.layoutSubtreeIfNeeded()
+            await Swift.Task<Never, Never>.yield()
+            XCTAssertEqual(window.frame.size, frameSize)
+            XCTAssertEqual(window.frame.origin, origin)
+            XCTAssertEqual(window.contentMinSize, contentSize)
+            XCTAssertEqual(
+                CompactNoteScale.cornerRadius(),
+                expectedCornerRadius,
+                accuracy: 0.0001
+            )
+            XCTAssertEqual(
+                window.contentView?.layer?.cornerRadius,
+                CompactNoteScale.cornerRadius()
+            )
+        }
+
+        window.leaveCompactStyle()
+        XCTAssertTrue(window.styleMask.contains(.titled))
+        XCTAssertNotNil(window.noteTitlebarAccessoryController)
+        XCTAssertEqual(window.contentView?.layer?.cornerRadius, 0)
+        XCTAssertEqual(window.contentView?.layer?.masksToBounds, false)
     }
 
     func testAllNoteOpacityDecreaseStartsAtMostOpaqueWindow() {
@@ -641,6 +763,16 @@ final class TildoneTests: XCTestCase {
                 cornerMargin: 40
             ),
             NSPoint(x: -1_360, y: 40)
+        )
+    }
+
+    func testCompactNoteSpacingUsesTheRenderedScale() {
+        XCTAssertEqual(CompactNoteScale.spacing(20, for: 0.5), 10)
+        XCTAssertEqual(CompactNoteScale.spacing(20, for: 1), 20)
+        XCTAssertEqual(CompactNoteScale.spacing(20, for: 1.5), 30)
+        XCTAssertEqual(
+            CompactNoteScale.spacing(20, for: 0.51),
+            Int((20 * (49.0 / 96.0)).rounded())
         )
     }
 
@@ -958,8 +1090,8 @@ final class TildoneTests: XCTestCase {
 
         var restoreCount = 0
         accessory.setColorPickerHidden(true)
-        accessory.setRestoreControlVisible(true) { restoreCount += 1 }
-        accessory.setRestoreControlVisible(true) { restoreCount += 10 }
+        accessory.setRestoreControlVisible(true, foreground: .primary) { restoreCount += 1 }
+        accessory.setRestoreControlVisible(true, foreground: .primary) { restoreCount += 10 }
         let restore = try XCTUnwrap(
             accessory.view.subviews.compactMap { $0 as? MinimizedNoteRestoreTitlebarControl }.first
         )
@@ -967,7 +1099,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(restore.accessibilityPerformPress())
         XCTAssertEqual(restoreCount, 1)
 
-        accessory.setRestoreControlVisible(false) {}
+        accessory.setRestoreControlVisible(false, foreground: .primary) {}
         XCTAssertFalse(accessory.view.subviews.contains(where: { $0 is MinimizedNoteRestoreTitlebarControl }))
     }
 

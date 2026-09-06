@@ -165,6 +165,8 @@ struct SettingsForm: View {
     private static let windowWidth: CGFloat = 600
     static let generalPaneHeight: CGFloat = 148
     static let tasksPaneHeight: CGFloat = 244
+    static let appearancePaneHeight: CGFloat = 720
+    static let positioningPaneHeight: CGFloat = 474
 
     let store: MacSharedStore?
 
@@ -208,6 +210,9 @@ struct SettingsForm: View {
     
     @AppStorage(NoteWindowBackground.opacityStorageKey)
     private var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
+
+    @AppStorage(CompactNoteScale.storageKey)
+    private var compactNoteScale = CompactNoteScale.defaultValue
 
     @AppStorage(AppAppearance.showDockIconStorageKey)
     private var showDockIcon = false
@@ -309,8 +314,8 @@ struct SettingsForm: View {
         switch selectedTab {
         case .general: paneHeight = Self.generalPaneHeight
         case .tasks: paneHeight = Self.tasksPaneHeight
-        case .appearance: paneHeight = 504
-        case .positioning: paneHeight = 474
+        case .appearance: paneHeight = Self.appearancePaneHeight
+        case .positioning: paneHeight = Self.positioningPaneHeight
         }
         return Self.preferredWindowHeight(
             contentHeight: paneHeight,
@@ -537,6 +542,13 @@ private extension SettingsForm {
             .frame(maxWidth: .infinity, alignment: .leading)
             dimmingPreview()
         }
+
+        Divider()
+
+        HStack(alignment: .top, spacing: 28) {
+            minimizedNoteScaleSettings()
+            compactNoteScalePreview()
+        }
     }
 
     @ViewBuilder
@@ -734,6 +746,43 @@ private extension SettingsForm {
     }
 
     @ViewBuilder
+    func minimizedNoteScaleSettings() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Minimized note scale")
+                .foregroundColor(.secondary)
+            Slider(
+                value: compactNoteScaleBinding,
+                in: CompactNoteScale.minimumValue...CompactNoteScale.maximumValue
+            ) {
+                Text("Minimized note scale")
+            }
+            .labelsHidden()
+            .frame(width: CompactNoteScaleSliderLayout.width)
+            .overlay(alignment: .leading) {
+                SliderTrackMarker(
+                    markX: CompactNoteScaleSliderLayout.defaultMarkX,
+                    thumbX: SettingsSliderLayout.markX(
+                        for: compactNoteScaleBinding.wrappedValue,
+                        in: CompactNoteScale.minimumValue...CompactNoteScale.maximumValue
+                    )
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    func compactNoteScalePreview() -> some View {
+        SettingsPreviewCanvas {
+            CompactNoteScalePreview(
+                scale: CGFloat(compactNoteScale),
+                noteColor: noteColor,
+                backgroundOpacity: noteBackgroundOpacity
+            )
+        }
+    }
+
+    @ViewBuilder
     func clickThroughSetting() -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Toggle("Click through notes", isOn: $clickThroughNotes)
@@ -842,6 +891,23 @@ private extension SettingsForm {
         )
     }
 
+    var compactNoteScaleBinding: Binding<Double> {
+        Binding(
+            get: { compactNoteScale },
+            set: { newScale in
+                if SettingsForm.crossesSliderMarker(
+                    from: compactNoteScale,
+                    to: newScale,
+                    marker: CompactNoteScale.defaultValue
+                ) {
+                    performSliderMarkerHaptic()
+                }
+                compactNoteScale = newScale
+                NotificationCenter.default.post(name: .compactNoteScaleChanged, object: nil)
+            }
+        )
+    }
+
     func performSliderMarkerHaptic() {
         NSHapticFeedbackManager.defaultPerformer.perform(
             .levelChange,
@@ -938,6 +1004,97 @@ private struct SettingsPreviewCanvas<Content: View>: View {
     }
 }
 
+private struct CompactNoteScalePreview: View {
+    let scale: CGFloat
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            DockSizeReference()
+                .frame(width: 148, height: 60)
+                .position(x: 244, y: 120)
+
+            MockMinimizedNote(
+                noteColor: noteColor,
+                backgroundOpacity: backgroundOpacity
+            )
+                .scaleEffect(scale, anchor: .bottomLeading)
+                .frame(
+                    width: Layout.minimizedNoteWidth * scale,
+                    height: Layout.minimizedNoteWidth * scale,
+                    alignment: .bottomLeading
+                )
+                .padding(.leading, 16)
+                .padding(.bottom, 10)
+        }
+    }
+}
+
+private struct MockMinimizedNote: View {
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+    private let cornerRadius = CompactNoteScale.baseCornerRadius
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var foreground: Color {
+        NoteContentForeground.color(
+            colorScheme: colorScheme,
+            backgroundOpacity: backgroundOpacity
+        )
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            VisualEffectBlurView(material: .hudWindow, blendingMode: .withinWindow)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color(nsColor: noteColor.nsColor).opacity(backgroundOpacity))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(.white.opacity(0.45), lineWidth: 0.7)
+                }
+
+            CompactNotePresentation(
+                pending: 2,
+                total: 3,
+                title: "Weekend plans",
+                foreground: foreground
+            )
+        }
+        .frame(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteWidth)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct DockSizeReference: View {
+    private let icons: [(String, Color)] = [
+        ("folder.fill", .blue),
+        ("safari", .cyan),
+        ("folder.fill", .indigo)
+    ]
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ForEach(Array(icons.enumerated()), id: \.offset) { _, icon in
+                Image(systemName: icon.0)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(icon.1.gradient, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+        }
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.white.opacity(0.42), lineWidth: 0.7)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 enum TransparencySliderLayout {
     static let width = SettingsSliderLayout.width
     static let thresholdMarkX = SettingsSliderLayout.markX(
@@ -951,6 +1108,14 @@ enum FontSizeSliderLayout {
     static let defaultMarkX = SettingsSliderLayout.markX(
         for: Double(FontSize.small.rawValue),
         in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue)
+    )
+}
+
+enum CompactNoteScaleSliderLayout {
+    static let width = SettingsSliderLayout.width
+    static let defaultMarkX = SettingsSliderLayout.markX(
+        for: CompactNoteScale.defaultValue,
+        in: CompactNoteScale.minimumValue...CompactNoteScale.maximumValue
     )
 }
 
@@ -1028,7 +1193,7 @@ private struct SampleSettingsNote: View {
                     .padding(.horizontal, 10)
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Weekend plans")
-                            .font(.system(size: CGFloat(fontSize) + 1, weight: .bold, design: .rounded))
+                            .font(.system(size: CGFloat(fontSize) * 1.25, weight: .bold, design: .rounded))
                             .lineLimit(1)
                         sampleTask("Book a table", isDone: true)
                         sampleTask("Pick up fresh flowers", isDone: false)
@@ -1659,7 +1824,7 @@ extension SettingsForm {
         contentHeight: CGFloat,
         width: CGFloat
     ) -> CGFloat {
-        min(width, contentHeight)
+        contentHeight
     }
 
     static func backgroundTransparency(fromOpacity opacity: Double) -> Double {

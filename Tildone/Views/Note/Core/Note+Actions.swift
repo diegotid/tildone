@@ -19,7 +19,11 @@ extension Note {
         NoteWindowFrameAutosavePolicy.suspend(for: noteWindow)
         noteWindow.title = "_" + noteWindow.title
         setColorPickerHidden(true)
-        setRestoreControlVisible(true)
+        noteWindow.setNoteContentExtendsUnderTitlebar(true)
+        (noteWindow as? MacNoteWindow)?.enterCompactStyle(
+            cornerRadius: CompactNoteScale.cornerRadius()
+        )
+        noteWindow.contentMinSize = CompactNoteScale.contentSize()
         noteWindow.setFrame(minimizedFrame(for: noteWindow), display: true, animate: false)
         noteWindow.ignoresMouseEvents = false
         NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
@@ -496,11 +500,12 @@ extension Note {
 
     func handleBringUp() {
         guard let noteWindow, let restoration = minimizationState.beginRestoring() else { return }
+        (noteWindow as? MacNoteWindow)?.leaveCompactStyle()
         if noteWindow.title.starts(with: "_") {
             noteWindow.title = String(noteWindow.title.dropFirst())
         }
         setColorPickerHidden(false)
-        setRestoreControlVisible(false)
+        applyCurrentNoteBackground()
         noteWindow.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: clickThroughNotes,
             isCommandPressed: NoteWindowClickThrough.isCommandPressed
@@ -511,6 +516,11 @@ extension Note {
                 noteWindow.animator().setFrame(restoration.frame, display: true)
             } completionHandler: {
                 Swift.Task { @MainActor in
+                    noteWindow.setNoteContentExtendsUnderTitlebar(false)
+                    noteWindow.contentMinSize = NSSize(
+                        width: Layout.minNoteWidth,
+                        height: Layout.minNoteHeight
+                    )
                     NoteWindowFrameAutosavePolicy.resume(
                         for: noteWindow,
                         using: restoration.autosaveName
@@ -740,7 +750,7 @@ extension Note {
     }
 
     func minimizedFrame(for window: NSWindow) -> NSRect {
-        let content = NSRect(origin: .zero, size: NSSize(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight))
+        let content = NSRect(origin: .zero, size: CompactNoteScale.contentSize())
         let frame = window.frameRect(forContentRect: content)
         return NSRect(x: window.frame.minX, y: window.frame.maxY - frame.height, width: frame.width, height: frame.height)
     }

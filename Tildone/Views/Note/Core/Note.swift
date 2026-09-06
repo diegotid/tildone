@@ -17,6 +17,7 @@ struct Note: View {
     @AppStorage(TaskLineTruncation.storageKey) var taskLineTruncation: TaskLineTruncation = .single
     @AppStorage(FontSize.storageKey) var fontSize = Double(FontSize.small.rawValue)
     @AppStorage(NoteWindowBackground.opacityStorageKey) var noteBackgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
+    @AppStorage(CompactNoteScale.storageKey) var compactNoteScale = CompactNoteScale.defaultValue
     @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey) var moveCheckedTasksToEnd = false
     @AppStorage(NoteWindowClickThrough.storageKey) var clickThroughNotes = false
 
@@ -154,7 +155,6 @@ struct Note: View {
         }
         .onChange(of: isMinimized) { _, minimized in
             setTrafficLightsHidden(minimized)
-            noteWindow?.setNoteContentExtendsUnderTitlebar(minimized)
             if minimized { isHoveringMinimizedTaskList = false }
         }
         .onChange(of: noteBackgroundOpacity) { _, _ in

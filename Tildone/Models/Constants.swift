@@ -73,6 +73,46 @@ enum AppAppearance {
     }
 }
 
+enum CompactNoteScale {
+    static let storageKey = "compactNoteScale"
+    static let defaultValue = 1.0
+    static let minimumValue = 0.5
+    static let maximumValue = 1.5
+    static let baseCornerRadius: CGFloat = 15
+
+    static var currentValue: CGFloat {
+        let value = UserDefaults.standard.object(forKey: storageKey) as? Double ?? defaultValue
+        return CGFloat(min(max(value, minimumValue), maximumValue))
+    }
+
+    static func contentSize() -> NSSize {
+        contentSize(for: currentValue)
+    }
+
+    static func contentSize(for scale: CGFloat) -> NSSize {
+        let clampedScale = min(max(scale, CGFloat(minimumValue)), CGFloat(maximumValue))
+        return NSSize(
+            // NSWindow rounds fractional minimum sizes up to whole points.
+            // Use the same dimensions in SwiftUI so the two layout systems
+            // cannot continually invalidate one another.
+            width: ceil(Layout.minimizedNoteWidth * clampedScale),
+            height: ceil(Layout.minimizedNoteHeight * clampedScale)
+        )
+    }
+
+    static func cornerRadius(for scale: CGFloat = currentValue) -> CGFloat {
+        baseCornerRadius * renderedScale(for: scale)
+    }
+
+    static func renderedScale(for scale: CGFloat = currentValue) -> CGFloat {
+        contentSize(for: scale).width / Layout.minimizedNoteWidth
+    }
+
+    static func spacing(_ baseSpacing: Int, for scale: CGFloat = currentValue) -> Int {
+        Int((CGFloat(baseSpacing) * renderedScale(for: scale)).rounded())
+    }
+}
+
 enum CompletedTaskRetention {
     static let keepForeverStorageKey = "keepCompletedTasksForever"
     static let daysStorageKey = "completedTaskRetentionDays"

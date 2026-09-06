@@ -121,58 +121,41 @@ extension Note {
     func taskListProgress(_ note: MacNoteSnapshot) -> some View {
         let pending = note.pendingTasks.count
         let total = note.progressTasks.count
-        let complete = pending == 0 && total > 0
         let foreground = minimizedForeground
+        let compactSize = CompactNoteScale.contentSize(for: CGFloat(compactNoteScale))
         return ZStack(alignment: .topLeading) {
-            ZStack(alignment: .bottomLeading) {
-                Gauge(value: total == 0 ? 0 : Float(total - pending), in: 0...Float(max(total, 1))) {
-                    EmptyView()
-                } currentValueLabel: {
-                    if complete {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 25, weight: .bold))
-                            .foregroundStyle(foreground)
-                            .offset(y: -2)
-                    } else {
-                        Text("\(pending)")
-                            .bold()
-                            .font(.system(size: pending > 9 ? 24 : 30))
-                            .foregroundStyle(foreground)
-                            .padding(.top, -2)
-                    }
-                }
-                .gaugeStyle(.accessoryCircular).tint(Gradient(colors: [.clear, foreground]))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                Text(statusText(complete: complete, total: total))
-                    .font(.system(size: 10))
-                    .foregroundStyle(foreground)
-                    .padding(.leading, 13)
-                    .padding(.bottom, 13)
-                    .frame(maxWidth: 54, alignment: .leading)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .padding(.top, -14)
-            .padding(.horizontal, 8)
-            .opacity(isHoveringMinimizedTaskList ? 0 : 1)
-
+            CompactNotePresentation(
+                pending: pending,
+                total: total,
+                title: note.title,
+                foreground: foreground,
+                summaryOpacity: isHoveringMinimizedTaskList ? 0 : 1,
+                titleWidth: Layout.minimizedNoteWidth
+                    - 10
+                    - MacNoteTitlebarLayout.minimizedRestoreWidth
+            )
             minimizedTaskPreview(note, foreground: foreground)
                 .opacity(isHoveringMinimizedTaskList ? 1 : 0)
                 .allowsHitTesting(false)
 
-            if let title = note.title {
-                Text(title).font(.system(size: 12)).foregroundStyle(foreground).bold().lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(
-                        width: Layout.minimizedNoteWidth - 10 - MacNoteTitlebarLayout.minimizedRestoreWidth,
-                        alignment: .leading
-                    )
-                    .padding(.top, -26)
-                    .padding(.leading, 8)
-            }
+            Image("MaximizeIcon")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 10, height: 10)
+                .foregroundStyle(foreground)
+                .padding(.top, 6)
+                .padding(.trailing, 5)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .allowsHitTesting(false)
         }
         .frame(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
+        .scaleEffect(CGFloat(compactNoteScale), anchor: .topLeading)
+        .frame(
+            width: compactSize.width,
+            height: compactSize.height,
+            alignment: .topLeading
+        )
         .animation(.easeInOut(duration: 0.2), value: isHoveringMinimizedTaskList)
         .background(WindowAccessor(note: self, window: $noteWindow))
         .onHover { isHoveringMinimizedTaskList = $0 }
@@ -196,7 +179,7 @@ extension Note {
             .opacity(0.6)
         }
         .padding(.horizontal, 8)
-        .padding(.top, -3)
+        .padding(.top, 28)
         .clipped()
     }
 
@@ -216,17 +199,11 @@ extension Note {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .font(.system(size: 12))
+                .font(.system(size: 11))
                 .foregroundStyle(foreground)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func statusText(complete: Bool, total: Int) -> String {
-        if complete { return String(localized: "all done") }
-        if total == 0 { return String(localized: "no tasks") }
-        return String(localized: "pending")
     }
 
     func listTopic() -> some View {
@@ -395,5 +372,85 @@ extension Note {
                 }
             }
         }.opacity(0.9)
+    }
+}
+
+struct MinimizedNoteSummary: View {
+    let pending: Int
+    let total: Int
+    let foreground: Color
+
+    private var isComplete: Bool { pending == 0 && total > 0 }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            Gauge(value: total == 0 ? 0 : Float(total - pending), in: 0...Float(max(total, 1))) {
+                EmptyView()
+            } currentValueLabel: {
+                if isComplete {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 25, weight: .bold))
+                        .foregroundStyle(foreground)
+                        .offset(y: -2)
+                } else {
+                    Text("\(pending)")
+                        .bold()
+                        .font(.system(size: pending > 9 ? 24 : 30))
+                        .foregroundStyle(foreground)
+                        .padding(.top, -2)
+                }
+            }
+            .gaugeStyle(.accessoryCircular)
+            .tint(Gradient(colors: [.clear, foreground]))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Text(statusText)
+                .font(.system(size: 10))
+                .foregroundStyle(foreground)
+                .padding(.leading, 13)
+                .padding(.bottom, 13)
+                .frame(maxWidth: 54, alignment: .leading)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.top, 20)
+        .padding(.horizontal, 8)
+    }
+
+    private var statusText: String {
+        if isComplete { return String(localized: "all done") }
+        if total == 0 { return String(localized: "no tasks") }
+        return String(localized: "pending")
+    }
+}
+
+struct CompactNotePresentation: View {
+    let pending: Int
+    let total: Int
+    let title: String?
+    let foreground: Color
+    var summaryOpacity = 1.0
+    var titleWidth = Layout.minimizedNoteWidth - 16
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            MinimizedNoteSummary(
+                pending: pending,
+                total: total,
+                foreground: foreground
+            )
+            .opacity(summaryOpacity)
+
+            if let title {
+                Text(title)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(foreground)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: titleWidth, alignment: .leading)
+                    .padding(.top, 8)
+                    .padding(.leading, 8)
+            }
+        }
     }
 }

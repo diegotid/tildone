@@ -149,7 +149,7 @@ enum Layout {
     static let minNoteWidth: CGFloat = 180
     static let minNoteHeight: CGFloat = 240
     static let minimizedNoteWidth: CGFloat = 96
-    static let minimizedNoteHeight: CGFloat = 66
+    static let minimizedNoteHeight: CGFloat = 96
     static let defaultNoteWidth: CGFloat = 250
     static let defaultNoteHeight: CGFloat = 300
     static let defaultNoteXPosition: CGFloat = 50
@@ -159,6 +159,8 @@ enum Layout {
 private final class NoteBackgroundEffectView: NSVisualEffectView {
     private weak var noteContentView: NSView?
     private var contentTopConstraint: NSLayoutConstraint?
+    private var contentExtendsUnderTitlebar = false
+    private(set) var compactCornerRadius: CGFloat?
 
     func install(noteContentView: NSView, tintView: NSView) {
         self.noteContentView = noteContentView
@@ -184,12 +186,68 @@ private final class NoteBackgroundEffectView: NSVisualEffectView {
     }
 
     func setContentExtendsUnderTitlebar(_ extendsUnderTitlebar: Bool) {
-        guard let noteContentView else { return }
+        guard let noteContentView,
+              extendsUnderTitlebar != contentExtendsUnderTitlebar else { return }
+        contentExtendsUnderTitlebar = extendsUnderTitlebar
         contentTopConstraint?.isActive = false
         let topAnchor = extendsUnderTitlebar ? self.topAnchor : safeAreaLayoutGuide.topAnchor
         let replacement = noteContentView.topAnchor.constraint(equalTo: topAnchor)
         replacement.isActive = true
         contentTopConstraint = replacement
+    }
+
+    func setCompactCornerRadius(_ cornerRadius: CGFloat?) {
+        compactCornerRadius = cornerRadius
+        wantsLayer = true
+        layer?.cornerRadius = cornerRadius ?? 0
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = cornerRadius != nil
+    }
+}
+
+final class MacNoteWindow: NSWindow {
+    private var expandedStyleMask: NSWindow.StyleMask?
+    private var detachedTitlebarAccessories: [NSTitlebarAccessoryViewController] = []
+
+    func enterCompactStyle(cornerRadius: CGFloat) {
+        if expandedStyleMask == nil {
+            expandedStyleMask = styleMask
+            detachedTitlebarAccessories = titlebarAccessoryViewControllers
+            for index in titlebarAccessoryViewControllers.indices.reversed() {
+                removeTitlebarAccessoryViewController(at: index)
+            }
+            let outerFrame = frame
+            styleMask = .borderless
+            setFrame(outerFrame, display: false)
+            isMovableByWindowBackground = true
+        }
+        updateCompactCornerRadius(cornerRadius)
+    }
+
+    func updateCompactCornerRadius(_ cornerRadius: CGFloat) {
+        (contentView as? NoteBackgroundEffectView)?
+            .setCompactCornerRadius(cornerRadius)
+        backgroundColor = .clear
+    }
+
+    func leaveCompactStyle() {
+        guard let expandedStyleMask else { return }
+        let outerFrame = frame
+        (contentView as? NoteBackgroundEffectView)?
+            .setCompactCornerRadius(nil)
+        styleMask = expandedStyleMask
+        self.expandedStyleMask = nil
+        titlebarAppearsTransparent = true
+        setFrame(outerFrame, display: false)
+        for accessory in detachedTitlebarAccessories {
+            addTitlebarAccessoryViewController(accessory)
+        }
+        detachedTitlebarAccessories = []
+        isMovableByWindowBackground = false
+        standardWindowButton(.closeButton)?.style()
+        standardWindowButton(.miniaturizeButton)?.style()
+        standardWindowButton(.zoomButton)?.style()
+        standardWindowButton(.zoomButton)?.isEnabled = false
     }
 }
 
@@ -246,20 +304,30 @@ extension NSWindow {
         contentView = effectView
     }
 
+    func setNoteHostingContentView<Content: View>(_ noteContentView: NSHostingView<Content>) {
+        // The note window owns its size explicitly, including its compact size.
+        // Letting NSHostingView publish a changing intrinsic size while the
+        // window is being resized creates an AppKit constraint feedback loop.
+        noteContentView.sizingOptions = []
+        setNoteContentView(noteContentView as NSView)
+    }
+
     func setNoteContentExtendsUnderTitlebar(_ extendsUnderTitlebar: Bool) {
         (contentView as? NoteBackgroundEffectView)?
             .setContentExtendsUnderTitlebar(extendsUnderTitlebar)
     }
 
     func applyNoteBackgroundColor(_ color: NSColor, alpha: CGFloat = NoteWindowBackground.currentAlpha()) {
-        self.backgroundColor = color.withAlphaComponent(alpha)
-        guard let effectView = contentView as? NSVisualEffectView,
+        let backgroundColor = color.withAlphaComponent(alpha)
+        let noteEffectView = contentView as? NoteBackgroundEffectView
+        self.backgroundColor = noteEffectView?.compactCornerRadius == nil ? backgroundColor : .clear
+        guard let effectView = noteEffectView,
               effectView.identifier == NoteWindowBackground.blurViewIdentifier,
               let tintView = effectView.subviews.first(where: {
                   $0.identifier == NoteWindowBackground.tintViewIdentifier
               }) else { return }
         tintView.wantsLayer = true
-        tintView.layer?.backgroundColor = color.withAlphaComponent(alpha).cgColor
+        tintView.layer?.backgroundColor = backgroundColor.cgColor
     }
 }
 

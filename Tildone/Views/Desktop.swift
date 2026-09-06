@@ -183,6 +183,9 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: .arrangeMinimized)) { _ in
                 arrangeNotes(onlyMinimized: true)
             }
+            .onReceive(NotificationCenter.default.publisher(for: .compactNoteScaleChanged)) { _ in
+                updateCompactNoteScale()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
                 createAndShowNewNote(at: foregroundWindowUpperRightCorner())
             }
@@ -568,7 +571,10 @@ private extension Desktop {
 }
 
 private extension Desktop {
-    func reconcileColorFolderWindows(selectedColors: Set<NoteColor>) {
+    func reconcileColorFolderWindows(
+        selectedColors: Set<NoteColor>,
+        animatesArrangement: Bool = true
+    ) {
         let hiddenGroups = Dictionary(grouping: store.notes.filter {
             !selectedColors.contains($0.color)
         }, by: \.color)
@@ -589,7 +595,7 @@ private extension Desktop {
                 openColorFolderWindow(for: color, noteCount: notes.count)
             }
         }
-        arrangeNotes(onlyMinimized: true)
+        arrangeNotes(onlyMinimized: true, animated: animatesArrangement)
     }
 
     func openColorFolderWindow(for color: NoteColor, noteCount: Int) {
@@ -627,7 +633,7 @@ private extension Desktop {
         }
         let content = NSRect(
             origin: .zero,
-            size: NSSize(width: Layout.minimizedNoteWidth, height: Layout.minimizedNoteHeight)
+            size: CompactNoteScale.contentSize()
         )
         if let noteWindow = noteWindows.values.first {
             return noteWindow.frameRect(forContentRect: content).size
@@ -645,6 +651,30 @@ private extension Desktop {
         let minimizedSize = minimizedNoteFrameSize()
         let side = max(minimizedSize.width, minimizedSize.height)
         return NSSize(width: side, height: side)
+    }
+
+    func updateCompactNoteScale() {
+        for window in noteWindows.values where window.title.starts(with: "_") {
+            let origin = window.frame.origin
+            let contentSize = CompactNoteScale.contentSize()
+            window.contentMinSize = .zero
+            let frame = window.frameRect(forContentRect: NSRect(
+                origin: .zero,
+                size: contentSize
+            ))
+            window.setFrame(
+                NSRect(origin: origin, size: frame.size),
+                display: true
+            )
+            window.contentMinSize = contentSize
+            (window as? MacNoteWindow)?.updateCompactCornerRadius(
+                CompactNoteScale.cornerRadius()
+            )
+        }
+        reconcileColorFolderWindows(
+            selectedColors: NoteColorDisplayFilter.selectedColors,
+            animatesArrangement: false
+        )
     }
 
     func colorFolderWindow(for color: NoteColor, noteCount: Int, size: NSSize) -> some View {
@@ -684,13 +714,14 @@ private extension Desktop {
             return
         }
         let layout = NSRect(x: 0, y: 0, width: Layout.defaultNoteWidth, height: Layout.defaultNoteHeight)
-        let window = NSWindow(
+        let window = MacNoteWindow(
             contentRect: layout,
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
             backing: .buffered,
             defer: false
         )
         window.setNoteStyle(noteColor: note.color)
+        window.contentMinSize = NSSize(width: Layout.minNoteWidth, height: Layout.minNoteHeight)
         window.level = focusFilterAllowsBackgroundNotes ? .normal : .floating
         window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: clickThroughNotes,
@@ -699,7 +730,7 @@ private extension Desktop {
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
         window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
-        window.setNoteContentView(NSHostingView(rootView: noteWindow(for: note)))
+        window.setNoteHostingContentView(NSHostingView(rootView: noteWindow(for: note)))
         addNoteTitlebarAccessory(to: window, noteID: note.id)
         window.applyNoteBackgroundColor(
             note.color.nsColor,
@@ -980,9 +1011,7 @@ private extension Desktop {
     }
 
     func isCompactNoteWindow(_ window: NSWindow) -> Bool {
-        guard let contentView = window.contentView else { return false }
-        return abs(contentView.bounds.width - Layout.minimizedNoteWidth) < 0.5
-            && abs(contentView.bounds.height - Layout.minimizedNoteHeight) < 0.5
+        window.title.starts(with: "_")
     }
 
     func adjustAllNoteWindowOpacities(by delta: CGFloat) {
@@ -1040,7 +1069,7 @@ private extension Desktop {
         )
         window.identifier = NSUserInterfaceItemIdentifier(Id.updateWindow)
         window.setNoteStyle(noteColor: .green)
-        window.setNoteContentView(NSHostingView(rootView: MacSystemReleaseNote(version: version) {
+        window.setNoteHostingContentView(NSHostingView(rootView: MacSystemReleaseNote(version: version) {
             UpdateChecker.dismissPendingReleaseNote()
             window.close()
             updateWindow = nil
@@ -1052,7 +1081,7 @@ private extension Desktop {
         window.makeKeyAndOrderFront(nil)
     }
 
-    func arrangeNotes(onlyMinimized: Bool = false) {
+    func arrangeNotes(onlyMinimized: Bool = false, animated: Bool = true) {
         resetCornerConvergence()
         for (noteID, window) in noteWindows where !onlyMinimized || window.title.starts(with: "_") {
             NoteWindowManualPosition.setIsWheelPosition(false, for: noteID)
@@ -1075,7 +1104,7 @@ private extension Desktop {
                 case (false, false): return $0.frame.origin.y < $1.frame.origin.y
                 }
             }
-            positionOnScreen(sorted)
+            positionOnScreen(sorted, animated: animated)
         }
     }
 
@@ -1088,9 +1117,23 @@ private extension Desktop {
         )
     }
 
-    func positionOnScreen(_ windows: [NSWindow], from: Int = 0) {
+    func positionOnScreen(
+        _ windows: [NSWindow],
+        from: Int = 0,
+        after previousWindow: NSWindow? = nil,
+        animated: Bool = true
+    ) {
         guard let window = windows.first, let screenFrame = window.screen?.frame else { return }
-        let margin = from > 0 ? selectedArrangementSpacing.rawValue : selectedArrangementCornerMargin.rawValue
+        let margin: Int
+        if let previousWindow {
+            let spacesCompactTiles = isCompactArrangementWindow(previousWindow)
+                && isCompactArrangementWindow(window)
+            margin = spacesCompactTiles
+                ? CompactNoteScale.spacing(selectedArrangementSpacing.rawValue)
+                : selectedArrangementSpacing.rawValue
+        } else {
+            margin = selectedArrangementCornerMargin.rawValue
+        }
         let newPosition = from + margin
         let horizontal = selectedArrangementAlignment == .horizontal
         let placedOrigin = MacDesktopPlacement.origin(
@@ -1101,12 +1144,26 @@ private extension Desktop {
             position: newPosition,
             cornerMargin: selectedArrangementCornerMargin.rawValue
         )
-        let origin = isColorFolderWindow(window)
-            ? inwardFolderOrigin(from: placedOrigin)
-            : placedOrigin
-        let frame = NSRect(origin: origin, size: window.frame.size)
-        DispatchQueue.main.async { withAnimation { window.setFrame(frame, display: false, animate: true) } }
-        positionOnScreen(Array(windows.dropFirst()), from: newPosition + Int(horizontal ? window.frame.width : window.frame.height))
+        let frame = NSRect(origin: placedOrigin, size: window.frame.size)
+        if animated {
+            DispatchQueue.main.async {
+                withAnimation {
+                    window.setFrame(frame, display: false, animate: true)
+                }
+            }
+        } else {
+            window.setFrame(frame, display: true, animate: false)
+        }
+        positionOnScreen(
+            Array(windows.dropFirst()),
+            from: newPosition + Int(horizontal ? window.frame.width : window.frame.height),
+            after: window,
+            animated: animated
+        )
+    }
+
+    func isCompactArrangementWindow(_ window: NSWindow) -> Bool {
+        isColorFolderWindow(window) || window.title.starts(with: "_")
     }
 
     func isColorFolderWindow(_ window: NSWindow) -> Bool {
@@ -1117,17 +1174,6 @@ private extension Desktop {
         if isColorFolderWindow(window) { return 0 }
         if window.title.starts(with: "_") { return 1 }
         return 2
-    }
-
-    func inwardFolderOrigin(from origin: CGPoint) -> CGPoint {
-        let verticalOffset: CGFloat = 3
-        let horizontalOffset: CGFloat = 1
-        let movesRight = selectedArrangementCorner == .bottomLeft || selectedArrangementCorner == .topLeft
-        let movesUp = selectedArrangementCorner == .bottomLeft || selectedArrangementCorner == .bottomRight
-        return CGPoint(
-            x: origin.x + (movesRight ? horizontalOffset : -horizontalOffset),
-            y: origin.y + (movesUp ? verticalOffset : -verticalOffset)
-        )
     }
 
     func screenForNewWindow(at position: CGPoint?) -> NSScreen {
@@ -1336,14 +1382,23 @@ private struct NoteColorFolderView: View {
     private var previewCount: Int { min(noteCount, 4) }
     private let tileSize: CGFloat = 28
     private let tileSpacing: CGFloat = 6
+    private let baseSize = max(Layout.minimizedNoteWidth, Layout.minimizedNoteHeight)
+
+    private var scale: CGFloat { size.width / baseSize }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
+            RoundedRectangle(
+                cornerRadius: CompactNoteScale.baseCornerRadius,
+                style: .continuous
+            )
                 .fill(.ultraThinMaterial)
                 .opacity(0.15)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    RoundedRectangle(
+                        cornerRadius: CompactNoteScale.baseCornerRadius,
+                        style: .continuous
+                    )
                         .stroke(Color.white.opacity(0.32), lineWidth: 0.7)
                 }
 
@@ -1389,6 +1444,8 @@ private struct NoteColorFolderView: View {
             .help(String(localized: "Show \(color.localizedLabel) notes"))
             .accessibilityLabel(String(localized: "Show \(color.localizedLabel) notes"))
         }
+        .frame(width: baseSize, height: baseSize)
+        .scaleEffect(scale)
         .frame(width: size.width, height: size.height)
     }
 }
