@@ -764,6 +764,18 @@ final class TildoneTests: XCTestCase {
             ),
             NSPoint(x: -1_360, y: 40)
         )
+        XCTAssertEqual(
+            MacDesktopPlacement.origin(
+                for: windowSize,
+                on: screenFrame,
+                corner: .topLeft,
+                horizontal: true,
+                position: 40,
+                cornerMargin: 40,
+                topReservedHeight: 24
+            ),
+            NSPoint(x: -1_360, y: 696)
+        )
     }
 
     func testCompactNoteSpacingUsesTheRenderedScale() {

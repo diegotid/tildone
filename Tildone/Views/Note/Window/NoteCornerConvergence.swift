@@ -103,7 +103,8 @@ struct NoteCornerConvergence {
         for items: [Item],
         in screenFrame: NSRect,
         corner: ArrangementCorner,
-        margin: CGFloat
+        margin: CGFloat,
+        topReservedHeight: CGFloat = 0
     ) -> [NoteID: NSRect] {
         orderedBackToFront(items).enumerated().reduce(into: [:]) { result, entry in
             let (index, item) = entry
@@ -115,7 +116,7 @@ struct NoteCornerConvergence {
                 : screenFrame.maxX - margin - item.startFrame.width - offset
             let candidateY = targetsBottom
                 ? screenFrame.minY + margin + offset
-                : screenFrame.maxY - margin - item.startFrame.height - offset
+                : screenFrame.maxY - topReservedHeight - margin - item.startFrame.height - offset
 
             // A note already closer to the selected corner stays there instead of
             // moving away from it to join the staggered stack.

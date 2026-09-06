@@ -31,12 +31,14 @@ enum MacDesktopPlacement {
         corner: ArrangementCorner,
         horizontal: Bool,
         position: Int,
-        cornerMargin: Int
+        cornerMargin: Int,
+        topReservedHeight: CGFloat = 0
     ) -> NSPoint {
         let targetsRight = corner == .bottomRight || corner == .topRight
         let targetsTop = corner == .topLeft || corner == .topRight
         let offsetX = CGFloat(horizontal ? position : cornerMargin)
         let offsetY = CGFloat(horizontal ? cornerMargin : position)
+            + (targetsTop ? topReservedHeight : 0)
         return NSPoint(
             x: targetsRight
                 ? screenFrame.maxX - offsetX - windowSize.width
@@ -916,7 +918,8 @@ private extension Desktop {
                     for: items,
                     in: group.key.frame,
                     corner: corner,
-                    margin: CGFloat(margin.rawValue)
+                    margin: CGFloat(margin.rawValue),
+                    topReservedHeight: menuBarHeight(on: group.key)
                 ),
                 uniquingKeysWith: { _, new in new }
             )
@@ -1123,7 +1126,7 @@ private extension Desktop {
         after previousWindow: NSWindow? = nil,
         animated: Bool = true
     ) {
-        guard let window = windows.first, let screenFrame = window.screen?.frame else { return }
+        guard let window = windows.first, let screen = window.screen else { return }
         let margin: Int
         if let previousWindow {
             let spacesCompactTiles = isCompactArrangementWindow(previousWindow)
@@ -1138,11 +1141,12 @@ private extension Desktop {
         let horizontal = selectedArrangementAlignment == .horizontal
         let placedOrigin = MacDesktopPlacement.origin(
             for: window.frame.size,
-            on: screenFrame,
+            on: screen.frame,
             corner: selectedArrangementCorner,
             horizontal: horizontal,
             position: newPosition,
-            cornerMargin: selectedArrangementCornerMargin.rawValue
+            cornerMargin: selectedArrangementCornerMargin.rawValue,
+            topReservedHeight: menuBarHeight(on: screen)
         )
         let frame = NSRect(origin: placedOrigin, size: window.frame.size)
         if animated {
@@ -1187,6 +1191,10 @@ private extension Desktop {
         let maxX = max(visible.minX, visible.maxX - window.frame.width)
         let maxY = max(visible.minY, visible.maxY - window.frame.height)
         return CGPoint(x: min(max(desiredOrigin.x, visible.minX), maxX), y: min(max(desiredOrigin.y, visible.minY), maxY))
+    }
+
+    func menuBarHeight(on screen: NSScreen) -> CGFloat {
+        max(0, screen.frame.maxY - screen.visibleFrame.maxY)
     }
 
     func foregroundWindowUpperRightCorner() -> CGPoint {
