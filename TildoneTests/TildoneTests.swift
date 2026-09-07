@@ -12,6 +12,20 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    func testNoteClipboardContentPublishesSafeLocalizedRichAndPlainRepresentations() {
+        let content = NoteClipboardContent(
+            title: "Tíldone & café",
+            lines: [.init(text: "Menú y ayuda <important>", indentLevel: 1, isCompleted: false)]
+        )
+
+        XCTAssertEqual(content.plainText, "Tíldone & café\n  - [ ] Menú y ayuda <important>")
+        XCTAssertEqual(content.plainText, content.markdown)
+        XCTAssertTrue(content.html.contains("<meta charset=\"utf-8\">"))
+        XCTAssertTrue(content.html.contains("Tíldone &amp; café"))
+        XCTAssertTrue(content.html.contains("Menú y ayuda &lt;important&gt;"))
+        XCTAssertFalse(content.rtf.isEmpty)
+    }
+
     func testNoteContentForegroundUsesTheSameContrastRuleInNotesAndPreviews() {
         XCTAssertFalse(
             NoteContentForeground.usesLightText(

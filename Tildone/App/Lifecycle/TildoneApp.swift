@@ -292,9 +292,7 @@ struct TildoneApp: App {
         guard let note = foregroundNoteID.flatMap({ sharedStoreBootstrapper.store?.note($0) }) else {
             return
         }
-        let items = note.tasks.map { "<li>\($0.text)</li>" }.joined()
-        let title = note.title.map { "<strong>\($0)</strong>" } ?? ""
-        Copier.copy("\(title)<ul>\(items)</ul>", forType: .html)
+        Copier.copyNoteContents(title: note.title, tasks: note.tasks)
     }
 }
 

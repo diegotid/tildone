@@ -6,8 +6,11 @@
 //
 
 import AppKit
+import TildoneDomain
 
 struct Copier {
+
+    private static let markdownType = NSPasteboard.PasteboardType("net.daringfireball.markdown")
     
     static func copy(_ content: String, forType type: NSPasteboard.PasteboardType) {
         NSPasteboard.general.clearContents()
@@ -17,6 +20,104 @@ struct Copier {
         default:
             NSPasteboard.general.setData(content.data(using: .utf8)!, forType: type)
         }
+    }
+
+    static func copyNoteContents(title: String?, tasks: [Task]) {
+        let content = NoteClipboardContent(title: title, tasks: tasks)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(content.plainText, forType: .string)
+        pasteboard.setData(content.html.data(using: .utf8), forType: .html)
+        pasteboard.setData(content.rtf, forType: .rtf)
+        pasteboard.setString(content.markdown, forType: markdownType)
+    }
+}
+
+struct NoteClipboardContent {
+    let plainText: String
+    let markdown: String
+    let html: String
+    let rtf: Data
+
+    init(title: String?, tasks: [Task]) {
+        self.init(
+            title: title,
+            lines: tasks.map {
+                ClipboardLine(
+                    text: $0.text,
+                    indentLevel: $0.indentLevel,
+                    isCompleted: $0.isCompleted
+                )
+            }
+        )
+    }
+
+    init(title: String?, lines: [ClipboardLine]) {
+        let title = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedTitle = title?.isEmpty == false ? title : nil
+
+        markdown = Self.makeMarkdown(title: normalizedTitle, lines: lines)
+        plainText = markdown
+        html = Self.makeHTML(title: normalizedTitle, lines: lines)
+        rtf = Self.makeRTF(title: normalizedTitle, lines: lines)
+    }
+
+    struct ClipboardLine {
+        let text: String
+        let indentLevel: Int
+        let isCompleted: Bool
+    }
+
+    private static func makeMarkdown(title: String?, lines: [ClipboardLine]) -> String {
+        let taskLines = lines.map { line in
+            let checked = line.isCompleted ? "x" : " "
+            return "\(String(repeating: "  ", count: max(0, line.indentLevel)))- [\(checked)] \(line.text)"
+        }
+        return ([title].compactMap { $0 } + taskLines).joined(separator: "\n")
+    }
+
+    private static func makeHTML(title: String?, lines: [ClipboardLine]) -> String {
+        let titleHTML = title.map { "<strong>\(escapeHTML($0))</strong>" } ?? ""
+        let items = lines.map { line in
+            let completed = line.isCompleted ? "<s>\(escapeHTML(line.text))</s>" : escapeHTML(line.text)
+            let indentation = "margin-left: \(Double(max(0, line.indentLevel)) * 1.5)em;"
+            return "<li style=\"\(indentation)\">\(completed)</li>"
+        }.joined()
+        return "<!doctype html><html><head><meta charset=\"utf-8\"></head><body>\(titleHTML)<ul>\(items)</ul></body></html>"
+    }
+
+    private static func makeRTF(title: String?, lines: [ClipboardLine]) -> Data {
+        let result = NSMutableAttributedString()
+        if let title {
+            result.append(NSAttributedString(
+                string: "\(title)\n",
+                attributes: [.font: NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)]
+            ))
+        }
+        for line in lines {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.headIndent = CGFloat(max(0, line.indentLevel)) * 20
+            result.append(NSAttributedString(
+                string: "• \(line.text)\n",
+                attributes: [
+                    .paragraphStyle: paragraph,
+                    .strikethroughStyle: line.isCompleted ? NSUnderlineStyle.single.rawValue : 0
+                ]
+            ))
+        }
+        return (try? result.data(
+            from: NSRange(location: 0, length: result.length),
+            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+        )) ?? Data()
+    }
+
+    private static func escapeHTML(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
 }
 
