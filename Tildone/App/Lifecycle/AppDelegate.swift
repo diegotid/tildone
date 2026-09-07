@@ -9,6 +9,8 @@ import Foundation
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var isCoordinatorWindowVisible = false
     private var coordinatorWindowObserver: NSObjectProtocol?
+    private let helpMenuSearchProvider = HelpMenuSearchProvider()
+    private var hasRegisteredHelpMenuSearchProvider = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         CoordinatorWindowVisibility.discardSavedFrame()
@@ -18,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         GlobalApplicationHotKey.lineUp.start()
         GlobalApplicationHotKey.newNote.start()
         MenuBarController.shared.install()
+        registerHelpMenuSearchProviderIfNeeded()
         coordinatorWindowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
@@ -42,6 +45,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applyDockIconVisibility() {
         let shouldShowDockIcon = UserDefaults.standard.bool(forKey: AppAppearance.showDockIconStorageKey)
         NSApplication.shared.setActivationPolicy(shouldShowDockIcon ? .regular : .accessory)
+    }
+
+    private func registerHelpMenuSearchProviderIfNeeded() {
+        guard !hasRegisteredHelpMenuSearchProvider else { return }
+        NSApplication.shared.registerUserInterfaceItemSearchHandler(helpMenuSearchProvider)
+        hasRegisteredHelpMenuSearchProvider = true
     }
 
     private func hideCoordinatorWindowIfNeeded(_ notification: Notification) {

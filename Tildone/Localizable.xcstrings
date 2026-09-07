@@ -1,178 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "A quick reference for Tildone commands and gestures. Customizable shortcuts reflect your current Settings." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A quick reference for Tildone commands and gestures. Customizable shortcuts reflect your current Settings."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Una referencia rápida de los comandos y gestos de Tildone. Los atajos personalizables reflejan tus ajustes actuales."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un aide-mémoire des commandes et gestes de Tildone. Les raccourcis personnalisables reflètent vos réglages actuels."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tildone 命令和手势的快速参考。可自定义的快捷键会反映您当前的设置。"
-          }
-        }
-      }
-    },
-    "Current shortcut" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Current shortcut" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atajo actual" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Raccourci actuel" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当前快捷键" } }
-      }
-    },
-    "Hold the shortcut while the pointer is over a note. Scroll down to dim it; scroll up to restore it." : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hold the shortcut while the pointer is over a note. Scroll down to dim it; scroll up to restore it." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantén pulsado el atajo mientras el puntero está sobre una nota. Desplázate hacia abajo para atenuarla y hacia arriba para restaurarla." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Maintenez le raccourci pendant que le pointeur se trouve sur une note. Faites défiler vers le bas pour l’atténuer et vers le haut pour la restaurer." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当指针位于便笺上方时按住快捷键。向下滚动可调暗便笺，向上滚动可恢复便笺。" } }
-      }
-    },
-    "Note Dimming" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Note Dimming" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atenuación de notas" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Atténuation des notes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "便笺调暗" } }
-      }
-    },
-    "Open Settings" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Settings" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir ajustes" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrir les réglages" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开设置" } }
-      }
-    },
-    "Scroll Gestures" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scroll Gestures" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestos de desplazamiento" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gestes de défilement" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "滚动手势" } }
-      }
-    },
-    "Scroll Gestures…" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scroll Gestures…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestos de desplazamiento…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gestes de défilement…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "滚动手势…" } }
-      }
-    },
-    "Use a mouse wheel or trackpad scroll gesture to dim notes or bring them together without interrupting your work." : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Use a mouse wheel or trackpad scroll gesture to dim notes or bring them together without interrupting your work." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usa la rueda del ratón o un gesto de desplazamiento del trackpad para atenuar las notas o reunirlas sin interrumpir tu trabajo." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisez la molette de la souris ou un geste de défilement du trackpad pour atténuer les notes ou les rassembler sans interrompre votre travail." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "使用鼠标滚轮或触控板滚动手势来调暗或收拢便笺，而不会打断您的工作。" } }
-      }
-    },
-    "Close Note" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Close Note" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cerrar nota" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fermer la note" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭便笺" } }
-      }
-    },
-    "Dim or Restore All Notes" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dim or Restore All Notes" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atenuar o restaurar todas las notas" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Atténuer ou restaurer toutes les notes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "调暗或恢复所有便笺" } }
-      }
-    },
-    "Dim or Restore Note" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dim or Restore Note" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atenuar o restaurar la nota" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Atténuer ou restaurer la note" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "调暗或恢复便笺" } }
-      }
-    },
-    "Essentials" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Essentials" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Funciones esenciales" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Essentiels" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "常用" } }
-      }
-    },
-    "Gather Notes" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gather Notes" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Reunir notas" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rassembler les notes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "收拢便笺" } }
-      }
-    },
-    "Gestures" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gestures" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestos" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gestes" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "手势" } }
-      }
-    },
-    "Help" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Help" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ayuda" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aide" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "帮助" } }
-      }
-    },
-    "Keyboard Shortcuts" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard Shortcuts" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atajos de teclado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Raccourcis clavier" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "键盘快捷键" } }
-      }
-    },
-    "Keyboard Shortcuts…" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keyboard Shortcuts…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atajos de teclado…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Raccourcis clavier…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "键盘快捷键…" } }
-      }
-    },
-    "Scroll" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scroll" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desplazar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Faire défiler" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "滚动" } }
-      }
-    },
-    "Window Management" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Window Management" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestión de ventanas" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gestion des fenêtres" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "窗口管理" } }
-      }
-    },
     "" : {
       "localizations" : {
         "en" : {
@@ -278,6 +106,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "+"
+          }
+        }
+      }
+    },
+    "A quick reference for Tildone commands and gestures. Customizable shortcuts reflect your current Settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A quick reference for Tildone commands and gestures. Customizable shortcuts reflect your current Settings."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una referencia rápida de los comandos y gestos de Tildone. Los atajos personalizables reflejan tus ajustes actuales."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un aide-mémoire des commandes et gestes de Tildone. Les raccourcis personnalisables reflètent vos réglages actuels."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone 命令和手势的快速参考。可自定义的快捷键会反映您当前的设置。"
           }
         }
       }
@@ -786,6 +642,34 @@
         }
       }
     },
+    "Close Note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close Note"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭便笺"
+          }
+        }
+      }
+    },
     "Close window" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -976,34 +860,6 @@
         }
       }
     },
-    "Copy Note Contents" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy Note Contents"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar el contenido de la nota"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier le contenu de la note"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制便笺内容"
-          }
-        }
-      }
-    },
     "Copy “%@” Contents" : {
       "localizations" : {
         "en" : {
@@ -1028,6 +884,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "复制“%@”的内容"
+          }
+        }
+      }
+    },
+    "Copy Note Contents" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy Note Contents"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar el contenido de la nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier le contenu de la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制便笺内容"
           }
         }
       }
@@ -1287,6 +1171,34 @@
         }
       }
     },
+    "Current shortcut" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current shortcut"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo actual"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raccourci actuel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前快捷键"
+          }
+        }
+      }
+    },
     "Cut" : {
       "localizations" : {
         "en" : {
@@ -1403,6 +1315,62 @@
         }
       }
     },
+    "Dim or Restore All Notes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dim or Restore All Notes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenuar o restaurar todas las notas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atténuer ou restaurer toutes les notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调暗或恢复所有便笺"
+          }
+        }
+      }
+    },
+    "Dim or Restore Note" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dim or Restore Note"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenuar o restaurar la nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atténuer ou restaurer la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调暗或恢复便笺"
+          }
+        }
+      }
+    },
     "Direction" : {
       "comment" : "A label for the direction of the arrangement.",
       "isCommentAutoGenerated" : true,
@@ -1515,6 +1483,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拖移以重新排序"
+          }
+        }
+      }
+    },
+    "Essentials" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essentials"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciones esenciales"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essentiels"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "常用"
           }
         }
       }
@@ -1683,6 +1679,34 @@
         }
       }
     },
+    "Gather Notes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gather Notes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reunir notas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rassembler les notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收拢便笺"
+          }
+        }
+      }
+    },
     "Gather:" : {
       "comment" : "A label displayed above the gather settings.",
       "isCommentAutoGenerated" : true,
@@ -1729,6 +1753,34 @@
         }
       }
     },
+    "Gestures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestures"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手势"
+          }
+        }
+      }
+    },
     "Green" : {
       "localizations" : {
         "es" : {
@@ -1747,6 +1799,92 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "绿色"
+          }
+        }
+      }
+    },
+    "Help" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aide"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帮助"
+          }
+        }
+      }
+    },
+    "Help search aliases: Gather Notes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gather,gathering,collect,group,bring together,scroll,mouse wheel,trackpad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reunir,recoger,agrupar,juntar,desplazamiento,rueda del ratón,trackpad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rassembler,collecter,grouper,réunir,défilement,molette,trackpad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收拢,聚集,收集,归拢,滚动,鼠标滚轮,触控板"
+          }
+        }
+      }
+    },
+    "Help search aliases: Note Dimming" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dim,dimming,fade,opacity,transparency,restore,scroll,mouse wheel,trackpad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "atenuar,atenuación,desvanecer,opacidad,transparencia,restaurar,desplazamiento,rueda del ratón,trackpad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "atténuer,atténuation,fondu,opacité,transparence,restaurer,défilement,molette,trackpad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调暗,变暗,淡化,不透明度,透明度,恢复,滚动,鼠标滚轮,触控板"
           }
         }
       }
@@ -1794,6 +1932,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按住快捷键并在一条笔记上滚动，即可聚拢所有笔记。向上滚动可恢复其位置。"
+          }
+        }
+      }
+    },
+    "Hold the shortcut while the pointer is over a note. Scroll down to dim it; scroll up to restore it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold the shortcut while the pointer is over a note. Scroll down to dim it; scroll up to restore it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsado el atajo mientras el puntero está sobre una nota. Desplázate hacia abajo para atenuarla y hacia arriba para restaurarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez le raccourci pendant que le pointeur se trouve sur une note. Faites défiler vers le bas pour l’atténuer et vers le haut pour la restaurer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当指针位于便笺上方时按住快捷键。向下滚动可调暗便笺，向上滚动可恢复便笺。"
           }
         }
       }
@@ -2202,6 +2368,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "键盘快捷键"
+          }
+        }
+      }
+    },
+    "Keyboard Shortcuts" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard Shortcuts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajos de teclado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raccourcis clavier"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "键盘快捷键"
+          }
+        }
+      }
+    },
+    "Keyboard Shortcuts…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keyboard Shortcuts…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajos de teclado…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raccourcis clavier…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "键盘快捷键…"
           }
         }
       }
@@ -2653,6 +2875,34 @@
         }
       }
     },
+    "Note Dimming" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note Dimming"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenuación de notas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atténuation des notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "便笺调暗"
+          }
+        }
+      }
+    },
     "Note dimming:" : {
       "comment" : "A label for the dimming of notes.",
       "isCommentAutoGenerated" : true,
@@ -2765,6 +3015,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开专注模式设置"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir ajustes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir les réglages"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
           }
         }
       }
@@ -3260,6 +3538,90 @@
         }
       }
     },
+    "Scroll" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desplazar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faire défiler"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动"
+          }
+        }
+      }
+    },
+    "Scroll Gestures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll Gestures"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestos de desplazamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestes de défilement"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动手势"
+          }
+        }
+      }
+    },
+    "Scroll Gestures…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll Gestures…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestos de desplazamiento…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestes de défilement…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动手势…"
+          }
+        }
+      }
+    },
     "Scroll shortcut" : {
       "comment" : "A label that displays a shortcut used with a scrolling gesture.",
       "isCommentAutoGenerated" : true,
@@ -3475,6 +3837,8 @@
       }
     },
     "Show Dock Icon and App Menus" : {
+      "comment" : "A toggle that shows or hides the Tildone icon in the Dock and app menus.",
+      "isCommentAutoGenerated" : true,
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3500,9 +3864,7 @@
             "value" : "显示程序坞图标和 App 菜单"
           }
         }
-      },
-      "comment" : "A toggle that shows or hides the Tildone icon in the Dock and app menus.",
-      "isCommentAutoGenerated" : true
+      }
     },
     "Show or hide Tildone in the Dock." : {
       "comment" : "A description of the toggle that lets the user show or hide Tildone in the Dock.",
@@ -3552,6 +3914,8 @@
       }
     },
     "Show Tildone in the Dock and use standard app menus." : {
+      "comment" : "A toggle to show Tildone in the Dock and use standard app menus.",
+      "isCommentAutoGenerated" : true,
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3577,9 +3941,7 @@
             "value" : "在程序坞中显示 Tildone 并使用标准 App 菜单。"
           }
         }
-      },
-      "comment" : "A toggle to show Tildone in the Dock and use standard app menus.",
-      "isCommentAutoGenerated" : true
+      }
     },
     "Sign in to iCloud with the account you want to use, then reopen Tildone. Notes saved on this Mac will not be uploaded automatically." : {
       "localizations" : {
@@ -4757,6 +5119,34 @@
         }
       }
     },
+    "Use a mouse wheel or trackpad scroll gesture to dim notes or bring them together without interrupting your work." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use a mouse wheel or trackpad scroll gesture to dim notes or bring them together without interrupting your work."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa la rueda del ratón o un gesto de desplazamiento del trackpad para atenuar las notas o reunirlas sin interrumpir tu trabajo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez la molette de la souris ou un geste de défilement du trackpad pour atténuer les notes ou les rassembler sans interrompre votre travail."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用鼠标滚轮或触控板滚动手势来调暗或收拢便笺，而不会打断您的工作。"
+          }
+        }
+      }
+    },
     "Use iCloud" : {
       "localizations" : {
         "es" : {
@@ -5049,6 +5439,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "启用后，按住 ⌘ 并点击即可与透明笔记交互。（停用后，点击时按住 ⌘ 即可穿透。）"
+          }
+        }
+      }
+    },
+    "Window Management" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Window Management"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestión de ventanas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestion des fenêtres"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "窗口管理"
           }
         }
       }

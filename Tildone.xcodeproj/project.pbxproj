@@ -90,6 +90,7 @@
 		D20000000000000000000205 /* TildonePrimaryScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000105 /* TildonePrimaryScene.swift */; };
 		D20000000000000000000206 /* AppNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000106 /* AppNotifications.swift */; };
 		D20000000000000000000207 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000107 /* AppDelegate.swift */; };
+		D2000000000000000000020A /* HelpMenuSearchProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2000000000000000000010A /* HelpMenuSearchProvider.swift */; };
 		D20000000000000000000208 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000108 /* MenuBarController.swift */; };
 		D20000000000000000000209 /* GlobalApplicationHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000109 /* GlobalApplicationHotKey.swift */; };
 		D30000000000000000000201 /* MacNoteSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30000000000000000000101 /* MacNoteSnapshot.swift */; };
@@ -254,6 +255,7 @@
 		D20000000000000000000105 /* TildonePrimaryScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildonePrimaryScene.swift; sourceTree = "<group>"; };
 		D20000000000000000000106 /* AppNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotifications.swift; sourceTree = "<group>"; };
 		D20000000000000000000107 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D2000000000000000000010A /* HelpMenuSearchProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpMenuSearchProvider.swift; sourceTree = "<group>"; };
 		D20000000000000000000108 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		D20000000000000000000109 /* GlobalApplicationHotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalApplicationHotKey.swift; sourceTree = "<group>"; };
 		D30000000000000000000101 /* MacNoteSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSnapshot.swift; sourceTree = "<group>"; };
@@ -626,6 +628,7 @@
 			isa = PBXGroup;
 			children = (
 				D20000000000000000000107 /* AppDelegate.swift */,
+				D2000000000000000000010A /* HelpMenuSearchProvider.swift */,
 				D20000000000000000000106 /* AppNotifications.swift */,
 				D20000000000000000000109 /* GlobalApplicationHotKey.swift */,
 				D20000000000000000000108 /* MenuBarController.swift */,
@@ -1269,6 +1272,7 @@
 				D20000000000000000000205 /* TildonePrimaryScene.swift in Sources */,
 				D20000000000000000000206 /* AppNotifications.swift in Sources */,
 				D20000000000000000000207 /* AppDelegate.swift in Sources */,
+				D2000000000000000000020A /* HelpMenuSearchProvider.swift in Sources */,
 				D20000000000000000000208 /* MenuBarController.swift in Sources */,
 				D20000000000000000000209 /* GlobalApplicationHotKey.swift in Sources */,
 				D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */,

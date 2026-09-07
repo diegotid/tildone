@@ -2664,6 +2664,88 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(source.contains("Insert task above"))
     }
 
+    func testHelpMenuSearchMatchesTopicNamesAndAliases() {
+        let catalog = HelpMenuSearchCatalog(locale: Locale(identifier: "en"))
+
+        for query in ["Gather", "gathering", "collect", "group", "bring together"] {
+            XCTAssertEqual(catalog.matchingTopics(for: query, limit: 2), [.gatherNotes])
+        }
+        for query in ["Dimming", "dim", "fade", "opacity", "transparency", "restore"] {
+            XCTAssertEqual(catalog.matchingTopics(for: query, limit: 2), [.noteDimming])
+        }
+        XCTAssertEqual(
+            Set(catalog.matchingTopics(for: "mouse wheel", limit: 2)),
+            Set([.gatherNotes, .noteDimming])
+        )
+        XCTAssertEqual(
+            Set(catalog.matchingTopics(for: "trackpad", limit: 2)),
+            Set([.gatherNotes, .noteDimming])
+        )
+
+        for (locale, query, expectedTopic) in [
+            ("es", "reunir", HelpMenuTopic.gatherNotes),
+            ("es", "atenuación", HelpMenuTopic.noteDimming),
+            ("fr", "rassembler", HelpMenuTopic.gatherNotes),
+            ("fr", "opacité", HelpMenuTopic.noteDimming),
+            ("zh-Hans", "收拢", HelpMenuTopic.gatherNotes),
+            ("zh-Hans", "透明度", HelpMenuTopic.noteDimming),
+        ] {
+            XCTAssertEqual(
+                HelpMenuSearchCatalog(locale: Locale(identifier: locale))
+                    .matchingTopics(for: query, limit: 2),
+                [expectedTopic],
+                "Expected \(query) to match its localized topic"
+            )
+        }
+    }
+
+    func testHelpMenuSearchRespectsResultLimits() {
+        let catalog = HelpMenuSearchCatalog(locale: Locale(identifier: "en"))
+
+        XCTAssertEqual(catalog.matchingTopics(for: "scroll", limit: 1), [.gatherNotes])
+        XCTAssertEqual(catalog.matchingTopics(for: "scroll", limit: 2), [.gatherNotes, .noteDimming])
+        XCTAssertTrue(catalog.matchingTopics(for: "scroll", limit: 0).isEmpty)
+        XCTAssertTrue(catalog.matchingTopics(for: " ", limit: 2).isEmpty)
+    }
+
+    func testHelpMenuSearchLocalizesBreadcrumbTitles() {
+        let expectedTitles: [(String, [String])] = [
+            ("en", ["Scroll Gestures", "Gather Notes"]),
+            ("es", ["Gestos de desplazamiento", "Reunir notas"]),
+            ("fr", ["Gestes de défilement", "Rassembler les notes"]),
+            ("zh-Hans", ["滚动手势", "收拢便笺"]),
+        ]
+
+        for (identifier, titles) in expectedTitles {
+            XCTAssertEqual(
+                HelpMenuSearchCatalog(locale: Locale(identifier: identifier))
+                    .localizedTitles(for: .gatherNotes),
+                titles,
+                "Expected localized breadcrumb for \(identifier)"
+            )
+        }
+    }
+
+    func testHelpMenuSearchProviderReturnsStandardHelpResultsAndRoutesActions() {
+        var selectedTopic: HelpMenuTopic?
+        let actionExpectation = expectation(description: "Search result action")
+        let provider = HelpMenuSearchProvider { topic in
+            selectedTopic = topic
+            actionExpectation.fulfill()
+        }
+        var gatherResults: [Any] = []
+        var dimmingResults: [Any] = []
+
+        provider.searchForItems(withSearch: "Gather", resultLimit: 1) { gatherResults = $0 }
+        provider.searchForItems(withSearch: "Dimming", resultLimit: 1) { dimmingResults = $0 }
+
+        XCTAssertEqual(gatherResults as? [HelpMenuTopic], [.gatherNotes])
+        XCTAssertEqual(dimmingResults as? [HelpMenuTopic], [.noteDimming])
+        provider.performAction(forItem: HelpMenuTopic.gatherNotes)
+        wait(for: [actionExpectation], timeout: 1)
+        XCTAssertEqual(selectedTopic, .gatherNotes)
+    }
+
     /// Opt-in smoke test hosted by the signed development Mac app so the test
     /// inherits the real CloudKit entitlement. The normal suite is fully local.
     func testDevelopmentCloudKitRoundTripWhenExplicitlyEnabled() async throws {
