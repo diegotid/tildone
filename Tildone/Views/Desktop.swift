@@ -96,10 +96,20 @@ struct Desktop: View {
     @AppStorage(AppShortcuts.gatherModifiersStorageKey)
     private var gatherModifiersRawValue = Int(AppShortcuts.defaultGather.modifiers.rawValue)
 
-    private static let appWindowIDs = [Id.aboutWindow, Id.syncStatusWindow, Id.updateWindow]
+    private static let appWindowIDs = [
+        Id.aboutWindow,
+        Id.keyboardShortcutsWindow,
+        Id.scrollGesturesHelpWindow,
+        Id.syncStatusWindow,
+        Id.updateWindow
+    ]
 
     private var taskCompletionDates: [Date?] {
         store.notes.flatMap { note in note.tasks.map(\.completedAt) }
+    }
+
+    private var foregroundNoteTitle: String? {
+        foregroundNoteID.flatMap { store.note($0)?.title }
     }
 
     var body: some View {
@@ -151,6 +161,12 @@ struct Desktop: View {
             }
             .onChange(of: taskCompletionDates) { _, _ in
                 scheduleCompletedTaskRetention()
+            }
+            .onChange(of: foregroundNoteTitle) { _, title in
+                MenuBarController.shared.updateCopyNotePresentation(
+                    noteTitle: title,
+                    hasActiveNote: foregroundNoteID != nil
+                )
             }
             .onChange(of: noteSyncIndicatorState) { _, state in
                 setNoteSyncIndicatorState(state)
@@ -212,6 +228,12 @@ struct Desktop: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .openFocusFilterHelp)) { _ in
                 openWindow(id: Id.focusFilterHelpWindow)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openKeyboardShortcuts)) { _ in
+                openWindow(id: Id.keyboardShortcutsWindow)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openScrollGesturesHelp)) { _ in
+                openWindow(id: Id.scrollGesturesHelpWindow)
             }
     }
 
@@ -548,6 +570,8 @@ private extension Desktop {
         } else {
             foregroundWindow?.close()
         }
+        foregroundWindow = nil
+        foregroundNoteID = nil
     }
 
     func cleanUnfocusedNotes() {
@@ -713,6 +737,7 @@ private extension Desktop {
             foregroundNoteID = note.id
             foregroundWindow = existingWindow
             existingWindow.makeKeyAndOrderFront(nil)
+            NoteWindowMenuTitle.apply(to: existingWindow, noteTitle: note.title)
             return
         }
         let layout = NSRect(x: 0, y: 0, width: Layout.defaultNoteWidth, height: Layout.defaultNoteHeight)
@@ -776,6 +801,7 @@ private extension Desktop {
         foregroundNoteID = note.id
         foregroundWindow = window
         window.makeKeyAndOrderFront(nil)
+        NoteWindowMenuTitle.apply(to: window, noteTitle: note.title)
     }
 
     func repairUndersizedRestoredFrame(of window: NSWindow) {
@@ -1447,6 +1473,7 @@ private struct NoteColorFolderView: View {
                     .frame(width: 10, height: 10)
                     .foregroundStyle(.secondary)
                     .frame(width: 20, height: 20)
+                    .padding(1)
             }
             .buttonStyle(.plain)
             .help(String(localized: "Show \(color.localizedLabel) notes"))

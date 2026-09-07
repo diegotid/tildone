@@ -349,8 +349,8 @@ private extension SettingsForm {
                 settingWithHelp("Start Tildone automatically when you log in.") {
                     Launcher.Toggle()
                 }
-                settingWithHelp("Show or hide Tildone in the Dock.") {
-                    Toggle("Show Dock icon", isOn: $showDockIcon)
+                settingWithHelp("Show Tildone in the Dock and use standard app menus.") {
+                    Toggle("Show Dock Icon and App Menus", isOn: $showDockIcon)
                         .onChange(of: showDockIcon) { _, _ in
                             NSApplication.shared.setActivationPolicy(showDockIcon ? .regular : .accessory)
                         }
@@ -829,12 +829,12 @@ private extension SettingsForm {
 
     @ViewBuilder
     func dimmingPreview() -> some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-            appearancePreview(
-                windowAlpha: SettingsForm.opacityPreviewValue(at: context.date),
-                scrollGesture: SettingsForm.opacityChevronState(at: context.date)
-            )
-        }
+        DimmingPreview(
+            noteColor: noteColor,
+            backgroundOpacity: noteBackgroundOpacity,
+            fontSize: fontSize,
+            taskLineTruncation: taskLineTruncation
+        )
     }
 
     @ViewBuilder
@@ -1291,6 +1291,33 @@ private struct ScrollChevronIndicator: View {
     }
 }
 
+struct DimmingPreview: View {
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+    let fontSize: Double
+    let taskLineTruncation: TaskLineTruncation
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            SettingsPreviewCanvas {
+                SampleSettingsNote(
+                    noteColor: noteColor,
+                    backgroundOpacity: backgroundOpacity,
+                    fontSize: fontSize,
+                    taskLineTruncation: taskLineTruncation,
+                    showsContent: true
+                )
+                .frame(width: 190, height: 142)
+                .opacity(SettingsForm.opacityPreviewValue(at: context.date))
+                ScrollChevronIndicator(
+                    state: SettingsForm.opacityChevronState(at: context.date)
+                )
+                .position(x: ScrollChevronLayout.previewCenterX, y: 80)
+            }
+        }
+    }
+}
+
 private struct LineUpPreview: View {
     let corner: ArrangementCorner
     let margin: ArrangementSpacing
@@ -1451,7 +1478,7 @@ enum LineUpPreviewLayout {
     }
 }
 
-private struct GatherPreview: View {
+struct GatherPreview: View {
     let corner: ArrangementCorner
     let margin: ArrangementSpacing
     let noteColor: NoteColor

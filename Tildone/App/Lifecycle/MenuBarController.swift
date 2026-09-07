@@ -18,6 +18,17 @@ final class MenuBarController: NSObject {
     private var syncHeaderItem: NSMenuItem?
     private var syncPendingItem: NSMenuItem?
     private var syncActionItem: NSMenuItem?
+    private var copyNoteContentsItem: NSMenuItem?
+    private var copyNoteTitle: String?
+    private var hasCopyableNote = false
+
+    static let copyNoteTitleLengthLimit = 32
+
+    struct CopyNoteMenuPresentation: Equatable {
+        let title: String
+        let toolTip: String?
+        let isEnabled: Bool
+    }
 
     func install() {
         guard let button = statusItem.button else { return }
@@ -71,6 +82,42 @@ final class MenuBarController: NSObject {
         button.setAccessibilityValue(title)
     }
 
+    func updateCopyNotePresentation(noteTitle: String?, hasActiveNote: Bool) {
+        copyNoteTitle = noteTitle
+        hasCopyableNote = hasActiveNote
+        applyCopyNotePresentation()
+    }
+
+    static func copyNoteMenuPresentation(
+        noteTitle: String?,
+        hasActiveNote: Bool
+    ) -> CopyNoteMenuPresentation {
+        guard hasActiveNote else {
+            return CopyNoteMenuPresentation(
+                title: String(localized: "Copy Note Contents"),
+                toolTip: nil,
+                isEnabled: false
+            )
+        }
+
+        let normalizedTitle = noteTitle?
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+        let fullTitle = normalizedTitle.flatMap { $0.isEmpty ? nil : $0 }
+            ?? String(localized: "Untitled Note")
+        let isTruncated = fullTitle.count > copyNoteTitleLengthLimit
+        let displayTitle = isTruncated
+            ? String(fullTitle.prefix(copyNoteTitleLengthLimit - 1))
+                .trimmingCharacters(in: .whitespaces) + "…"
+            : fullTitle
+
+        return CopyNoteMenuPresentation(
+            title: String(localized: "Copy “\(displayTitle)” Contents"),
+            toolTip: isTruncated ? fullTitle : nil,
+            isEnabled: true
+        )
+    }
+
     static func menuBarImage(
         for state: MacSyncDisplayState,
         accessibilityDescription: String
@@ -111,13 +158,25 @@ final class MenuBarController: NSObject {
         }
     }
 
-    private func makeMenu() -> NSMenu {
+    func makeMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.autoenablesItems = false
         menu.minimumWidth = NoteColorFilterMenuView.preferredMenuWidth
         menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout), symbolName: "info.circle"))
         menu.addItem(.separator())
 
         menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), symbolName: "square.and.pencil"))
+
+        let copyNoteContents = item(
+            String(localized: "Copy Note Contents"),
+            action: #selector(copyNoteContents),
+            keyEquivalent: "c",
+            symbolName: "doc.on.doc"
+        )
+        copyNoteContents.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(copyNoteContents)
+        copyNoteContentsItem = copyNoteContents
+        applyCopyNotePresentation()
 
         let minimizeAll = item(String(localized: "Minimize All"), action: #selector(minimizeAll), keyEquivalent: "m", symbolName: "minus.square")
         minimizeAll.keyEquivalentModifierMask = [.command, .shift]
@@ -159,6 +218,15 @@ final class MenuBarController: NSObject {
         let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",", symbolName: "gearshape")
         settings.keyEquivalentModifierMask = .command
         menu.addItem(settings)
+        let keyboardShortcuts = item(
+            String(localized: "Keyboard Shortcuts…"),
+            action: #selector(openKeyboardShortcuts),
+            keyEquivalent: "/",
+            symbolName: "keyboard"
+        )
+        keyboardShortcuts.keyEquivalentModifierMask = .command
+        menu.addItem(keyboardShortcuts)
+        menu.addItem(item(String(localized: "Scroll Gestures…"), action: #selector(openScrollGesturesHelp), symbolName: "computermouse"))
         menu.addItem(item(String(localized: "How to Use Focus Filters…"), action: #selector(openFocusFilterHelp), symbolName: "moon"))
 
         menu.addItem(.separator())
@@ -166,6 +234,16 @@ final class MenuBarController: NSObject {
         quit.keyEquivalentModifierMask = .command
         menu.addItem(quit)
         return menu
+    }
+
+    private func applyCopyNotePresentation() {
+        let presentation = Self.copyNoteMenuPresentation(
+            noteTitle: copyNoteTitle,
+            hasActiveNote: hasCopyableNote
+        )
+        copyNoteContentsItem?.title = presentation.title
+        copyNoteContentsItem?.toolTip = presentation.toolTip
+        copyNoteContentsItem?.isEnabled = presentation.isEnabled
     }
 
     private func item(
@@ -199,12 +277,15 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func createNote() { sendToActiveApp(.new) }
+    @objc private func copyNoteContents() { sendToActiveApp(.copyNoteContents) }
     @objc private func minimizeAll() { sendToActiveApp(.minimizeAll) }
     @objc private func bringAllUp() { sendToActiveApp(.bringAllUp) }
     @objc private func lineUpNotes() { sendToActiveApp(.arrange) }
     @objc private func openSettings() { sendToActiveApp(.openSettings) }
     @objc private func openAbout() { sendToActiveApp(.openAbout) }
     @objc private func openFocusFilterHelp() { sendToActiveApp(.openFocusFilterHelp) }
+    @objc private func openKeyboardShortcuts() { sendToActiveApp(.openKeyboardShortcuts) }
+    @objc private func openScrollGesturesHelp() { sendToActiveApp(.openScrollGesturesHelp) }
     @objc private func openSyncStatus() { sendToActiveApp(.openSyncStatus) }
     @objc private func pauseSync() { sendToActiveApp(.pauseSync) }
     @objc private func resumeSync() { sendToActiveApp(.resumeSync) }

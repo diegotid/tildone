@@ -1003,6 +1003,81 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarMenuAdvertisesCopyNoteContentsShortcut() throws {
+        let controller = MenuBarController.shared
+        controller.updateCopyNotePresentation(noteTitle: nil, hasActiveNote: false)
+        let item = try XCTUnwrap(
+            controller.makeMenu().items.first {
+                $0.title == String(localized: "Copy Note Contents")
+            }
+        )
+
+        XCTAssertEqual(item.keyEquivalent, "c")
+        XCTAssertEqual(item.keyEquivalentModifierMask, [.command, .shift])
+        XCTAssertNotNil(item.image)
+        XCTAssertFalse(item.isEnabled)
+
+        controller.updateCopyNotePresentation(noteTitle: "Release Plan", hasActiveNote: true)
+        XCTAssertEqual(item.title, String(localized: "Copy “Release Plan” Contents"))
+        XCTAssertTrue(item.isEnabled)
+    }
+
+    @MainActor
+    func testMenuBarCopyPresentationUsesUntitledFallbackAndTruncatesLongTitles() {
+        let untitled = MenuBarController.copyNoteMenuPresentation(
+            noteTitle: "  \n ",
+            hasActiveNote: true
+        )
+        XCTAssertEqual(untitled.title, String(localized: "Copy “Untitled Note” Contents"))
+        XCTAssertNil(untitled.toolTip)
+        XCTAssertTrue(untitled.isEnabled)
+
+        let fullTitle = "A deliberately long note title that should be truncated"
+        let truncated = MenuBarController.copyNoteMenuPresentation(
+            noteTitle: fullTitle,
+            hasActiveNote: true
+        )
+        XCTAssertEqual(
+            truncated.title,
+            String(localized: "Copy “A deliberately long note title…” Contents")
+        )
+        XCTAssertEqual(truncated.toolTip, fullTitle)
+    }
+
+    @MainActor
+    func testMenuBarMenuAdvertisesKeyboardShortcutsShortcut() throws {
+        let menu = MenuBarController.shared.makeMenu()
+        let item = try XCTUnwrap(
+            menu.items.first {
+                $0.title == String(localized: "Keyboard Shortcuts…")
+            }
+        )
+
+        XCTAssertEqual(item.keyEquivalent, "/")
+        XCTAssertEqual(item.keyEquivalentModifierMask, .command)
+        XCTAssertNotNil(item.image)
+        XCTAssertNotNil(menu.items.first {
+            $0.title == String(localized: "Scroll Gestures…")
+        }?.image)
+    }
+
+    @MainActor
+    func testNoteWindowMenuTitleUsesNormalizedTitleAndUntitledFallback() {
+        XCTAssertEqual(
+            NoteWindowMenuTitle.resolved(from: "  Release\nPlan  "),
+            "Release Plan"
+        )
+        XCTAssertEqual(
+            NoteWindowMenuTitle.resolved(from: "  \n "),
+            String(localized: "Untitled Note")
+        )
+        XCTAssertEqual(
+            NoteWindowMenuTitle.resolved(from: nil),
+            String(localized: "Untitled Note")
+        )
+    }
+
+    @MainActor
     func testMacNoteSyncIndicatorDistinguishesLocalChoiceAndAttention() {
         XCTAssertEqual(MacNoteTitlebarLayout.accessoryWidth, 54)
         XCTAssertEqual(MacNoteTitlebarLayout.titleTrailingInset, 60)

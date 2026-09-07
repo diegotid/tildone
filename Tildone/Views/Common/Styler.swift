@@ -251,6 +251,25 @@ final class MacNoteWindow: NSWindow {
     }
 }
 
+enum NoteWindowMenuTitle {
+    static func resolved(from noteTitle: String?) -> String {
+        let normalizedTitle = noteTitle?
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+        return normalizedTitle.flatMap { $0.isEmpty ? nil : $0 }
+            ?? String(localized: "Untitled Note")
+    }
+
+    @MainActor
+    static func apply(to window: NSWindow, noteTitle: String?) {
+        NSApplication.shared.changeWindowsItem(
+            window,
+            title: resolved(from: noteTitle),
+            filename: false
+        )
+    }
+}
+
 extension NSColor {
     static let noteBackground = #colorLiteral(red: 1, green: 0.9411764706, blue: 0.6274509804, alpha: 1)
     static let systemNoteBackground = #colorLiteral(red: 0.7331673503, green: 0.9972032905, blue: 0.7244514823, alpha: 1)

@@ -153,6 +153,12 @@ struct Note: View {
             applyCurrentNoteBackground()
             updateRestoreControlForeground()
         }
+        .onChange(of: noteWindow) { _, _ in
+            updateWindowMenuTitle()
+        }
+        .onChange(of: note?.title) { _, _ in
+            updateWindowMenuTitle()
+        }
         .onChange(of: isMinimized) { _, minimized in
             setTrafficLightsHidden(minimized)
             if minimized { isHoveringMinimizedTaskList = false }

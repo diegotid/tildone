@@ -32,6 +32,93 @@ final class TildoneUITests: XCTestCase {
         // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
+    func testDockModeExposesStandardAppMenus() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments += ["--tildone-ui-test", "-showDockIcon", "YES"]
+        app.launch()
+
+        for title in ["Tildone", "File", "Edit", "View", "Window", "Help"] {
+            XCTAssertTrue(
+                app.menuBars.menuBarItems[title].waitForExistence(timeout: 5),
+                "Expected the \(title) app menu when Dock mode is enabled."
+            )
+        }
+
+        app.menuBars.menuBarItems["Tildone"].click()
+        for title in ["About Tildone", "Settings…", "Hide Tildone", "Quit Tildone"] {
+            XCTAssertTrue(app.menuItems[title].exists)
+        }
+
+        app.menuBars.menuBarItems["File"].click()
+        XCTAssertTrue(app.menuItems["New Note"].exists)
+        XCTAssertTrue(
+            app.menuItems["Close Window"].exists || app.menuItems["Discard Empty Note"].exists
+        )
+
+        app.menuBars.menuBarItems["Edit"].click()
+        for title in ["Undo", "Redo", "Cut", "Copy", "Copy Note Contents", "Paste", "Select All"] {
+            XCTAssertTrue(app.menuItems[title].exists)
+        }
+
+        app.menuBars.menuBarItems["View"].click()
+        XCTAssertTrue(app.menuItems["Visible Note Colors"].exists)
+
+        app.menuBars.menuBarItems["Window"].click()
+        for title in ["Minimize All", "Bring All Up", "Line Up Notes"] {
+            XCTAssertTrue(app.menuItems[title].exists)
+        }
+
+        app.menuBars.menuBarItems["Help"].click()
+        let helpMenu = app.menuBars.menuBarItems["Help"].menus.firstMatch
+        XCTAssertTrue(helpMenu.menuItems["Keyboard Shortcuts…"].exists)
+        XCTAssertTrue(helpMenu.menuItems["Scroll Gestures…"].exists)
+        XCTAssertTrue(helpMenu.menuItems["How to Use Focus Filters…"].exists)
+
+        helpMenu.menuItems["Scroll Gestures…"].click()
+        XCTAssertTrue(
+            app.staticTexts[
+                "Use a mouse wheel or trackpad scroll gesture to dim notes or bring them together without interrupting your work."
+            ].waitForExistence(timeout: 5),
+            "Expected the Scroll Gestures guide to open from the Help menu."
+        )
+        XCTAssertTrue(
+            app.windows["Scroll Gestures"].buttons["Open Settings"].exists,
+            "Expected the Scroll Gestures guide to offer a Settings CTA."
+        )
+
+        app.typeKey("/", modifierFlags: .command)
+        XCTAssertTrue(
+            app.staticTexts[
+                "A quick reference for Tildone commands and gestures. Customizable shortcuts reflect your current Settings."
+            ].waitForExistence(timeout: 5),
+            "Expected Command-Slash to open the keyboard-shortcut cheat sheet."
+        )
+        XCTAssertTrue(
+            app.windows["Keyboard Shortcuts"].buttons["Open Settings"].exists,
+            "Expected the keyboard-shortcut cheat sheet to offer a Settings CTA."
+        )
+
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(
+            app.checkBoxes["Show Dock Icon and App Menus"].waitForExistence(timeout: 5),
+            "Expected Command-Comma to open the Settings window."
+        )
+    }
+
+    func testMenuBarOnlyModeKeepsSettingsShortcut() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments += ["--tildone-ui-test", "-showDockIcon", "NO"]
+        app.launch()
+
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(
+            app.checkBoxes["Show Dock Icon and App Menus"].waitForExistence(timeout: 5),
+            "Expected Command-Comma to open Settings in menu-bar-only mode."
+        )
+    }
+
     func testDraggingTaskHandleReordersVisibleRows() throws {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"

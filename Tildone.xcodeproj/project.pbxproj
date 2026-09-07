@@ -124,6 +124,8 @@
 		D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */; };
 		D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000103 /* CoordinatorWindowVisibility.swift */; };
 		D50000000000000000000204 /* MacSyncContentSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D50000000000000000000104 /* MacSyncContentSnapshot.swift */; };
+		F10000000000000000000201 /* KeyboardShortcutsHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000101 /* KeyboardShortcutsHelp.swift */; };
+		F10100000000000000000201 /* ScrollGesturesHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10100000000000000000101 /* ScrollGesturesHelp.swift */; };
 		D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000101 /* NoteWindowButtonActionController.swift */; };
 		D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000102 /* WindowAccessorAttachmentView.swift */; };
 		D70000000000000000000203 /* NSView+NestedSubviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70000000000000000000103 /* NSView+NestedSubviews.swift */; };
@@ -286,6 +288,8 @@
 		D50000000000000000000102 /* MacNoteResolutionOptionButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteResolutionOptionButtonStyle.swift; sourceTree = "<group>"; };
 		D50000000000000000000103 /* CoordinatorWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinatorWindowVisibility.swift; sourceTree = "<group>"; };
 		D50000000000000000000104 /* MacSyncContentSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSyncContentSnapshot.swift; sourceTree = "<group>"; };
+		F10000000000000000000101 /* KeyboardShortcutsHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutsHelp.swift; sourceTree = "<group>"; };
+		F10100000000000000000101 /* ScrollGesturesHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollGesturesHelp.swift; sourceTree = "<group>"; };
 		D70000000000000000000101 /* NoteWindowButtonActionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowButtonActionController.swift; sourceTree = "<group>"; };
 		D70000000000000000000102 /* WindowAccessorAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessorAttachmentView.swift; sourceTree = "<group>"; };
 		D70000000000000000000103 /* NSView+NestedSubviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSView+NestedSubviews.swift"; sourceTree = "<group>"; };
@@ -690,6 +694,8 @@
 		D60000000000000000000008 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				F10000000000000000000101 /* KeyboardShortcutsHelp.swift */,
+				F10100000000000000000101 /* ScrollGesturesHelp.swift */,
 				D60000000000000000000009 /* Coordinator */,
 				D6000000000000000000000A /* Focus */,
 				D6000000000000000000000B /* Resolution */,
@@ -1250,6 +1256,8 @@
 				D3000000000000000000020A /* MacWorkspaceSelectionPolicy.swift in Sources */,
 				D3000000000000000000020B /* MacSharedStoreBootstrapper.swift in Sources */,
 				D50000000000000000000204 /* MacSyncContentSnapshot.swift in Sources */,
+				F10000000000000000000201 /* KeyboardShortcutsHelp.swift in Sources */,
+				F10100000000000000000201 /* ScrollGesturesHelp.swift in Sources */,
 				D20000000000000000000201 /* FocusFilterHelp.swift in Sources */,
 				D50000000000000000000201 /* FocusFilterHelpStep.swift in Sources */,
 				D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */,
