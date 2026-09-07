@@ -86,6 +86,7 @@ enum StoredDomainMapping {
     static func task(
         from stored: StoredTask,
         indentation: StoredTaskIndentation? = nil,
+        richText storedRichText: StoredTaskRichText? = nil,
         expectedNoteID: NoteID? = nil
     ) throws -> Task {
         guard let id = TaskID(string: stored.stableID), stored.stableID == id.stringValue else {
@@ -149,11 +150,30 @@ enum StoredDomainMapping {
                 field: "orderVersion"
             )
         }
+        let richText: RichText
+        if let storedRichText {
+            guard storedRichText.taskStableID == id.stringValue else {
+                throw malformed(.task, id.stringValue, "richTextOwnership")
+            }
+            do {
+                richText = try JSONDecoder().decode(
+                    RichText.self,
+                    from: storedRichText.encodedContent
+                )
+            } catch {
+                throw malformed(.task, id.stringValue, "richText")
+            }
+            guard richText.text == stored.text else {
+                throw malformed(.task, id.stringValue, "richTextMirror")
+            }
+        } else {
+            richText = RichText(text: stored.text)
+        }
         return Task(
             id: id,
             noteID: noteID,
             createdAt: stored.createdAt,
-            text: stored.text,
+            richText: richText,
             textVersion: try stamp(
                 counter: stored.textVersionCounter,
                 replica: stored.textVersionReplicaID,
@@ -310,6 +330,20 @@ enum StoredDomainMapping {
         )
     }
 
+    static func storedTaskRichText(from task: Task) throws -> StoredTaskRichText {
+        StoredTaskRichText(
+            taskStableID: task.id.stringValue,
+            encodedContent: try encodedRichText(task.richText)
+        )
+    }
+
+    static func update(_ stored: StoredTaskRichText, from task: Task) throws {
+        guard stored.taskStableID == task.id.stringValue else {
+            throw malformed(.task, task.id.stringValue, "richTextOwnership")
+        }
+        stored.encodedContent = try encodedRichText(task.richText)
+    }
+
     static func update(_ stored: StoredTaskIndentation, from task: Task) throws {
         guard stored.taskStableID == task.id.stringValue else {
             throw malformed(.task, task.id.stringValue, "indentOwnership")
@@ -318,6 +352,16 @@ enum StoredDomainMapping {
         stored.level = task.indentLevel
         stored.versionCounter = version.counter
         stored.versionReplicaID = version.replica
+    }
+
+    private static func encodedRichText(_ richText: RichText) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        do {
+            return try encoder.encode(richText)
+        } catch {
+            throw PersistenceError.domainInvariant
+        }
     }
 
     private static func validateSchema(_ version: Int, kind: PersistedEntityKind) throws {

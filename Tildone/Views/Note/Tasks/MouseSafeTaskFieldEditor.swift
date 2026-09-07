@@ -6,10 +6,20 @@
 import AppKit
 
 final class MouseSafeTaskFieldEditor: NSTextView {
+    var onBecomeFirstResponder: (() -> Void)?
     private weak var observedClipView: NSClipView?
     private var clipViewObservers: [NSObjectProtocol] = []
     private var isRestoringTextGeometry = false
     private var enforcedInsertionPointColor = NSColor.textColor
+
+    override func becomeFirstResponder() -> Bool {
+        let didBecomeFirstResponder = super.becomeFirstResponder()
+        if didBecomeFirstResponder {
+            enforceInsertionPointColor(enforcedInsertionPointColor)
+            onBecomeFirstResponder?()
+        }
+        return didBecomeFirstResponder
+    }
 
     deinit {
         clipViewObservers.forEach(NotificationCenter.default.removeObserver)

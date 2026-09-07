@@ -33,7 +33,7 @@ struct TaskRow: View {
     @State private var rowHeight: CGFloat = 0
     @State private var dropPlacement: TaskRowDropPlacement?
     let onToggle: () -> Void
-    let onEdit: (String) -> Void
+    let onEdit: (RichText) -> Void
     let onEnter: (Int?) -> Void
     let onCopy: () -> Void
     let onPaste: () -> Void
@@ -72,7 +72,11 @@ struct TaskRow: View {
     }
 
     private var linkedTaskText: TaskTextLinkPresentation? {
-        TaskTextLinks.presentation(for: task.text)
+        TaskTextLinks.presentation(
+            for: task.richText,
+            fontSize: CGFloat(fontSize),
+            baseColor: NSColor(contentColor)
+        )
     }
 
     private var showsCompletedAppearance: Bool {
@@ -99,8 +103,6 @@ struct TaskRow: View {
             if let linkedTaskText, showsCompletedAppearance || !isActive {
                 TaskTextLinksView(
                     text: linkedTaskText.attributedText,
-                    fontSize: CGFloat(fontSize),
-                    foregroundColor: showsCompletedAppearance ? contentColor.opacity(0.6) : contentColor,
                     isCompleted: showsCompletedAppearance,
                     truncation: truncation,
                     onEdit: showsCompletedAppearance ? nil : onEditLink,
@@ -114,26 +116,22 @@ struct TaskRow: View {
                     ))
                 }
             } else if showsCompletedAppearance {
-                Text(task.text)
-                    .font(.system(size: CGFloat(fontSize)))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .foregroundColor(
-                        contentColor.opacity(0.6)
-                    )
-                    .overlay {
-                        Rectangle()
-                            .fill(Color.accentColor)
-                            .frame(height: 2)
-                            .offset(y: 1)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
-                    .if(truncation == .single) {
-                        $0.modifier(TaskTextTruncationTooltip(
-                            text: task.text,
-                            fontSize: CGFloat(fontSize)
-                        ))
-                    }
+                Text(MouseSafeTaskTextField.displayAttributedString(
+                    from: task.richText,
+                    fontSize: CGFloat(fontSize),
+                    baseColor: NSColor(contentColor)
+                ))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .opacity(0.6)
+                .strikethrough(true, color: .accentColor)
+                .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                .if(truncation == .single) {
+                    $0.modifier(TaskTextTruncationTooltip(
+                        text: task.text,
+                        fontSize: CGFloat(fontSize)
+                    ))
+                }
             } else {
                 ZStack(alignment: .leading) {
                     if task.text.isEmpty {
@@ -144,13 +142,14 @@ struct TaskRow: View {
                     }
                     if truncation == .single {
                         MouseSafeTaskTextField(
-                            text: Binding(get: { task.text }, set: onEdit),
+                            richText: Binding(get: { task.richText }, set: onEdit),
                             taskID: task.id,
                             isFocused: isActive,
                             placesCaretAtStartOnFocus: placesCaretAtStartOnFocus,
                             fontSize: CGFloat(fontSize),
                             textColor: contentColor,
                             cursorColor: cursorColor,
+                            truncation: truncation,
                             onFocus: onNativeFocus,
                             onBlur: onNativeBlur,
                             onEnter: { onEnter($0) },
@@ -165,34 +164,28 @@ struct TaskRow: View {
                             if focusedTaskID == task.id { onPaste() }
                         }
                     } else {
-                        if isShowingRowControls, !isActive {
-                            FirstLineTruncatingWrappedTaskText(
-                                text: task.text,
-                                fontSize: CGFloat(fontSize),
-                                color: contentColor,
-                                reservedTrailingWidth: hasSubtasks ? 86 : 66
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture(perform: onEditLink)
-                        } else {
-                            TextField("", text: Binding(get: { task.text }, set: onEdit), axis: .vertical)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: CGFloat(fontSize)))
-                                .foregroundColor(contentColor)
-                                .tint(cursorColor)
-                                .background(Color.clear)
-                                .focused($focusedTaskID, equals: task.id)
-                                .onKeyPress(keys: [.return]) { _ in
-                                    onEnter(nil)
-                                    return .handled
-                                }
-                                .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
-                                    if focusedTaskID == task.id { onCopy() }
-                                }
-                                .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                                    if focusedTaskID == task.id { onPaste() }
-                                }
-                                .onSubmit { onSubmit() }
+                        MouseSafeTaskTextField(
+                            richText: Binding(get: { task.richText }, set: onEdit),
+                            taskID: task.id,
+                            isFocused: isActive,
+                            placesCaretAtStartOnFocus: placesCaretAtStartOnFocus,
+                            fontSize: CGFloat(fontSize),
+                            textColor: contentColor,
+                            cursorColor: cursorColor,
+                            truncation: truncation,
+                            onFocus: onNativeFocus,
+                            onBlur: onNativeBlur,
+                            onEnter: { onEnter($0) },
+                            onMoveUp: onMoveUp,
+                            onMoveDown: onSubmit
+                        )
+                        .padding(.trailing, isShowingRowControls && !isActive
+                            ? (hasSubtasks ? 86 : 66) : 0)
+                        .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
+                            if focusedTaskID == task.id { onCopy() }
+                        }
+                        .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
+                            if focusedTaskID == task.id { onPaste() }
                         }
                     }
                 }
@@ -334,44 +327,54 @@ private enum TaskTextLinks {
         types: NSTextCheckingResult.CheckingType.link.rawValue
     )
 
-    static func presentation(for text: String) -> TaskTextLinkPresentation? {
+    static func presentation(
+        for richText: RichText,
+        fontSize: CGFloat,
+        baseColor: NSColor
+    ) -> TaskTextLinkPresentation? {
         guard let detector else { return nil }
+        let text = richText.text
         let matches = detector.matches(
             in: text,
             range: NSRange(text.startIndex..., in: text)
         )
-        var displayText = AttributedString()
-        var plainText = ""
-        var cursor = text.startIndex
-        var foundURL = false
-
-        for match in matches {
-            guard let range = Range(match.range, in: text),
-                  let destination = match.url,
+        let foundURL = matches.contains { match in
+            guard let destination = match.url,
                   let scheme = destination.scheme?.lowercased(),
                   ["http", "https"].contains(scheme),
                   let host = destination.host,
-                  !host.isEmpty else {
-                continue
-            }
+                  !host.isEmpty else { return false }
+            return true
+        }
+        guard foundURL else { return nil }
+        return TaskTextLinkPresentation(
+            attributedText: MouseSafeTaskTextField.displayAttributedString(
+                from: richText,
+                fontSize: fontSize,
+                baseColor: baseColor,
+                shortenLinks: true
+            ),
+            plainText: shortenedLinkText(text, matches: matches)
+        )
+    }
+
+    private static func shortenedLinkText(
+        _ text: String,
+        matches: [NSTextCheckingResult]
+    ) -> String {
+        let result = NSMutableString(string: text)
+        for match in matches.reversed() {
+            guard let destination = match.url,
+                  let scheme = destination.scheme?.lowercased(),
+                  ["http", "https"].contains(scheme),
+                  let host = destination.host,
+                  !host.isEmpty else { continue }
             let displayHost = host.lowercased().hasPrefix("www.")
                 ? String(host.dropFirst(4))
                 : host
-            displayText += AttributedString(String(text[cursor..<range.lowerBound]))
-            plainText += String(text[cursor..<range.lowerBound])
-            var linkText = AttributedString(displayHost)
-            linkText.link = destination
-            linkText.foregroundColor = .accentColor
-            displayText += linkText
-            plainText += displayHost
-            cursor = range.upperBound
-            foundURL = true
+            result.replaceCharacters(in: match.range, with: displayHost)
         }
-
-        guard foundURL else { return nil }
-        displayText += AttributedString(String(text[cursor...]))
-        plainText += String(text[cursor...])
-        return TaskTextLinkPresentation(attributedText: displayText, plainText: plainText)
+        return result as String
     }
 }
 
@@ -382,19 +385,18 @@ private struct TaskTextLinkPresentation {
 
 private struct TaskTextLinksView: View {
     let text: AttributedString
-    let fontSize: CGFloat
-    let foregroundColor: Color
     let isCompleted: Bool
     let truncation: TaskLineTruncation
     let onEdit: (() -> Void)?
     let onPaste: (() -> Void)?
 
     var body: some View {
+        // Keep font and foreground styling in the attributed value; applying
+        // them here would flatten the task's rich spans when it leaves edit mode.
         Text(text)
-            .font(.system(size: fontSize))
             .lineLimit(truncation == .single ? 1 : nil)
             .truncationMode(.tail)
-            .foregroundStyle(foregroundColor)
+            .opacity(isCompleted ? 0.6 : 1)
             .strikethrough(isCompleted, color: .accentColor)
             .contentShape(Rectangle())
         .if(onEdit != nil) {

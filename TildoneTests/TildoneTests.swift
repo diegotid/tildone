@@ -26,6 +26,63 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(content.rtf.isEmpty)
     }
 
+    func testNoteClipboardContentPreservesRichFormattingAndLinksAcrossFormats() throws {
+        let text = "Bold link https://example.com done"
+        let richText = RichText(text: text, spans: [
+            .init(
+                range: .init(location: 0, length: 4),
+                attributes: .init(styles: [.bold])
+            ),
+            .init(
+                range: .init(location: 5, length: 4),
+                attributes: .init(styles: [.italic])
+            ),
+            .init(
+                range: .init(location: 10, length: 19),
+                attributes: .init(
+                    styles: [.underline],
+                    foregroundColor: .blue,
+                    highlightColor: .yellow
+                )
+            ),
+            .init(
+                range: .init(location: 30, length: 4),
+                attributes: .init(styles: [.strikethrough])
+            )
+        ])
+        let content = NoteClipboardContent(
+            title: nil,
+            lines: [.init(richText: richText, indentLevel: 0, isCompleted: false)]
+        )
+
+        XCTAssertEqual(
+            content.markdown,
+            "- [ ] **Bold** *link* https://example.com ~~done~~"
+        )
+        XCTAssertTrue(content.html.contains("<strong>Bold</strong>"))
+        XCTAssertTrue(content.html.contains("<em>link</em>"))
+        XCTAssertTrue(content.html.contains("href=\"https://example.com\""))
+        XCTAssertTrue(content.html.contains("<u>https://example.com</u>"))
+        XCTAssertTrue(content.html.contains("color: #0066cc;"))
+        XCTAssertTrue(content.html.contains("background-color: #9d7a00;"))
+        XCTAssertTrue(content.html.contains("<s>done</s>"))
+
+        let decoded = try XCTUnwrap(NSAttributedString(
+            rtf: content.rtf,
+            documentAttributes: nil
+        ))
+        let bulletOffset = 2
+        let boldFont = try XCTUnwrap(decoded.attribute(
+            .font,
+            at: bulletOffset,
+            effectiveRange: nil
+        ) as? NSFont)
+        XCTAssertTrue(NSFontManager.shared.traits(of: boldFont).contains(.boldFontMask))
+        XCTAssertNotNil(decoded.attribute(.link, at: bulletOffset + 10, effectiveRange: nil))
+        XCTAssertNotNil(decoded.attribute(.backgroundColor, at: bulletOffset + 10, effectiveRange: nil))
+        XCTAssertNotNil(decoded.attribute(.underlineStyle, at: bulletOffset + 10, effectiveRange: nil))
+    }
+
     func testNoteContentForegroundUsesTheSameContrastRuleInNotesAndPreviews() {
         XCTAssertFalse(
             NoteContentForeground.usesLightText(
@@ -1828,6 +1885,351 @@ final class TildoneTests: XCTestCase {
                 isActivelyEditing: false
             )
         )
+    }
+
+    @MainActor
+    func testNativeTaskEndEditingPreservesFormattingThroughFieldEditorLifecycle() async throws {
+        let plainText = RichText(text: "Formatted")
+        var modelValue = plainText
+        var blurred = false
+        let representable = MouseSafeTaskTextField(
+            richText: Binding(
+                get: { modelValue },
+                set: { modelValue = $0 }
+            ),
+            taskID: TaskID(),
+            isFocused: false,
+            placesCaretAtStartOnFocus: false,
+            fontSize: 14,
+            textColor: .primary,
+            cursorColor: .primary,
+            truncation: .single,
+            onFocus: {},
+            onBlur: { blurred = true },
+            onEnter: { _ in },
+            onMoveUp: {},
+            onMoveDown: {}
+        )
+        let coordinator = representable.makeCoordinator()
+        let field = MouseSafeTaskNSTextField()
+        field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isEditable = true
+        field.allowsEditingTextAttributes = true
+        field.delegate = coordinator
+        field.attributedStringValue = MouseSafeTaskTextField.attributedString(
+            from: plainText,
+            fontSize: 14,
+            baseColor: .textColor
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 80),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView?.addSubview(field)
+        coordinator.field = field
+        window.makeKeyAndOrderFront(nil)
+
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.setSelectedRange(NSRange(location: 0, length: plainText.utf16Count))
+        NotificationCenter.default.post(
+            name: .formatTaskText,
+            object: RichTextFormat.toggle(.bold)
+        )
+
+        XCTAssertTrue(modelValue.attributes(atUTF16Offset: 0).contains(.bold))
+        editor.textStorage?.setAttributedString(NSAttributedString(
+            string: plainText.text,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 14),
+                .foregroundColor: NSColor.textColor
+            ]
+        ))
+        XCTAssertTrue(window.makeFirstResponder(nil))
+        await Swift.Task<Never, Never>.yield()
+
+        let richModelValue = modelValue
+        modelValue = plainText
+        XCTAssertTrue(coordinator.shouldPreserveCanonicalAfterBlur(model: plainText))
+        XCTAssertFalse(coordinator.shouldPreserveCanonicalAfterBlur(model: richModelValue))
+        modelValue = richModelValue
+
+        window.orderOut(nil)
+
+        XCTAssertTrue(blurred)
+        XCTAssertTrue(modelValue.attributes(atUTF16Offset: 0).contains(.bold))
+        XCTAssertTrue(
+            MouseSafeTaskTextField.richText(from: field.attributedStringValue)
+                .attributes(atUTF16Offset: 0).contains(.bold)
+        )
+    }
+
+    @MainActor
+    func testUntouchedMacEditorDoesNotOverwriteRemoteFormattingOnBlur() async throws {
+        let plain = RichText(text: "Remote format")
+        let remote = plain.applying(
+            .toggle(.bold),
+            to: RichTextRange(location: 0, length: plain.utf16Count)
+        )
+        var modelValue = plain
+        var writebacks: [RichText] = []
+        let representable = MouseSafeTaskTextField(
+            richText: Binding(
+                get: { modelValue },
+                set: {
+                    writebacks.append($0)
+                    modelValue = $0
+                }
+            ),
+            taskID: TaskID(),
+            isFocused: false,
+            placesCaretAtStartOnFocus: false,
+            fontSize: 14,
+            textColor: .primary,
+            cursorColor: .primary,
+            truncation: .single,
+            onFocus: {},
+            onBlur: {},
+            onEnter: { _ in },
+            onMoveUp: {},
+            onMoveDown: {}
+        )
+        let coordinator = representable.makeCoordinator()
+        let field = MouseSafeTaskNSTextField(
+            frame: NSRect(x: 0, y: 0, width: 200, height: 24)
+        )
+        field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isEditable = true
+        field.allowsEditingTextAttributes = true
+        field.delegate = coordinator
+        field.attributedStringValue = MouseSafeTaskTextField.attributedString(
+            from: plain,
+            fontSize: 14,
+            baseColor: .textColor
+        )
+        coordinator.field = field
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 220, height: 80),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView?.addSubview(field)
+        window.makeKeyAndOrderFront(nil)
+
+        XCTAssertTrue(window.makeFirstResponder(field))
+        modelValue = remote
+        XCTAssertTrue(window.makeFirstResponder(nil))
+        await Swift.Task<Never, Never>.yield()
+        window.orderOut(nil)
+
+        XCTAssertEqual(modelValue, remote)
+        XCTAssertTrue(writebacks.isEmpty)
+        XCTAssertEqual(coordinator.canonicalRichText, remote)
+    }
+
+    @MainActor
+    func testTaskFormattingSurvivesFocusTransferAndStoreReload() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let task = try await store.addTask(to: note.id, text: "Formatted task")
+        var worker: Swift.Task<Void, Never>?
+        let representable = MouseSafeTaskTextField(
+            richText: Binding(get: { task.richText }, set: {
+                worker = store.queueTaskTextEdit(task.id, richText: $0) { error in
+                    XCTFail("Task edit failed: \(error)")
+                }
+            }),
+            taskID: task.id,
+            isFocused: true,
+            placesCaretAtStartOnFocus: false,
+            fontSize: 14,
+            textColor: .primary,
+            cursorColor: .primary,
+            truncation: .single,
+            onFocus: {}, onBlur: {}, onEnter: { _ in }, onMoveUp: {}, onMoveDown: {}
+        )
+        let coordinator = representable.makeCoordinator()
+        let field = MouseSafeTaskNSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isEditable = true
+        field.allowsEditingTextAttributes = true
+        field.delegate = coordinator
+        coordinator.field = field
+        field.attributedStringValue = MouseSafeTaskTextField.attributedString(
+            from: task.richText, fontSize: 14, baseColor: .textColor
+        )
+        let otherField = NSTextField(frame: NSRect(x: 0, y: 30, width: 200, height: 24))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 220, height: 80),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        window.contentView?.addSubview(field)
+        window.contentView?.addSubview(otherField)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        // Type first, as in a real editing session, then format a selection.
+        editor.insertText("!", replacementRange: NSRange(location: task.richText.utf16Count, length: 0))
+        editor.setSelectedRange(NSRange(location: 0, length: 9))
+        NotificationCenter.default.post(name: .formatTaskText, object: RichTextFormat.toggle(.bold))
+        let expected = RichText(text: "Formatted task!").applying(
+            .toggle(.bold), to: RichTextRange(location: 0, length: 9)
+        )
+        XCTAssertEqual(store.note(note.id)?.tasks.first?.richText, expected)
+        XCTAssertTrue(window.makeFirstResponder(otherField))
+        XCTAssertEqual(coordinator.canonicalRichText, expected, "Canonical value after blur")
+        XCTAssertEqual(store.note(note.id)?.tasks.first?.richText, expected, "Presentation immediately after blur")
+        await worker?.value
+        try await store.reload()
+        XCTAssertEqual(store.note(note.id)?.tasks.first?.richText, expected)
+        let persisted = try await repository.task(id: task.id)
+        XCTAssertEqual(persisted.richText, expected)
+    }
+
+    @MainActor
+    func testFormattingOnlyChangesTheSelectedTaskAndKeepsItsInsertionPoint() throws {
+        var values = [RichText(text: "First task"), RichText(text: "Other task")]
+        func makeField(_ index: Int) -> (MouseSafeTaskNSTextField, MouseSafeTaskTextField.Coordinator) {
+            let parent = MouseSafeTaskTextField(
+                richText: Binding(get: { values[index] }, set: { values[index] = $0 }),
+                taskID: TaskID(), isFocused: false, placesCaretAtStartOnFocus: false,
+                fontSize: 14, textColor: .black, cursorColor: .black,
+                truncation: .single, onFocus: {}, onBlur: {}, onEnter: { _ in },
+                onMoveUp: {}, onMoveDown: {}
+            )
+            let coordinator = parent.makeCoordinator()
+            let field = MouseSafeTaskNSTextField(frame: NSRect(x: 0, y: index * 30, width: 180, height: 24))
+            field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+            field.isEditable = true
+            field.allowsEditingTextAttributes = true
+            field.delegate = coordinator
+            coordinator.field = field
+            field.attributedStringValue = MouseSafeTaskTextField.attributedString(
+                from: values[index], fontSize: 14, baseColor: .black
+            )
+            return (field, coordinator)
+        }
+        let (first, firstCoordinator) = makeField(0)
+        let (second, secondCoordinator) = makeField(1)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 80),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        window.contentView?.addSubview(first)
+        window.contentView?.addSubview(second)
+        window.makeKeyAndOrderFront(nil)
+        defer {
+            window.orderOut(nil)
+            withExtendedLifetime((firstCoordinator, secondCoordinator)) {}
+        }
+        // Leave a previous editor/selection behind, then select without typing.
+        XCTAssertTrue(window.makeFirstResponder(second))
+        (second.currentEditor() as? NSTextView)?.setSelectedRange(NSRange(location: 0, length: 5))
+        XCTAssertTrue(window.makeFirstResponder(first))
+        let editor = try XCTUnwrap(first.currentEditor() as? NSTextView)
+        let selection = NSRange(location: 0, length: 5)
+        editor.setSelectedRange(selection)
+        NotificationCenter.default.post(name: .formatTaskText, object: RichTextFormat.toggle(.bold))
+        XCTAssertTrue(values[0].attributes(atUTF16Offset: 0).contains(.bold))
+        XCTAssertFalse(values[0].attributes(atUTF16Offset: 6).contains(.bold))
+        XCTAssertTrue(values[1].isPlain)
+        XCTAssertTrue(window.firstResponder === editor)
+        XCTAssertEqual(editor.selectedRange(), selection)
+        XCTAssertEqual(editor.insertionPointColor.alphaComponent, 1)
+        editor.setSelectedRange(NSRange(location: values[0].utf16Count, length: 0))
+        editor.insertText("!", replacementRange: editor.selectedRange())
+        XCTAssertEqual(values[0].text, "First task!")
+        XCTAssertTrue(values[0].attributes(atUTF16Offset: 0).contains(.bold))
+    }
+
+    @MainActor
+    func testInactiveTaskDisplayRetainsRichAttributes() throws {
+        let richText = RichText(
+            text: "Formatted",
+            spans: [RichTextSpan(
+                range: RichTextRange(location: 0, length: 9),
+                attributes: RichTextAttributes(
+                    styles: [.bold, .underline],
+                    foregroundColor: .red,
+                    highlightColor: .yellow
+                )
+            )]
+        )
+
+        let displayed = MouseSafeTaskTextField.displayAttributedString(
+            from: richText,
+            fontSize: 14,
+            baseColor: .black,
+            detectLinks: false
+        )
+        let attributes = NSAttributedString(displayed).attributes(at: 0, effectiveRange: nil)
+        let font = try XCTUnwrap(attributes[.font] as? NSFont)
+        let foregroundColor = try XCTUnwrap(attributes[.foregroundColor] as? NSColor)
+        let highlightColor = try XCTUnwrap(attributes[.backgroundColor] as? NSColor)
+
+        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.bold))
+        XCTAssertEqual(attributes[.underlineStyle] as? Int, NSUnderlineStyle.single.rawValue)
+        XCTAssertTrue(foregroundColor.isEqual(NSColor.systemRed))
+        XCTAssertTrue(highlightColor.isEqual(NSColor.systemYellow.withAlphaComponent(0.34)))
+    }
+
+    @MainActor
+    func testFormatNotificationUsesLastSelectionWhenMenuTemporarilyEndsEditing() throws {
+        let plainText = RichText(text: "Formatted")
+        var modelValue = plainText
+        let representable = MouseSafeTaskTextField(
+            richText: Binding(get: { modelValue }, set: { modelValue = $0 }),
+            taskID: TaskID(),
+            isFocused: true,
+            placesCaretAtStartOnFocus: false,
+            fontSize: 14,
+            textColor: .primary,
+            cursorColor: .primary,
+            truncation: .single,
+            onFocus: {},
+            onBlur: {},
+            onEnter: { _ in },
+            onMoveUp: {},
+            onMoveDown: {}
+        )
+        let coordinator = representable.makeCoordinator()
+        let field = MouseSafeTaskNSTextField()
+        field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isEditable = true
+        field.allowsEditingTextAttributes = true
+        field.delegate = coordinator
+        field.attributedStringValue = MouseSafeTaskTextField.attributedString(
+            from: plainText,
+            fontSize: 14,
+            baseColor: .textColor
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 80),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView?.addSubview(field)
+        coordinator.field = field
+        window.makeKeyAndOrderFront(nil)
+
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.setSelectedRange(NSRange(location: 0, length: plainText.utf16Count))
+        XCTAssertTrue(window.makeFirstResponder(nil))
+
+        NotificationCenter.default.post(
+            name: .formatTaskText,
+            object: RichTextFormat.toggle(.bold)
+        )
+
+        XCTAssertTrue(modelValue.attributes(atUTF16Offset: 0).contains(.bold))
+        window.orderOut(nil)
     }
 
     @MainActor

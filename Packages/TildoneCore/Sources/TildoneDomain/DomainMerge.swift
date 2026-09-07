@@ -86,7 +86,12 @@ public extension Task {
             throw DomainMergeError.immutableFieldMismatch
         }
 
-        let winningText = try mergeVersioned((text, textVersion), (other.text, other.textVersion))
+        // Text and formatting are one atomic field because every span is
+        // positioned relative to that exact text revision.
+        let winningText = try mergeVersioned(
+            (richText, textVersion),
+            (other.richText, other.textVersion)
+        )
         let winningCompletion = try mergeVersioned(
             (completion, completionVersion),
             (other.completion, other.completionVersion)
@@ -108,7 +113,7 @@ public extension Task {
             id: id,
             noteID: noteID,
             createdAt: createdAt,
-            text: winningText.value,
+            richText: winningText.value,
             textVersion: winningText.version,
             completion: winningCompletion.value,
             completionVersion: winningCompletion.version,

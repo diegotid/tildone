@@ -44,6 +44,7 @@ public protocol TaskRepository: Sendable {
     func task(id: TaskID, includingDeleted: Bool) async throws -> Task
     func orderedTasks(in noteID: NoteID) async throws -> [Task]
     func editTask(id: TaskID, text: String) async throws -> Task
+    func editTask(id: TaskID, richText: RichText) async throws -> Task
     func setTaskCompletion(id: TaskID, completion: CompletionState) async throws -> Task
     func moveTask(id: TaskID, to orderToken: OrderToken) async throws -> Task
     func setTaskIndentLevel(id: TaskID, indentLevel: Int) async throws -> Task

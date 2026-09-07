@@ -444,15 +444,21 @@ final class TildoneiOSApplicationModel: ObservableObject {
     func edit(taskID: TaskID, text: String) async throws {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        try await edit(taskID: taskID, richText: RichText(text: text))
+    }
+
+    func edit(taskID: TaskID, richText: RichText) async throws {
+        let richText = richText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !richText.text.isEmpty else { return }
         let (snapshot, task) = try requireSnapshot(containing: taskID)
         let revision = stageTaskUpdates(
             [TaskStructureUpdate(id: taskID)],
             in: snapshot,
-            textOverrides: [taskID: text]
+            richTextOverrides: [taskID: richText]
         )
         do {
             _ = try await withRepository { repository in
-                try await repository.editTask(id: taskID, text: text)
+                try await repository.editTask(id: taskID, richText: richText)
             }
             await reconcileSuccessfulMutation(task.noteID, revision: revision)
             scheduleSyncNotification()
@@ -788,14 +794,14 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private func stageTaskUpdates(
         _ updates: [TaskStructureUpdate],
         in snapshot: TildoneiOSNoteSnapshot,
-        textOverrides: [TaskID: String] = [:]
+        richTextOverrides: [TaskID: RichText] = [:]
     ) -> UInt64 {
         let updatesByID = Dictionary(uniqueKeysWithValues: updates.map { ($0.id, $0) })
         let tasks = snapshot.tasks.map { task in
             Self.presentationTask(
                 task,
                 applying: updatesByID[task.id],
-                text: textOverrides[task.id]
+                richText: richTextOverrides[task.id]
             )
         }.sorted(by: Task.orderedBefore)
         return stage(TildoneiOSNoteSnapshot(
@@ -1314,13 +1320,13 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private static func presentationTask(
         _ task: Task,
         applying update: TaskStructureUpdate?,
-        text: String?
+        richText: RichText?
     ) -> Task {
         Task(
             id: task.id,
             noteID: task.noteID,
             createdAt: task.createdAt,
-            text: text ?? task.text,
+            richText: richText ?? task.richText,
             textVersion: task.textVersion,
             completion: update?.completion ?? task.completion,
             completionVersion: task.completionVersion,

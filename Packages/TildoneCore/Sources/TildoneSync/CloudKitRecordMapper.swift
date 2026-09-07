@@ -170,6 +170,7 @@ extension CloudKitRecordMapper {
         static let meaningfulEditReplica = "lastMeaningfulEditVersionReplicaID"
         static let noteID = "noteID"
         static let text = "text"
+        static let richText = "richTextJSON"
         static let textCounter = "textVersionCounter"
         static let textReplica = "textVersionReplicaID"
         static let isCompleted = "isCompleted"
@@ -190,7 +191,7 @@ extension CloudKitRecordMapper {
             colorCounter, colorReplica,
             lifecycle, lifecycleCounter, lifecycleReplica, meaningfulEditAt,
             meaningfulEditCounter, meaningfulEditReplica, noteID, text,
-            textCounter, textReplica, isCompleted, completedAt,
+            richText, textCounter, textReplica, isCompleted, completedAt,
             completionCounter, completionReplica, orderToken, orderCounter,
             orderReplica, indentLevel, indentCounter, indentReplica
         ]
@@ -231,6 +232,10 @@ extension CloudKitRecordMapper {
         record[Field.noteID] = task.noteID.stringValue as NSString
         record[Field.createdAt] = task.createdAt as NSDate
         record[Field.text] = task.text as NSString
+        if task.schemaVersion >= 3,
+           let encoded = try? Self.richTextEncoder.encode(task.richText) {
+            record[Field.richText] = encoded as NSData
+        }
         encode(task.textVersion, prefixCounter: Field.textCounter, replica: Field.textReplica, into: record)
         record[Field.isCompleted] = NSNumber(value: task.isCompleted)
         record[Field.completedAt] = task.completedAt as NSDate?
@@ -326,11 +331,23 @@ extension CloudKitRecordMapper {
             indentLevel = 0
             indentVersion = try stamp(Field.orderCounter, Field.orderReplica, in: record)
         }
+        let text = try string(Field.text, in: record)
+        let richText: RichText
+        if schema >= 3 {
+            guard let data = record[Field.richText] as? Data,
+                  let decoded = try? JSONDecoder().decode(RichText.self, from: data),
+                  decoded.text == text else {
+                throw CloudRecordMappingError.invalidField(name, Field.richText)
+            }
+            richText = decoded
+        } else {
+            richText = RichText(text: text)
+        }
         return Task(
             id: id,
             noteID: noteID,
             createdAt: try date(Field.createdAt, in: record),
-            text: try string(Field.text, in: record),
+            richText: richText,
             textVersion: try stamp(Field.textCounter, Field.textReplica, in: record),
             completion: completion,
             completionVersion: try stamp(Field.completionCounter, Field.completionReplica, in: record),
@@ -342,6 +359,12 @@ extension CloudKitRecordMapper {
             lifecycleVersion: try stamp(Field.lifecycleCounter, Field.lifecycleReplica, in: record),
             schemaVersion: schema
         )
+    }
+
+    private static var richTextEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
     }
 
     func stamp(_ counter: String, _ replica: String, in record: CKRecord) throws -> VersionStamp {

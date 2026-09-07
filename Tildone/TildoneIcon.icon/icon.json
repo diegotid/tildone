@@ -80,8 +80,21 @@
         {
           "fill-specializations" : [
             {
+              "value" : {
+                "solid" : "srgb:1.00000,0.25279,1.00000,0.29057"
+              }
+            },
+            {
               "appearance" : "dark",
-              "value" : "none"
+              "value" : {
+                "solid" : "srgb:1.00000,0.25098,1.00000,0.29000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "srgb:1.00000,0.25098,1.00000,0.29057"
+              }
             }
           ],
           "glass-specializations" : [

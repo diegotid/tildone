@@ -250,7 +250,7 @@ final class TildoneSyncTests: XCTestCase {
         )
         XCTAssertEqual(
             Set(contracts.keys),
-            Set(["TDNote-1", "TDNote-2", "TDTask-1", "TDTask-2", "TDClient-1"])
+            Set(["TDNote-1", "TDNote-2", "TDTask-1", "TDTask-2", "TDTask-3", "TDClient-1"])
         )
 
         let v1Note = Note(
@@ -275,11 +275,28 @@ final class TildoneSyncTests: XCTestCase {
             lifecycleVersion: fixture.task.lifecycleVersion,
             schemaVersion: 1
         )
+        let v2Task = TildoneDomain.Task(
+            id: fixture.task.id,
+            noteID: fixture.task.noteID,
+            createdAt: fixture.task.createdAt,
+            text: fixture.task.text,
+            textVersion: fixture.task.textVersion,
+            completion: fixture.task.completion,
+            completionVersion: fixture.task.completionVersion,
+            orderToken: fixture.task.orderToken,
+            orderVersion: fixture.task.orderVersion,
+            indentLevel: fixture.task.indentLevel,
+            indentVersion: fixture.task.indentVersion,
+            lifecycle: fixture.task.lifecycle,
+            lifecycleVersion: fixture.task.lifecycleVersion,
+            schemaVersion: 2
+        )
         let records: [(String, CKRecord)] = [
             ("TDNote-1", mapper.record(from: .note(v1Note))),
             ("TDNote-2", mapper.record(from: .note(fixture.note))),
             ("TDTask-1", mapper.record(from: .task(v1Task))),
-            ("TDTask-2", mapper.record(from: .task(fixture.task))),
+            ("TDTask-2", mapper.record(from: .task(v2Task))),
+            ("TDTask-3", mapper.record(from: .task(fixture.task))),
             ("TDClient-1", mapper.clientRecord(replicaID: ReplicaID(UUID(int: 601)), platform: .mac))
         ]
         for (key, record) in records {
@@ -289,7 +306,7 @@ final class TildoneSyncTests: XCTestCase {
 
         let contentManifestFields = Set(
             try XCTUnwrap(contracts["TDNote-2"]).fields.map(\.name) +
-            (try XCTUnwrap(contracts["TDTask-2"])).fields.map(\.name)
+            (try XCTUnwrap(contracts["TDTask-3"])).fields.map(\.name)
         )
         XCTAssertEqual(contentManifestFields, Set(CloudKitRecordMapper.Field.all))
         XCTAssertEqual(DevelopmentCloudKitContractManifest.database, "private")
@@ -302,7 +319,58 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(optionalByRecord["TDNote-2"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDTask-1"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDTask-2"], Set(["completedAt"]))
+        XCTAssertEqual(optionalByRecord["TDTask-3"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDClient-1"], Set<String>())
+    }
+
+    func testCloudMapperRoundTripsRichTextComposedWithURLText() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        let text = "Review https://example.com now"
+        let richText = RichText(text: text, spans: [
+            .init(
+                range: .init(location: 7, length: 19),
+                attributes: .init(
+                    styles: [.bold, .underline],
+                    foregroundColor: .blue,
+                    highlightColor: .yellow
+                )
+            )
+        ])
+        let task = TildoneDomain.Task(
+            id: fixture.task.id,
+            noteID: fixture.task.noteID,
+            createdAt: fixture.task.createdAt,
+            richText: richText,
+            textVersion: fixture.task.textVersion,
+            completion: fixture.task.completion,
+            completionVersion: fixture.task.completionVersion,
+            orderToken: fixture.task.orderToken,
+            orderVersion: fixture.task.orderVersion,
+            indentLevel: fixture.task.indentLevel,
+            indentVersion: fixture.task.indentVersion,
+            lifecycle: fixture.task.lifecycle,
+            lifecycleVersion: fixture.task.lifecycleVersion
+        )
+
+        let record = mapper.record(from: .task(task))
+        XCTAssertEqual(record["text"] as? String, text)
+        XCTAssertNotNil(record["richTextJSON"] as? Data)
+        XCTAssertEqual(try mapper.syncRecord(from: record), .task(task))
+    }
+
+    func testCloudMapperReadsV2TaskAsPlainRichText() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+        let record = mapper.record(from: .task(fixture.task))
+        record["schemaVersion"] = NSNumber(value: 2)
+        record["richTextJSON"] = nil
+
+        guard case let .task(task) = try mapper.syncRecord(from: record) else {
+            return XCTFail("Expected a task")
+        }
+        XCTAssertEqual(task.schemaVersion, 2)
+        XCTAssertEqual(task.richText, RichText(text: fixture.task.text))
     }
 
     func testCloudMapperReadsV1NotesWithoutColorAndUsesDeterministicFallback() throws {
@@ -650,6 +718,24 @@ final class TildoneSyncTests: XCTestCase {
             state.completedReconciliationVersion,
             SyncPersistentState.currentReconciliationVersion
         )
+    }
+
+    func testRichTextSchemaUpgradeInvalidatesVersionOneCheckpoint() {
+        let oldSerialization = Data([1, 2, 3])
+        var state = SyncPersistentState()
+        state.engineSerialization = oldSerialization
+        state.zoneCreated = true
+        state.completedReconciliationVersion = 1
+
+        XCTAssertTrue(state.prepareForFullReconciliationIfNeeded())
+        XCTAssertNil(state.engineSerialization)
+        XCTAssertTrue(state.fullReconciliationRequired)
+
+        state.completeFullReconciliation()
+        state.engineSerialization = oldSerialization
+
+        XCTAssertFalse(state.prepareForFullReconciliationIfNeeded())
+        XCTAssertEqual(state.engineSerialization, oldSerialization)
     }
 
     func testFetchStateSerializationIsStagedUntilFetchedContentCanCommit() async throws {

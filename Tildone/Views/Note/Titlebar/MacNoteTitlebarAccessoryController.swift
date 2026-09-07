@@ -10,6 +10,7 @@ import SwiftUI
 /// Direct children of `NSThemeFrame` are private AppKit implementation details.
 final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewController {
     private let colorPicker: NSView
+    private let formatControl = NSHostingView(rootView: MacTaskTextFormatMenu())
     private let initialSyncIndicatorState: MacNoteSyncIndicatorState
     private var syncIndicator: MacNoteSyncTitlebarControl?
     private var restoreControl: MinimizedNoteRestoreTitlebarControl?
@@ -36,6 +37,7 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         view = container
         colorPicker.autoresizingMask = [.minXMargin, .minYMargin]
         container.addSubview(colorPicker)
+        container.addSubview(formatControl)
         installSyncIndicator(for: initialSyncIndicatorState)
         layoutControls()
     }
@@ -51,6 +53,14 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
     func setColorPickerHidden(_ hidden: Bool) {
         loadViewIfNeeded()
         colorPicker.isHidden = hidden
+        formatControl.isHidden = hidden
+    }
+
+    func setFormatControlForeground(_ foreground: Color) {
+        loadViewIfNeeded()
+        formatControl.rootView = MacTaskTextFormatMenu(foreground: foreground)
+        formatControl.needsLayout = true
+        formatControl.needsDisplay = true
     }
 
     func setRestoreControlVisible(
@@ -92,6 +102,9 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
 
     private func layoutControls() {
         colorPicker.frame = MacNoteTitlebarLayout.colorPickerFrame(in: view.bounds)
+        formatControl.frame = MacNoteTitlebarLayout.formatControlFrame(
+            alignedWith: colorPicker.frame
+        )
         syncIndicator?.frame = MacNoteTitlebarLayout.syncIndicatorFrame(
             alignedWith: colorPicker.frame
         )

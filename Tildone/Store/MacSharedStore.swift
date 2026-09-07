@@ -43,7 +43,7 @@ final class MacSharedStore: ObservableObject {
 
     private struct PendingTaskTextEdit {
         let revision: UInt64
-        let text: String
+        let richText: RichText
         let onFailure: (Error) -> Void
     }
 
@@ -330,16 +330,23 @@ final class MacSharedStore: ObservableObject {
         scheduleSyncNotification()
     }
 
+    func editTask(_ id: TaskID, richText: RichText) async throws {
+        await waitForPendingTaskTextEdit(for: id)
+        let task = try await repository.editTask(id: id, richText: richText)
+        try await reload(task.noteID)
+        scheduleSyncNotification()
+    }
+
     @discardableResult
     func queueTaskTextEdit(
         _ id: TaskID,
-        text: String,
+        richText: RichText,
         onFailure: @escaping (Error) -> Void
     ) -> Swift.Task<Void, Never> {
         let revision = nextEditRevision()
         pendingTaskTextEdits[id] = PendingTaskTextEdit(
             revision: revision,
-            text: text,
+            richText: richText,
             onFailure: onFailure
         )
         if let noteID = noteID(containing: id) {
@@ -352,6 +359,19 @@ final class MacSharedStore: ObservableObject {
         }
         taskTextEditWorkers[id] = worker
         return worker
+    }
+
+    @discardableResult
+    func queueTaskTextEdit(
+        _ id: TaskID,
+        text: String,
+        onFailure: @escaping (Error) -> Void
+    ) -> Swift.Task<Void, Never> {
+        queueTaskTextEdit(
+            id,
+            richText: RichText(text: text),
+            onFailure: onFailure
+        )
     }
 
     func setTaskIndentLevels(
@@ -903,7 +923,7 @@ private extension MacSharedStore {
         let editedNoteID = noteID(containing: id)
         while let edit = pendingTaskTextEdits[id] {
             do {
-                _ = try await repository.editTask(id: id, text: edit.text)
+                _ = try await repository.editTask(id: id, richText: edit.richText)
             } catch {
                 let latest = pendingTaskTextEdits.removeValue(forKey: id) ?? edit
                 taskTextEditWorkers[id] = nil
@@ -965,7 +985,7 @@ private extension MacSharedStore {
             } ?? snapshot.note
             let tasks = snapshot.tasks.map { task in
                 pendingTaskTextEdits[task.id].map {
-                    presentationTask(task, text: $0.text)
+                    presentationTask(task, richText: $0.richText)
                 } ?? task
             }
             return MacNoteSnapshot(note: note, tasks: tasks)
@@ -1065,13 +1085,13 @@ private extension MacSharedStore {
 
     func presentationTask(
         _ task: TildoneDomain.Task,
-        text: String
+        richText: RichText
     ) -> TildoneDomain.Task {
         TildoneDomain.Task(
             id: task.id,
             noteID: task.noteID,
             createdAt: task.createdAt,
-            text: text,
+            richText: richText,
             textVersion: task.textVersion,
             completion: task.completion,
             completionVersion: task.completionVersion,
@@ -1093,7 +1113,7 @@ private extension MacSharedStore {
             id: task.id,
             noteID: task.noteID,
             createdAt: task.createdAt,
-            text: task.text,
+            richText: task.richText,
             textVersion: task.textVersion,
             completion: update.completion ?? task.completion,
             completionVersion: task.completionVersion,

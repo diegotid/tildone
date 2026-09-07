@@ -33,9 +33,12 @@ struct NoteCardTaskList: View {
                                 )
                                 .padding(.top, 2)
                             }
-                            Text(PreviewTaskTextLinks.displayText(for: task.text) ?? AttributedString(task.text))
+                            Text(RichTaskTextEditor.displayText(
+                                from: task.richText,
+                                baseColor: .black,
+                                shortenLinks: true
+                            ))
                                 .strikethrough(task.isCompleted || task.subtaskProgress?.fraction == 1)
-                                .foregroundStyle(.black)
                                 .lineLimit(style == .deck ? 2 : 1)
                         }
                         .font(.system(size: baseTaskSize * contentScale))
@@ -47,47 +50,5 @@ struct NoteCardTaskList: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .clipped()
-    }
-}
-
-private enum PreviewTaskTextLinks {
-    private static let detector = try? NSDataDetector(
-        types: NSTextCheckingResult.CheckingType.link.rawValue
-    )
-
-    static func displayText(for text: String) -> AttributedString? {
-        guard let detector else { return nil }
-        let matches = detector.matches(
-            in: text,
-            range: NSRange(text.startIndex..., in: text)
-        )
-        var displayText = AttributedString()
-        var cursor = text.startIndex
-        var foundURL = false
-
-        for match in matches {
-            guard let range = Range(match.range, in: text),
-                  let destination = match.url,
-                  let scheme = destination.scheme?.lowercased(),
-                  ["http", "https"].contains(scheme),
-                  let host = destination.host,
-                  !host.isEmpty else {
-                continue
-            }
-            let displayHost = host.lowercased().hasPrefix("www.")
-                ? String(host.dropFirst(4))
-                : host
-            displayText += AttributedString(String(text[cursor..<range.lowerBound]))
-            var linkText = AttributedString(displayHost)
-            linkText.link = destination
-            linkText.foregroundColor = .accentColor
-            displayText += linkText
-            cursor = range.upperBound
-            foundURL = true
-        }
-
-        guard foundURL else { return nil }
-        displayText += AttributedString(String(text[cursor...]))
-        return displayText
     }
 }

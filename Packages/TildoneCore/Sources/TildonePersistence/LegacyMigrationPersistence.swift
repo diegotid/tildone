@@ -9,7 +9,7 @@ import SwiftData
 import TildoneDomain
 
 public extension TildoneRepository {
-    static let currentSharedSchemaVersion = 4
+    static let currentSharedSchemaVersion = 5
 
     func prepareLegacyMigration(
         formatVersion: Int,
@@ -342,6 +342,7 @@ public extension TildoneRepository {
             } else {
                 context.insert(try StoredDomainMapping.storedTask(from: task))
                 context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
+                context.insert(try StoredDomainMapping.storedTaskRichText(from: task))
             }
         }
         state.updatedAt = date
@@ -613,6 +614,13 @@ public extension TildoneRepository {
         case .taskText:
             guard let task = tasks.first else { throw LegacyMigrationPersistenceError.invalidState }
             task.text = "corrupted"
+            let richTextRows = try context.fetch(FetchDescriptor<StoredTaskRichText>())
+            guard let richText = richTextRows.first(where: {
+                $0.taskStableID == task.stableID
+            }) else { throw LegacyMigrationPersistenceError.invalidState }
+            richText.encodedContent = try JSONEncoder().encode(
+                RichText(text: task.text)
+            )
         case .taskOwnership:
             guard let task = tasks.first else { throw LegacyMigrationPersistenceError.invalidState }
             task.noteStableID = NoteID().stringValue
@@ -636,6 +644,14 @@ public extension TildoneRepository {
                 ? NoteID().stringValue : TaskID().stringValue
         case .taskCount:
             guard let task = tasks.first else { throw LegacyMigrationPersistenceError.invalidState }
+            for indentation in try context.fetch(FetchDescriptor<StoredTaskIndentation>())
+            where indentation.taskStableID == task.stableID {
+                context.delete(indentation)
+            }
+            for richText in try context.fetch(FetchDescriptor<StoredTaskRichText>())
+            where richText.taskStableID == task.stableID {
+                context.delete(richText)
+            }
             context.delete(task)
         case .taskVersion:
             guard let task = tasks.first else { throw LegacyMigrationPersistenceError.invalidState }

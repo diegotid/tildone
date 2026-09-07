@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		R10000000000000000000001 /* MacTaskTextFormatMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000011 /* MacTaskTextFormatMenu.swift */; };
+		R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000012 /* RichTaskTextEditor.swift */; };
+		R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000013 /* TaskTextFormatMenu.swift */; };
 		A10000000000000000000001 /* TildoneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* TildoneiOSApp.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
 		A10000000000000000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Preview Assets.xcassets */; };
@@ -195,6 +198,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		R10000000000000000000011 /* MacTaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTaskTextFormatMenu.swift; sourceTree = "<group>"; };
+		R10000000000000000000012 /* RichTaskTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTaskTextEditor.swift; sourceTree = "<group>"; };
+		R10000000000000000000013 /* TaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTextFormatMenu.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* TildoneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -551,6 +557,7 @@
 		E10000000000000000000005 /* Checklist */ = {
 			isa = PBXGroup;
 			children = (
+				R10000000000000000000013 /* TaskTextFormatMenu.swift */,
 				C1000000000000000000001A /* ChecklistView.swift */,
 				C10000000000000000000114 /* VisibleTask.swift */,
 				C10000000000000000000115 /* NoteColorPickerSymbol.swift */,
@@ -562,6 +569,7 @@
 		E10000000000000000000006 /* Tasks */ = {
 			isa = PBXGroup;
 			children = (
+				R10000000000000000000012 /* RichTaskTextEditor.swift */,
 				C1000000000000000000001B /* TaskRow.swift */,
 				C1000000000000000000001F /* TaskCheckbox.swift */,
 				C10000000000000000000104 /* TaskControlMetrics.swift */,
@@ -785,6 +793,7 @@
 		D60000000000000000000010 /* Titlebar */ = {
 			isa = PBXGroup;
 			children = (
+				R10000000000000000000011 /* MacTaskTextFormatMenu.swift */,
 				D10000000000000000000111 /* MacNoteTitlebarAccessoryController.swift */,
 				D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */,
 				D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */,
@@ -1178,6 +1187,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */,
+				R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */,
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
 				C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */,
 				C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */,
@@ -1242,6 +1253,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				R10000000000000000000001 /* MacTaskTextFormatMenu.swift in Sources */,
 				U10000000000000000000003 /* MacUndoMenuButton.swift in Sources */,
 				D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */,
 				D70000000000000000000202 /* WindowAccessorAttachmentView.swift in Sources */,

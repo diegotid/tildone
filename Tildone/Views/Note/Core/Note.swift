@@ -155,6 +155,7 @@ struct Note: View {
         }
         .onChange(of: noteWindow) { _, _ in
             updateWindowMenuTitle()
+            updateFormatControlForeground()
         }
         .onChange(of: note?.title) { _, _ in
             updateWindowMenuTitle()
@@ -166,15 +167,21 @@ struct Note: View {
         .onChange(of: noteBackgroundOpacity) { _, _ in
             applyCurrentNoteBackground()
             updateRestoreControlForeground()
+            updateFormatControlForeground()
+        }
+        .onChange(of: colorScheme) { _, _ in
+            updateFormatControlForeground()
         }
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,
                   changedWindow === noteWindow else { return }
             applyCurrentNoteBackground()
             updateRestoreControlForeground()
+            updateFormatControlForeground()
         }
         .onAppear {
             synchronizeCompletionFade(completedAt: note?.completedAt)
+            updateFormatControlForeground()
         }
         .onChange(of: note?.completedAt) { _, completedAt in
             synchronizeCompletionFade(completedAt: completedAt)

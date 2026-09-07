@@ -154,10 +154,10 @@ extension Note {
         }
     }
 
-    func handleTaskEdit(_ task: TildoneDomain.Task, to text: String) {
+    func handleTaskEdit(_ task: TildoneDomain.Task, to richText: RichText) {
         store.queueTaskTextEdit(
             task.id,
-            text: text.capitalizingFirstLetter()
+            richText: richText.capitalizingFirstLetter()
         ) { error in
             mutationErrorMessage = Self.mutationFailureMessage(
                 operation: "Error on task edit",
@@ -682,6 +682,7 @@ extension Note {
             color,
             alpha: tintAlpha
         )
+        updateFormatControlForeground()
     }
 
     func applyInitialFocusIfNeeded() {
@@ -776,5 +777,9 @@ extension Note {
 
     func updateRestoreControlForeground() {
         noteWindow?.noteTitlebarAccessoryController?.setRestoreControlForeground(minimizedForeground)
+    }
+
+    func updateFormatControlForeground() {
+        noteWindow?.noteTitlebarAccessoryController?.setFormatControlForeground(noteForeground)
     }
 }

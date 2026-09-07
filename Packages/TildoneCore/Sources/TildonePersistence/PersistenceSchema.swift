@@ -55,15 +55,34 @@ public enum TildoneSchemaV4: VersionedSchema {
     }
 }
 
+/// V5 adds canonical, platform-neutral rich task content as another stable-ID
+/// sidecar. `StoredTask.text` remains the compatibility mirror used by V1/V2
+/// stores and CloudKit records.
+public enum TildoneSchemaV5: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(5, 0, 0)
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredNote.self, StoredNoteColor.self, StoredTask.self,
+            StoredTaskIndentation.self, StoredTaskRichText.self, PendingMutation.self,
+            WorkspaceMetadata.self, QuarantinedRecord.self, LegacyMigrationState.self,
+            LegacyIdentityMapping.self
+        ]
+    }
+}
+
 public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self, TildoneSchemaV4.self]
+        [
+            TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self,
+            TildoneSchemaV4.self, TildoneSchemaV5.self
+        ]
     }
     public static var stages: [MigrationStage] {
         [
             .lightweight(fromVersion: TildoneSchemaV1.self, toVersion: TildoneSchemaV2.self),
             .lightweight(fromVersion: TildoneSchemaV2.self, toVersion: TildoneSchemaV3.self),
-            .lightweight(fromVersion: TildoneSchemaV3.self, toVersion: TildoneSchemaV4.self)
+            .lightweight(fromVersion: TildoneSchemaV3.self, toVersion: TildoneSchemaV4.self),
+            .lightweight(fromVersion: TildoneSchemaV4.self, toVersion: TildoneSchemaV5.self)
         ]
     }
 }
@@ -210,6 +229,19 @@ final class StoredTaskIndentation {
 }
 
 @Model
+final class StoredTaskRichText {
+    var taskStableID: String
+    /// JSON encoding of `TildoneDomain.RichText`; never an attributed-string,
+    /// HTML or RTF archive.
+    var encodedContent: Data
+
+    init(taskStableID: String, encodedContent: Data) {
+        self.taskStableID = taskStableID
+        self.encodedContent = encodedContent
+    }
+}
+
+@Model
 final class PendingMutation {
     var mutationID: String
     var targetKindRawValue: String
@@ -341,7 +373,7 @@ final class LegacyMigrationState {
         sourceContentDigest = sourceFingerprint.contentDigest
         sourceFileCount = sourceFingerprint.fileCount
         sourceTotalByteCount = Int64(sourceFingerprint.totalByteCount)
-        destinationSchemaVersion = 4
+        destinationSchemaVersion = 5
         sourceEligibleNoteCount = sourceCounts.eligibleNotes
         sourceEligibleTaskCount = sourceCounts.eligibleTasks
         sourceSystemNoteCount = sourceCounts.excludedSystemNotes

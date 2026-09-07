@@ -180,12 +180,12 @@ public struct Note: Codable, Hashable, Sendable {
 
 public struct Task: Codable, Hashable, Sendable {
     public static let oldestSupportedSchemaVersion = 1
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
 
     public let id: TaskID
     public let noteID: NoteID
     public let createdAt: Date
-    public private(set) var text: String
+    public private(set) var richText: RichText
     public private(set) var textVersion: VersionStamp
     public private(set) var completion: CompletionState
     public private(set) var completionVersion: VersionStamp
@@ -199,6 +199,7 @@ public struct Task: Codable, Hashable, Sendable {
     public private(set) var lifecycleVersion: VersionStamp
     public let schemaVersion: Int
 
+    public var text: String { richText.text }
     public var isCompleted: Bool { completion.isCompleted }
     public var completedAt: Date? { completion.completedAt }
 
@@ -221,7 +222,39 @@ public struct Task: Codable, Hashable, Sendable {
         self.id = id
         self.noteID = noteID
         self.createdAt = createdAt
-        self.text = text
+        self.richText = RichText(text: text)
+        self.textVersion = textVersion
+        self.completion = completion
+        self.completionVersion = completionVersion
+        self.orderToken = orderToken
+        self.orderVersion = orderVersion
+        self.indentLevel = indentLevel
+        self.indentVersion = indentVersion ?? orderVersion
+        self.lifecycle = lifecycle
+        self.lifecycleVersion = lifecycleVersion
+        self.schemaVersion = schemaVersion
+    }
+
+    public init(
+        id: TaskID,
+        noteID: NoteID,
+        createdAt: Date,
+        richText: RichText,
+        textVersion: VersionStamp,
+        completion: CompletionState = .incomplete,
+        completionVersion: VersionStamp,
+        orderToken: OrderToken,
+        orderVersion: VersionStamp,
+        indentLevel: Int = 0,
+        indentVersion: VersionStamp? = nil,
+        lifecycle: LifecycleState = .active,
+        lifecycleVersion: VersionStamp,
+        schemaVersion: Int = Task.currentSchemaVersion
+    ) {
+        self.id = id
+        self.noteID = noteID
+        self.createdAt = createdAt
+        self.richText = richText
         self.textVersion = textVersion
         self.completion = completion
         self.completionVersion = completionVersion
@@ -235,8 +268,12 @@ public struct Task: Codable, Hashable, Sendable {
     }
 
     public mutating func editText(_ text: String, version: VersionStamp) throws {
+        try editRichText(RichText(text: text), version: version)
+    }
+
+    public mutating func editRichText(_ richText: RichText, version: VersionStamp) throws {
         guard version > textVersion else { throw DomainMutationError.versionMustAdvance }
-        self.text = text
+        self.richText = richText
         textVersion = version
     }
 
@@ -279,6 +316,73 @@ public struct Task: Codable, Hashable, Sendable {
         guard version > lifecycleVersion else { throw DomainMutationError.versionMustAdvance }
         lifecycle = state
         lifecycleVersion = version
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, noteID, createdAt, text, richText, textVersion, completion,
+             completionVersion, orderToken, orderVersion, indentLevel,
+             indentVersion, lifecycle, lifecycleVersion, schemaVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(TaskID.self, forKey: .id)
+        noteID = try values.decode(NoteID.self, forKey: .noteID)
+        createdAt = try values.decode(Date.self, forKey: .createdAt)
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+        let legacyText = try values.decodeIfPresent(String.self, forKey: .text)
+        if let decoded = try values.decodeIfPresent(RichText.self, forKey: .richText) {
+            guard legacyText == nil || legacyText == decoded.text else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .richText,
+                    in: values,
+                    debugDescription: "Rich text and compatibility text disagree"
+                )
+            }
+            richText = decoded
+        } else {
+            guard schemaVersion < 3 else {
+                throw DecodingError.keyNotFound(
+                    CodingKeys.richText,
+                    .init(
+                        codingPath: values.codingPath,
+                        debugDescription: "Task schema V3 requires canonical rich text"
+                    )
+                )
+            }
+            richText = RichText(text: try values.decode(String.self, forKey: .text))
+        }
+        textVersion = try values.decode(VersionStamp.self, forKey: .textVersion)
+        completion = try values.decode(CompletionState.self, forKey: .completion)
+        completionVersion = try values.decode(VersionStamp.self, forKey: .completionVersion)
+        orderToken = try values.decode(OrderToken.self, forKey: .orderToken)
+        orderVersion = try values.decode(VersionStamp.self, forKey: .orderVersion)
+        indentLevel = try values.decodeIfPresent(Int.self, forKey: .indentLevel) ?? 0
+        indentVersion = try values.decodeIfPresent(VersionStamp.self, forKey: .indentVersion)
+            ?? orderVersion
+        lifecycle = try values.decode(LifecycleState.self, forKey: .lifecycle)
+        lifecycleVersion = try values.decode(VersionStamp.self, forKey: .lifecycleVersion)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(noteID, forKey: .noteID)
+        try values.encode(createdAt, forKey: .createdAt)
+        try values.encode(text, forKey: .text)
+        if schemaVersion >= 3 { try values.encode(richText, forKey: .richText) }
+        try values.encode(textVersion, forKey: .textVersion)
+        try values.encode(completion, forKey: .completion)
+        try values.encode(completionVersion, forKey: .completionVersion)
+        try values.encode(orderToken, forKey: .orderToken)
+        try values.encode(orderVersion, forKey: .orderVersion)
+        if schemaVersion >= 2 {
+            try values.encode(indentLevel, forKey: .indentLevel)
+            try values.encode(indentVersion, forKey: .indentVersion)
+        }
+        try values.encode(lifecycle, forKey: .lifecycle)
+        try values.encode(lifecycleVersion, forKey: .lifecycleVersion)
+        try values.encode(schemaVersion, forKey: .schemaVersion)
     }
 }
 

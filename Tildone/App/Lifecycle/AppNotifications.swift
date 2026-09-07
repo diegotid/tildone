@@ -33,6 +33,7 @@ extension Notification.Name {
     static let noteWindowOpacityChanged = Notification.Name("noteWindowOpacityChanged")
     static let noteWindowClickThroughCommandChanged = Notification.Name("noteWindowClickThroughCommandChanged")
     static let noteColorFilterChanged = Notification.Name("noteColorFilterChanged")
+    static let formatTaskText = Notification.Name("formatTaskText")
     static let compactNoteScaleChanged = Notification.Name("compactNoteScaleChanged")
 }
 

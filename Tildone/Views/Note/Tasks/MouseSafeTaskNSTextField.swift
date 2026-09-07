@@ -9,6 +9,20 @@ import TildoneDomain
 final class MouseSafeTaskNSTextField: NSTextField {
     var taskID: TaskID?
     var placesCaretAtStartOnFocus = false
+    var cursorColor = NSColor.textColor
+    var onEditorFocus: (() -> Void)?
+    var hasPendingFocusRequest = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        DispatchQueue.main.async { [weak self] in self?.applyPendingFocusRequest() }
+    }
+
+    func applyPendingFocusRequest() {
+        guard hasPendingFocusRequest, let window else { return }
+        hasPendingFocusRequest = false
+        window.makeFirstResponder(self)
+    }
 
     override var intrinsicContentSize: NSSize {
         NSSize(width: NSView.noIntrinsicMetric, height: super.intrinsicContentSize.height)

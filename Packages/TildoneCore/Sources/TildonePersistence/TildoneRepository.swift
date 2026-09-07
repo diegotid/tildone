@@ -116,7 +116,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     private nonisolated static func makeContainer(
         descriptor: PersistenceStoreDescriptor
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: TildoneSchemaV4.self)
+        let schema = Schema(versionedSchema: TildoneSchemaV5.self)
         let configuration: ModelConfiguration
         if descriptor.kind == .inMemory {
             configuration = ModelConfiguration(
@@ -235,12 +235,20 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             }
         }
 
+        var richTextByTaskID: [String: StoredTaskRichText] = [:]
+        for richText in try context.fetch(FetchDescriptor<StoredTaskRichText>()) {
+            guard richTextByTaskID.updateValue(richText, forKey: richText.taskStableID) == nil else {
+                throw PersistenceError.duplicateID(.task, richText.taskStableID)
+            }
+        }
+
         var taskIDs: Set<TaskID> = []
         var tasksByNoteID: [NoteID: [Task]] = [:]
         for stored in try context.fetch(FetchDescriptor<StoredTask>()) {
             let task = try StoredDomainMapping.task(
                 from: stored,
-                indentation: indentationsByTaskID[stored.stableID]
+                indentation: indentationsByTaskID[stored.stableID],
+                richText: richTextByTaskID[stored.stableID]
             )
             guard taskIDs.insert(task.id).inserted else {
                 throw PersistenceError.duplicateID(.task, task.id.stringValue)
@@ -418,6 +426,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try promoteTaskToCurrentSchema(&task, version: taskStamp)
             try StoredDomainMapping.update(storedTask, from: task)
             try upsertTaskIndentation(for: task, in: context)
+            try upsertTaskRichText(for: task, in: context)
             try enqueue(.task, id: task.id.stringValue, sequence: taskStamp.logicalCounter, in: context)
         }
         try saveMutation(context)
@@ -481,6 +490,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try StoredDomainMapping.update(storedNote, from: note)
         context.insert(try StoredDomainMapping.storedTask(from: task))
         context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
+        context.insert(try StoredDomainMapping.storedTaskRichText(from: task))
         try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try enqueue(.note, id: noteID.stringValue, sequence: meaningfulEditStamp.logicalCounter, in: context)
         try saveMutation(context)
@@ -515,6 +525,12 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     public func editTask(id: TaskID, text: String) throws -> Task {
         try mutateTask(id: id) { task, stamp in try task.editText(text, version: stamp) }
+    }
+
+    public func editTask(id: TaskID, richText: RichText) throws -> Task {
+        try mutateTask(id: id) { task, stamp in
+            try task.editRichText(richText, version: stamp)
+        }
     }
 
     public func setTaskCompletion(id: TaskID, completion: CompletionState) throws -> Task {
@@ -577,6 +593,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try promoteTaskToCurrentSchema(&task, version: stamp)
             try StoredDomainMapping.update(stored, from: task)
             try upsertTaskIndentation(for: task, in: context)
+            try upsertTaskRichText(for: task, in: context)
             try enqueue(.task, id: task.id.stringValue, sequence: stamp.logicalCounter, in: context)
             changedTasks.append(task)
         }
@@ -639,6 +656,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try promoteTaskToCurrentSchema(&task, version: stamp)
             try StoredDomainMapping.update(stored, from: task)
             try upsertTaskIndentation(for: task, in: context)
+            try upsertTaskRichText(for: task, in: context)
             try enqueue(.task, id: task.id.stringValue, sequence: stamp.logicalCounter, in: context)
         }
 
@@ -658,6 +676,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         )
         context.insert(try StoredDomainMapping.storedTask(from: task))
         context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
+        context.insert(try StoredDomainMapping.storedTaskRichText(from: task))
         try enqueue(.task, id: id.stringValue, sequence: taskStamp.logicalCounter, in: context)
 
         let meaningfulEditStamp = try nextStamp(
@@ -707,6 +726,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try promoteTaskToCurrentSchema(&task, version: stamp)
             try StoredDomainMapping.update(stored, from: task)
             try upsertTaskIndentation(for: task, in: context)
+            try upsertTaskRichText(for: task, in: context)
             try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
             latestTaskStamp = max(latestTaskStamp ?? stamp, stamp)
         }
@@ -768,6 +788,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try StoredDomainMapping.update(ownerStored, from: owner)
         try StoredDomainMapping.update(stored, from: task)
         try upsertTaskIndentation(for: task, in: context)
+        try upsertTaskRichText(for: task, in: context)
         try enqueue(.task, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try enqueue(
             .note,
@@ -1030,7 +1051,9 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             }
             maximum = max(maximum, color.colorVersionCounter)
         }
-        for task in try context.fetch(FetchDescriptor<StoredTask>()) {
+        let tasks = try context.fetch(FetchDescriptor<StoredTask>())
+        let taskIDs = Set(tasks.map(\.stableID))
+        for task in tasks {
             let counters = [
                 task.textVersionCounter,
                 task.completionVersionCounter,
@@ -1047,6 +1070,19 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 throw PersistenceError.workspaceMismatch
             }
             maximum = max(maximum, indentation.versionCounter)
+        }
+        var richTextTaskIDs: Set<String> = []
+        for richText in try context.fetch(FetchDescriptor<StoredTaskRichText>()) {
+            guard taskIDs.contains(richText.taskStableID),
+                  richTextTaskIDs.insert(richText.taskStableID).inserted,
+                  let stored = tasks.first(where: { $0.stableID == richText.taskStableID }),
+                  let content = try? JSONDecoder().decode(
+                    RichText.self,
+                    from: richText.encodedContent
+                  ),
+                  content.text == stored.text else {
+                throw PersistenceError.workspaceMismatch
+            }
         }
         for mutation in try context.fetch(FetchDescriptor<PendingMutation>()) {
             guard mutation.sequence >= 0 else { throw PersistenceError.workspaceMismatch }
@@ -1348,6 +1384,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         try StoredDomainMapping.task(
             from: stored,
             indentation: try taskIndentation(for: stored.stableID, in: context),
+            richText: try taskRichText(for: stored.stableID, in: context),
             expectedNoteID: expectedNoteID
         )
     }
@@ -1367,10 +1404,22 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return indentation
     }
 
+    func taskRichText(for stableID: String, in context: ModelContext) throws -> StoredTaskRichText? {
+        let rows = try context.fetch(FetchDescriptor<StoredTaskRichText>(
+            predicate: #Predicate { $0.taskStableID == stableID }
+        ))
+        guard rows.count <= 1 else { throw PersistenceError.duplicateID(.task, stableID) }
+        return rows.first
+    }
+
     func promoteTaskToCurrentSchema(_ task: inout Task, version: VersionStamp) throws {
         guard task.schemaVersion < Task.currentSchemaVersion else { return }
         if version > task.indentVersion {
             do { try task.setIndentLevel(task.indentLevel, version: version) }
+            catch { throw PersistenceError.domainInvariant }
+        }
+        if task.schemaVersion < 3, version > task.textVersion {
+            do { try task.editRichText(task.richText, version: version) }
             catch { throw PersistenceError.domainInvariant }
         }
         task = Self.taskByPromotingToCurrentSchema(task)
@@ -1381,7 +1430,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             id: task.id,
             noteID: task.noteID,
             createdAt: task.createdAt,
-            text: task.text,
+            richText: task.richText,
             textVersion: task.textVersion,
             completion: task.completion,
             completionVersion: task.completionVersion,
@@ -1403,6 +1452,14 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         }
     }
 
+    func upsertTaskRichText(for task: Task, in context: ModelContext) throws {
+        if let richText = try taskRichText(for: task.id.stringValue, in: context) {
+            try StoredDomainMapping.update(richText, from: task)
+        } else {
+            context.insert(try StoredDomainMapping.storedTaskRichText(from: task))
+        }
+    }
+
     private nonisolated static func migrateLegacyTaskSchemas(
         metadata: WorkspaceMetadata,
         createdAt: Date,
@@ -1418,11 +1475,26 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 throw PersistenceError.duplicateID(.task, indentation.taskStableID)
             }
         }
+        var richTextByTaskID: [String: StoredTaskRichText] = [:]
+        for richText in try context.fetch(FetchDescriptor<StoredTaskRichText>()) {
+            guard richTextByTaskID.updateValue(
+                richText,
+                forKey: richText.taskStableID
+            ) == nil else {
+                throw PersistenceError.duplicateID(.task, richText.taskStableID)
+            }
+        }
         let replica = try validatedReplica(in: metadata)
         for stored in tasks {
             let indentation = indentationsByTaskID[stored.stableID]
-            var task = try StoredDomainMapping.task(from: stored, indentation: indentation)
-            guard task.schemaVersion < Task.currentSchemaVersion || indentation == nil else {
+            let richText = richTextByTaskID[stored.stableID]
+            var task = try StoredDomainMapping.task(
+                from: stored,
+                indentation: indentation,
+                richText: richText
+            )
+            guard task.schemaVersion < Task.currentSchemaVersion
+                    || indentation == nil || richText == nil else {
                 continue
             }
             let maximum = [
@@ -1437,6 +1509,10 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 do { try task.setIndentLevel(task.indentLevel, version: stamp) }
                 catch { throw PersistenceError.domainInvariant }
             }
+            if task.schemaVersion < 3 || richText == nil {
+                do { try task.editRichText(task.richText, version: stamp) }
+                catch { throw PersistenceError.domainInvariant }
+            }
             if task.schemaVersion < Task.currentSchemaVersion {
                 task = taskByPromotingToCurrentSchema(task)
             }
@@ -1447,6 +1523,13 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
                 let inserted = try StoredDomainMapping.storedTaskIndentation(from: task)
                 context.insert(inserted)
                 indentationsByTaskID[stored.stableID] = inserted
+            }
+            if let richText {
+                try StoredDomainMapping.update(richText, from: task)
+            } else {
+                let inserted = try StoredDomainMapping.storedTaskRichText(from: task)
+                context.insert(inserted)
+                richTextByTaskID[stored.stableID] = inserted
             }
             try enqueue(
                 .task,

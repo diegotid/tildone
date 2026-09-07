@@ -16,6 +16,121 @@ import TildoneSync
 
 @MainActor
 final class TildoneiOSTests: XCTestCase {
+    func testNotePreviewUsesFixedDarkBaseTextColor() throws {
+        let preview = RichTaskTextEditor.displayText(
+            from: RichText(text: "Preview task"),
+            baseColor: .black,
+            detectLinks: false
+        )
+        let native = try NSAttributedString(preview, including: \.uiKit)
+
+        XCTAssertEqual(
+            native.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor,
+            .black
+        )
+    }
+
+    func testIPhoneTaskDisplayPreservesRichTextStylesAndColors() throws {
+        let richText = RichText(text: "selected", spans: [
+            RichTextSpan(
+                range: RichTextRange(location: 0, length: 8),
+                attributes: RichTextAttributes(
+                    styles: [.bold, .underline],
+                    foregroundColor: .orange,
+                    highlightColor: .blue
+                )
+            )
+        ])
+        let display = RichTaskTextEditor.displayText(
+            from: richText,
+            detectLinks: false
+        )
+        let native = try NSAttributedString(display, including: \.uiKit)
+        let attributes = native.attributes(at: 0, effectiveRange: nil)
+        let font = try XCTUnwrap(attributes[.font] as? UIFont)
+
+        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.traitBold))
+        XCTAssertEqual(attributes[.underlineStyle] as? Int, NSUnderlineStyle.single.rawValue)
+        XCTAssertEqual(attributes[.foregroundColor] as? UIColor, .systemOrange)
+        XCTAssertEqual(
+            attributes[.backgroundColor] as? UIColor,
+            UIColor.systemBlue.withAlphaComponent(0.34)
+        )
+    }
+
+    func testIPhoneFormatCommandUsesTheEditorsPreservedSelection() throws {
+        let taskID = TaskID()
+        var value = RichText(text: "Format selected text")
+        var committed: RichText?
+        var focusState = FocusState<TaskID?>()
+        let editor = RichTaskTextEditor(
+            richText: Binding(
+                get: { value },
+                set: { value = $0 }
+            ),
+            modelRichText: value,
+            taskID: taskID,
+            focusedTask: focusState.projectedValue,
+            isCompleted: false,
+            onCommit: { committed = $0 }
+        )
+        let coordinator = RichTaskTextEditor.Coordinator(parent: editor)
+        let textView = UITextView()
+        textView.attributedText = NSAttributedString(string: value.text)
+        textView.selectedRange = NSRange(location: 7, length: 8)
+        coordinator.view = textView
+
+        coordinator.textViewDidBeginEditing(textView)
+        coordinator.textViewDidEndEditing(textView)
+        textView.selectedRange = NSRange(location: 0, length: 0)
+        NotificationCenter.default.post(
+            name: .formatTaskText,
+            object: RichTextFormat.foreground(.orange)
+        )
+
+        let result = try XCTUnwrap(committed)
+        XCTAssertEqual(result.text, "Format selected text")
+        XCTAssertEqual(result.spans.count, 1)
+        XCTAssertEqual(result.spans[0].range, RichTextRange(location: 7, length: 8))
+        XCTAssertEqual(result.spans[0].attributes.foregroundColor, .orange)
+    }
+
+    func testIPhoneUntouchedEditorDoesNotOverwriteRemoteFormattingOnBlur() {
+        let taskID = TaskID()
+        let plain = RichText(text: "Remote format")
+        let remote = plain.applying(
+            .toggle(.bold),
+            to: RichTextRange(location: 0, length: plain.utf16Count)
+        )
+        var draft = plain
+        var commits: [RichText] = []
+        var focusState = FocusState<TaskID?>()
+        func editor(model: RichText) -> RichTaskTextEditor {
+            RichTaskTextEditor(
+                richText: Binding(
+                    get: { draft },
+                    set: { draft = $0 }
+                ),
+                modelRichText: model,
+                taskID: taskID,
+                focusedTask: focusState.projectedValue,
+                isCompleted: false,
+                onCommit: { commits.append($0) }
+            )
+        }
+        let coordinator = RichTaskTextEditor.Coordinator(parent: editor(model: plain))
+        let textView = UITextView()
+        textView.attributedText = NSAttributedString(string: plain.text)
+        coordinator.view = textView
+
+        coordinator.textViewDidBeginEditing(textView)
+        coordinator.parent = editor(model: remote)
+        coordinator.textViewDidEndEditing(textView)
+
+        XCTAssertEqual(draft, remote)
+        XCTAssertTrue(commits.isEmpty)
+    }
+
     func testIPhoneTransportIsDisabledUnderTests() {
         XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
     }

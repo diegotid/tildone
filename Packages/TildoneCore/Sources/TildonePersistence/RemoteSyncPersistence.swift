@@ -109,6 +109,7 @@ public extension TildoneRepository {
                 try promoteTaskToCurrentSchema(&task, version: stamp)
                 try StoredDomainMapping.update(child, from: task)
                 try upsertTaskIndentation(for: task, in: context)
+                try upsertTaskRichText(for: task, in: context)
                 try enqueueSyncMutation(.task, stableID: task.id.stringValue, sequence: stamp.logicalCounter, at: date, in: context)
                 generated += 1
                 changedRecords.insert(.task(task.id))
@@ -144,14 +145,21 @@ public extension TildoneRepository {
         var merged: Task
         var changed: Bool
         let existingIndentation: StoredTaskIndentation?
+        let existingRichText: StoredTaskRichText?
         if let row = rows.first {
             existingIndentation = try taskIndentation(for: row.stableID, in: context)
-            let local = try StoredDomainMapping.task(from: row, indentation: existingIndentation)
+            existingRichText = try taskRichText(for: row.stableID, in: context)
+            let local = try StoredDomainMapping.task(
+                from: row,
+                indentation: existingIndentation,
+                richText: existingRichText
+            )
             do { merged = try local.merged(with: remote) }
             catch { throw PersistenceError.domainInvariant }
             changed = merged != local
         } else {
             existingIndentation = nil
+            existingRichText = nil
             merged = remote
             changed = true
         }
@@ -166,7 +174,7 @@ public extension TildoneRepository {
             try mappedNote(from: $0, in: context).lifecycle == .deleted
         } == true && merged.lifecycle == .active
         let requiresSchemaBackfill = merged.schemaVersion < Task.currentSchemaVersion ||
-            (rows.first != nil && existingIndentation == nil)
+            (rows.first != nil && (existingIndentation == nil || existingRichText == nil))
         var outboundStamp: VersionStamp?
         if parentRequiresTombstone || requiresSchemaBackfill {
             let stamp = try nextRemoteNormalizationStamp(metadata, observing: maxVersion(in: merged))
@@ -192,6 +200,7 @@ public extension TildoneRepository {
             context.insert(try StoredDomainMapping.storedTask(from: merged))
         }
         try upsertTaskIndentation(for: merged, in: context)
+        try upsertTaskRichText(for: merged, in: context)
         if let outboundStamp {
             try enqueueSyncMutation(
                 .task,
@@ -303,6 +312,7 @@ public extension TildoneRepository {
                 try promoteTaskToCurrentSchema(&task, version: childStamp)
                 try StoredDomainMapping.update(child, from: task)
                 try upsertTaskIndentation(for: task, in: context)
+                try upsertTaskRichText(for: task, in: context)
                 try enqueueSyncMutation(
                     .task,
                     stableID: task.id.stringValue,
@@ -327,6 +337,7 @@ public extension TildoneRepository {
             try promoteTaskToCurrentSchema(&task, version: stamp)
             try StoredDomainMapping.update(row, from: task)
             try upsertTaskIndentation(for: task, in: context)
+            try upsertTaskRichText(for: task, in: context)
             try enqueueSyncMutation(.task, stableID: id, sequence: stamp.logicalCounter, at: date, in: context)
             changedRecords.insert(.task(taskID))
         } else {

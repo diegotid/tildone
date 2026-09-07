@@ -12,6 +12,7 @@ public enum CloudKitContractFieldType: String, Codable, Hashable, Sendable {
     case string = "String"
     case date = "Date/Time"
     case bool = "Boolean"
+    case bytes = "Bytes"
 }
 
 public struct CloudKitContractField: Codable, Hashable, Sendable {
@@ -82,6 +83,10 @@ public enum DevelopmentCloudKitContractManifest {
         .init(CloudKitRecordMapper.Field.indentReplica, .string)
     ]
 
+    private static let taskV3Fields = taskV2Fields + [
+        .init(CloudKitRecordMapper.Field.richText, .bytes)
+    ]
+
     private static let clientV1Fields: [CloudKitContractField] = [
         .init(CloudKitRecordMapper.Field.schemaVersion, .int64),
         .init(CloudKitRecordMapper.Field.clientReplicaID, .string),
@@ -112,6 +117,12 @@ public enum DevelopmentCloudKitContractManifest {
             schemaVersion: 2,
             recordNameRule: TaskID.recordNamePrefix + "<canonical-lowercase-UUID>",
             fields: taskV2Fields
+        ),
+        .init(
+            recordType: TildoneCloudSchema.taskRecordType,
+            schemaVersion: 3,
+            recordNameRule: TaskID.recordNamePrefix + "<canonical-lowercase-UUID>",
+            fields: taskV3Fields
         ),
         .init(
             recordType: TildoneCloudSchema.clientRecordType,
@@ -154,7 +165,7 @@ public enum DevelopmentCloudKitContractManifest {
             "",
             "- `TDNote` V1 remains readable. Missing V2 color fields decode as yellow at the title version, then the local V3 sidecar migration queues a V2 note atomically.",
             "- Synthesized color authority is explicit: an existing V2 color wins; otherwise legacy Mac per-note/global color wins over a platform-default backfill; V1 implicit yellow has lowest authority.",
-            "- `TDTask` V1 remains readable as indentation level zero at its order version. V2 adds an independently versioned indentation depth. `TDClient` accepts V1 only and is advisory metadata outside the content outbox; last-seen time is CloudKit server modification metadata, not a record field.",
+            "- `TDTask` V1 remains readable as indentation level zero at its order version. V2 adds an independently versioned indentation depth. V3 adds canonical JSON rich text while retaining the plain-text mirror; V1/V2 decode with no formatting. Text and spans share one version and merge atomically. `TDClient` accepts V1 only and is advisory metadata outside the content outbox; last-seen time is CloudKit server modification metadata, not a record field.",
             "- Unknown types, future schema versions, malformed identifiers, wrong-zone records, missing required fields, and invalid field types are rejected/quarantined. Content records use lifecycle tombstones; unexpected physical deletions are normalized locally.",
             "- All records live only in the named custom zone of the private database. Record names contain stable IDs only, never note titles or task text.",
             ""

@@ -16,6 +16,40 @@ final class TildonePersistenceTests: XCTestCase {
     private let taskID = TaskID(UUID(uuidString: "30000000-0000-0000-0000-000000000001")!)
     private let createdAt = Date(timeIntervalSince1970: 1_000)
 
+    func testRichTextEditsPersistThroughConcreteAndProtocolRepositoryCalls() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        _ = try await repository.addTask(
+            id: taskID, to: noteID, createdAt: createdAt, text: "Styled task",
+            orderToken: try OrderToken.between(nil, nil), indentLevel: 0
+        )
+        let formatted = RichText(text: "Styled task", spans: [
+            RichTextSpan(
+                range: RichTextRange(location: 0, length: 6),
+                attributes: RichTextAttributes(
+                    styles: [.bold, .italic, .underline, .strikethrough],
+                    foregroundColor: .red, highlightColor: .yellow
+                )
+            )
+        ])
+
+        // An async protocol-extension fallback used to win over the actor's
+        // synchronous isolated method and silently forward only plain text.
+        let edited = try await repository.editTask(id: taskID, richText: formatted)
+        XCTAssertEqual(edited.richText, formatted)
+        let persisted = try await repository.task(id: taskID)
+        XCTAssertEqual(persisted.richText, formatted)
+        let ordered = try await repository.orderedTasks(in: noteID)
+        XCTAssertEqual(ordered.first?.richText, formatted)
+
+        let protocolRepository: any TaskRepository = repository
+        let updated = formatted.applying(.foreground(.blue), to: RichTextRange(location: 0, length: 6))
+        let protocolEdit = try await protocolRepository.editTask(id: taskID, richText: updated)
+        XCTAssertEqual(protocolEdit.richText, updated)
+        let reloaded = try await repository.task(id: taskID)
+        XCTAssertEqual(reloaded.richText, updated)
+    }
+
     func testVisibleNoteSnapshotsMatchNarrowReadsAndExcludeTombstones() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         let firstNote = try await repository.createNote(
@@ -249,11 +283,17 @@ final class TildonePersistenceTests: XCTestCase {
             note
         )
 
+        let taskText = "✅ naïve\nمهمة"
         let task = Task(
             id: taskID,
             noteID: noteID,
             createdAt: createdAt,
-            text: "✅ naïve\nمهمة",
+            richText: RichText(text: taskText, spans: [
+                .init(
+                    range: .init(location: 3, length: 5),
+                    attributes: .init(styles: [.bold], highlightColor: .yellow)
+                )
+            ]),
             textVersion: stamp(4),
             completion: .completed(at: createdAt.addingTimeInterval(20)),
             completionVersion: stamp(5),
@@ -262,7 +302,13 @@ final class TildonePersistenceTests: XCTestCase {
             lifecycle: .deleted,
             lifecycleVersion: stamp(7)
         )
-        XCTAssertEqual(try StoredDomainMapping.task(from: StoredDomainMapping.storedTask(from: task)), task)
+        XCTAssertEqual(
+            try StoredDomainMapping.task(
+                from: StoredDomainMapping.storedTask(from: task),
+                richText: StoredDomainMapping.storedTaskRichText(from: task)
+            ),
+            task
+        )
 
         let nilTitle = Note(
             id: NoteID(), createdAt: createdAt, title: nil,
@@ -964,8 +1010,31 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaV3.models.count, 8)
         XCTAssertEqual(TildoneSchemaV4.versionIdentifier, Schema.Version(4, 0, 0))
         XCTAssertEqual(TildoneSchemaV4.models.count, 9)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 4)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 3)
+        XCTAssertEqual(TildoneSchemaV5.versionIdentifier, Schema.Version(5, 0, 0))
+        XCTAssertEqual(TildoneSchemaV5.models.count, 10)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 5)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 4)
+    }
+
+    func testV4StoreMigrationBackfillsEveryTaskAsUnformattedRichText() async throws {
+        let storeURL = try temporaryDirectory().appendingPathComponent("v4.sqlite")
+        try makeV4Store(at: storeURL)
+
+        let repository = try TildoneRepository(
+            descriptor: .temporaryMigration(storeURL: storeURL),
+            replicaID: replica,
+            now: { Date(timeIntervalSince1970: 2_000) }
+        )
+        let task = try await repository.task(id: taskID)
+        let workspace = try await repository.workspaceSnapshot()
+        let pending = try await repository.pendingMutations()
+
+        XCTAssertEqual(task.text, "Existing plain task")
+        XCTAssertEqual(task.richText, RichText(text: "Existing plain task"))
+        XCTAssertEqual(task.schemaVersion, Task.currentSchemaVersion)
+        XCTAssertGreaterThan(task.textVersion.logicalCounter, 5)
+        XCTAssertEqual(workspace.sharedSchemaVersion, TildoneRepository.currentSharedSchemaVersion)
+        XCTAssertEqual(pending.map(\.targetStableID), [taskID.stringValue])
     }
 
     /// Opt-in provenance helper for the frozen V2 artifact. Ordinary test runs
@@ -1582,6 +1651,73 @@ final class TildonePersistenceTests: XCTestCase {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
         return url
+    }
+
+    private func makeV4Store(at url: URL) throws {
+        let schema = Schema(versionedSchema: TildoneSchemaV4.self)
+        let configuration = ModelConfiguration(
+            "RichTextV4Migration-(UUID().uuidString)",
+            schema: schema,
+            url: url,
+            allowsSave: true,
+            cloudKitDatabase: .none
+        )
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        context.insert(WorkspaceMetadata(
+            workspaceKindRawValue: "local-only",
+            opaqueWorkspaceID: nil,
+            replicaID: replica.stringValue,
+            logicalCounter: 5,
+            sharedSchemaVersion: 4
+        ))
+        context.insert(StoredNote(
+            stableID: noteID.stringValue,
+            createdAt: createdAt,
+            title: "Existing note",
+            titleVersionCounter: 1,
+            titleVersionReplicaID: replica.stringValue,
+            lifecycleRawValue: LifecycleState.active.rawValue,
+            lifecycleVersionCounter: 1,
+            lifecycleVersionReplicaID: replica.stringValue,
+            lastMeaningfulEditAt: createdAt,
+            lastMeaningfulEditVersionCounter: 1,
+            lastMeaningfulEditVersionReplicaID: replica.stringValue,
+            recordSchemaVersion: Note.currentSchemaVersion
+        ))
+        context.insert(StoredNoteColor(
+            noteStableID: noteID.stringValue,
+            colorRawValue: NoteColor.yellow.rawValue,
+            colorVersionCounter: 1,
+            colorVersionReplicaID: replica.stringValue
+        ))
+        context.insert(StoredTask(
+            stableID: taskID.stringValue,
+            noteStableID: noteID.stringValue,
+            createdAt: createdAt,
+            text: "Existing plain task",
+            textVersionCounter: 2,
+            textVersionReplicaID: replica.stringValue,
+            isCompleted: false,
+            completedAt: nil,
+            completionVersionCounter: 2,
+            completionVersionReplicaID: replica.stringValue,
+            orderTokenRawValue: "m",
+            orderVersionCounter: 2,
+            orderVersionReplicaID: replica.stringValue,
+            lifecycleRawValue: LifecycleState.active.rawValue,
+            lifecycleVersionCounter: 2,
+            lifecycleVersionReplicaID: replica.stringValue,
+            recordSchemaVersion: 2
+        ))
+        context.insert(StoredTaskIndentation(
+            taskStableID: taskID.stringValue,
+            level: 0,
+            versionCounter: 2,
+            versionReplicaID: replica.stringValue
+        ))
+        try context.save()
     }
 
     private func withRawStore(

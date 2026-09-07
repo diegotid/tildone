@@ -9,7 +9,10 @@ import TildonePersistence
 
 struct SyncPersistentState: Codable, Hashable, Sendable {
     static let currentVersion = 1
-    static let currentReconciliationVersion = 1
+    // Task schema V3 added canonical rich-text data to existing CloudKit
+    // records. Clients whose cursor advanced while an older build was active
+    // need one fresh zone pass so those records are decoded again.
+    static let currentReconciliationVersion = 2
 
     var version = currentVersion
     var engineSerialization: Data?

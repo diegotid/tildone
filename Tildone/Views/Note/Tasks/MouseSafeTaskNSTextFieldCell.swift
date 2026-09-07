@@ -9,14 +9,18 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
     private lazy var taskFieldEditor: MouseSafeTaskFieldEditor = {
         let editor = MouseSafeTaskFieldEditor()
         editor.isFieldEditor = true
-        editor.isRichText = false
+        editor.isRichText = true
+        editor.importsGraphics = false
         return editor
     }()
 
     override func fieldEditor(for controlView: NSView) -> NSTextView? {
         taskFieldEditor.enforceSelectionContrast()
-        if let textColor = (controlView as? NSTextField)?.textColor {
-            taskFieldEditor.enforceInsertionPointColor(textColor)
+        if let field = controlView as? MouseSafeTaskNSTextField {
+            taskFieldEditor.enforceInsertionPointColor(field.cursorColor.withAlphaComponent(1))
+            taskFieldEditor.onBecomeFirstResponder = { [weak field] in
+                field?.onEditorFocus?()
+            }
         }
         return taskFieldEditor
     }

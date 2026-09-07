@@ -244,7 +244,7 @@ extension Note {
                     }
                     .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
                     .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
-                    .offset(y: -1)
+                    .offset(y: -1.5)
                 }
             }
             Spacer()

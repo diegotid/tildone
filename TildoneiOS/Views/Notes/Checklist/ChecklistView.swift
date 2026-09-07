@@ -99,7 +99,7 @@ struct ChecklistView: View {
                                 canOutdent: canOutdent,
                                 focusedTask: $focusedTask,
                                 onCommit: { value in
-                                    try? await appModel.edit(taskID: task.id, text: value)
+                                    try? await appModel.edit(taskID: task.id, richText: value)
                                 },
                                 onToggle: {
                                     try? await appModel.setCompletion(taskID: task.id, completed: !task.isCompleted)
@@ -213,6 +213,9 @@ struct ChecklistView: View {
                     if !isInEditMode {
                         if #available(iOS 26.0, *) {
                             ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            TaskTextFormatMenu(isEnabled: focusedTask != nil)
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             Menu {

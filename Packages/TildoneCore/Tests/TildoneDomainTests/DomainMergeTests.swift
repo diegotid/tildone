@@ -26,6 +26,31 @@ final class DomainMergeTests: XCTestCase {
         XCTAssertEqual(merged.orderToken, orderEdit.orderToken)
     }
 
+    func testRichTextTravelsAtomicallyWithWinningTextVersion() throws {
+        let base = try Fixtures.task()
+        var formatted = base
+        var completed = base
+        let richText = RichText(text: "Task", spans: [
+            .init(
+                range: .init(location: 0, length: 4),
+                attributes: .init(styles: [.bold], highlightColor: .yellow)
+            )
+        ])
+        try formatted.editRichText(richText, version: Fixtures.stamp(4))
+        try completed.setCompletion(.completed(at: Fixtures.createdAt), version: Fixtures.stamp(5))
+
+        let merged = try formatted.merged(with: completed)
+
+        XCTAssertEqual(merged.richText, richText)
+        XCTAssertTrue(merged.isCompleted)
+
+        var oldClientEdit = base
+        try oldClientEdit.editText("Plain winner", version: Fixtures.stamp(6))
+        let downgraded = try merged.merged(with: oldClientEdit)
+        XCTAssertEqual(downgraded.text, "Plain winner")
+        XCTAssertTrue(downgraded.richText.isPlain)
+    }
+
     func testWinningCompletionBooleanAndDateTravelTogether() throws {
         var earlier = try Fixtures.task()
         var later = earlier
