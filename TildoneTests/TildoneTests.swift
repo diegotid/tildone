@@ -2320,15 +2320,18 @@ final class TildoneTests: XCTestCase {
             in: editedNote.id,
             at: 1,
             deleting: [abandoned.id],
-            indentLevel: first.indentLevel
+            indentLevel: first.indentLevel,
+            text: "Staged"
         )
         XCTAssertEqual(store.note(editedNote.id)?.tasks.map(\.id), [first.id, staged.id, second.id])
+        XCTAssertEqual(store.note(editedNote.id)?.tasks[1].text, "Staged")
         let tasksBeforeInsertCommit = try await repository.orderedTasks(in: editedNote.id)
         XCTAssertEqual(tasksBeforeInsertCommit.map(\.id), [first.id, second.id, abandoned.id])
 
         try await store.commitStagedTaskInsertion(staged, deleting: [abandoned.id])
         let tasksAfterInsertCommit = try await repository.orderedTasks(in: editedNote.id)
         XCTAssertEqual(tasksAfterInsertCommit.map(\.id), [first.id, staged.id, second.id])
+        XCTAssertEqual(tasksAfterInsertCommit[1].text, "Staged")
     }
 
     func testMacSharedStoreRoutesCRUDThroughDomainRepository() async throws {

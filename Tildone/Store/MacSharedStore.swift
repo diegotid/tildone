@@ -269,6 +269,7 @@ final class MacSharedStore: ObservableObject {
         at position: Int,
         deleting emptyTaskIDs: Set<TaskID>,
         indentLevel: Int,
+        text: String = "",
         createdAt: Date = Date()
     ) throws -> Task {
         guard let snapshot = note(noteID) else { throw PersistenceError.missing(.note, noteID.stringValue) }
@@ -284,7 +285,7 @@ final class MacSharedStore: ObservableObject {
             id: TaskID(),
             noteID: noteID,
             createdAt: createdAt,
-            text: "",
+            text: text,
             textVersion: stamp,
             completionVersion: stamp,
             orderToken: try OrderToken.between(lower, upper),

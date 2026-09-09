@@ -98,13 +98,29 @@ extension Note {
         let indentLevel = newTaskIndentLevel ?? 0
         newTaskText = ""
         newTaskIndentLevel = indentLevel
+        let stagedTask: TildoneDomain.Task
+        do {
+            // Publish the committed row before its asynchronous save begins. This
+            // lets SwiftUI keep rendering the same task component while the input
+            // below receives the caret, instead of briefly showing an empty gap.
+            stagedTask = try store.stageEmptyTaskInsertion(
+                in: noteID,
+                at: tasks.count,
+                deleting: [],
+                indentLevel: indentLevel,
+                text: text
+            )
+        } catch {
+            newTaskIndentLevel = nil
+            mutationErrorMessage = Self.mutationFailureMessage(
+                operation: "Error on task creation",
+                error: error
+            )
+            return
+        }
         Swift.Task {
             do {
-                _ = try await store.addTask(
-                    to: noteID,
-                    text: text,
-                    indentLevel: indentLevel
-                )
+                try await store.commitStagedTaskInsertion(stagedTask, deleting: [])
             } catch {
                 newTaskIndentLevel = nil
                 mutationErrorMessage = Self.mutationFailureMessage(
