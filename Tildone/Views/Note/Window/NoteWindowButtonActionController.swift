@@ -9,14 +9,17 @@ import AppKit
 final class NoteWindowButtonActionController: NSObject {
     private var onMinimize: () -> Void = {}
     private var onClose: () -> Void = {}
+    private var isCloseEnabled = true
 
     func update(
         window: NSWindow?,
         onMinimize: @escaping () -> Void,
-        onClose: @escaping () -> Void
+        onClose: @escaping () -> Void,
+        isCloseEnabled: Bool = true
     ) {
         self.onMinimize = onMinimize
         self.onClose = onClose
+        self.isCloseEnabled = isCloseEnabled
         attach(to: window)
     }
 
@@ -28,6 +31,7 @@ final class NoteWindowButtonActionController: NSObject {
         }
 
         if let closeButton = window?.standardWindowButton(.closeButton) {
+            closeButton.isEnabled = isCloseEnabled
             closeButton.target = self
             closeButton.action = #selector(closeButtonClicked)
         }

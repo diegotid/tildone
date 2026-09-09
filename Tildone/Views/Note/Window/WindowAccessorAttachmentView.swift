@@ -21,12 +21,14 @@ final class WindowAccessorAttachmentView: NSView {
 
     func update(
         onMinimize: @escaping () -> Void,
-        onClose: @escaping () -> Void
+        onClose: @escaping () -> Void,
+        isCloseEnabled: Bool = true
     ) {
         actionController.update(
             window: window,
             onMinimize: onMinimize,
-            onClose: onClose
+            onClose: onClose,
+            isCloseEnabled: isCloseEnabled
         )
     }
 

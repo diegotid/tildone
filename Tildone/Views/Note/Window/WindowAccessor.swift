@@ -38,7 +38,8 @@ struct WindowAccessor: NSViewRepresentable {
         }
         view.update(
             onMinimize: { note.handleMinimize() },
-            onClose: { note.handleClose() }
+            onClose: { note.handleClose() },
+            isCloseEnabled: note.note?.isDeletable ?? false
         )
     }
 }

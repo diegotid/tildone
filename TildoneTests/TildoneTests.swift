@@ -1295,13 +1295,16 @@ final class TildoneTests: XCTestCase {
         minimizeButton.isEnabled = false
         minimizeButton.target = nil
         minimizeButton.action = nil
+        closeButton.isEnabled = true
         attachmentView.update(
             onMinimize: { minimizeCount += 10 },
-            onClose: { closeCount += 10 }
+            onClose: { closeCount += 10 },
+            isCloseEnabled: false
         )
 
         XCTAssertTrue(minimizeButton.isEnabled)
         XCTAssertTrue(minimizeButton.target is NoteWindowButtonActionController)
+        XCTAssertFalse(closeButton.isEnabled)
         minimizeButton.performClick(nil)
         XCTAssertEqual(minimizeCount, 11)
 
