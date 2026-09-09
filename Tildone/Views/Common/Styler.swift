@@ -208,12 +208,21 @@ private final class NoteBackgroundEffectView: NSVisualEffectView {
 final class MacNoteWindow: NSWindow {
     private var expandedStyleMask: NSWindow.StyleMask?
     private var detachedTitlebarAccessories: [NSTitlebarAccessoryViewController] = []
+    weak var detachedNoteTitlebarAccessoryController: MacNoteTitlebarAccessoryController?
+
+    var hasDetachedTitlebarAccessories: Bool {
+        expandedStyleMask != nil
+    }
 
     func enterCompactStyle(cornerRadius: CGFloat) {
         if expandedStyleMask == nil {
             expandedStyleMask = styleMask
-            detachedTitlebarAccessories = titlebarAccessoryViewControllers
-            for index in titlebarAccessoryViewControllers.indices.reversed() {
+            let accessories = titlebarAccessoryViewControllers
+            detachedTitlebarAccessories = accessories
+            detachedNoteTitlebarAccessoryController = accessories
+                .compactMap { $0 as? MacNoteTitlebarAccessoryController }
+                .first
+            for index in accessories.indices.reversed() {
                 removeTitlebarAccessoryViewController(at: index)
             }
             let outerFrame = frame
@@ -236,13 +245,14 @@ final class MacNoteWindow: NSWindow {
         (contentView as? NoteBackgroundEffectView)?
             .setCompactCornerRadius(nil)
         styleMask = expandedStyleMask
-        self.expandedStyleMask = nil
         titlebarAppearsTransparent = true
         setFrame(outerFrame, display: false)
         for accessory in detachedTitlebarAccessories {
             addTitlebarAccessoryViewController(accessory)
         }
         detachedTitlebarAccessories = []
+        detachedNoteTitlebarAccessoryController = nil
+        self.expandedStyleMask = nil
         isMovableByWindowBackground = false
         standardWindowButton(.closeButton)?.style()
         standardWindowButton(.miniaturizeButton)?.style()

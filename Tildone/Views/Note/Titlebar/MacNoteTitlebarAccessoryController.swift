@@ -117,7 +117,11 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
 
 extension NSWindow {
     var noteTitlebarAccessoryController: MacNoteTitlebarAccessoryController? {
-        titlebarAccessoryViewControllers
+        if let noteWindow = self as? MacNoteWindow,
+           noteWindow.hasDetachedTitlebarAccessories {
+            return noteWindow.detachedNoteTitlebarAccessoryController
+        }
+        return titlebarAccessoryViewControllers
             .compactMap { $0 as? MacNoteTitlebarAccessoryController }
             .first
     }

@@ -481,10 +481,11 @@ final class TildoneTests: XCTestCase {
         ))
         window.setNoteHostingContentView(hostingView)
         XCTAssertTrue(hostingView.sizingOptions.isEmpty)
-        window.addTitlebarAccessoryViewController(MacNoteTitlebarAccessoryController(
+        let titlebarAccessory = MacNoteTitlebarAccessoryController(
             colorPicker: NSView(),
             syncIndicatorState: .hidden
-        ))
+        )
+        window.addTitlebarAccessoryViewController(titlebarAccessory)
         window.title = snapshot.id.stringValue
 
         for _ in 0..<10 {
@@ -505,6 +506,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(window.frame.size, expectedFrameSize)
         XCTAssertEqual(window.contentMinSize, CompactNoteScale.contentSize())
         XCTAssertEqual(window.styleMask, .borderless)
+        XCTAssertTrue(window.noteTitlebarAccessoryController === titlebarAccessory)
         XCTAssertEqual(window.backgroundColor, .clear)
         XCTAssertEqual(
             window.contentView?.layer?.cornerRadius,
