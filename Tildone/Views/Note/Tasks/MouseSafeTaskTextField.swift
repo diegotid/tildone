@@ -38,6 +38,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.lineBreakMode = truncation == .single ? .byTruncatingTail : .byWordWrapping
         field.usesSingleLineMode = truncation == .single
         field.cell?.lineBreakMode = field.lineBreakMode
+        field.cell?.wraps = truncation == .multiple
+        field.cell?.truncatesLastVisibleLine = truncation == .single
         // Inactive task rows should use their tail-truncation mode. A
         // scrollable NSTextField clips its right edge instead of drawing an
         // ellipsis, particularly when indentation leaves little width.
@@ -75,11 +77,15 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             field.attributedStringValue = Self.attributedString(
                 from: richText,
                 fontSize: fontSize,
-                baseColor: baseColor
+                baseColor: baseColor,
+                truncation: truncation
             )
         }
         context.coordinator.lastFontSize = fontSize
         context.coordinator.lastBaseColor = baseColor
+        field.cell?.lineBreakMode = truncation == .single ? .byTruncatingTail : .byWordWrapping
+        field.cell?.wraps = truncation == .multiple
+        field.cell?.truncatesLastVisibleLine = truncation == .single
         field.cell?.isScrollable = isActivelyEditing
         field.updateTruncationTooltip()
         if let editor = editor as? NSTextView {
@@ -228,13 +234,15 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             // visually flattened value while its model still has spans.
             let fontSize = parent.fontSize
             let baseColor = NSColor(parent.textColor)
+            let truncation = parent.truncation
             DispatchQueue.main.async { [weak editedField] in
                 guard let editedField,
                       editedField.window?.firstResponder !== editedField.currentEditor() else { return }
                 editedField.attributedStringValue = MouseSafeTaskTextField.attributedString(
                     from: finalRichText,
                     fontSize: fontSize,
-                    baseColor: baseColor
+                    baseColor: baseColor,
+                    truncation: truncation
                 )
                 editedField.updateTruncationTooltip()
             }
@@ -309,7 +317,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             let attributed = MouseSafeTaskTextField.attributedString(
                 from: formatted,
                 fontSize: parent.fontSize,
-                baseColor: NSColor(parent.textColor)
+                baseColor: NSColor(parent.textColor),
+                truncation: parent.truncation
             )
             if isEditing, let editor {
                 editor.textStorage?.setAttributedString(attributed)
@@ -374,12 +383,25 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     static func attributedString(
         from richText: RichText,
         fontSize: CGFloat,
-        baseColor: NSColor
+        baseColor: NSColor,
+        truncation: TaskLineTruncation? = nil
     ) -> NSAttributedString {
         let baseFont = NSFont.systemFont(ofSize: fontSize)
+        let paragraphStyle: NSParagraphStyle? = truncation.map {
+            let style = NSMutableParagraphStyle()
+            style.lineBreakMode = $0 == .single ? .byTruncatingTail : .byWordWrapping
+            return style
+        }
+        var baseAttributes: [NSAttributedString.Key: Any] = [
+            .font: baseFont,
+            .foregroundColor: baseColor
+        ]
+        if let paragraphStyle {
+            baseAttributes[.paragraphStyle] = paragraphStyle
+        }
         let result = NSMutableAttributedString(
             string: richText.text,
-            attributes: [.font: baseFont, .foregroundColor: baseColor]
+            attributes: baseAttributes
         )
         for span in richText.spans {
             let range = NSRange(location: span.range.location, length: span.range.length)

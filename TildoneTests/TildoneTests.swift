@@ -1821,6 +1821,20 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    func testSingleLineNativeTaskTextCarriesTailTruncationStyle() throws {
+        let attributed = MouseSafeTaskTextField.attributedString(
+            from: RichText(text: "A deliberately long task"),
+            fontSize: 14,
+            baseColor: .textColor,
+            truncation: .single
+        )
+        let style = try XCTUnwrap(
+            attributed.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        )
+
+        XCTAssertEqual(style.lineBreakMode, .byTruncatingTail)
+    }
+
     @MainActor
     func testPrimarySceneUsesSingleUniqueCoordinatorWindow() {
         let scene = TildonePrimaryScene { EmptyView() }
