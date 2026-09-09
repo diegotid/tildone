@@ -50,11 +50,11 @@ struct TaskRow: View {
     let onRowHover: (Bool) -> Void
 
     private var taskControlSize: CGFloat {
-        max(10, CGFloat(fontSize) * 0.9)
+        NoteTypography.taskControlSize(for: CGFloat(fontSize))
     }
 
     private var taskLineHeight: CGFloat {
-        max(CGFloat(fontSize) * 1.15, taskControlSize)
+        NoteTypography.taskLineHeight(for: CGFloat(fontSize))
     }
 
     private var taskControlVerticalPadding: CGFloat {
@@ -65,6 +65,10 @@ struct TaskRow: View {
     // static text at the same font size. Keep it aligned with the checkbox
     // without changing the completed-row presentation.
     private var editableTaskTextVerticalOffset: CGFloat { -1 }
+
+    private var inactiveTaskTextVerticalOffset: CGFloat {
+        NoteTypography.inactiveTaskTextVerticalOffset(for: CGFloat(fontSize))
+    }
 
     private var taskActionControlSize: CGFloat {
         max(12, taskLineHeight)
@@ -165,7 +169,9 @@ struct TaskRow: View {
                             onMoveDown: onSubmit
                         )
                         .frame(maxWidth: .infinity, minHeight: taskLineHeight, maxHeight: taskLineHeight, alignment: .leading)
-                        .offset(y: editableTaskTextVerticalOffset)
+                        .offset(y: isActive
+                            ? editableTaskTextVerticalOffset
+                            : inactiveTaskTextVerticalOffset)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }
@@ -190,7 +196,9 @@ struct TaskRow: View {
                         )
                         .padding(.trailing, isShowingRowControls && !isActive
                             ? (hasSubtasks ? 86 : 66) : 0)
-                        .offset(y: editableTaskTextVerticalOffset)
+                        .offset(y: isActive
+                            ? editableTaskTextVerticalOffset
+                            : inactiveTaskTextVerticalOffset)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }

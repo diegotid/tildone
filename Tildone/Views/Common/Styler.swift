@@ -8,8 +8,52 @@
 import SwiftUI
 import TildoneDomain
 
+enum NoteTypography {
+    static let defaultTaskFontSize: CGFloat = 13
+    static let defaultTopicFontSize: CGFloat = 20
+
+    static func taskControlSize(for fontSize: CGFloat) -> CGFloat {
+        max(10, fontSize * 0.9)
+    }
+
+    static func taskLineHeight(for fontSize: CGFloat) -> CGFloat {
+        max(
+            lineHeight(for: NSFont.systemFont(ofSize: fontSize)),
+            taskControlSize(for: fontSize)
+        )
+    }
+
+    /// NSTextField's inactive cell draws progressively higher than its field
+    /// editor as the configured font grows, and lower as it shrinks. Keep its
+    /// displayed text on the same optical center as the task controls without
+    /// moving active editors.
+    static func inactiveTaskTextVerticalOffset(for fontSize: CGFloat) -> CGFloat {
+        fontSize - defaultTaskFontSize
+    }
+
+    static func topicFontSize(for taskFontSize: CGFloat) -> CGFloat {
+        defaultTopicFontSize / defaultTaskFontSize * taskFontSize
+    }
+
+    static func topicRowHeight(for taskFontSize: CGFloat) -> CGFloat {
+        max(
+            30,
+            lineHeight(
+                for: NSFont.systemFont(
+                    ofSize: topicFontSize(for: taskFontSize),
+                    weight: .bold
+                )
+            ) + 5
+        )
+    }
+
+    private static func lineHeight(for font: NSFont) -> CGFloat {
+        font.ascender - font.descender + font.leading
+    }
+}
+
 enum NoteWindowBackground {
-    static let defaultAlpha: CGFloat = 0.6
+    static let defaultAlpha: CGFloat = 0.7
     static let opacityStorageKey = "noteBackgroundOpacity"
     static let blurViewIdentifier = NSUserInterfaceItemIdentifier("NoteWindowBlurView")
     static let tintViewIdentifier = NSUserInterfaceItemIdentifier("NoteWindowTintView")

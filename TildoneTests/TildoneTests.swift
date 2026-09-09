@@ -139,6 +139,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(SettingsForm.backgroundOpacity(fromTransparency: 0.3), 0.7, accuracy: 0.0001)
         XCTAssertEqual(SettingsForm.backgroundTransparency(fromOpacity: -1), 1)
         XCTAssertEqual(SettingsForm.backgroundOpacity(fromTransparency: 2), 0)
+        XCTAssertEqual(TransparencySliderLayout.defaultValue, 0.3, accuracy: 0.0001)
     }
 
     func testDimmingPreviewUsesSlowEightSecondCycle() {
@@ -624,11 +625,37 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(SettingsForm.crossesClickThroughThreshold(from: 0.5, to: 0.6))
     }
 
+    func testBackgroundTransparencyDefaultMarkerDetectsCrossingInBothDirections() {
+        XCTAssertTrue(SettingsForm.crossesBackgroundTransparencyDefault(from: 0.29, to: 0.3))
+        XCTAssertTrue(SettingsForm.crossesBackgroundTransparencyDefault(from: 0.3, to: 0.29))
+        XCTAssertFalse(SettingsForm.crossesBackgroundTransparencyDefault(from: 0.3, to: 0.4))
+        XCTAssertFalse(SettingsForm.crossesBackgroundTransparencyDefault(from: 0.1, to: 0.29))
+    }
+
     func testFontSizeDefaultMarkerDetectsCrossingInBothDirections() {
+        XCTAssertEqual(FontSizeSliderLayout.defaultProgress, 0.3, accuracy: 0.0001)
+        XCTAssertEqual(
+            (Double(FontSize.small.rawValue) - Double(FontSize.xSmall.rawValue))
+                / (Double(FontSize.xLarge.rawValue) - Double(FontSize.xSmall.rawValue)),
+            FontSizeSliderLayout.defaultProgress,
+            accuracy: 0.0001
+        )
         XCTAssertTrue(SettingsForm.crossesFontSizeDefault(from: 12.9, to: 13))
         XCTAssertTrue(SettingsForm.crossesFontSizeDefault(from: 13, to: 12.9))
         XCTAssertFalse(SettingsForm.crossesFontSizeDefault(from: 13, to: 14))
         XCTAssertFalse(SettingsForm.crossesFontSizeDefault(from: 10, to: 12.9))
+    }
+
+    func testNoteTypographyKeepsLargeTopicTextOutOfTheFirstTaskRow() {
+        XCTAssertEqual(NoteTypography.topicRowHeight(for: 13), 30, accuracy: 0.0001)
+        XCTAssertGreaterThan(NoteTypography.topicRowHeight(for: 20), 30)
+        XCTAssertGreaterThanOrEqual(
+            NoteTypography.taskLineHeight(for: 20),
+            NoteTypography.taskControlSize(for: 20)
+        )
+        XCTAssertEqual(NoteTypography.inactiveTaskTextVerticalOffset(for: 13), 0, accuracy: 0.0001)
+        XCTAssertEqual(NoteTypography.inactiveTaskTextVerticalOffset(for: 10), -3, accuracy: 0.0001)
+        XCTAssertEqual(NoteTypography.inactiveTaskTextVerticalOffset(for: 20), 7, accuracy: 0.0001)
     }
 
     func testClickThroughHoverHalvesWindowOpacity() {

@@ -735,13 +735,23 @@ private extension SettingsForm {
         .labelsHidden()
         .frame(width: TransparencySliderLayout.width)
         .overlay(alignment: .leading) {
-            SliderTrackMarker(
-                markX: TransparencySliderLayout.thresholdMarkX,
-                thumbX: SettingsSliderLayout.markX(
-                    for: noteBackgroundTransparencyBinding.wrappedValue,
-                    in: 0...1
+            ZStack(alignment: .leading) {
+                SliderTrackMarker(
+                    markX: TransparencySliderLayout.defaultMarkX,
+                    thumbX: SettingsSliderLayout.markX(
+                        for: noteBackgroundTransparencyBinding.wrappedValue,
+                        in: 0...1
+                    )
                 )
-            )
+                SliderTrackMarker(
+                    markX: TransparencySliderLayout.thresholdMarkX,
+                    thumbX: SettingsSliderLayout.markX(
+                        for: noteBackgroundTransparencyBinding.wrappedValue,
+                        in: 0...1
+                    ),
+                    color: .orange
+                )
+            }
         }
     }
 
@@ -791,13 +801,18 @@ private extension SettingsForm {
                 if isClickThroughAvailable {
                     Text("When enabled, hold ⌘ while clicking to interact with a transparent note. (When disabled, press ⌘ while clicking to click through.)")
                 } else {
-                    Text(
-                        "Requires at least \(NoteWindowClickThrough.minimumBackgroundTransparency, format: .percent.precision(.fractionLength(0))) note background transparency."
+                    Text("Requires at least ")
+                        .foregroundStyle(.secondary)
+                    + Text(
+                        NoteWindowClickThrough.minimumBackgroundTransparency,
+                        format: .percent.precision(.fractionLength(0))
                     )
+                    .foregroundStyle(.orange)
+                    + Text(" note background transparency.")
+                        .foregroundStyle(.secondary)
                 }
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -864,6 +879,9 @@ private extension SettingsForm {
                     fromOpacity: noteBackgroundOpacity
                 )
                 if SettingsForm.crossesClickThroughThreshold(
+                    from: previousTransparency,
+                    to: newTransparency
+                ) || SettingsForm.crossesBackgroundTransparencyDefault(
                     from: previousTransparency,
                     to: newTransparency
                 ) {
@@ -1097,6 +1115,8 @@ private struct DockSizeReference: View {
 
 enum TransparencySliderLayout {
     static let width = SettingsSliderLayout.width
+    static let defaultValue = 1 - Double(NoteWindowBackground.defaultAlpha)
+    static let defaultMarkX = SettingsSliderLayout.markX(for: defaultValue, in: 0...1)
     static let thresholdMarkX = SettingsSliderLayout.markX(
         for: NoteWindowClickThrough.minimumBackgroundTransparency,
         in: 0...1
@@ -1105,9 +1125,10 @@ enum TransparencySliderLayout {
 
 enum FontSizeSliderLayout {
     static let width = SettingsSliderLayout.width
+    static let defaultProgress = 0.3
     static let defaultMarkX = SettingsSliderLayout.markX(
-        for: Double(FontSize.small.rawValue),
-        in: Double(FontSize.xSmall.rawValue)...Double(FontSize.xLarge.rawValue)
+        for: defaultProgress,
+        in: 0...1
     )
 }
 
@@ -1132,11 +1153,12 @@ private enum SettingsSliderLayout {
 private struct SliderTrackMarker: View {
     let markX: CGFloat
     let thumbX: CGFloat
+    var color: Color = .secondary.opacity(0.65)
 
     var body: some View {
         ZStack(alignment: .leading) {
             Rectangle()
-                .fill(.secondary.opacity(0.65))
+                .fill(color)
                 .frame(width: 1, height: 8)
                 .offset(x: markX - 0.5)
 
@@ -1870,6 +1892,14 @@ extension SettingsForm {
         )
     }
 
+    static func crossesBackgroundTransparencyDefault(from oldValue: Double, to newValue: Double) -> Bool {
+        crossesSliderMarker(
+            from: oldValue,
+            to: newValue,
+            marker: TransparencySliderLayout.defaultValue
+        )
+    }
+
     static func crossesFontSizeDefault(from oldValue: Double, to newValue: Double) -> Bool {
         crossesSliderMarker(
             from: oldValue,
@@ -2006,7 +2036,7 @@ enum FontSize: Double, CaseIterable {
     case small = 13
     case medium
     case large
-    case xLarge = 24
+    case xLarge = 20
     
     init?(fromLegacySetting legacyValue: Double) {
         self = FontSize.allCases[Int(legacyValue)]

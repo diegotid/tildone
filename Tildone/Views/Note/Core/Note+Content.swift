@@ -207,7 +207,7 @@ extension Note {
     }
 
     func listTopic() -> some View {
-        let size = 20 / CGFloat(FontSize.small.rawValue) * CGFloat(fontSize)
+        let size = NoteTypography.topicFontSize(for: CGFloat(fontSize))
         return GeometryReader { geometry in
             TextField("Topic", text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit))
                 .textFieldStyle(.plain).truncationMode(.tail).font(.system(size: size, weight: .bold, design: .rounded))
@@ -252,8 +252,8 @@ extension Note {
     }
 
     func newListItem() -> some View {
-        let taskControlSize = max(10, CGFloat(fontSize) * 0.9)
-        let taskLineHeight = max(CGFloat(fontSize) * 1.15, taskControlSize)
+        let taskControlSize = NoteTypography.taskControlSize(for: CGFloat(fontSize))
+        let taskLineHeight = NoteTypography.taskLineHeight(for: CGFloat(fontSize))
         let taskControlVerticalPadding = max(0, (taskLineHeight - taskControlSize) / 2)
 
         return HStack(alignment: .top, spacing: 8) {
@@ -283,10 +283,11 @@ extension Note {
     }
 
     func topicListItem() -> some View {
-        listTopic()
+        let taskFontSize = CGFloat(fontSize)
+        return listTopic()
             .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
-            .frame(height: isTopicHidden ? 1 : 30)
-            .padding(.bottom, CGFloat(fontSize - 10))
+            .frame(height: isTopicHidden ? 1 : NoteTypography.topicRowHeight(for: taskFontSize))
+            .padding(.bottom, max(0, taskFontSize - 10))
     }
 
     func taskRow(_ task: TildoneDomain.Task, at index: Int) -> TaskRow {
