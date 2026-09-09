@@ -1,7 +1,13 @@
 {
-  "fill" : {
-    "solid" : "display-p3:0.99216,0.94118,0.66667,1.00000"
-  },
+  "fill-specializations" : [
+    {
+      "value" : "automatic"
+    },
+    {
+      "appearance" : "dark",
+      "value" : "automatic"
+    }
+  ],
   "groups" : [
     {
       "hidden-specializations" : [
@@ -64,6 +70,15 @@
             }
           ],
           "name" : "front",
+          "opacity-specializations" : [
+            {
+              "value" : 0.8
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0.9
+            }
+          ],
           "position-specializations" : [
             {
               "idiom" : "square",
@@ -78,31 +93,30 @@
           ]
         },
         {
+          "blend-mode" : "normal",
           "fill-specializations" : [
             {
-              "value" : {
-                "solid" : "srgb:1.00000,0.25279,1.00000,0.29057"
-              }
+              "value" : "none"
             },
             {
               "appearance" : "dark",
-              "value" : {
-                "solid" : "srgb:1.00000,0.25098,1.00000,0.29000"
-              }
+              "value" : "none"
             },
             {
               "appearance" : "tinted",
-              "value" : {
-                "solid" : "srgb:1.00000,0.25098,1.00000,0.29057"
-              }
+              "value" : "none"
             }
           ],
           "glass-specializations" : [
             {
-              "value" : true
+              "value" : false
             },
             {
               "appearance" : "dark",
+              "value" : false
+            },
+            {
+              "appearance" : "tinted",
               "value" : true
             }
           ],
@@ -119,11 +133,11 @@
           "name" : "back",
           "opacity-specializations" : [
             {
-              "value" : 0.8
+              "value" : 1
             },
             {
               "appearance" : "dark",
-              "value" : 0.4
+              "value" : 1
             },
             {
               "appearance" : "tinted",
@@ -136,7 +150,7 @@
               "value" : {
                 "scale" : 1,
                 "translation-in-points" : [
-                  -12,
+                  -6,
                   0
                 ]
               }
