@@ -84,6 +84,92 @@ struct MacTaskTextFormatMenu: View {
     }
 }
 
+struct MacTaskTextFormatCommands: Commands {
+    let isEnabled: Bool
+
+    var body: some Commands {
+        CommandGroup(replacing: .textFormatting) {
+            formatButton(
+                "Bold",
+                systemImage: "bold",
+                format: .toggle(.bold),
+                shortcut: "b"
+            )
+            formatButton(
+                "Italic",
+                systemImage: "italic",
+                format: .toggle(.italic),
+                shortcut: "i"
+            )
+            formatButton(
+                "Underline",
+                systemImage: "underline",
+                format: .toggle(.underline),
+                shortcut: "u"
+            )
+            formatButton(
+                "Strikethrough",
+                systemImage: "strikethrough",
+                format: .toggle(.strikethrough),
+                shortcut: "x",
+                modifiers: [.command, .shift]
+            )
+            Divider()
+            colorMenu("Text color", systemImage: "textformat", isHighlight: false)
+            colorMenu("Highlight", systemImage: "highlighter", isHighlight: true)
+        }
+    }
+
+    private func formatButton(
+        _ title: LocalizedStringKey,
+        systemImage: String,
+        format: RichTextFormat,
+        shortcut: KeyEquivalent,
+        modifiers: EventModifiers = .command
+    ) -> some View {
+        Button {
+            NotificationCenter.default.post(name: .formatTaskText, object: format)
+        } label: {
+            Label(title, systemImage: systemImage)
+        }
+        .disabled(!isEnabled)
+        .keyboardShortcut(shortcut, modifiers: modifiers)
+    }
+
+    private func colorMenu(
+        _ title: LocalizedStringKey,
+        systemImage: String,
+        isHighlight: Bool
+    ) -> some View {
+        Menu {
+            Button("Default") { postColor(nil, isHighlight: isHighlight) }
+            Divider()
+            ForEach(RichTextColor.allCases) { color in
+                Button {
+                    postColor(color, isHighlight: isHighlight)
+                } label: {
+                    Label {
+                        Text(color.localizedLabel)
+                    } icon: {
+                        Image(nsImage: color.menuPreviewImage(isHighlight: isHighlight))
+                            .renderingMode(.original)
+                    }
+                }
+            }
+        } label: {
+            Label(title, systemImage: systemImage)
+        }
+        .disabled(!isEnabled)
+    }
+
+    private func postColor(_ color: RichTextColor?, isHighlight: Bool) {
+        NotificationCenter.default.post(
+            name: .formatTaskText,
+            object: isHighlight ? RichTextFormat.highlight(color) : .foreground(color)
+        )
+    }
+}
+
 private extension RichTextColor {
     var localizedLabel: LocalizedStringKey {
         switch self {

@@ -196,6 +196,7 @@ struct TildoneApp: App {
                 }
                 .keyboardShortcut("a")
             }
+            MacTaskTextFormatCommands(isEnabled: foregroundNoteID != nil)
             CommandGroup(after: .toolbar) {
                 Menu("Visible Note Colors") {
                     ForEach(NoteColor.allCases) { color in
