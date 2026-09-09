@@ -23,6 +23,8 @@ struct TaskRow: View {
     let hasSubtasks: Bool
     let isSubtasksCollapsed: Bool
     let subtaskProgress: TaskSubtaskProgress?
+    let checkboxChecked: Bool
+    let isTaskCompletionPending: Bool
     let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
     let isActive: Bool
@@ -93,9 +95,10 @@ struct TaskRow: View {
                 if let subtaskProgress {
                     SubtaskProgressGauge(progress: subtaskProgress, size: taskControlSize)
                 } else {
-                    Checkbox(checked: task.isCompleted, size: taskControlSize)
+                    Checkbox(checked: checkboxChecked, size: taskControlSize)
                         .disabled(task.text.isEmpty)
                         .onToggle { onToggle() }
+                        .allowsHitTesting(!isTaskCompletionPending)
                 }
             }
             .padding(.vertical, taskControlVerticalPadding)

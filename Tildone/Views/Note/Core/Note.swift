@@ -101,6 +101,7 @@ struct Note: View {
     @State var isHoveringMinimizedTaskList = false
     @State var skipsNextTaskCountBottomScroll = false
     @State var completedTaskMovementAnimationID: TaskID?
+    @State var optimisticTaskCompletions: [TaskID: Bool] = [:]
     @State var hoveredTaskID: TaskID?
     @State var collapsedTaskIDs: Set<TaskID> = []
     @State var keyboardMonitor: Any?

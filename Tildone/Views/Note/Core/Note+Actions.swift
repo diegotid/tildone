@@ -167,6 +167,9 @@ extension Note {
     }
 
     func handleTaskToggle(_ task: TildoneDomain.Task) {
+        guard optimisticTaskCompletions[task.id] == nil else { return }
+        let completion = !task.isCompleted
+        optimisticTaskCompletions[task.id] = completion
         let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(for: task.id)
         let restoresOriginalPosition = originalOrderToken.map { $0 != task.orderToken } ?? false
         let animatesTaskMovement = moveCheckedTasksToEnd && (
@@ -181,13 +184,15 @@ extension Note {
             do {
                 let movedParentID = try await store.setTaskCompletion(
                     task.id,
-                    completed: !task.isCompleted,
+                    completed: completion,
                     moveToEndWhenCompleted: moveCheckedTasksToEnd
                 )
+                optimisticTaskCompletions.removeValue(forKey: task.id)
                 if let movedParentID {
                     collapsedTaskIDs.insert(movedParentID)
                 }
         } catch {
+                optimisticTaskCompletions.removeValue(forKey: task.id)
                 if animatesTaskMovement {
                     completedTaskMovementAnimationID = nil
                 }

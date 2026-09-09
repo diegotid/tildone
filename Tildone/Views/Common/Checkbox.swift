@@ -37,7 +37,7 @@ struct Checkbox: View {
                            height: checkSize,
                            alignment: .center)
                     .onTapGesture(count: 1) {
-                        if let toggle = onToggle {
+                        if !disabled, let toggle = onToggle {
                             toggle()
                         }
                     }

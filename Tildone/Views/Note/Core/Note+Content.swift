@@ -306,6 +306,8 @@ extension Note {
             hasSubtasks: TaskHierarchy.hasSubtasks(at: index, in: tasks),
             isSubtasksCollapsed: collapsedTaskIDs.contains(task.id),
             subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
+            checkboxChecked: optimisticTaskCompletions[task.id] ?? task.isCompleted,
+            isTaskCompletionPending: optimisticTaskCompletions[task.id] != nil,
             feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
             isActive: activeFocusedTaskID == task.id,
