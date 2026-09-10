@@ -3,6 +3,7 @@
 //  Tildone
 //
 
+import AppKit
 import SwiftUI
 import TildoneDomain
 
@@ -12,13 +13,27 @@ struct MacUndoMenuButton: View {
 
     var body: some View {
         Button(title) {
+            if Self.undoFocusedTextIfAvailable() { return }
+            guard store.undoAction != nil else { return }
             Swift.Task {
                 do { try await store.undoLatestAction() }
                 catch { onFailure(error) }
             }
         }
-        .disabled(store.undoAction == nil)
         .keyboardShortcut("z", modifiers: .command)
+    }
+
+    static func undoFocusedTextIfAvailable(
+        responder: NSResponder? = NSApp.keyWindow?.firstResponder,
+        undoManager suppliedUndoManager: UndoManager? = nil
+    ) -> Bool {
+        guard let textView = responder as? NSTextView,
+              let undoManager = suppliedUndoManager ?? textView.undoManager,
+              undoManager.canUndo else {
+            return false
+        }
+        undoManager.undo()
+        return true
     }
 
     private var title: String {

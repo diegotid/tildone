@@ -12,6 +12,21 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    func testUndoPrefersAFocusedTextEditorOnlyWhenItHasTypingHistory() {
+        let textView = NSTextView()
+        XCTAssertFalse(MacUndoMenuButton.undoFocusedTextIfAvailable(responder: textView))
+
+        var didUndo = false
+        let undoManager = UndoManager()
+        undoManager.registerUndo(withTarget: NSObject()) { _ in didUndo = true }
+
+        XCTAssertTrue(MacUndoMenuButton.undoFocusedTextIfAvailable(
+            responder: textView,
+            undoManager: undoManager
+        ))
+        XCTAssertTrue(didUndo)
+    }
+
     func testNoteClipboardContentPublishesSafeLocalizedRichAndPlainRepresentations() {
         let content = NoteClipboardContent(
             title: "Tíldone & café",
