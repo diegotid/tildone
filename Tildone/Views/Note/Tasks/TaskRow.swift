@@ -61,11 +61,6 @@ struct TaskRow: View {
         max(0, (taskLineHeight - taskControlSize) / 2)
     }
 
-    // AppKit's editable NSTextField draws a few points lower than SwiftUI's
-    // static text at the same font size. Keep it aligned with the checkbox
-    // without changing the completed-row presentation.
-    private var editableTaskTextVerticalOffset: CGFloat { -1 }
-
     private var inactiveTaskTextVerticalOffset: CGFloat {
         NoteTypography.inactiveTaskTextVerticalOffset(for: CGFloat(fontSize))
     }
@@ -169,9 +164,7 @@ struct TaskRow: View {
                             onMoveDown: onSubmit
                         )
                         .frame(maxWidth: .infinity, minHeight: taskLineHeight, maxHeight: taskLineHeight, alignment: .leading)
-                        .offset(y: isActive
-                            ? editableTaskTextVerticalOffset
-                            : inactiveTaskTextVerticalOffset)
+                        .offset(x: 0, y: inactiveTaskTextVerticalOffset)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }
@@ -196,9 +189,7 @@ struct TaskRow: View {
                         )
                         .padding(.trailing, isShowingRowControls && !isActive
                             ? (hasSubtasks ? 86 : 66) : 0)
-                        .offset(y: isActive
-                            ? editableTaskTextVerticalOffset
-                            : inactiveTaskTextVerticalOffset)
+                        .offset(x: 0, y: inactiveTaskTextVerticalOffset)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }
