@@ -116,6 +116,7 @@ struct TaskRow: View {
                     onPaste: showsCompletedAppearance || !isShowingRowControls ? nil : onPaste
                 )
                 .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                .transaction { $0.animation = nil }
                 .if(truncation == .single) {
                     $0.modifier(TaskTextTruncationTooltip(
                         text: linkedTaskText.plainText,
@@ -130,9 +131,11 @@ struct TaskRow: View {
                 ))
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .allowsTightening(false)
                 .opacity(0.6)
                 .strikethrough(true, color: .accentColor)
                 .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                .transaction { $0.animation = nil }
                 .if(truncation == .single) {
                     $0.modifier(TaskTextTruncationTooltip(
                         text: task.text,
@@ -199,6 +202,7 @@ struct TaskRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                .transaction { $0.animation = nil }
             }
 
             HStack(spacing: 2) {
@@ -405,6 +409,7 @@ private struct TaskTextLinksView: View {
         Text(text)
             .lineLimit(truncation == .single ? 1 : nil)
             .truncationMode(.tail)
+            .allowsTightening(false)
             .opacity(isCompleted ? 0.6 : 1)
             .strikethrough(isCompleted, color: .accentColor)
             .contentShape(Rectangle())

@@ -390,6 +390,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         let paragraphStyle: NSParagraphStyle? = truncation.map {
             let style = NSMutableParagraphStyle()
             style.lineBreakMode = $0 == .single ? .byTruncatingTail : .byWordWrapping
+            // TextKit otherwise subtly condenses borderline strings before
+            // drawing the tail ellipsis as their available width changes.
+            style.allowsDefaultTighteningForTruncation = false
             return style
         }
         var baseAttributes: [NSAttributedString.Key: Any] = [

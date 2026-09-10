@@ -1875,6 +1875,7 @@ final class TildoneTests: XCTestCase {
         )
 
         XCTAssertEqual(style.lineBreakMode, .byTruncatingTail)
+        XCTAssertFalse(style.allowsDefaultTighteningForTruncation)
     }
 
     @MainActor
