@@ -671,6 +671,9 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(NoteTypography.inactiveTaskTextVerticalOffset(for: 13), 0, accuracy: 0.0001)
         XCTAssertEqual(NoteTypography.inactiveTaskTextVerticalOffset(for: 10), -3, accuracy: 0.0001)
         XCTAssertEqual(NoteTypography.inactiveTaskTextVerticalOffset(for: 20), 7, accuracy: 0.0001)
+        XCTAssertEqual(NoteTypography.focusedTaskTextVerticalAdjustment(for: 10), 3, accuracy: 0.0001)
+        XCTAssertEqual(NoteTypography.focusedTaskTextVerticalAdjustment(for: 13), 0.3, accuracy: 0.0001)
+        XCTAssertEqual(NoteTypography.focusedTaskTextVerticalAdjustment(for: 20), -6, accuracy: 0.0001)
     }
 
     func testClickThroughHoverHalvesWindowOpacity() {

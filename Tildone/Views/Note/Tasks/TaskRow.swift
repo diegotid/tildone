@@ -65,6 +65,14 @@ struct TaskRow: View {
         NoteTypography.inactiveTaskTextVerticalOffset(for: CGFloat(fontSize))
     }
 
+    private var focusedTaskTextVerticalAdjustment: CGFloat {
+        NoteTypography.focusedTaskTextVerticalAdjustment(for: CGFloat(fontSize))
+    }
+
+    private var taskTextVerticalOffset: CGFloat {
+        inactiveTaskTextVerticalOffset + (isActive ? focusedTaskTextVerticalAdjustment : 0)
+    }
+
     private var taskActionControlSize: CGFloat {
         max(12, taskLineHeight)
     }
@@ -167,7 +175,7 @@ struct TaskRow: View {
                             onMoveDown: onSubmit
                         )
                         .frame(maxWidth: .infinity, minHeight: taskLineHeight, maxHeight: taskLineHeight, alignment: .leading)
-                        .offset(x: 0, y: inactiveTaskTextVerticalOffset)
+                        .offset(x: 0, y: taskTextVerticalOffset)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }
@@ -192,7 +200,7 @@ struct TaskRow: View {
                         )
                         .padding(.trailing, isShowingRowControls && !isActive
                             ? (hasSubtasks ? 86 : 66) : 0)
-                        .offset(x: 0, y: inactiveTaskTextVerticalOffset)
+                        .offset(x: 0, y: taskTextVerticalOffset)
                         .onReceive(NotificationCenter.default.publisher(for: .copy)) { _ in
                             if focusedTaskID == task.id { onCopy() }
                         }

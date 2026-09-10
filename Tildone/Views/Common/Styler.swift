@@ -31,6 +31,16 @@ enum NoteTypography {
         fontSize - defaultTaskFontSize
     }
 
+    /// Match the focused editor's optical baseline to the inactive cell at
+    /// every configured font size, interpolating linearly between the tuned
+    /// endpoint values.
+    static func focusedTaskTextVerticalAdjustment(for fontSize: CGFloat) -> CGFloat {
+        let minimumFontSize = CGFloat(FontSize.xSmall.rawValue)
+        let maximumFontSize = CGFloat(FontSize.xLarge.rawValue)
+        let progress = (fontSize - minimumFontSize) / (maximumFontSize - minimumFontSize)
+        return 3 - (9 * progress)
+    }
+
     static func topicFontSize(for taskFontSize: CGFloat) -> CGFloat {
         defaultTopicFontSize / defaultTaskFontSize * taskFontSize
     }
