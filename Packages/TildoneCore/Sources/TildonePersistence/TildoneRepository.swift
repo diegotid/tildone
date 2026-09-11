@@ -116,7 +116,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     private nonisolated static func makeContainer(
         descriptor: PersistenceStoreDescriptor
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: TildoneSchemaV5.self)
+        let schema = Schema(versionedSchema: TildoneSchemaV6.self)
         let configuration: ModelConfiguration
         if descriptor.kind == .inMemory {
             configuration = ModelConfiguration(
@@ -185,6 +185,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         )
         context.insert(try StoredDomainMapping.storedNote(from: note))
         context.insert(try StoredDomainMapping.storedNoteColor(from: note))
+        context.insert(try StoredDomainMapping.storedNoteKind(from: note))
         try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try saveMutation(context)
         return note
@@ -222,6 +223,13 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         for color in try context.fetch(FetchDescriptor<StoredNoteColor>()) {
             guard colorsByNoteID.updateValue(color, forKey: color.noteStableID) == nil else {
                 throw PersistenceError.duplicateID(.note, color.noteStableID)
+            }
+        }
+
+        var kindsByNoteID: [String: StoredNoteKind] = [:]
+        for kind in try context.fetch(FetchDescriptor<StoredNoteKind>()) {
+            guard kindsByNoteID.updateValue(kind, forKey: kind.noteStableID) == nil else {
+                throw PersistenceError.duplicateID(.note, kind.noteStableID)
             }
         }
 
@@ -263,7 +271,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         for stored in try context.fetch(FetchDescriptor<StoredNote>()) {
             let note = try StoredDomainMapping.note(
                 from: stored,
-                color: colorsByNoteID[stored.stableID]
+                color: colorsByNoteID[stored.stableID],
+                kind: kindsByNoteID[stored.stableID]
             )
             guard noteIDs.insert(note.id).inserted else {
                 throw PersistenceError.duplicateID(.note, note.id.stringValue)
@@ -330,10 +339,31 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         } else {
             context.insert(try StoredDomainMapping.storedNoteColor(from: note))
         }
-        stored.recordSchemaVersion = Note.currentSchemaVersion
+        stored.recordSchemaVersion = max(stored.recordSchemaVersion, 2)
         try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try saveMutation(context)
         return note
+    }
+
+    public func setNoteKind(id: NoteID, kind: NoteKind) throws -> Note {
+        let context = mutationContext()
+        let stored = try requireStoredNote(id: id, in: context)
+        var note = try mappedNote(from: stored, in: context)
+        guard note.lifecycle == .active else { throw PersistenceError.domainInvariant }
+        if note.kind == kind, try storedNoteKind(noteID: id, in: context) != nil { return note }
+        let metadata = try workspaceMetadata(in: context)
+        let stamp = try nextStamp(metadata, observing: maxVersion(in: note))
+        do { try note.setKind(kind, version: stamp) }
+        catch { throw PersistenceError.domainInvariant }
+        if let row = try storedNoteKind(noteID: id, in: context) {
+            try StoredDomainMapping.update(row, from: note)
+        } else {
+            context.insert(try StoredDomainMapping.storedNoteKind(from: note))
+        }
+        stored.recordSchemaVersion = Note.currentSchemaVersion
+        try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+        try saveMutation(context)
+        return try mappedNote(from: stored, in: context)
     }
 
     /// Completes the additive V3 migration. Missing sidecars receive the
@@ -387,7 +417,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             } catch {
                 throw PersistenceError.domainInvariant
             }
-            stored.recordSchemaVersion = Note.currentSchemaVersion
+            stored.recordSchemaVersion = max(stored.recordSchemaVersion, 2)
             if let storedColor {
                 try StoredDomainMapping.update(storedColor, from: note)
             } else {
@@ -1051,6 +1081,18 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             }
             maximum = max(maximum, color.colorVersionCounter)
         }
+        var typedNoteIDs: Set<String> = []
+        for kind in try context.fetch(FetchDescriptor<StoredNoteKind>()) {
+            guard noteIDs.contains(kind.noteStableID),
+                  typedNoteIDs.insert(kind.noteStableID).inserted,
+                  NoteKind(rawValue: kind.kindRawValue) != nil,
+                  kind.versionCounter >= 0,
+                  let replica = ReplicaID(string: kind.versionReplicaID),
+                  replica.stringValue == kind.versionReplicaID else {
+                throw PersistenceError.workspaceMismatch
+            }
+            maximum = max(maximum, kind.versionCounter)
+        }
         let tasks = try context.fetch(FetchDescriptor<StoredTask>())
         let taskIDs = Set(tasks.map(\.stableID))
         for task in tasks {
@@ -1337,13 +1379,23 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return rows.first
     }
 
+    func storedNoteKind(noteID: NoteID, in context: ModelContext) throws -> StoredNoteKind? {
+        let value = noteID.stringValue
+        let rows = try context.fetch(FetchDescriptor<StoredNoteKind>(
+            predicate: #Predicate { $0.noteStableID == value }
+        ))
+        guard rows.count <= 1 else { throw PersistenceError.duplicateID(.note, value) }
+        return rows.first
+    }
+
     func mappedNote(from stored: StoredNote, in context: ModelContext) throws -> Note {
         guard let id = NoteID(string: stored.stableID) else {
             throw PersistenceError.malformedRepresentation(.note, "invalid", field: "stableID")
         }
         return try StoredDomainMapping.note(
             from: stored,
-            color: storedNoteColor(noteID: id, in: context)
+            color: storedNoteColor(noteID: id, in: context),
+            kind: storedNoteKind(noteID: id, in: context)
         )
     }
 
@@ -1543,7 +1595,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     func maxVersion(in note: Note) -> VersionStamp {
         [
-            note.titleVersion, note.colorVersion, note.lifecycleVersion,
+            note.titleVersion, note.colorVersion, note.kindVersion, note.lifecycleVersion,
             note.lastMeaningfulEditVersion
         ].max()!
     }

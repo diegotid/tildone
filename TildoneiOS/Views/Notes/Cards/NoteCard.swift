@@ -26,8 +26,9 @@ struct NoteCard: View {
         let gaugeSize = 24 * contentScale * 0.8
         let cornerRadius = 16 * contentScale
 
-        VStack(alignment: .leading, spacing: 12 * contentScale) {
-            HStack(alignment: .center, spacing: 8 * contentScale) {
+        VStack(alignment: note.kind == .singleTask ? .center : .leading, spacing: 12 * contentScale) {
+            if note.kind == .checklist {
+                HStack(alignment: .center, spacing: 8 * contentScale) {
                 Text(title)
                     .font(.system(size: baseTitleSize * contentScale, weight: .semibold))
                     .foregroundStyle(.black)
@@ -48,9 +49,14 @@ struct NoteCard: View {
                         .accessibilityHidden(true)
                 }
                 .fixedSize()
+                }
             }
 
-            NoteCardTaskList(tasks: tasks, style: style, contentScale: contentScale)
+            if note.kind == .singleTask {
+                singleTaskPreview
+            } else {
+                NoteCardTaskList(tasks: tasks, style: style, contentScale: contentScale)
+            }
         }
         .padding(.horizontal, 14 * contentScale)
         .padding(.top, 14 * contentScale)
@@ -67,14 +73,50 @@ struct NoteCard: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 6 * contentScale, y: 3 * contentScale)
         .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            if note.kind == .singleTask {
+                Image(systemName: tasks.first?.isCompleted == true ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20 * contentScale))
+                    .foregroundStyle(.black.opacity(0.7))
+                    .padding(14 * contentScale)
+            }
+        }
         .contextMenu {
-            Button("Rename", action: rename)
+            if note.kind == .checklist {
+                Button("Rename", action: rename)
+            }
             if summary?.isEmpty == true {
                 Button("Delete", role: .destructive, action: delete)
             }
         }
-        .accessibilityLabel(title)
+        .accessibilityLabel(note.kind == .singleTask ? (tasks.first?.text ?? String(localized: "New task")) : title)
         .accessibilityValue(summary?.accessibilityDescription ?? String(localized: "No tasks"))
-        .accessibilityHint("Double tap to open the full checklist")
+        .accessibilityHint("Double tap to open the note")
+    }
+
+    private var singleTaskPreview: some View {
+        GeometryReader { geometry in
+            let task = tasks.first
+            ViewThatFits(in: .vertical) {
+                singleTaskText(task, size: 44 * contentScale)
+                singleTaskText(task, size: 36 * contentScale)
+                singleTaskText(task, size: 30 * contentScale)
+                singleTaskText(task, size: 24 * contentScale)
+                singleTaskText(task, size: 18 * contentScale)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+        }
+    }
+
+    private func singleTaskText(_ task: NoteTaskPreview?, size: CGFloat) -> some View {
+        Text(task.map {
+            RichTaskTextEditor.displayText(from: $0.richText, baseColor: .black)
+        } ?? AttributedString(String(localized: "New task")))
+            .font(.custom("BradleyHandITCTT-Bold", size: size))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .strikethrough(task?.isCompleted == true)
+            .opacity(task?.isCompleted == true ? 0.6 : 1)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 }

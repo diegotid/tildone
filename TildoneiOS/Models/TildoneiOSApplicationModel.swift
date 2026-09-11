@@ -342,6 +342,39 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }
     }
 
+    func setKind(noteID: NoteID, kind: NoteKind) async throws {
+        guard let snapshot = notePresentations[noteID]?.snapshot,
+              let note = snapshot.note else { return }
+        let revision = stage(TildoneiOSNoteSnapshot(
+            note: Self.presentationNote(note, kind: kind),
+            tasks: snapshot.tasks
+        ))
+        do {
+            let persisted = try await withRepository { repository in
+                let persisted = note.kind == kind
+                    ? try await repository.note(id: noteID)
+                    : try await repository.setNoteKind(id: noteID, kind: kind)
+                if kind == .singleTask, try await repository.orderedTasks(in: noteID).isEmpty {
+                    _ = try await repository.addTask(
+                        id: TaskID(),
+                        to: noteID,
+                        createdAt: Date(),
+                        text: "",
+                        orderToken: try OrderToken.between(nil, nil),
+                        indentLevel: 0
+                    )
+                }
+                return persisted
+            }
+            publishPersistedNote(persisted, ifCurrentRevision: revision)
+            await reconcileSuccessfulMutation(noteID, revision: revision)
+            scheduleSyncNotification()
+        } catch {
+            await rollback(noteID, revision: revision)
+            throw error
+        }
+    }
+
     func delete(noteID: NoteID) async throws {
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { return }
@@ -449,8 +482,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     func edit(taskID: TaskID, richText: RichText) async throws {
         let richText = richText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !richText.text.isEmpty else { return }
         let (snapshot, task) = try requireSnapshot(containing: taskID)
+        guard !richText.text.isEmpty || snapshot.note?.kind == .singleTask else { return }
         let revision = stageTaskUpdates(
             [TaskStructureUpdate(id: taskID)],
             in: snapshot,
@@ -939,17 +972,19 @@ final class TildoneiOSApplicationModel: ObservableObject {
         note: Note,
         tasks: [Task]
     ) {
+        let progressTasks = note.kind == .singleTask ? Array(tasks.prefix(1)) : TaskHierarchy.leafTasks(in: tasks)
         overview.taskSummaries[note.id] = NoteTaskSummary(
             noteID: note.id,
-            tasks: TaskHierarchy.leafTasks(in: tasks)
+            tasks: progressTasks
         )
-        let oldestTasksFirst = tasks.sorted {
+        let visibleTasks = note.kind == .singleTask ? Array(tasks.prefix(1)) : tasks
+        let oldestTasksFirst = visibleTasks.sorted {
             $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
         }
         let listText = oldestTasksFirst.map(\.text).joined(separator: ", ")
         if !listText.isEmpty { overview.taskListTexts[note.id] = listText }
         let subtaskProgresses = TaskHierarchy.subtaskProgresses(in: tasks)
-        overview.taskPreviews[note.id] = tasks.map {
+        overview.taskPreviews[note.id] = visibleTasks.map {
             NoteTaskPreview($0, subtaskProgress: subtaskProgresses[$0.id])
         }
     }
@@ -1264,6 +1299,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
             titleVersion: note.titleVersion,
             color: note.color,
             colorVersion: note.colorVersion,
+            kind: note.kind,
+            kindVersion: note.kindVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: meaningfulEditAt,
@@ -1280,6 +1317,26 @@ final class TildoneiOSApplicationModel: ObservableObject {
             titleVersion: note.titleVersion,
             color: color,
             colorVersion: note.colorVersion,
+            kind: note.kind,
+            kindVersion: note.kindVersion,
+            lifecycle: note.lifecycle,
+            lifecycleVersion: note.lifecycleVersion,
+            lastMeaningfulEditAt: note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: note.lastMeaningfulEditVersion,
+            schemaVersion: note.schemaVersion
+        )
+    }
+
+    private static func presentationNote(_ note: Note, kind: NoteKind) -> Note {
+        Note(
+            id: note.id,
+            createdAt: note.createdAt,
+            title: note.title,
+            titleVersion: note.titleVersion,
+            color: note.color,
+            colorVersion: note.colorVersion,
+            kind: kind,
+            kindVersion: note.kindVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,

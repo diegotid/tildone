@@ -18,6 +18,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
     let taskID: TaskID
     var focusedTask: FocusState<TaskID?>.Binding
     let isCompleted: Bool
+    var allowsMultipleLines = false
     let onCommit: (RichText) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -39,11 +40,11 @@ struct RichTaskTextEditor: UIViewRepresentable {
             right: 0
         )
         view.textContainer.lineFragmentPadding = 0
-        view.textContainer.maximumNumberOfLines = 1
-        view.textContainer.lineBreakMode = .byTruncatingTail
+        view.textContainer.maximumNumberOfLines = allowsMultipleLines ? 0 : 1
+        view.textContainer.lineBreakMode = allowsMultipleLines ? .byWordWrapping : .byTruncatingTail
         view.setContentHuggingPriority(.defaultLow, for: .horizontal)
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        view.returnKeyType = .done
+        view.returnKeyType = allowsMultipleLines ? .default : .done
         view.autocapitalizationType = .sentences
         view.adjustsFontForContentSizeCategory = true
         view.accessibilityLabel = String(localized: "Task")
@@ -54,6 +55,10 @@ struct RichTaskTextEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.view = view
+        view.isScrollEnabled = allowsMultipleLines
+        view.textContainer.maximumNumberOfLines = allowsMultipleLines ? 0 : 1
+        view.textContainer.lineBreakMode = allowsMultipleLines ? .byWordWrapping : .byTruncatingTail
+        view.returnKeyType = allowsMultipleLines ? .default : .done
         if !view.isFirstResponder {
             view.attributedText = Self.attributedString(from: richText, completed: isCompleted)
         }
@@ -140,7 +145,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText text: String
         ) -> Bool {
-            guard text == "\n" else { return true }
+            guard text == "\n", !parent.allowsMultipleLines else { return true }
             textView.resignFirstResponder()
             return false
         }

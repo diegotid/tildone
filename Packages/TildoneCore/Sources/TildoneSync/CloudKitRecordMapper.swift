@@ -162,6 +162,9 @@ extension CloudKitRecordMapper {
         static let color = "color"
         static let colorCounter = "colorVersionCounter"
         static let colorReplica = "colorVersionReplicaID"
+        static let kind = "kind"
+        static let kindCounter = "kindVersionCounter"
+        static let kindReplica = "kindVersionReplicaID"
         static let lifecycle = "lifecycle"
         static let lifecycleCounter = "lifecycleVersionCounter"
         static let lifecycleReplica = "lifecycleVersionReplicaID"
@@ -188,7 +191,7 @@ extension CloudKitRecordMapper {
 
         static let all = [
             schemaVersion, createdAt, title, titleCounter, titleReplica, color,
-            colorCounter, colorReplica,
+            colorCounter, colorReplica, kind, kindCounter, kindReplica,
             lifecycle, lifecycleCounter, lifecycleReplica, meaningfulEditAt,
             meaningfulEditCounter, meaningfulEditReplica, noteID, text,
             richText, textCounter, textReplica, isCompleted, completedAt,
@@ -218,6 +221,15 @@ extension CloudKitRecordMapper {
                 note.colorVersion,
                 prefixCounter: Field.colorCounter,
                 replica: Field.colorReplica,
+                into: record
+            )
+        }
+        if note.schemaVersion >= 3 {
+            record[Field.kind] = note.kind.rawValue as NSString
+            encode(
+                note.kindVersion,
+                prefixCounter: Field.kindCounter,
+                replica: Field.kindReplica,
                 into: record
             )
         }
@@ -282,6 +294,18 @@ extension CloudKitRecordMapper {
             color = .yellow
             colorVersion = titleVersion
         }
+        let kind: NoteKind
+        let kindVersion: VersionStamp
+        if schema >= 3 {
+            guard let decodedKind = NoteKind(rawValue: try string(Field.kind, in: record)) else {
+                throw CloudRecordMappingError.invalidField(name, Field.kind)
+            }
+            kind = decodedKind
+            kindVersion = try stamp(Field.kindCounter, Field.kindReplica, in: record)
+        } else {
+            kind = .checklist
+            kindVersion = titleVersion
+        }
         return Note(
             id: id,
             createdAt: try date(Field.createdAt, in: record),
@@ -289,6 +313,8 @@ extension CloudKitRecordMapper {
             titleVersion: titleVersion,
             color: color,
             colorVersion: colorVersion,
+            kind: kind,
+            kindVersion: kindVersion,
             lifecycle: try lifecycle(in: record),
             lifecycleVersion: try stamp(Field.lifecycleCounter, Field.lifecycleReplica, in: record),
             lastMeaningfulEditAt: try date(Field.meaningfulEditAt, in: record),

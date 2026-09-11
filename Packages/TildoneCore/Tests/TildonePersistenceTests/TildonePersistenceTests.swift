@@ -16,6 +16,24 @@ final class TildonePersistenceTests: XCTestCase {
     private let taskID = TaskID(UUID(uuidString: "30000000-0000-0000-0000-000000000001")!)
     private let createdAt = Date(timeIntervalSince1970: 1_000)
 
+    func testNoteKindPersistsAndQueuesCurrentNoteRecord() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        let created = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        XCTAssertEqual(created.kind, .checklist)
+
+        let changed = try await repository.setNoteKind(id: noteID, kind: .singleTask)
+        let reloaded = try await repository.note(id: noteID)
+
+        XCTAssertEqual(changed.kind, .singleTask)
+        XCTAssertEqual(reloaded.kind, .singleTask)
+        XCTAssertEqual(reloaded.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertGreaterThan(reloaded.kindVersion, created.kindVersion)
+        let pending = try await repository.pendingMutations()
+        XCTAssertTrue(pending.contains {
+            $0.targetKind == .note && $0.targetStableID == noteID.stringValue
+        })
+    }
+
     func testRichTextEditsPersistThroughConcreteAndProtocolRepositoryCalls() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
@@ -362,7 +380,10 @@ final class TildonePersistenceTests: XCTestCase {
         let future = try StoredDomainMapping.storedNote(from: makeNote())
         future.recordSchemaVersion = Note.currentSchemaVersion + 1
         XCTAssertThrowsError(try StoredDomainMapping.note(from: future)) {
-            XCTAssertEqual($0 as? PersistenceError, .unsupportedRecordSchema(.note, 3))
+            XCTAssertEqual(
+                $0 as? PersistenceError,
+                .unsupportedRecordSchema(.note, Note.currentSchemaVersion + 1)
+            )
         }
     }
 
@@ -1012,8 +1033,10 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaV4.models.count, 9)
         XCTAssertEqual(TildoneSchemaV5.versionIdentifier, Schema.Version(5, 0, 0))
         XCTAssertEqual(TildoneSchemaV5.models.count, 10)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 5)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 4)
+        XCTAssertEqual(TildoneSchemaV6.versionIdentifier, Schema.Version(6, 0, 0))
+        XCTAssertEqual(TildoneSchemaV6.models.count, 11)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 6)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 5)
     }
 
     func testV4StoreMigrationBackfillsEveryTaskAsUnformattedRichText() async throws {
@@ -1228,7 +1251,9 @@ final class TildonePersistenceTests: XCTestCase {
         let migrated = try await repository.note(id: fixtureNoteID)
         let migratedWorkspace = try await repository.workspaceSnapshot()
         XCTAssertEqual(migrated.color, .pink)
-        XCTAssertEqual(migrated.schemaVersion, Note.currentSchemaVersion)
+        // Color backfill deliberately emits the compatible V2 shape. A note
+        // becomes V3 only after it has an explicit synced kind sidecar.
+        XCTAssertEqual(migrated.schemaVersion, 2)
         XCTAssertGreaterThan(migrated.colorVersion.logicalCounter, workspace.logicalCounter)
         XCTAssertGreaterThanOrEqual(
             migratedWorkspace.logicalCounter,

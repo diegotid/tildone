@@ -13,6 +13,7 @@ struct TaskRow: View {
     let rowIndex: Int
     let fontSize: Double
     let isDark: Bool
+    let noteBackgroundColor: Color
     let contentColor: Color
     let cursorColor: Color
     let placeholderColor: Color
@@ -105,7 +106,11 @@ struct TaskRow: View {
         HStack(alignment: .top, spacing: 8) {
             Group {
                 if let subtaskProgress {
-                    SubtaskProgressGauge(progress: subtaskProgress, size: taskControlSize)
+                    SubtaskProgressGauge(
+                        progress: subtaskProgress,
+                        size: taskControlSize,
+                        noteBackgroundColor: noteBackgroundColor
+                    )
                 } else {
                     Checkbox(checked: checkboxChecked, size: taskControlSize)
                         .disabled(task.text.isEmpty)

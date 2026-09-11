@@ -240,6 +240,45 @@ final class MacSharedStore: ObservableObject {
         scheduleSyncNotification()
     }
 
+    func setKind(_ kind: NoteKind, for id: NoteID) async throws {
+        guard let original = note(id) else { throw PersistenceError.missing(.note, id.stringValue) }
+        var stagedTask: Task?
+        if kind == .singleTask, original.tasks.isEmpty {
+            stagedTask = try stageEmptyTaskInsertion(
+                in: id,
+                at: 0,
+                deleting: [],
+                indentLevel: 0
+            )
+        }
+        if let staged = note(id), staged.kind != kind {
+            publish(MacNoteSnapshot(
+                note: presentationNote(staged.note, kind: kind),
+                tasks: staged.tasks
+            ))
+        }
+        do {
+            if original.kind != kind {
+                _ = try await repository.setNoteKind(id: id, kind: kind)
+            }
+            if let stagedTask {
+                _ = try await repository.addTask(
+                    id: stagedTask.id,
+                    to: id,
+                    createdAt: stagedTask.createdAt,
+                    text: stagedTask.text,
+                    orderToken: stagedTask.orderToken,
+                    indentLevel: stagedTask.indentLevel
+                )
+            }
+            try await reload(id)
+            scheduleSyncNotification()
+        } catch {
+            try? await reload(id)
+            throw error
+        }
+    }
+
     func addTask(
         to noteID: NoteID,
         text: String,
@@ -870,6 +909,7 @@ final class MacSharedStore: ObservableObject {
         in noteID: NoteID,
         preserving preservedTaskID: TaskID? = nil
     ) async throws {
+        if note(noteID)?.kind == .singleTask { return }
         for taskID in notes.first(where: { $0.id == noteID })?.tasks.map(\.id) ?? [] {
             await waitForPendingTaskTextEdit(for: taskID)
         }
@@ -1076,6 +1116,29 @@ private extension MacSharedStore {
             titleVersion: note.titleVersion,
             color: note.color,
             colorVersion: note.colorVersion,
+            kind: note.kind,
+            kindVersion: note.kindVersion,
+            lifecycle: note.lifecycle,
+            lifecycleVersion: note.lifecycleVersion,
+            lastMeaningfulEditAt: note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: note.lastMeaningfulEditVersion,
+            schemaVersion: note.schemaVersion
+        )
+    }
+
+    func presentationNote(
+        _ note: TildoneDomain.Note,
+        kind: NoteKind
+    ) -> TildoneDomain.Note {
+        TildoneDomain.Note(
+            id: note.id,
+            createdAt: note.createdAt,
+            title: note.title,
+            titleVersion: note.titleVersion,
+            color: note.color,
+            colorVersion: note.colorVersion,
+            kind: kind,
+            kindVersion: note.kindVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,

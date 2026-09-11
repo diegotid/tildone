@@ -20,6 +20,7 @@ public protocol NoteRepository: Sendable {
     func notesMeaningfullyEdited(since date: Date) async throws -> [Note]
     func renameNote(id: NoteID, to title: String?, editedAt: Date) async throws -> Note
     func setNoteColor(id: NoteID, color: NoteColor) async throws -> Note
+    func setNoteKind(id: NoteID, kind: NoteKind) async throws -> Note
     func deleteNote(id: NoteID) async throws
     func restoreNote(id: NoteID) async throws -> Note
 }

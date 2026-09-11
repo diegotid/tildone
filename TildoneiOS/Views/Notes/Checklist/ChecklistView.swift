@@ -25,6 +25,7 @@ struct ChecklistView: View {
     @State private var taskInsertionText = ""
     @State private var pendingTaskInsertionID: TaskID?
     @State private var showsInsertionHint = false
+    @State private var singleTaskDraft = RichText(text: "")
     @FocusState private var focusedTask: TaskID?
     @FocusState private var isAddingTask: Bool
     @FocusState private var isAddingTaskAbove: Bool
@@ -62,6 +63,9 @@ struct ChecklistView: View {
     var body: some View {
         Group {
             if let note {
+                if note.kind == .singleTask {
+                    singleTaskEditor(note)
+                } else {
                 let subtaskProgresses = TaskHierarchy.subtaskProgresses(in: tasks)
                 ScrollViewReader { scrollProxy in
                 List {
@@ -70,7 +74,13 @@ struct ChecklistView: View {
                             .focused($isEditingTitle)
                             .font(.title2.weight(.semibold))
                             .submitLabel(.done)
-                            .onSubmit { saveTitle() }
+                            .onSubmit {
+                                saveTitle()
+                                if Self.normalizedTitle(title) == nil {
+                                    isEditingTitle = false
+                                    isAddingTask = true
+                                }
+                            }
                             .onChange(of: isEditingTitle) { wasEditing, isEditing in
                                 guard wasEditing, !isEditing else { return }
                                 finishTitleEditing()
@@ -215,6 +225,9 @@ struct ChecklistView: View {
                             ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         }
                         ToolbarItem(placement: .topBarTrailing) {
+                            noteTypeMenu(note)
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
                             TaskTextFormatMenu(isEnabled: focusedTask != nil)
                         }
                         ToolbarItem(placement: .topBarTrailing) {
@@ -256,6 +269,7 @@ struct ChecklistView: View {
                     saveTaskAboveIfNeeded()
                 }
                 }
+                }
             } else {
                 ContentUnavailableView("This note was deleted", systemImage: "trash")
             }
@@ -275,6 +289,95 @@ struct ChecklistView: View {
                 showsInsertionHint = false
             }
         }
+    }
+
+    private func singleTaskEditor(_ note: Note) -> some View {
+        VStack(spacing: 12) {
+            if let task = tasks.first {
+                HStack {
+                    Spacer()
+                    TaskCheckbox(isChecked: task.isCompleted) {
+                        Swift.Task {
+                            try? await appModel.setCompletion(
+                                taskID: task.id,
+                                completed: !task.isCompleted
+                            )
+                        }
+                    }
+                    .accessibilityLabel(task.isCompleted ? "Mark as pending" : "Mark as completed")
+                }
+                RichTaskTextEditor(
+                    richText: $singleTaskDraft,
+                    modelRichText: task.richText,
+                    taskID: task.id,
+                    focusedTask: $focusedTask,
+                    isCompleted: task.isCompleted,
+                    allowsMultipleLines: true,
+                    onCommit: { value in
+                        Swift.Task {
+                            try? await appModel.edit(taskID: task.id, richText: value)
+                        }
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .onAppear {
+                    singleTaskDraft = task.richText
+                    focusedTask = task.id
+                }
+                .onChange(of: task.richText) { _, value in
+                    if focusedTask != task.id { singleTaskDraft = value }
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .padding()
+        .navigationTitle("Single memo")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                noteTypeMenu(note)
+                TaskTextFormatMenu(isEnabled: focusedTask != nil)
+                Menu {
+                    Picker("Note color", selection: Binding(
+                        get: { note.color },
+                        set: { color in
+                            Swift.Task { try? await appModel.setColor(noteID: noteID, color: color) }
+                        }
+                    )) {
+                        ForEach(NoteColor.allCases) { color in
+                            Text(color.localizedLabel).tag(color)
+                        }
+                    }
+                } label: {
+                    NoteColorPickerSymbol(color: note.color)
+                }
+                .accessibilityLabel("Note color")
+            }
+        }
+        .onDisappear {
+            guard let task = tasks.first, singleTaskDraft != task.richText else { return }
+            Swift.Task { try? await appModel.edit(taskID: task.id, richText: singleTaskDraft) }
+        }
+    }
+
+    private func noteTypeMenu(_ note: Note) -> some View {
+        Menu {
+            Button {
+                Swift.Task { try? await appModel.setKind(noteID: noteID, kind: .checklist) }
+            } label: {
+                Label("Task list", systemImage: "checklist")
+            }
+            Button {
+                Swift.Task { try? await appModel.setKind(noteID: noteID, kind: .singleTask) }
+            } label: {
+                Label("Single memo", systemImage: "text.aligncenter")
+            }
+        } label: {
+            Image(systemName: note.kind == .checklist ? "checklist" : "text.aligncenter")
+        }
+        .accessibilityLabel("Note type")
     }
 
     private func synchronizeWithPresentation() {
@@ -318,6 +421,12 @@ struct ChecklistView: View {
 
     private func addTask() {
         let text = newTaskText
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           isUntitled,
+           tasks.isEmpty {
+            Swift.Task { try? await appModel.setKind(noteID: noteID, kind: .singleTask) }
+            return
+        }
         newTaskText = ""
         Swift.Task {
             _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)

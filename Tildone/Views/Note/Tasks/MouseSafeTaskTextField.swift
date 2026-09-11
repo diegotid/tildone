@@ -16,6 +16,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let textColor: Color
     let cursorColor: Color
     let truncation: TaskLineTruncation
+    var fontName: String? = nil
+    var alignment: NSTextAlignment = .left
+    var verticallyCentersContent = false
     let onFocus: () -> Void
     let onBlur: () -> Void
     let onEnter: (Int) -> Void
@@ -34,9 +37,11 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.alignment = .left
+        field.alignment = alignment
         field.lineBreakMode = truncation == .single ? .byTruncatingTail : .byWordWrapping
         field.usesSingleLineMode = truncation == .single
+        field.wrapsContent = truncation == .multiple
+        field.verticallyCentersContent = verticallyCentersContent
         field.cell?.lineBreakMode = field.lineBreakMode
         field.cell?.wraps = truncation == .multiple
         field.cell?.truncatesLastVisibleLine = truncation == .single
@@ -48,6 +53,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = context.coordinator
         field.cursorColor = NSColor(cursorColor)
+        field.alignment = alignment
         field.onEditorFocus = { [weak coordinator = context.coordinator] in
             coordinator?.editorDidAcquireFocus()
         }
@@ -70,6 +76,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         }
         let baseColor = NSColor(textColor)
         let presentationChanged = context.coordinator.lastFontSize != fontSize
+            || context.coordinator.lastFontName != fontName
             || context.coordinator.lastBaseColor?.isEqual(baseColor) != true
         if !isActivelyEditing,
            !preservingCanonicalAfterBlur,
@@ -78,15 +85,53 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 from: richText,
                 fontSize: fontSize,
                 baseColor: baseColor,
-                truncation: truncation
+                truncation: truncation,
+                fontName: fontName,
+                alignment: alignment
             )
         }
+        if isActivelyEditing,
+           presentationChanged,
+           let editor = editor as? NSTextView {
+            let selection = editor.selectedRange()
+            let nativeRichText = Self.richText(from: editor.attributedString())
+            let displayedRichText = nativeRichText.text == richText.text ? richText : nativeRichText
+            let attributed = Self.attributedString(
+                from: displayedRichText,
+                fontSize: fontSize,
+                baseColor: baseColor,
+                truncation: truncation,
+                fontName: fontName,
+                alignment: alignment
+            )
+            field.attributedStringValue = attributed
+            editor.textStorage?.setAttributedString(attributed)
+            editor.setSelectedRange(NSRange(
+                location: min(selection.location, attributed.length),
+                length: min(selection.length, max(0, attributed.length - min(selection.location, attributed.length)))
+            ))
+            editor.typingAttributes = attributed.length > 0
+                ? attributed.attributes(at: min(editor.selectedRange().location, attributed.length - 1), effectiveRange: nil)
+                : Self.attributedString(
+                    from: RichText(text: " "),
+                    fontSize: fontSize,
+                    baseColor: baseColor,
+                    truncation: truncation,
+                    fontName: fontName,
+                    alignment: alignment
+                ).attributes(at: 0, effectiveRange: nil)
+            field.invalidateIntrinsicContentSize()
+        }
         context.coordinator.lastFontSize = fontSize
+        context.coordinator.lastFontName = fontName
         context.coordinator.lastBaseColor = baseColor
         field.cell?.lineBreakMode = truncation == .single ? .byTruncatingTail : .byWordWrapping
         field.cell?.wraps = truncation == .multiple
         field.cell?.truncatesLastVisibleLine = truncation == .single
-        field.cell?.isScrollable = isActivelyEditing
+        field.cell?.isScrollable = isActivelyEditing && truncation == .single
+        field.wrapsContent = truncation == .multiple
+        field.verticallyCentersContent = verticallyCentersContent
+        (field.cell as? MouseSafeTaskNSTextFieldCell)?.verticallyCentersContent = verticallyCentersContent
         field.updateTruncationTooltip()
         if let editor = editor as? NSTextView {
             Self.configure(
@@ -118,6 +163,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         var parent: MouseSafeTaskTextField
         weak var field: MouseSafeTaskNSTextField?
         var lastFontSize: CGFloat?
+        var lastFontName: String?
         var lastBaseColor: NSColor?
         var lastRequestedFocus = false
         var canonicalRichText: RichText
@@ -170,7 +216,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 self.lastEditor = editor
                 self.lastSelection = editor.selectedRange()
                 self.configure(editor)
-                field.cell?.isScrollable = true
+                field.cell?.isScrollable = self.parent.truncation == .single
                 self.parent.onFocus()
             }
         }
@@ -235,6 +281,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             let fontSize = parent.fontSize
             let baseColor = NSColor(parent.textColor)
             let truncation = parent.truncation
+            let fontName = parent.fontName
+            let alignment = parent.alignment
             DispatchQueue.main.async { [weak editedField] in
                 guard let editedField,
                       editedField.window?.firstResponder !== editedField.currentEditor() else { return }
@@ -242,7 +290,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                     from: finalRichText,
                     fontSize: fontSize,
                     baseColor: baseColor,
-                    truncation: truncation
+                    truncation: truncation,
+                    fontName: fontName,
+                    alignment: alignment
                 )
                 editedField.updateTruncationTooltip()
             }
@@ -253,6 +303,20 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 editor,
                 cursorColor: NSColor(parent.cursorColor)
             )
+            if parent.truncation == .multiple {
+                editor.isHorizontallyResizable = false
+                editor.isVerticallyResizable = true
+                editor.textContainer?.widthTracksTextView = true
+                editor.textContainer?.lineBreakMode = .byWordWrapping
+                editor.textContainer?.containerSize = NSSize(
+                    width: max(1, editor.bounds.width),
+                    height: .greatestFiniteMagnitude
+                )
+            }
+            if let editor = editor as? MouseSafeTaskFieldEditor {
+                editor.verticallyCentersContent = parent.verticallyCentersContent
+                editor.refreshTextGeometry()
+            }
         }
 
         func controlTextDidChange(_ notification: Notification) {
@@ -318,7 +382,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 from: formatted,
                 fontSize: parent.fontSize,
                 baseColor: NSColor(parent.textColor),
-                truncation: parent.truncation
+                truncation: parent.truncation,
+                fontName: parent.fontName,
+                alignment: parent.alignment
             )
             if isEditing, let editor {
                 editor.textStorage?.setAttributedString(attributed)
@@ -384,15 +450,19 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         from richText: RichText,
         fontSize: CGFloat,
         baseColor: NSColor,
-        truncation: TaskLineTruncation? = nil
+        truncation: TaskLineTruncation? = nil,
+        fontName: String? = nil,
+        alignment: NSTextAlignment = .left
     ) -> NSAttributedString {
-        let baseFont = NSFont.systemFont(ofSize: fontSize)
+        let baseFont = fontName.flatMap { NSFont(name: $0, size: fontSize) }
+            ?? NSFont.systemFont(ofSize: fontSize)
         let paragraphStyle: NSParagraphStyle? = truncation.map {
             let style = NSMutableParagraphStyle()
             style.lineBreakMode = $0 == .single ? .byTruncatingTail : .byWordWrapping
             // TextKit otherwise subtly condenses borderline strings before
             // drawing the tail ellipsis as their available width changes.
             style.allowsDefaultTighteningForTruncation = false
+            style.alignment = alignment
             return style
         }
         var baseAttributes: [NSAttributedString.Key: Any] = [

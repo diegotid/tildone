@@ -83,6 +83,13 @@ public extension TildoneRepository {
                         context.insert(try StoredDomainMapping.storedNoteColor(from: merged))
                     }
                 }
+                if merged.schemaVersion >= 3 {
+                    if let kind = try storedNoteKind(noteID: merged.id, in: context) {
+                        try StoredDomainMapping.update(kind, from: merged)
+                    } else {
+                        context.insert(try StoredDomainMapping.storedNoteKind(from: merged))
+                    }
+                }
             }
         } else {
             merged = remote
@@ -90,6 +97,9 @@ public extension TildoneRepository {
             context.insert(try StoredDomainMapping.storedNote(from: remote))
             if remote.schemaVersion >= 2 {
                 context.insert(try StoredDomainMapping.storedNoteColor(from: remote))
+            }
+            if remote.schemaVersion >= 3 {
+                context.insert(try StoredDomainMapping.storedNoteKind(from: remote))
             }
         }
 
@@ -351,7 +361,7 @@ public extension TildoneRepository {
 private extension TildoneRepository {
     func observeRemoteVersions(in note: Note, metadata: WorkspaceMetadata) throws {
         try observe([
-            note.titleVersion, note.colorVersion, note.lifecycleVersion,
+            note.titleVersion, note.colorVersion, note.kindVersion, note.lifecycleVersion,
             note.lastMeaningfulEditVersion
         ], metadata: metadata)
     }

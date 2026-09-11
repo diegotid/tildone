@@ -31,6 +31,7 @@ struct Note: View {
         )
     }
     var noteColor: NoteColor { note?.color ?? .yellow }
+    var noteKind: NoteKind { note?.kind ?? .checklist }
     var color: NSColor { noteColor.nsColor }
     var noteForeground: Color {
         NoteContentForeground.color(
@@ -123,6 +124,8 @@ struct Note: View {
     }
     @State var keyboardFocusedTaskID: TaskID?
     @State var nativeFocusedTaskID: TaskID?
+    @State var singleTaskDraft = RichText(text: "")
+    @State var singleTaskDraftID: TaskID?
     @FocusState var focusedField: Field?
     @FocusState var focusedTaskID: TaskID?
 
@@ -145,6 +148,8 @@ struct Note: View {
             if let note {
                 if isMinimized {
                     taskListProgress(note)
+                } else if note.kind == .singleTask {
+                    singleTaskNote(note)
                 } else {
                     taskList(note)
                 }

@@ -14,8 +14,15 @@ struct MacNoteSnapshot: Identifiable {
     var createdAt: Date { note.createdAt }
     var title: String? { note.title }
     var color: NoteColor { note.color }
-    var isEmpty: Bool { tasks.isEmpty && title == nil }
-    var progressTasks: [Task] { TaskHierarchy.leafTasks(in: tasks) }
+    var kind: NoteKind { note.kind }
+    var singleTask: Task? { tasks.first }
+    var isEmpty: Bool {
+        if kind == .singleTask { return singleTask?.text.isEmpty != false }
+        return tasks.isEmpty && title == nil
+    }
+    var progressTasks: [Task] {
+        kind == .singleTask ? Array(tasks.prefix(1)) : TaskHierarchy.leafTasks(in: tasks)
+    }
     var isComplete: Bool {
         !progressTasks.isEmpty && progressTasks.allSatisfy(\.isCompleted)
     }

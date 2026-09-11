@@ -70,11 +70,25 @@ public enum TildoneSchemaV5: VersionedSchema {
     }
 }
 
+/// V6 adds the synced note presentation kind as a stable-ID sidecar. Existing
+/// notes have no row and therefore continue to decode as checklists.
+public enum TildoneSchemaV6: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(6, 0, 0)
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredNote.self, StoredNoteColor.self, StoredNoteKind.self, StoredTask.self,
+            StoredTaskIndentation.self, StoredTaskRichText.self, PendingMutation.self,
+            WorkspaceMetadata.self, QuarantinedRecord.self, LegacyMigrationState.self,
+            LegacyIdentityMapping.self
+        ]
+    }
+}
+
 public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
         [
             TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self,
-            TildoneSchemaV4.self, TildoneSchemaV5.self
+            TildoneSchemaV4.self, TildoneSchemaV5.self, TildoneSchemaV6.self
         ]
     }
     public static var stages: [MigrationStage] {
@@ -82,7 +96,8 @@ public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
             .lightweight(fromVersion: TildoneSchemaV1.self, toVersion: TildoneSchemaV2.self),
             .lightweight(fromVersion: TildoneSchemaV2.self, toVersion: TildoneSchemaV3.self),
             .lightweight(fromVersion: TildoneSchemaV3.self, toVersion: TildoneSchemaV4.self),
-            .lightweight(fromVersion: TildoneSchemaV4.self, toVersion: TildoneSchemaV5.self)
+            .lightweight(fromVersion: TildoneSchemaV4.self, toVersion: TildoneSchemaV5.self),
+            .lightweight(fromVersion: TildoneSchemaV5.self, toVersion: TildoneSchemaV6.self)
         ]
     }
 }
@@ -150,6 +165,21 @@ final class StoredNoteColor {
         self.colorRawValue = colorRawValue
         self.colorVersionCounter = colorVersionCounter
         self.colorVersionReplicaID = colorVersionReplicaID
+    }
+}
+
+@Model
+final class StoredNoteKind {
+    var noteStableID: String
+    var kindRawValue: String
+    var versionCounter: Int64
+    var versionReplicaID: String
+
+    init(noteStableID: String, kindRawValue: String, versionCounter: Int64, versionReplicaID: String) {
+        self.noteStableID = noteStableID
+        self.kindRawValue = kindRawValue
+        self.versionCounter = versionCounter
+        self.versionReplicaID = versionReplicaID
     }
 }
 
@@ -373,7 +403,7 @@ final class LegacyMigrationState {
         sourceContentDigest = sourceFingerprint.contentDigest
         sourceFileCount = sourceFingerprint.fileCount
         sourceTotalByteCount = Int64(sourceFingerprint.totalByteCount)
-        destinationSchemaVersion = 5
+        destinationSchemaVersion = 6
         sourceEligibleNoteCount = sourceCounts.eligibleNotes
         sourceEligibleTaskCount = sourceCounts.eligibleTasks
         sourceSystemNoteCount = sourceCounts.excludedSystemNotes

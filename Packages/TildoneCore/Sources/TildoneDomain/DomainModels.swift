@@ -43,8 +43,15 @@ public enum NoteColor: String, Codable, CaseIterable, Hashable, Identifiable, Se
     public var id: Self { self }
 }
 
+public enum NoteKind: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
+    case checklist
+    case singleTask
+
+    public var id: Self { self }
+}
+
 public struct Note: Codable, Hashable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
     public static let oldestSupportedSchemaVersion = 1
 
     public let id: NoteID
@@ -53,6 +60,8 @@ public struct Note: Codable, Hashable, Sendable {
     public private(set) var titleVersion: VersionStamp
     public private(set) var color: NoteColor
     public private(set) var colorVersion: VersionStamp
+    public private(set) var kind: NoteKind
+    public private(set) var kindVersion: VersionStamp
     public private(set) var lifecycle: LifecycleState
     public private(set) var lifecycleVersion: VersionStamp
     /// Display/sort metadata only. This date is not a conflict authority.
@@ -67,6 +76,8 @@ public struct Note: Codable, Hashable, Sendable {
         titleVersion: VersionStamp,
         color: NoteColor = .yellow,
         colorVersion: VersionStamp? = nil,
+        kind: NoteKind = .checklist,
+        kindVersion: VersionStamp? = nil,
         lifecycle: LifecycleState = .active,
         lifecycleVersion: VersionStamp,
         lastMeaningfulEditAt: Date,
@@ -79,6 +90,8 @@ public struct Note: Codable, Hashable, Sendable {
         self.titleVersion = titleVersion
         self.color = color
         self.colorVersion = colorVersion ?? titleVersion
+        self.kind = kind
+        self.kindVersion = kindVersion ?? titleVersion
         self.lifecycle = lifecycle
         self.lifecycleVersion = lifecycleVersion
         self.lastMeaningfulEditAt = lastMeaningfulEditAt
@@ -108,6 +121,12 @@ public struct Note: Codable, Hashable, Sendable {
         colorVersion = version
     }
 
+    public mutating func setKind(_ kind: NoteKind, version: VersionStamp) throws {
+        guard version > kindVersion else { throw DomainMutationError.versionMustAdvance }
+        self.kind = kind
+        kindVersion = version
+    }
+
     public mutating func delete(version: VersionStamp) throws {
         try setLifecycle(.deleted, version: version)
     }
@@ -135,7 +154,7 @@ public struct Note: Codable, Hashable, Sendable {
 
 
     private enum CodingKeys: String, CodingKey {
-        case id, createdAt, title, titleVersion, color, colorVersion, lifecycle,
+        case id, createdAt, title, titleVersion, color, colorVersion, kind, kindVersion, lifecycle,
              lifecycleVersion, lastMeaningfulEditAt, lastMeaningfulEditVersion,
              schemaVersion
     }
@@ -151,6 +170,9 @@ public struct Note: Codable, Hashable, Sendable {
         titleVersion = try values.decode(VersionStamp.self, forKey: .titleVersion)
         color = try values.decodeIfPresent(NoteColor.self, forKey: .color) ?? .yellow
         colorVersion = try values.decodeIfPresent(VersionStamp.self, forKey: .colorVersion)
+            ?? titleVersion
+        kind = try values.decodeIfPresent(NoteKind.self, forKey: .kind) ?? .checklist
+        kindVersion = try values.decodeIfPresent(VersionStamp.self, forKey: .kindVersion)
             ?? titleVersion
         lifecycle = try values.decode(LifecycleState.self, forKey: .lifecycle)
         lifecycleVersion = try values.decode(VersionStamp.self, forKey: .lifecycleVersion)
@@ -170,6 +192,8 @@ public struct Note: Codable, Hashable, Sendable {
         try values.encode(titleVersion, forKey: .titleVersion)
         try values.encode(color, forKey: .color)
         try values.encode(colorVersion, forKey: .colorVersion)
+        try values.encode(kind, forKey: .kind)
+        try values.encode(kindVersion, forKey: .kindVersion)
         try values.encode(lifecycle, forKey: .lifecycle)
         try values.encode(lifecycleVersion, forKey: .lifecycleVersion)
         try values.encode(lastMeaningfulEditAt, forKey: .lastMeaningfulEditAt)

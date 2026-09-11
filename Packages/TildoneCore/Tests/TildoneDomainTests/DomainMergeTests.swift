@@ -9,6 +9,26 @@ import XCTest
 @testable import TildoneDomain
 
 final class DomainMergeTests: XCTestCase {
+    func testExplicitSingleTaskKindWinsOverLegacyImplicitChecklist() throws {
+        let base = Fixtures.note()
+        var singleTask = base
+        try singleTask.setKind(.singleTask, version: Fixtures.stamp(2))
+        let legacy = Note(
+            id: base.id,
+            createdAt: base.createdAt,
+            title: base.title,
+            titleVersion: Fixtures.stamp(9),
+            lifecycle: base.lifecycle,
+            lifecycleVersion: base.lifecycleVersion,
+            lastMeaningfulEditAt: base.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: base.lastMeaningfulEditVersion,
+            schemaVersion: 2
+        )
+
+        XCTAssertEqual(try singleTask.merged(with: legacy).kind, .singleTask)
+        XCTAssertEqual(try legacy.merged(with: singleTask).kind, .singleTask)
+    }
+
     func testTaskPropertiesMergeIndependently() throws {
         let base = try Fixtures.task()
         var textEdit = base

@@ -8,7 +8,11 @@ import Foundation
 import TildoneDomain
 
 enum StoredDomainMapping {
-    static func note(from stored: StoredNote, color storedColor: StoredNoteColor? = nil) throws -> Note {
+    static func note(
+        from stored: StoredNote,
+        color storedColor: StoredNoteColor? = nil,
+        kind storedKind: StoredNoteKind? = nil
+    ) throws -> Note {
         guard let id = NoteID(string: stored.stableID), stored.stableID == id.stringValue else {
             throw malformed(.note, "invalid", "stableID")
         }
@@ -50,6 +54,31 @@ enum StoredDomainMapping {
                 field: "titleVersion"
             )
         }
+        let kind: NoteKind
+        let kindVersion: VersionStamp
+        if let storedKind {
+            guard storedKind.noteStableID == id.stringValue,
+                  let mappedKind = NoteKind(rawValue: storedKind.kindRawValue) else {
+                throw malformed(.note, id.stringValue, "kind")
+            }
+            kind = mappedKind
+            kindVersion = try stamp(
+                counter: storedKind.versionCounter,
+                replica: storedKind.versionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "kindVersion"
+            )
+        } else {
+            kind = .checklist
+            kindVersion = try stamp(
+                counter: stored.titleVersionCounter,
+                replica: stored.titleVersionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "titleVersion"
+            )
+        }
         return Note(
             id: id,
             createdAt: stored.createdAt,
@@ -63,6 +92,8 @@ enum StoredDomainMapping {
             ),
             color: color,
             colorVersion: colorVersion,
+            kind: kind,
+            kindVersion: kindVersion,
             lifecycle: lifecycle,
             lifecycleVersion: try stamp(
                 counter: stored.lifecycleVersionCounter,
@@ -241,6 +272,16 @@ enum StoredDomainMapping {
         )
     }
 
+    static func storedNoteKind(from note: Note) throws -> StoredNoteKind {
+        let version = try parts(note.kindVersion)
+        return StoredNoteKind(
+            noteStableID: note.id.stringValue,
+            kindRawValue: note.kind.rawValue,
+            versionCounter: version.counter,
+            versionReplicaID: version.replica
+        )
+    }
+
     static func update(_ stored: StoredNote, from note: Note) throws {
         let title = try parts(note.titleVersion)
         let lifecycle = try parts(note.lifecycleVersion)
@@ -265,6 +306,16 @@ enum StoredDomainMapping {
         stored.colorRawValue = note.color.rawValue
         stored.colorVersionCounter = color.counter
         stored.colorVersionReplicaID = color.replica
+    }
+
+    static func update(_ stored: StoredNoteKind, from note: Note) throws {
+        guard stored.noteStableID == note.id.stringValue else {
+            throw malformed(.note, note.id.stringValue, "kindOwnership")
+        }
+        let version = try parts(note.kindVersion)
+        stored.kindRawValue = note.kind.rawValue
+        stored.versionCounter = version.counter
+        stored.versionReplicaID = version.replica
     }
 
     static func storedTask(from task: Task) throws -> StoredTask {

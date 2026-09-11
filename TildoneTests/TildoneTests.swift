@@ -499,7 +499,10 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(hostingView.sizingOptions.isEmpty)
         let titlebarAccessory = MacNoteTitlebarAccessoryController(
             colorPicker: NSView(),
-            syncIndicatorState: .hidden
+            syncIndicatorState: .hidden,
+            store: store,
+            presentation: presentation,
+            noteID: snapshot.id
         )
         window.addTitlebarAccessoryViewController(titlebarAccessory)
         window.title = snapshot.id.stringValue
@@ -1197,15 +1200,52 @@ final class TildoneTests: XCTestCase {
 
     @MainActor
     func testMacNoteSyncIndicatorDistinguishesLocalChoiceAndAttention() {
-        XCTAssertEqual(MacNoteTitlebarLayout.accessoryWidth, 54)
-        XCTAssertEqual(MacNoteTitlebarLayout.titleTrailingInset, 60)
+        let checklistWidth = MacNoteTitlebarLayout.accessoryWidth(
+            showsSingleTaskCheckbox: false
+        )
+        let singleTaskWidth = MacNoteTitlebarLayout.accessoryWidth(
+            showsSingleTaskCheckbox: true
+        )
+        XCTAssertEqual(
+            singleTaskWidth - checklistWidth,
+            MacNoteTitlebarLayout.singleTaskCheckboxWidth + MacNoteTitlebarLayout.controlSpacing
+        )
+        XCTAssertEqual(
+            MacNoteTitlebarLayout.titleTrailingInset(showsSingleTaskCheckbox: false),
+            checklistWidth + MacNoteTitlebarLayout.titleControlSpacing
+        )
         XCTAssertGreaterThan(
-            MacNoteTitlebarLayout.titleTrailingInset,
+            MacNoteTitlebarLayout.titleTrailingInset(showsSingleTaskCheckbox: true),
             MacNoteTitlebarLayout.trailingMargin
                 + MacNoteTitlebarLayout.colorPickerWidth
                 + MacNoteTitlebarLayout.controlSpacing
                 + MacNoteTitlebarLayout.syncIndicatorWidth
         )
+        let bounds = NSRect(
+            x: 0,
+            y: 0,
+            width: singleTaskWidth,
+            height: MacNoteTitlebarLayout.controlHeight
+        )
+        let checklistPicker = MacNoteTitlebarLayout.colorPickerFrame(
+            in: bounds,
+            showsSingleTaskCheckbox: false
+        )
+        let singleTaskPicker = MacNoteTitlebarLayout.colorPickerFrame(
+            in: bounds,
+            showsSingleTaskCheckbox: true
+        )
+        let checkbox = MacNoteTitlebarLayout.singleTaskCheckboxFrame(
+            alignedWith: singleTaskPicker
+        )
+        XCTAssertEqual(checklistPicker.maxX, bounds.maxX - MacNoteTitlebarLayout.trailingMargin)
+        XCTAssertEqual(checkbox.maxX, bounds.maxX - MacNoteTitlebarLayout.trailingMargin)
+        XCTAssertEqual(
+            MacNoteTitlebarLayout.kindControlFrame(alignedWith: singleTaskPicker).minY,
+            MacNoteTitlebarLayout.formatControlFrame(alignedWith: singleTaskPicker).minY
+        )
+        XCTAssertGreaterThanOrEqual(checkbox.minY, bounds.minY - 1)
+        XCTAssertLessThanOrEqual(checkbox.maxY, bounds.maxY)
         XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
             isUsingNotesOnMacByChoice: false,
             syncNeedsAttention: false
@@ -1262,11 +1302,18 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
-    func testMacNoteControlsUseSupportedTitlebarAccessoryHierarchy() throws {
+    func testMacNoteControlsUseSupportedTitlebarAccessoryHierarchy() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let snapshot = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let presentation = try XCTUnwrap(store.presentation(for: snapshot.id))
         let picker = NSView()
         let accessory = MacNoteTitlebarAccessoryController(
             colorPicker: picker,
-            syncIndicatorState: .hidden
+            syncIndicatorState: .hidden,
+            store: store,
+            presentation: presentation,
+            noteID: snapshot.id
         )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
@@ -1745,7 +1792,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(desktopSource.contains("themeFrame.addSubview"))
         XCTAssertTrue(desktopSource.contains(".onChange(of: noteSyncIndicatorState)"))
         XCTAssertTrue(desktopSource.contains("setNoteSyncIndicatorState(state)"))
-        XCTAssertTrue(noteSource.contains(".padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)"))
+        XCTAssertTrue(noteSource.contains("MacNoteTitlebarLayout.titleTrailingInset("))
         XCTAssertTrue(storeSource.contains("revalidateAccount(workspaceID:"))
         XCTAssertTrue(storeSource.contains("didJustChooseNotesOnMac = true"))
         XCTAssertTrue(storeSource.contains("func dismissNotesOnMacNotice()"))

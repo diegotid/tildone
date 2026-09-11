@@ -8,6 +8,107 @@ import SwiftUI
 import TildoneDomain
 
 extension Note {
+    func singleTaskNote(_ note: MacNoteSnapshot) -> some View {
+        ZStack {
+            GeometryReader { geometry in
+                if let task = note.singleTask {
+                    let liveRichText = singleTaskDraftID == task.id
+                        ? singleTaskDraft
+                        : task.richText
+                    let size = singleTaskFontSize(
+                        text: liveRichText.text,
+                        availableSize: CGSize(
+                            width: max(1, geometry.size.width - 12),
+                            height: max(1, geometry.size.height - 8)
+                        )
+                    )
+                    MouseSafeTaskTextField(
+                        richText: Binding(
+                            get: { liveRichText },
+                            set: { value in
+                                let value = value.capitalizingFirstLetter()
+                                singleTaskDraftID = task.id
+                                singleTaskDraft = value
+                                handleTaskEdit(task, to: value)
+                            }
+                        ),
+                        taskID: task.id,
+                        isFocused: activeFocusedTaskID == task.id,
+                        placesCaretAtStartOnFocus: false,
+                        fontSize: size,
+                        textColor: noteForeground,
+                        cursorColor: noteForeground,
+                        truncation: .multiple,
+                        fontName: "BradleyHandITCTT-Bold",
+                        alignment: .center,
+                        verticallyCentersContent: true,
+                        onFocus: { activateNativeTask(task.id) },
+                        onBlur: { handleNativeTaskBlur(task.id) },
+                        onEnter: { _ in },
+                        onMoveUp: {},
+                        onMoveDown: {}
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .strikethrough(task.isCompleted, color: .accentColor)
+                    .opacity(task.isCompleted ? 0.6 : 1)
+                    .onAppear {
+                        singleTaskDraftID = task.id
+                        singleTaskDraft = task.richText
+                    }
+                    .onChange(of: task.richText) { _, value in
+                        guard activeFocusedTaskID != task.id else { return }
+                        singleTaskDraftID = task.id
+                        singleTaskDraft = value
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 22)
+            .blur(radius: isContentBlurred ? 3 : 0)
+            if isDone { doneOverlay() }
+        }
+        .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
+               minHeight: Layout.minNoteHeight, idealHeight: Layout.defaultNoteHeight, maxHeight: .infinity)
+        .background(WindowAccessor(note: self, window: $noteWindow))
+        .onAppear {
+            handleKeyboard()
+            if let task = note.singleTask { focusTaskUsingKeyboard(task.id) }
+        }
+        .onDisappear { stopHandlingKeyboard() }
+        .onChange(of: note.isDeletable) { _, _ in updateWindowClosability() }
+        .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
+        .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+            if let (blur, normal) = notification.object as? (Bool, Bool) {
+                noteWindow?.level = normal ? .normal : .floating
+                isTextBlurred = blur
+            }
+        }
+        .disabled(isContentBlurred)
+        .onHover { isPointerHovering = $0 }
+    }
+
+    private func singleTaskFontSize(text: String, availableSize: CGSize) -> CGFloat {
+        guard !text.isEmpty else { return min(72, availableSize.height * 0.4) }
+        var low: CGFloat = 18
+        var high: CGFloat = 128
+        for _ in 0..<8 {
+            let candidate = (low + high) / 2
+            let font = NSFont(name: "BradleyHandITCTT-Bold", size: candidate)
+                ?? .systemFont(ofSize: candidate)
+            let bounds = (text as NSString).boundingRect(
+                with: NSSize(width: availableSize.width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font]
+            )
+            // TextKit's field editor adds line-fragment and insertion-point
+            // slack beyond NSString's glyph bounds. Reserve part of a line so
+            // the next wrapped word can never peek outside the fitted block.
+            let safeHeight = ceil(bounds.height) + candidate * 0.45
+            if safeHeight <= availableSize.height { low = candidate } else { high = candidate }
+        }
+        return low
+    }
+
     func taskList(_ note: MacNoteSnapshot) -> some View {
         ZStack {
             Group {
@@ -124,19 +225,31 @@ extension Note {
         let foreground = minimizedForeground
         let compactSize = CompactNoteScale.contentSize(for: CGFloat(compactNoteScale))
         return ZStack(alignment: .topLeading) {
-            CompactNotePresentation(
-                pending: pending,
-                total: total,
-                title: note.title,
-                foreground: foreground,
-                summaryOpacity: isHoveringMinimizedTaskList ? 0 : 1,
-                titleWidth: Layout.minimizedNoteWidth
-                    - 10
-                    - MacNoteTitlebarLayout.minimizedRestoreWidth
-            )
-            minimizedTaskPreview(note, foreground: foreground)
-                .opacity(isHoveringMinimizedTaskList ? 1 : 0)
-                .allowsHitTesting(false)
+            if note.kind == .singleTask {
+                Text(note.singleTask?.text ?? "")
+                    .font(.custom("BradleyHandITCTT-Bold", size: 16))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.65)
+                    .strikethrough(note.singleTask?.isCompleted == true)
+                    .foregroundStyle(foreground)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .padding(8)
+            } else {
+                CompactNotePresentation(
+                    pending: pending,
+                    total: total,
+                    title: note.title,
+                    foreground: foreground,
+                    summaryOpacity: isHoveringMinimizedTaskList ? 0 : 1,
+                    titleWidth: Layout.minimizedNoteWidth
+                        - 10
+                        - MacNoteTitlebarLayout.minimizedRestoreWidth
+                )
+                minimizedTaskPreview(note, foreground: foreground)
+                    .opacity(isHoveringMinimizedTaskList ? 1 : 0)
+                    .allowsHitTesting(false)
+            }
 
             Image("MaximizeIcon")
                 .renderingMode(.template)
@@ -243,7 +356,9 @@ extension Note {
                         Spacer(minLength: 0)
                     }
                     .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
-                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
+                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset(
+                        showsSingleTaskCheckbox: noteKind == .singleTask
+                    ))
                     .offset(y: -1.5)
                 }
             }
@@ -297,6 +412,7 @@ extension Note {
             rowIndex: index,
             fontSize: fontSize,
             isDark: isDark,
+            noteBackgroundColor: Color(nsColor: noteColor.nsColor),
             contentColor: noteForeground,
             cursorColor: noteForeground,
             placeholderColor: minimizedForeground,

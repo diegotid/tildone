@@ -12,6 +12,11 @@ final class MouseSafeTaskNSTextField: NSTextField {
     var cursorColor = NSColor.textColor
     var onEditorFocus: (() -> Void)?
     var hasPendingFocusRequest = false
+    var wrapsContent = false
+    var verticallyCentersContent = false
+    private var pendingFocusAttempts = 0
+    private var isVerifyingFocus = false
+    private var lastLayoutWidth: CGFloat = 0
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -19,17 +24,61 @@ final class MouseSafeTaskNSTextField: NSTextField {
     }
 
     func applyPendingFocusRequest() {
-        guard hasPendingFocusRequest, let window else { return }
-        hasPendingFocusRequest = false
-        window.makeFirstResponder(self)
+        guard hasPendingFocusRequest, !isVerifyingFocus, let window else { return }
+        if window.makeFirstResponder(self) {
+            isVerifyingFocus = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak window] in
+                guard let self else { return }
+                self.isVerifyingFocus = false
+                if let window,
+                   window.firstResponder === self.currentEditor() {
+                    self.hasPendingFocusRequest = false
+                    self.pendingFocusAttempts = 0
+                } else {
+                    self.retryPendingFocusRequest()
+                }
+            }
+        } else if pendingFocusAttempts < 8 {
+            retryPendingFocusRequest()
+        } else {
+            hasPendingFocusRequest = false
+            pendingFocusAttempts = 0
+        }
+    }
+
+    private func retryPendingFocusRequest() {
+        guard pendingFocusAttempts < 8 else {
+            hasPendingFocusRequest = false
+            pendingFocusAttempts = 0
+            return
+        }
+        pendingFocusAttempts += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.applyPendingFocusRequest()
+        }
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: NSView.noIntrinsicMetric, height: super.intrinsicContentSize.height)
+        if wrapsContent, bounds.width > 0 {
+            let height = attributedStringValue.boundingRect(
+                with: NSSize(width: bounds.width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
+            ).height
+            return NSSize(width: NSView.noIntrinsicMetric, height: ceil(height))
+        }
+        return NSSize(width: NSView.noIntrinsicMetric, height: super.intrinsicContentSize.height)
     }
 
     override func layout() {
         super.layout()
+        if wrapsContent, abs(bounds.width - lastLayoutWidth) > 0.5 {
+            lastLayoutWidth = bounds.width
+            invalidateIntrinsicContentSize()
+        }
+        if let editor = currentEditor() as? MouseSafeTaskFieldEditor {
+            editor.verticallyCentersContent = verticallyCentersContent
+            editor.refreshTextGeometry()
+        }
         updateTruncationTooltip()
     }
 

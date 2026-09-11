@@ -131,6 +131,13 @@ extension Note {
         }
     }
 
+    func handleNoteKindChange(_ kind: NoteKind) {
+        guard noteKind != kind else { return }
+        focusedField = nil
+        focusedTaskID = nil
+        mutate({ try await store.setKind(kind, for: noteID) }, message: "Error changing note type")
+    }
+
     func handleNewTaskTab(outdent: Bool) {
         adjustNewTaskDraftIndent(outdent: outdent)
         guard !newTaskText.isEmpty else { return }
@@ -247,8 +254,12 @@ extension Note {
 
     func handleKeyboard() {
         guard keyboardMonitor == nil else { return }
+        var awaitsSecondEmptyNoteReturn = false
         keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.window == noteWindow else { return event }
+            if event.keyCode != Keyboard.returnKey {
+                awaitsSecondEmptyNoteReturn = false
+            }
             if (event.keyCode == Keyboard.arrowUp || event.keyCode == Keyboard.arrowDown),
                isEditingNativeTaskField() {
                 return event
@@ -274,6 +285,21 @@ extension Note {
                     } else {
                         handleTaskIndent(taskID, outdent: outdent)
                     }
+                    return nil
+                }
+            }
+            if event.keyCode == Keyboard.returnKey,
+               note?.title == nil,
+               tasks.isEmpty,
+               newTaskText.isEmpty {
+                if awaitsSecondEmptyNoteReturn || focusedField == .newTask {
+                    awaitsSecondEmptyNoteReturn = false
+                    handleNoteKindChange(.singleTask)
+                    return nil
+                }
+                if focusedField == .topic {
+                    awaitsSecondEmptyNoteReturn = true
+                    focusOnNewTask()
                     return nil
                 }
             }

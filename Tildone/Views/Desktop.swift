@@ -1073,7 +1073,10 @@ private extension Desktop {
         )
         let accessory = MacNoteTitlebarAccessoryController(
             colorPicker: picker,
-            syncIndicatorState: noteSyncIndicatorState
+            syncIndicatorState: noteSyncIndicatorState,
+            store: store,
+            presentation: presentation,
+            noteID: noteID
         )
         window.addTitlebarAccessoryViewController(accessory)
     }
@@ -1400,7 +1403,7 @@ private struct ClickThroughHint: View {
         .font(.caption)
         .foregroundStyle(.primary)
         .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
-        .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
+        .padding(.trailing, MacNoteTitlebarLayout.maximumTitleTrailingInset)
         .offset(y: -1)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .allowsHitTesting(false)

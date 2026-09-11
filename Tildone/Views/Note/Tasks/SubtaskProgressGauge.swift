@@ -9,6 +9,7 @@ import TildoneDomain
 struct SubtaskProgressGauge: View {
     let progress: TaskSubtaskProgress
     let size: CGFloat
+    let noteBackgroundColor: Color
 
     var body: some View {
         ZStack {
@@ -22,7 +23,7 @@ struct SubtaskProgressGauge: View {
             } else {
                 Circle()
                     .stroke(Color(.progressGuageOffFill), lineWidth: max(2, size * 0.2))
-                    .shadow(radius: 0.75)
+                    .shadow(color: noteBackgroundColor, radius: 0.75)
                 Circle()
                     .trim(from: 0, to: progress.fraction)
                     .stroke(

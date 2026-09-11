@@ -26,6 +26,10 @@ public extension Note {
             (color, colorVersion, schemaVersion),
             (other.color, other.colorVersion, other.schemaVersion)
         )
+        let winningKind = try mergeKindVersioned(
+            (kind, kindVersion, schemaVersion),
+            (other.kind, other.kindVersion, other.schemaVersion)
+        )
         let winningLifecycle = try mergeVersioned(
             (lifecycle, lifecycleVersion),
             (other.lifecycle, other.lifecycleVersion)
@@ -42,6 +46,8 @@ public extension Note {
             titleVersion: winningTitle.version,
             color: winningColor.value,
             colorVersion: winningColor.version,
+            kind: winningKind.value,
+            kindVersion: winningKind.version,
             lifecycle: winningLifecycle.value,
             lifecycleVersion: winningLifecycle.version,
             lastMeaningfulEditAt: winningMeaningfulEdit.value,
@@ -49,6 +55,21 @@ public extension Note {
             schemaVersion: max(schemaVersion, other.schemaVersion)
         )
     }
+}
+
+private func mergeKindVersioned(
+    _ lhs: (value: NoteKind, version: VersionStamp, schemaVersion: Int),
+    _ rhs: (value: NoteKind, version: VersionStamp, schemaVersion: Int)
+) throws -> (value: NoteKind, version: VersionStamp) {
+    let lhsIsExplicit = lhs.schemaVersion >= 3
+    let rhsIsExplicit = rhs.schemaVersion >= 3
+    if lhsIsExplicit != rhsIsExplicit {
+        return lhsIsExplicit ? (lhs.value, lhs.version) : (rhs.value, rhs.version)
+    }
+    return try mergeVersioned(
+        (lhs.value, lhs.version),
+        (rhs.value, rhs.version)
+    )
 }
 
 /// Color backfill is the only field whose conflict order carries migration

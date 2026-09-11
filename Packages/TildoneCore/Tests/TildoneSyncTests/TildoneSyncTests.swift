@@ -250,7 +250,7 @@ final class TildoneSyncTests: XCTestCase {
         )
         XCTAssertEqual(
             Set(contracts.keys),
-            Set(["TDNote-1", "TDNote-2", "TDTask-1", "TDTask-2", "TDTask-3", "TDClient-1"])
+            Set(["TDNote-1", "TDNote-2", "TDNote-3", "TDTask-1", "TDTask-2", "TDTask-3", "TDClient-1"])
         )
 
         let v1Note = Note(
@@ -275,6 +275,15 @@ final class TildoneSyncTests: XCTestCase {
             lifecycleVersion: fixture.task.lifecycleVersion,
             schemaVersion: 1
         )
+        let v2Note = Note(
+            id: fixture.note.id, createdAt: fixture.note.createdAt,
+            title: fixture.note.title, titleVersion: fixture.note.titleVersion,
+            color: fixture.note.color, colorVersion: fixture.note.colorVersion,
+            lifecycle: fixture.note.lifecycle, lifecycleVersion: fixture.note.lifecycleVersion,
+            lastMeaningfulEditAt: fixture.note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: fixture.note.lastMeaningfulEditVersion,
+            schemaVersion: 2
+        )
         let v2Task = TildoneDomain.Task(
             id: fixture.task.id,
             noteID: fixture.task.noteID,
@@ -293,7 +302,8 @@ final class TildoneSyncTests: XCTestCase {
         )
         let records: [(String, CKRecord)] = [
             ("TDNote-1", mapper.record(from: .note(v1Note))),
-            ("TDNote-2", mapper.record(from: .note(fixture.note))),
+            ("TDNote-2", mapper.record(from: .note(v2Note))),
+            ("TDNote-3", mapper.record(from: .note(fixture.note))),
             ("TDTask-1", mapper.record(from: .task(v1Task))),
             ("TDTask-2", mapper.record(from: .task(v2Task))),
             ("TDTask-3", mapper.record(from: .task(fixture.task))),
@@ -305,7 +315,7 @@ final class TildoneSyncTests: XCTestCase {
         }
 
         let contentManifestFields = Set(
-            try XCTUnwrap(contracts["TDNote-2"]).fields.map(\.name) +
+            try XCTUnwrap(contracts["TDNote-3"]).fields.map(\.name) +
             (try XCTUnwrap(contracts["TDTask-3"])).fields.map(\.name)
         )
         XCTAssertEqual(contentManifestFields, Set(CloudKitRecordMapper.Field.all))
@@ -317,6 +327,7 @@ final class TildoneSyncTests: XCTestCase {
         }
         XCTAssertEqual(optionalByRecord["TDNote-1"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDNote-2"], Set(["title"]))
+        XCTAssertEqual(optionalByRecord["TDNote-3"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDTask-1"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDTask-2"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDTask-3"], Set(["completedAt"]))
@@ -407,7 +418,7 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(task.indentVersion, task.orderVersion)
     }
 
-    func testLateV1CloudNoteIsBackfilledAndQueuedAsCurrentSchema() async throws {
+    func testLateV1CloudNoteColorIsBackfilledAndQueuedAsV2() async throws {
         let replica = try Replica(id: 90)
         let mapper = CloudKitRecordMapper()
         let fixture = Fixture()
@@ -428,7 +439,7 @@ final class TildoneSyncTests: XCTestCase {
         )
 
         let migrated = try await replica.repository.note(id: fixture.note.id)
-        XCTAssertEqual(migrated.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertEqual(migrated.schemaVersion, 2)
         XCTAssertEqual(migrated.color, .purple)
         let pendingAfterMigration = try await replica.pipeline.pendingCount()
         XCTAssertEqual(pendingAfterMigration, 1)
@@ -439,7 +450,7 @@ final class TildoneSyncTests: XCTestCase {
         guard case let .note(note)? = outbound?.record else {
             return XCTFail("Expected a queued note mutation")
         }
-        XCTAssertEqual(note.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertEqual(note.schemaVersion, 2)
         XCTAssertEqual(note.color, .purple)
     }
 

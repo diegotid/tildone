@@ -7,6 +7,7 @@ import AppKit
 
 final class MouseSafeTaskFieldEditor: NSTextView {
     var onBecomeFirstResponder: (() -> Void)?
+    var verticallyCentersContent = false
     private weak var observedClipView: NSClipView?
     private var clipViewObservers: [NSObjectProtocol] = []
     private var isRestoringTextGeometry = false
@@ -79,6 +80,10 @@ final class MouseSafeTaskFieldEditor: NSTextView {
         super.insertionPointColor = enforcedInsertionPointColor
     }
 
+    func refreshTextGeometry() {
+        restoreFirstCharacterPosition()
+    }
+
     private func observeClipViewBounds() {
         clipViewObservers.forEach(NotificationCenter.default.removeObserver)
         clipViewObservers.removeAll()
@@ -106,21 +111,42 @@ final class MouseSafeTaskFieldEditor: NSTextView {
               let clipView = observedClipView ?? superview as? NSClipView else { return }
         let textWidth = (textStorage?.size().width ?? 0)
             + 2 * (textContainer?.lineFragmentPadding ?? 0)
+        let textHeight: CGFloat
+        if let textContainer, let layoutManager {
+            layoutManager.ensureLayout(for: textContainer)
+            textHeight = layoutManager.usedRect(for: textContainer).height
+        } else {
+            textHeight = textStorage?.size().height ?? 0
+        }
         let isOverflowing = textWidth > clipView.bounds.width + 0.5
+        let isVerticallyOverflowing = textHeight > clipView.bounds.height + 0.5
         let desiredInsetX = isOverflowing ? Self.overflowLeadingCompensation : 0
         let insetNeedsUpdate = abs(textContainerInset.width - desiredInsetX) > 0.001
         let restingOriginX = clipView.frame.minX
         let shouldAnchorLeadingEdge = !isOverflowing || clipView.bounds.origin.x <= 0.001
         let originNeedsUpdate = shouldAnchorLeadingEdge
             && abs(clipView.bounds.origin.x - restingOriginX) > 0.001
-        guard insetNeedsUpdate || originNeedsUpdate else { return }
+        let verticalOriginNeedsUpdate = !isVerticallyOverflowing
+            && abs(clipView.bounds.origin.y) > 0.001
+        let desiredInsetY = verticallyCentersContent
+            ? max(0, (clipView.bounds.height - textHeight) / 2)
+            : textContainerInset.height
+        let verticalInsetNeedsUpdate = abs(textContainerInset.height - desiredInsetY) > 0.5
+        guard insetNeedsUpdate || originNeedsUpdate || verticalOriginNeedsUpdate
+                || verticalInsetNeedsUpdate else { return }
 
         isRestoringTextGeometry = true
         if insetNeedsUpdate {
             textContainerInset = NSSize(width: desiredInsetX, height: textContainerInset.height)
         }
+        if verticalInsetNeedsUpdate {
+            textContainerInset = NSSize(width: textContainerInset.width, height: desiredInsetY)
+        }
         if originNeedsUpdate {
             clipView.setBoundsOrigin(NSPoint(x: restingOriginX, y: clipView.bounds.origin.y))
+        }
+        if verticalOriginNeedsUpdate {
+            clipView.setBoundsOrigin(NSPoint(x: clipView.bounds.origin.x, y: 0))
         }
         isRestoringTextGeometry = false
     }

@@ -19,6 +19,19 @@ struct NoteListRow: View {
     }
 
     var body: some View {
+        Group {
+            if note.kind == .singleTask {
+                singleTaskRow
+            } else {
+                checklistRow
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(note.kind == .singleTask ? (taskListText ?? String(localized: "New task")) : title)
+        .accessibilityValue(accessibilityDescription)
+    }
+
+    private var checklistRow: some View {
         HStack(spacing: 16) {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(note.color.swiftUIColor)
@@ -44,9 +57,27 @@ struct NoteListRow: View {
             }
         }
         .padding(.leading, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-        .accessibilityValue(accessibilityDescription)
+    }
+
+    private var singleTaskRow: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(note.color.swiftUIColor)
+            Text(taskListText?.isEmpty == false ? taskListText! : String(localized: "New task"))
+                .font(.custom("BradleyHandITCTT-Bold", size: 25))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.65)
+                .strikethrough(summary?.isComplete == true)
+                .opacity(summary?.isComplete == true ? 0.6 : 1)
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .padding(.horizontal, 42)
+            Image(systemName: summary?.isComplete == true ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(.black.opacity(0.7))
+                .padding(10)
+        }
+        .frame(minHeight: 72)
     }
 
     private var accessibilityDescription: String {
