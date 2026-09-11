@@ -418,7 +418,7 @@ extension Note {
             placeholderColor: minimizedForeground,
             truncation: taskLineTruncation,
             isFirst: task.id == tasks.first?.id,
-            followsDeeperTask: index > 0 && task.indentLevel < tasks[index - 1].indentLevel,
+            followsDeeperTask: followsVisibleDeeperTask(at: index),
             isShowingRowControls: hoveredTaskID == task.id,
             hasSubtasks: TaskHierarchy.hasSubtasks(at: index, in: tasks),
             isSubtasksCollapsed: collapsedTaskIDs.contains(task.id),
@@ -463,6 +463,23 @@ extension Note {
                 }
             }
         )
+    }
+
+    /// Only an expanded top-level parent creates the extra separation after
+    /// its visible children. Collapsed and nested parents retain regular line
+    /// spacing before the next visible sibling.
+    func followsVisibleDeeperTask(at index: Int) -> Bool {
+        guard index > 0, tasks[index].indentLevel < tasks[index - 1].indentLevel else {
+            return false
+        }
+
+        for previousIndex in stride(from: index - 1, through: 0, by: -1) {
+            let previousTask = tasks[previousIndex]
+            guard previousTask.indentLevel <= tasks[index].indentLevel else { continue }
+            return previousTask.indentLevel == 0 && !collapsedTaskIDs.contains(previousTask.id)
+        }
+
+        return true
     }
 
     func taskDropTarget(at destination: Int) -> TaskReorderDropTarget {
