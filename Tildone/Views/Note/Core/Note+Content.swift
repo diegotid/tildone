@@ -154,9 +154,7 @@ extension Note {
                             keyboardFocusedTaskID = nil
                         }
                         guard let taskID else { return }
-                        withAnimation {
-                            scroll.scrollTo(taskID, anchor: .center)
-                        }
+                        scrollToTaskAfterLayout(taskID, using: scroll)
                     }
                     .modifier(ScrollFrame())
                     .onChange(of: tasks.count) { _, _ in
@@ -164,7 +162,7 @@ extension Note {
                             skipsNextTaskCountBottomScroll = false
                             return
                         }
-                        withAnimation { scroll.scrollTo(Id.bottomAnchor, anchor: .bottom) }
+                        scrollToBottomAfterLayout(using: scroll)
                     }
                 }
                 if isTopScrolledOut { scrollingHeader() }
@@ -480,6 +478,26 @@ extension Note {
         }
 
         return true
+    }
+
+    /// A task inserted from an active field is published before SwiftUI has
+    /// laid out its new row. Scrolling on the next run-loop turn makes the
+    /// scroll view use that row's real frame, keeping the caret inside the
+    /// note rather than below its bottom edge.
+    func scrollToTaskAfterLayout(_ taskID: TaskID, using scroll: ScrollViewProxy) {
+        DispatchQueue.main.async {
+            withAnimation {
+                scroll.scrollTo(taskID, anchor: .center)
+            }
+        }
+    }
+
+    func scrollToBottomAfterLayout(using scroll: ScrollViewProxy) {
+        DispatchQueue.main.async {
+            withAnimation {
+                scroll.scrollTo(Id.bottomAnchor, anchor: .bottom)
+            }
+        }
     }
 
     func taskDropTarget(at destination: Int) -> TaskReorderDropTarget {
