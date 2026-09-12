@@ -12,9 +12,11 @@ The SQLite file SHA-256 is
 Tests copy the fixture to a temporary location before opening it; the checked-in
 artifact is never modified in place.
 
-This fixture proves V1 shared-store compatibility through
-`TildoneSchemaMigrationPlan`. It is distinct from the released Tildone 1.6.0
-legacy-store fixture, whose provenance is recorded in the Stage 5 summary.
+This fixture proves V1 shared-store compatibility through the current
+`TildoneSchemaMigrationPlan`, including the additive V7 font sidecar. Its note
+has no font row and therefore decodes as Overlock. It is distinct from the
+released Tildone 1.6.0 legacy-store fixture, whose provenance is recorded in
+the Stage 5 summary.
 
 `TildoneSharedStoreV2` is a real `TildoneSchemaV2` account workspace generated
 on 2026-08-07 with the opt-in fixture helper in
@@ -23,8 +25,9 @@ It contains two V1-compatible stored notes (active and tombstoned), one task,
 activated legacy-migration/fingerprint/mapping evidence, account workspace
 metadata at shared schema 2, a serialized sync envelope with zone-created
 state, active/attempted/superseded outbox evidence, and a content-free
-quarantine row. By construction it has no `StoredNoteColor` model/table or V3
-sidecars. The test copies it before opening through the V2-to-V3 migration,
+quarantine row. By construction it has no `StoredNoteColor` model/table or any
+later sidecars. Its notes therefore decode as Overlock after the V2-to-V7
+migration. The test copies it before opening,
 injects an atomic-save interruption, retries, and reopens it offline.
 
 The V2 SQLite file SHA-256 is

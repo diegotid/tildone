@@ -18,7 +18,7 @@ struct TildoneApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
-        SingleMemoTypography.registerBundledFont()
+        SingleMemoTypography.registerBundledFonts()
     }
 
     var isCloseCommandDisabled: Bool {
@@ -231,6 +231,14 @@ struct TildoneApp: App {
         }
         Window("About Tildone.window", id: Id.aboutWindow) {
             About()
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
+        Window("Font Attributions", id: Id.fontAttributionsWindow) {
+            NavigationStack {
+                FontAttributionsView()
+            }
+            .frame(width: 520, height: 520)
         }
         .windowResizability(.contentSize)
         .commandsRemoved()

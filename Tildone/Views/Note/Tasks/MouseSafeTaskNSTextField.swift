@@ -13,7 +13,13 @@ final class MouseSafeTaskNSTextField: NSTextField {
     var onEditorFocus: (() -> Void)?
     var hasPendingFocusRequest = false
     var wrapsContent = false
-    var verticallyCentersContent = false
+    var verticallyCentersContent = false {
+        didSet {
+            if oldValue != verticallyCentersContent {
+                invalidateIntrinsicContentSize()
+            }
+        }
+    }
     private var pendingFocusAttempts = 0
     private var isVerifyingFocus = false
     private var lastLayoutWidth: CGFloat = 0
@@ -59,6 +65,13 @@ final class MouseSafeTaskNSTextField: NSTextField {
     }
 
     override var intrinsicContentSize: NSSize {
+        if verticallyCentersContent {
+            // A single-memo editor is a full-canvas control. Advertising the
+            // measured text height lets SwiftUI collapse the native view to a
+            // line-fragment estimate, which can omit a borderline wrapped
+            // line and clip it at the view boundary.
+            return NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+        }
         if wrapsContent, bounds.width > 0 {
             let height = attributedStringValue.boundingRect(
                 with: NSSize(width: bounds.width, height: .greatestFiniteMagnitude),

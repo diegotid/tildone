@@ -342,6 +342,25 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }
     }
 
+    func setSingleMemoFont(noteID: NoteID, font: SingleMemoFont) async throws {
+        guard let snapshot = notePresentations[noteID]?.snapshot,
+              let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
+        let revision = stage(TildoneiOSNoteSnapshot(
+            note: Self.presentationNote(note, singleMemoFont: font),
+            tasks: snapshot.tasks
+        ))
+        do {
+            let persisted = try await withRepository { repository in
+                try await repository.setSingleMemoFont(id: noteID, font: font)
+            }
+            publishPersistedNote(persisted, ifCurrentRevision: revision)
+            scheduleSyncNotification()
+        } catch {
+            await rollback(noteID, revision: revision)
+            throw error
+        }
+    }
+
     func setKind(noteID: NoteID, kind: NoteKind) async throws {
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { return }
@@ -1301,6 +1320,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
             colorVersion: note.colorVersion,
             kind: note.kind,
             kindVersion: note.kindVersion,
+            singleMemoFont: note.singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: meaningfulEditAt,
@@ -1319,6 +1340,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
             colorVersion: note.colorVersion,
             kind: note.kind,
             kindVersion: note.kindVersion,
+            singleMemoFont: note.singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,
@@ -1337,6 +1360,31 @@ final class TildoneiOSApplicationModel: ObservableObject {
             colorVersion: note.colorVersion,
             kind: kind,
             kindVersion: note.kindVersion,
+            singleMemoFont: note.singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
+            lifecycle: note.lifecycle,
+            lifecycleVersion: note.lifecycleVersion,
+            lastMeaningfulEditAt: note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: note.lastMeaningfulEditVersion,
+            schemaVersion: note.schemaVersion
+        )
+    }
+
+    private static func presentationNote(
+        _ note: Note,
+        singleMemoFont: SingleMemoFont
+    ) -> Note {
+        Note(
+            id: note.id,
+            createdAt: note.createdAt,
+            title: note.title,
+            titleVersion: note.titleVersion,
+            color: note.color,
+            colorVersion: note.colorVersion,
+            kind: note.kind,
+            kindVersion: note.kindVersion,
+            singleMemoFont: singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,

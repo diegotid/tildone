@@ -11,7 +11,8 @@ enum StoredDomainMapping {
     static func note(
         from stored: StoredNote,
         color storedColor: StoredNoteColor? = nil,
-        kind storedKind: StoredNoteKind? = nil
+        kind storedKind: StoredNoteKind? = nil,
+        singleMemoFont storedFont: StoredSingleMemoFont? = nil
     ) throws -> Note {
         guard let id = NoteID(string: stored.stableID), stored.stableID == id.stringValue else {
             throw malformed(.note, "invalid", "stableID")
@@ -79,6 +80,31 @@ enum StoredDomainMapping {
                 field: "titleVersion"
             )
         }
+        let singleMemoFont: SingleMemoFont
+        let singleMemoFontVersion: VersionStamp
+        if let storedFont {
+            guard storedFont.noteStableID == id.stringValue,
+                  let mappedFont = SingleMemoFont(rawValue: storedFont.fontRawValue) else {
+                throw malformed(.note, id.stringValue, "singleMemoFont")
+            }
+            singleMemoFont = mappedFont
+            singleMemoFontVersion = try stamp(
+                counter: storedFont.versionCounter,
+                replica: storedFont.versionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "singleMemoFontVersion"
+            )
+        } else {
+            singleMemoFont = .overlock
+            singleMemoFontVersion = try stamp(
+                counter: stored.titleVersionCounter,
+                replica: stored.titleVersionReplicaID,
+                kind: .note,
+                stableID: id.stringValue,
+                field: "titleVersion"
+            )
+        }
         return Note(
             id: id,
             createdAt: stored.createdAt,
@@ -94,6 +120,8 @@ enum StoredDomainMapping {
             colorVersion: colorVersion,
             kind: kind,
             kindVersion: kindVersion,
+            singleMemoFont: singleMemoFont,
+            singleMemoFontVersion: singleMemoFontVersion,
             lifecycle: lifecycle,
             lifecycleVersion: try stamp(
                 counter: stored.lifecycleVersionCounter,
@@ -282,6 +310,16 @@ enum StoredDomainMapping {
         )
     }
 
+    static func storedSingleMemoFont(from note: Note) throws -> StoredSingleMemoFont {
+        let version = try parts(note.singleMemoFontVersion)
+        return StoredSingleMemoFont(
+            noteStableID: note.id.stringValue,
+            fontRawValue: note.singleMemoFont.rawValue,
+            versionCounter: version.counter,
+            versionReplicaID: version.replica
+        )
+    }
+
     static func update(_ stored: StoredNote, from note: Note) throws {
         let title = try parts(note.titleVersion)
         let lifecycle = try parts(note.lifecycleVersion)
@@ -296,6 +334,16 @@ enum StoredDomainMapping {
         stored.lastMeaningfulEditVersionCounter = meaningfulEdit.counter
         stored.lastMeaningfulEditVersionReplicaID = meaningfulEdit.replica
         stored.recordSchemaVersion = note.schemaVersion
+    }
+
+    static func update(_ stored: StoredSingleMemoFont, from note: Note) throws {
+        guard stored.noteStableID == note.id.stringValue else {
+            throw malformed(.note, note.id.stringValue, "singleMemoFontOwnership")
+        }
+        let version = try parts(note.singleMemoFontVersion)
+        stored.fontRawValue = note.singleMemoFont.rawValue
+        stored.versionCounter = version.counter
+        stored.versionReplicaID = version.replica
     }
 
     static func update(_ stored: StoredNoteColor, from note: Note) throws {

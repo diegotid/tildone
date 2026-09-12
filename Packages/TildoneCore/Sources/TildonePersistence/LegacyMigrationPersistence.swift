@@ -9,7 +9,7 @@ import SwiftData
 import TildoneDomain
 
 public extension TildoneRepository {
-    static let currentSharedSchemaVersion = 6
+    static let currentSharedSchemaVersion = 7
 
     func prepareLegacyMigration(
         formatVersion: Int,

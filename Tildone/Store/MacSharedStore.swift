@@ -240,6 +240,13 @@ final class MacSharedStore: ObservableObject {
         scheduleSyncNotification()
     }
 
+    func setSingleMemoFont(_ font: SingleMemoFont, for id: NoteID) async throws {
+        guard note(id)?.singleMemoFont != font else { return }
+        _ = try await repository.setSingleMemoFont(id: id, font: font)
+        try await reload(id)
+        scheduleSyncNotification()
+    }
+
     func setKind(_ kind: NoteKind, for id: NoteID) async throws {
         guard let original = note(id) else { throw PersistenceError.missing(.note, id.stringValue) }
         var stagedTask: Task?
@@ -1118,6 +1125,8 @@ private extension MacSharedStore {
             colorVersion: note.colorVersion,
             kind: note.kind,
             kindVersion: note.kindVersion,
+            singleMemoFont: note.singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,
@@ -1139,6 +1148,8 @@ private extension MacSharedStore {
             colorVersion: note.colorVersion,
             kind: kind,
             kindVersion: note.kindVersion,
+            singleMemoFont: note.singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
             lifecycle: note.lifecycle,
             lifecycleVersion: note.lifecycleVersion,
             lastMeaningfulEditAt: note.lastMeaningfulEditAt,

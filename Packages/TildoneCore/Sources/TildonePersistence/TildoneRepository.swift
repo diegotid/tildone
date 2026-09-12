@@ -116,7 +116,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
     private nonisolated static func makeContainer(
         descriptor: PersistenceStoreDescriptor
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: TildoneSchemaV6.self)
+        let schema = Schema(versionedSchema: TildoneSchemaV7.self)
         let configuration: ModelConfiguration
         if descriptor.kind == .inMemory {
             configuration = ModelConfiguration(
@@ -186,6 +186,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         context.insert(try StoredDomainMapping.storedNote(from: note))
         context.insert(try StoredDomainMapping.storedNoteColor(from: note))
         context.insert(try StoredDomainMapping.storedNoteKind(from: note))
+        context.insert(try StoredDomainMapping.storedSingleMemoFont(from: note))
         try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
         try saveMutation(context)
         return note
@@ -233,6 +234,13 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             }
         }
 
+        var fontsByNoteID: [String: StoredSingleMemoFont] = [:]
+        for font in try context.fetch(FetchDescriptor<StoredSingleMemoFont>()) {
+            guard fontsByNoteID.updateValue(font, forKey: font.noteStableID) == nil else {
+                throw PersistenceError.duplicateID(.note, font.noteStableID)
+            }
+        }
+
         var indentationsByTaskID: [String: StoredTaskIndentation] = [:]
         for indentation in try context.fetch(FetchDescriptor<StoredTaskIndentation>()) {
             guard indentationsByTaskID.updateValue(
@@ -272,7 +280,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             let note = try StoredDomainMapping.note(
                 from: stored,
                 color: colorsByNoteID[stored.stableID],
-                kind: kindsByNoteID[stored.stableID]
+                kind: kindsByNoteID[stored.stableID],
+                singleMemoFont: fontsByNoteID[stored.stableID]
             )
             guard noteIDs.insert(note.id).inserted else {
                 throw PersistenceError.duplicateID(.note, note.id.stringValue)
@@ -359,6 +368,33 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try StoredDomainMapping.update(row, from: note)
         } else {
             context.insert(try StoredDomainMapping.storedNoteKind(from: note))
+        }
+        if try storedSingleMemoFont(noteID: id, in: context) == nil {
+            context.insert(try StoredDomainMapping.storedSingleMemoFont(from: note))
+        }
+        stored.recordSchemaVersion = Note.currentSchemaVersion
+        try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+        try saveMutation(context)
+        return try mappedNote(from: stored, in: context)
+    }
+
+    public func setSingleMemoFont(id: NoteID, font: SingleMemoFont) throws -> Note {
+        let context = mutationContext()
+        let stored = try requireStoredNote(id: id, in: context)
+        var note = try mappedNote(from: stored, in: context)
+        guard note.lifecycle == .active else { throw PersistenceError.domainInvariant }
+        if note.singleMemoFont == font,
+           try storedSingleMemoFont(noteID: id, in: context) != nil {
+            return note
+        }
+        let metadata = try workspaceMetadata(in: context)
+        let stamp = try nextStamp(metadata, observing: maxVersion(in: note))
+        do { try note.setSingleMemoFont(font, version: stamp) }
+        catch { throw PersistenceError.domainInvariant }
+        if let row = try storedSingleMemoFont(noteID: id, in: context) {
+            try StoredDomainMapping.update(row, from: note)
+        } else {
+            context.insert(try StoredDomainMapping.storedSingleMemoFont(from: note))
         }
         stored.recordSchemaVersion = Note.currentSchemaVersion
         try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
@@ -1093,6 +1129,18 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             }
             maximum = max(maximum, kind.versionCounter)
         }
+        var fontNoteIDs: Set<String> = []
+        for font in try context.fetch(FetchDescriptor<StoredSingleMemoFont>()) {
+            guard noteIDs.contains(font.noteStableID),
+                  fontNoteIDs.insert(font.noteStableID).inserted,
+                  SingleMemoFont(rawValue: font.fontRawValue) != nil,
+                  font.versionCounter >= 0,
+                  let replica = ReplicaID(string: font.versionReplicaID),
+                  replica.stringValue == font.versionReplicaID else {
+                throw PersistenceError.workspaceMismatch
+            }
+            maximum = max(maximum, font.versionCounter)
+        }
         let tasks = try context.fetch(FetchDescriptor<StoredTask>())
         let taskIDs = Set(tasks.map(\.stableID))
         for task in tasks {
@@ -1388,6 +1436,15 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return rows.first
     }
 
+    func storedSingleMemoFont(noteID: NoteID, in context: ModelContext) throws -> StoredSingleMemoFont? {
+        let value = noteID.stringValue
+        let rows = try context.fetch(FetchDescriptor<StoredSingleMemoFont>(
+            predicate: #Predicate { $0.noteStableID == value }
+        ))
+        guard rows.count <= 1 else { throw PersistenceError.duplicateID(.note, value) }
+        return rows.first
+    }
+
     func mappedNote(from stored: StoredNote, in context: ModelContext) throws -> Note {
         guard let id = NoteID(string: stored.stableID) else {
             throw PersistenceError.malformedRepresentation(.note, "invalid", field: "stableID")
@@ -1395,7 +1452,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return try StoredDomainMapping.note(
             from: stored,
             color: storedNoteColor(noteID: id, in: context),
-            kind: storedNoteKind(noteID: id, in: context)
+            kind: storedNoteKind(noteID: id, in: context),
+            singleMemoFont: storedSingleMemoFont(noteID: id, in: context)
         )
     }
 
@@ -1595,7 +1653,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     func maxVersion(in note: Note) -> VersionStamp {
         [
-            note.titleVersion, note.colorVersion, note.kindVersion, note.lifecycleVersion,
+            note.titleVersion, note.colorVersion, note.kindVersion,
+            note.singleMemoFontVersion, note.lifecycleVersion,
             note.lastMeaningfulEditVersion
         ].max()!
     }

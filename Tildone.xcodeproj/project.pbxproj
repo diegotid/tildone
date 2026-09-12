@@ -13,6 +13,33 @@
 		S10000000000000000000004 /* Overlock-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000014 /* Overlock-OFL.txt */; };
 		S10000000000000000000005 /* Overlock-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000013 /* Overlock-Regular.ttf */; };
 		S10000000000000000000006 /* Overlock-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000014 /* Overlock-OFL.txt */; };
+		Z70000000000000000000001 /* FontAttributionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000101 /* FontAttributionsView.swift */; };
+		Z70000000000000000000002 /* FontAttributionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000101 /* FontAttributionsView.swift */; };
+		Z70000000000000000000003 /* TildoneiOSAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000102 /* TildoneiOSAboutView.swift */; };
+		Z70000000000000000000010 /* CoveredByYourGrace-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000110 /* CoveredByYourGrace-Regular.ttf */; };
+		Z70000000000000000000011 /* CoveredByYourGrace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000111 /* CoveredByYourGrace-OFL.txt */; };
+		Z70000000000000000000012 /* CraftyGirls-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000112 /* CraftyGirls-Regular.ttf */; };
+		Z70000000000000000000013 /* CraftyGirls-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000113 /* CraftyGirls-LICENSE.txt */; };
+		Z70000000000000000000014 /* Lacquer-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000114 /* Lacquer-Regular.ttf */; };
+		Z70000000000000000000015 /* Lacquer-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000115 /* Lacquer-OFL.txt */; };
+		Z70000000000000000000016 /* MeowScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000116 /* MeowScript-Regular.ttf */; };
+		Z70000000000000000000017 /* MeowScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000117 /* MeowScript-OFL.txt */; };
+		Z70000000000000000000018 /* PermanentMarker-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000118 /* PermanentMarker-Regular.ttf */; };
+		Z70000000000000000000019 /* PermanentMarker-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000119 /* PermanentMarker-LICENSE.txt */; };
+		Z7000000000000000000001A /* SeaweedScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011A /* SeaweedScript-Regular.ttf */; };
+		Z7000000000000000000001B /* SeaweedScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011B /* SeaweedScript-OFL.txt */; };
+		Z70000000000000000000030 /* CoveredByYourGrace-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000110 /* CoveredByYourGrace-Regular.ttf */; };
+		Z70000000000000000000031 /* CoveredByYourGrace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000111 /* CoveredByYourGrace-OFL.txt */; };
+		Z70000000000000000000032 /* CraftyGirls-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000112 /* CraftyGirls-Regular.ttf */; };
+		Z70000000000000000000033 /* CraftyGirls-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000113 /* CraftyGirls-LICENSE.txt */; };
+		Z70000000000000000000034 /* Lacquer-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000114 /* Lacquer-Regular.ttf */; };
+		Z70000000000000000000035 /* Lacquer-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000115 /* Lacquer-OFL.txt */; };
+		Z70000000000000000000036 /* MeowScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000116 /* MeowScript-Regular.ttf */; };
+		Z70000000000000000000037 /* MeowScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000117 /* MeowScript-OFL.txt */; };
+		Z70000000000000000000038 /* PermanentMarker-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000118 /* PermanentMarker-Regular.ttf */; };
+		Z70000000000000000000039 /* PermanentMarker-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000119 /* PermanentMarker-LICENSE.txt */; };
+		Z7000000000000000000003A /* SeaweedScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011A /* SeaweedScript-Regular.ttf */; };
+		Z7000000000000000000003B /* SeaweedScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011B /* SeaweedScript-OFL.txt */; };
 		R10000000000000000000001 /* MacTaskTextFormatMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000011 /* MacTaskTextFormatMenu.swift */; };
 		R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000012 /* RichTaskTextEditor.swift */; };
 		R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000013 /* TaskTextFormatMenu.swift */; };
@@ -207,6 +234,20 @@
 		S10000000000000000000011 /* SingleMemoTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMemoTypography.swift; sourceTree = "<group>"; };
 		S10000000000000000000013 /* Overlock-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/Overlock-Regular.ttf; sourceTree = SOURCE_ROOT; };
 		S10000000000000000000014 /* Overlock-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/Overlock-OFL.txt; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000101 /* FontAttributionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontAttributionsView.swift; sourceTree = "<group>"; };
+		Z70000000000000000000102 /* TildoneiOSAboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = About/TildoneiOSAboutView.swift; sourceTree = "<group>"; };
+		Z70000000000000000000110 /* CoveredByYourGrace-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/CoveredByYourGrace-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000111 /* CoveredByYourGrace-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/CoveredByYourGrace-OFL.txt; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000112 /* CraftyGirls-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/CraftyGirls-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000113 /* CraftyGirls-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/CraftyGirls-LICENSE.txt; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000114 /* Lacquer-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/Lacquer-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000115 /* Lacquer-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/Lacquer-OFL.txt; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000116 /* MeowScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/MeowScript-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000117 /* MeowScript-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/MeowScript-OFL.txt; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000118 /* PermanentMarker-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/PermanentMarker-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		Z70000000000000000000119 /* PermanentMarker-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/PermanentMarker-LICENSE.txt; sourceTree = SOURCE_ROOT; };
+		Z7000000000000000000011A /* SeaweedScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/SeaweedScript-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		Z7000000000000000000011B /* SeaweedScript-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/SeaweedScript-OFL.txt; sourceTree = SOURCE_ROOT; };
 		R10000000000000000000011 /* MacTaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTaskTextFormatMenu.swift; sourceTree = "<group>"; };
 		R10000000000000000000012 /* RichTaskTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTaskTextEditor.swift; sourceTree = "<group>"; };
 		R10000000000000000000013 /* TaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTextFormatMenu.swift; sourceTree = "<group>"; };
@@ -424,6 +465,7 @@
 			isa = PBXGroup;
 			children = (
 				S10000000000000000000011 /* SingleMemoTypography.swift */,
+				Z70000000000000000000101 /* FontAttributionsView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -506,6 +548,7 @@
 		C10000000000000000000023 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				Z70000000000000000000102 /* TildoneiOSAboutView.swift */,
 				C10000000000000000000016 /* TildoneiOSRootView.swift */,
 				U10000000000000000000012 /* TildoneiOSUndoOverlay.swift */,
 				C10000000000000000000024 /* Notes */,
@@ -1157,6 +1200,18 @@
 				A10000000000000000000004 /* Preview Assets.xcassets in Resources */,
 				S10000000000000000000005 /* Overlock-Regular.ttf in Resources */,
 				S10000000000000000000006 /* Overlock-OFL.txt in Resources */,
+				Z70000000000000000000030 /* CoveredByYourGrace-Regular.ttf in Resources */,
+				Z70000000000000000000031 /* CoveredByYourGrace-OFL.txt in Resources */,
+				Z70000000000000000000032 /* CraftyGirls-Regular.ttf in Resources */,
+				Z70000000000000000000033 /* CraftyGirls-LICENSE.txt in Resources */,
+				Z70000000000000000000034 /* Lacquer-Regular.ttf in Resources */,
+				Z70000000000000000000035 /* Lacquer-OFL.txt in Resources */,
+				Z70000000000000000000036 /* MeowScript-Regular.ttf in Resources */,
+				Z70000000000000000000037 /* MeowScript-OFL.txt in Resources */,
+				Z70000000000000000000038 /* PermanentMarker-Regular.ttf in Resources */,
+				Z70000000000000000000039 /* PermanentMarker-LICENSE.txt in Resources */,
+				Z7000000000000000000003A /* SeaweedScript-Regular.ttf in Resources */,
+				Z7000000000000000000003B /* SeaweedScript-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1185,6 +1240,18 @@
 				F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */,
 				S10000000000000000000003 /* Overlock-Regular.ttf in Resources */,
 				S10000000000000000000004 /* Overlock-OFL.txt in Resources */,
+				Z70000000000000000000010 /* CoveredByYourGrace-Regular.ttf in Resources */,
+				Z70000000000000000000011 /* CoveredByYourGrace-OFL.txt in Resources */,
+				Z70000000000000000000012 /* CraftyGirls-Regular.ttf in Resources */,
+				Z70000000000000000000013 /* CraftyGirls-LICENSE.txt in Resources */,
+				Z70000000000000000000014 /* Lacquer-Regular.ttf in Resources */,
+				Z70000000000000000000015 /* Lacquer-OFL.txt in Resources */,
+				Z70000000000000000000016 /* MeowScript-Regular.ttf in Resources */,
+				Z70000000000000000000017 /* MeowScript-OFL.txt in Resources */,
+				Z70000000000000000000018 /* PermanentMarker-Regular.ttf in Resources */,
+				Z70000000000000000000019 /* PermanentMarker-LICENSE.txt in Resources */,
+				Z7000000000000000000001A /* SeaweedScript-Regular.ttf in Resources */,
+				Z7000000000000000000001B /* SeaweedScript-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1210,6 +1277,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				S10000000000000000000002 /* SingleMemoTypography.swift in Sources */,
+				Z70000000000000000000002 /* FontAttributionsView.swift in Sources */,
+				Z70000000000000000000003 /* TildoneiOSAboutView.swift in Sources */,
 				R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */,
 				R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */,
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
@@ -1277,6 +1346,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				S10000000000000000000001 /* SingleMemoTypography.swift in Sources */,
+				Z70000000000000000000001 /* FontAttributionsView.swift in Sources */,
 				R10000000000000000000001 /* MacTaskTextFormatMenu.swift in Sources */,
 				U10000000000000000000003 /* MacUndoMenuButton.swift in Sources */,
 				D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */,

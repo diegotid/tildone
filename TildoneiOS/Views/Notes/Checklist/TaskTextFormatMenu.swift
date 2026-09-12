@@ -8,6 +8,8 @@ import UIKit
 
 struct TaskTextFormatMenu: View {
     let isEnabled: Bool
+    var selectedFont: SingleMemoFont? = nil
+    var onFontChange: ((SingleMemoFont) -> Void)? = nil
 
     var body: some View {
         Menu {
@@ -18,6 +20,26 @@ struct TaskTextFormatMenu: View {
             Divider()
             colorMenu("Text color", systemImage: "textformat", isHighlight: false)
             colorMenu("Highlight", systemImage: "highlighter", isHighlight: true)
+            if let selectedFont, let onFontChange {
+                Divider()
+                Menu {
+                    ForEach(SingleMemoFont.allCases) { font in
+                        Button {
+                            onFontChange(font)
+                        } label: {
+                            if selectedFont == font {
+                                Label(font.displayName, systemImage: "checkmark")
+                                    .font(.custom(SingleMemoTypography.fontName(for: font), size: 17))
+                            } else {
+                                Text(verbatim: font.displayName)
+                                    .font(.custom(SingleMemoTypography.fontName(for: font), size: 17))
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Font", systemImage: "textformat.size")
+                }
+            }
         } label: {
             Image(systemName: "textformat")
         }

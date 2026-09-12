@@ -30,6 +30,10 @@ public extension Note {
             (kind, kindVersion, schemaVersion),
             (other.kind, other.kindVersion, other.schemaVersion)
         )
+        let winningSingleMemoFont = try mergeSingleMemoFontVersioned(
+            (singleMemoFont, singleMemoFontVersion, schemaVersion),
+            (other.singleMemoFont, other.singleMemoFontVersion, other.schemaVersion)
+        )
         let winningLifecycle = try mergeVersioned(
             (lifecycle, lifecycleVersion),
             (other.lifecycle, other.lifecycleVersion)
@@ -48,6 +52,8 @@ public extension Note {
             colorVersion: winningColor.version,
             kind: winningKind.value,
             kindVersion: winningKind.version,
+            singleMemoFont: winningSingleMemoFont.value,
+            singleMemoFontVersion: winningSingleMemoFont.version,
             lifecycle: winningLifecycle.value,
             lifecycleVersion: winningLifecycle.version,
             lastMeaningfulEditAt: winningMeaningfulEdit.value,
@@ -55,6 +61,21 @@ public extension Note {
             schemaVersion: max(schemaVersion, other.schemaVersion)
         )
     }
+}
+
+private func mergeSingleMemoFontVersioned(
+    _ lhs: (value: SingleMemoFont, version: VersionStamp, schemaVersion: Int),
+    _ rhs: (value: SingleMemoFont, version: VersionStamp, schemaVersion: Int)
+) throws -> (value: SingleMemoFont, version: VersionStamp) {
+    let lhsIsExplicit = lhs.schemaVersion >= 4
+    let rhsIsExplicit = rhs.schemaVersion >= 4
+    if lhsIsExplicit != rhsIsExplicit {
+        return lhsIsExplicit ? (lhs.value, lhs.version) : (rhs.value, rhs.version)
+    }
+    return try mergeVersioned(
+        (lhs.value, lhs.version),
+        (rhs.value, rhs.version)
+    )
 }
 
 private func mergeKindVersioned(

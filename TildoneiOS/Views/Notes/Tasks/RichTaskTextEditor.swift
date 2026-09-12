@@ -19,6 +19,10 @@ struct RichTaskTextEditor: UIViewRepresentable {
     var focusedTask: FocusState<TaskID?>.Binding
     let isCompleted: Bool
     var allowsMultipleLines = false
+    var fontName: String? = nil
+    var textStyle: UIFont.TextStyle = .body
+    var textAlignment: NSTextAlignment = .natural
+    var lineHeightMultiple: CGFloat? = nil
     let onCommit: (RichText) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -47,6 +51,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.returnKeyType = allowsMultipleLines ? .default : .done
         view.autocapitalizationType = .sentences
         view.adjustsFontForContentSizeCategory = true
+        view.textAlignment = textAlignment
         view.accessibilityLabel = String(localized: "Task")
         context.coordinator.view = view
         return view
@@ -59,9 +64,32 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.textContainer.maximumNumberOfLines = allowsMultipleLines ? 0 : 1
         view.textContainer.lineBreakMode = allowsMultipleLines ? .byWordWrapping : .byTruncatingTail
         view.returnKeyType = allowsMultipleLines ? .default : .done
-        if !view.isFirstResponder {
-            view.attributedText = Self.attributedString(from: richText, completed: isCompleted)
+        view.textAlignment = textAlignment
+        let presentationChanged = context.coordinator.lastFontName != fontName
+            || context.coordinator.lastTextStyle != textStyle
+            || context.coordinator.lastTextAlignment != textAlignment
+            || context.coordinator.lastLineHeightMultiple != lineHeightMultiple
+        if !view.isFirstResponder || presentationChanged {
+            let selection = view.selectedRange
+            view.attributedText = Self.attributedString(
+                from: richText,
+                completed: isCompleted,
+                fontName: fontName,
+                textStyle: textStyle,
+                alignment: textAlignment,
+                lineHeightMultiple: lineHeightMultiple
+            )
+            if view.isFirstResponder {
+                view.selectedRange = Coordinator.validSelection(
+                    selection,
+                    textLength: view.attributedText.length
+                )
+            }
         }
+        context.coordinator.lastFontName = fontName
+        context.coordinator.lastTextStyle = textStyle
+        context.coordinator.lastTextAlignment = textAlignment
+        context.coordinator.lastLineHeightMultiple = lineHeightMultiple
         if focusedTask.wrappedValue == taskID {
             if !view.isFirstResponder { view.becomeFirstResponder() }
         } else if view.isFirstResponder {
@@ -79,6 +107,10 @@ struct RichTaskTextEditor: UIViewRepresentable {
         private var lastCommittedRichText: RichText?
         private var hasLocalEdits = false
         private var formatObserver: NSObjectProtocol?
+        var lastFontName: String?
+        var lastTextStyle: UIFont.TextStyle?
+        var lastTextAlignment: NSTextAlignment?
+        var lastLineHeightMultiple: CGFloat?
 
         init(parent: RichTaskTextEditor) {
             self.parent = parent
@@ -120,7 +152,11 @@ struct RichTaskTextEditor: UIViewRepresentable {
                 parent.richText = parent.modelRichText
                 textView.attributedText = RichTaskTextEditor.attributedString(
                     from: parent.modelRichText,
-                    completed: parent.isCompleted
+                    completed: parent.isCompleted,
+                    fontName: parent.fontName,
+                    textStyle: parent.textStyle,
+                    alignment: parent.textAlignment,
+                    lineHeightMultiple: parent.lineHeightMultiple
                 )
             }
             hasLocalEdits = false
@@ -165,7 +201,11 @@ struct RichTaskTextEditor: UIViewRepresentable {
             guard formatted != current else { return }
             view.attributedText = RichTaskTextEditor.attributedString(
                 from: formatted,
-                completed: parent.isCompleted
+                completed: parent.isCompleted,
+                fontName: parent.fontName,
+                textStyle: parent.textStyle,
+                alignment: parent.textAlignment,
+                lineHeightMultiple: parent.lineHeightMultiple
             )
             view.selectedRange = selection
             lastSelection = selection
@@ -181,7 +221,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
             }
         }
 
-        private static func validSelection(_ selection: NSRange, textLength: Int) -> NSRange {
+        fileprivate static func validSelection(_ selection: NSRange, textLength: Int) -> NSRange {
             let location = selection.location == NSNotFound
                 ? textLength
                 : min(max(0, selection.location), textLength)
@@ -196,10 +236,17 @@ struct RichTaskTextEditor: UIViewRepresentable {
         from richText: RichText,
         baseColor: UIColor = .label,
         detectLinks: Bool = true,
-        shortenLinks: Bool = false
+        shortenLinks: Bool = false,
+        fontName: String? = nil,
+        fontSize: CGFloat? = nil
     ) -> AttributedString {
         let result = NSMutableAttributedString(
-            attributedString: attributedString(from: richText, baseColor: baseColor)
+            attributedString: attributedString(
+                from: richText,
+                baseColor: baseColor,
+                fontName: fontName,
+                fontSize: fontSize
+            )
         )
         if detectLinks,
            let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
@@ -244,12 +291,33 @@ struct RichTaskTextEditor: UIViewRepresentable {
     private static func attributedString(
         from richText: RichText,
         completed: Bool = false,
-        baseColor: UIColor = .label
+        baseColor: UIColor = .label,
+        fontName: String? = nil,
+        fontSize: CGFloat? = nil,
+        textStyle: UIFont.TextStyle = .body,
+        alignment: NSTextAlignment = .natural,
+        lineHeightMultiple: CGFloat? = nil
     ) -> NSAttributedString {
-        let baseFont = UIFont.preferredFont(forTextStyle: .body)
+        let preferredFont = UIFont.preferredFont(forTextStyle: textStyle)
+        let pointSize = fontSize ?? preferredFont.pointSize
+        let baseFont: UIFont
+        if let fontName, let custom = UIFont(name: fontName, size: pointSize) {
+            baseFont = custom
+        } else if fontSize != nil {
+            baseFont = UIFont.systemFont(ofSize: pointSize)
+        } else {
+            baseFont = preferredFont
+        }
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = alignment
+        if let lineHeightMultiple { paragraphStyle.lineHeightMultiple = lineHeightMultiple }
         let result = NSMutableAttributedString(
             string: richText.text,
-            attributes: [.font: baseFont, .foregroundColor: baseColor]
+            attributes: [
+                .font: baseFont,
+                .foregroundColor: baseColor,
+                .paragraphStyle: paragraphStyle
+            ]
         )
         for span in richText.spans {
             let range = NSRange(location: span.range.location, length: span.range.length)

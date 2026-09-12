@@ -165,6 +165,9 @@ extension CloudKitRecordMapper {
         static let kind = "kind"
         static let kindCounter = "kindVersionCounter"
         static let kindReplica = "kindVersionReplicaID"
+        static let singleMemoFont = "singleMemoFont"
+        static let singleMemoFontCounter = "singleMemoFontVersionCounter"
+        static let singleMemoFontReplica = "singleMemoFontVersionReplicaID"
         static let lifecycle = "lifecycle"
         static let lifecycleCounter = "lifecycleVersionCounter"
         static let lifecycleReplica = "lifecycleVersionReplicaID"
@@ -192,6 +195,7 @@ extension CloudKitRecordMapper {
         static let all = [
             schemaVersion, createdAt, title, titleCounter, titleReplica, color,
             colorCounter, colorReplica, kind, kindCounter, kindReplica,
+            singleMemoFont, singleMemoFontCounter, singleMemoFontReplica,
             lifecycle, lifecycleCounter, lifecycleReplica, meaningfulEditAt,
             meaningfulEditCounter, meaningfulEditReplica, noteID, text,
             richText, textCounter, textReplica, isCompleted, completedAt,
@@ -230,6 +234,15 @@ extension CloudKitRecordMapper {
                 note.kindVersion,
                 prefixCounter: Field.kindCounter,
                 replica: Field.kindReplica,
+                into: record
+            )
+        }
+        if note.schemaVersion >= 4 {
+            record[Field.singleMemoFont] = note.singleMemoFont.rawValue as NSString
+            encode(
+                note.singleMemoFontVersion,
+                prefixCounter: Field.singleMemoFontCounter,
+                replica: Field.singleMemoFontReplica,
                 into: record
             )
         }
@@ -306,6 +319,24 @@ extension CloudKitRecordMapper {
             kind = .checklist
             kindVersion = titleVersion
         }
+        let singleMemoFont: SingleMemoFont
+        let singleMemoFontVersion: VersionStamp
+        if schema >= 4 {
+            guard let decodedFont = SingleMemoFont(
+                rawValue: try string(Field.singleMemoFont, in: record)
+            ) else {
+                throw CloudRecordMappingError.invalidField(name, Field.singleMemoFont)
+            }
+            singleMemoFont = decodedFont
+            singleMemoFontVersion = try stamp(
+                Field.singleMemoFontCounter,
+                Field.singleMemoFontReplica,
+                in: record
+            )
+        } else {
+            singleMemoFont = .overlock
+            singleMemoFontVersion = titleVersion
+        }
         return Note(
             id: id,
             createdAt: try date(Field.createdAt, in: record),
@@ -315,6 +346,8 @@ extension CloudKitRecordMapper {
             colorVersion: colorVersion,
             kind: kind,
             kindVersion: kindVersion,
+            singleMemoFont: singleMemoFont,
+            singleMemoFontVersion: singleMemoFontVersion,
             lifecycle: try lifecycle(in: record),
             lifecycleVersion: try stamp(Field.lifecycleCounter, Field.lifecycleReplica, in: record),
             lastMeaningfulEditAt: try date(Field.meaningfulEditAt, in: record),

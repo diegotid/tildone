@@ -313,6 +313,10 @@ struct ChecklistView: View {
                     focusedTask: $focusedTask,
                     isCompleted: task.isCompleted,
                     allowsMultipleLines: true,
+                    fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
+                    textStyle: .title1,
+                    textAlignment: .center,
+                    lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
                     onCommit: { value in
                         Swift.Task {
                             try? await appModel.edit(taskID: task.id, richText: value)
@@ -338,7 +342,15 @@ struct ChecklistView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 noteTypeMenu(note)
-                TaskTextFormatMenu(isEnabled: focusedTask != nil)
+                TaskTextFormatMenu(
+                    isEnabled: focusedTask != nil,
+                    selectedFont: note.singleMemoFont,
+                    onFontChange: { font in
+                        Swift.Task {
+                            try? await appModel.setSingleMemoFont(noteID: noteID, font: font)
+                        }
+                    }
+                )
                 Menu {
                     Picker("Note color", selection: Binding(
                         get: { note.color },

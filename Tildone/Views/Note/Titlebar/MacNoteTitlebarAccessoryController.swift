@@ -12,7 +12,7 @@ import TildoneDomain
 /// Direct children of `NSThemeFrame` are private AppKit implementation details.
 final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewController {
     private let colorPicker: NSView
-    private let formatControl = NSHostingView(rootView: MacTaskTextFormatMenu())
+    private let formatControl: NSHostingView<MacTaskTextFormatMenu>
     private let kindControl: NSHostingView<MacNoteKindMenu>
     private let singleTaskCheckbox: NSHostingView<MacSingleTaskCompletionControl>
     private let presentation: MacNotePresentation
@@ -30,6 +30,9 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
     ) {
         self.colorPicker = colorPicker
         self.presentation = presentation
+        formatControl = NSHostingView(rootView: MacTaskTextFormatMenu(
+            store: store, presentation: presentation, noteID: noteID
+        ))
         kindControl = NSHostingView(rootView: MacNoteKindMenu(
             store: store, presentation: presentation, noteID: noteID
         ))
@@ -87,7 +90,12 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
 
     func setFormatControlForeground(_ foreground: Color) {
         loadViewIfNeeded()
-        formatControl.rootView = MacTaskTextFormatMenu(foreground: foreground)
+        formatControl.rootView = MacTaskTextFormatMenu(
+            store: formatControl.rootView.store,
+            presentation: formatControl.rootView.presentation,
+            noteID: formatControl.rootView.noteID,
+            foreground: foreground
+        )
         formatControl.needsLayout = true
         formatControl.needsDisplay = true
         kindControl.rootView = MacNoteKindMenu(

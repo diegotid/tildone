@@ -28,19 +28,23 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
     }
 
     override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
-        var drawingFrame = cellFrame
-        guard verticallyCentersContent, drawingFrame.width > 0 else {
+        guard verticallyCentersContent, cellFrame.width > 0 else {
             super.drawInterior(withFrame: cellFrame, in: controlView)
             return
         }
-        let textHeight = attributedStringValue.boundingRect(
-            with: NSSize(width: drawingFrame.width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading]
-        ).height
-        if textHeight < drawingFrame.height {
-            drawingFrame.origin.y += (drawingFrame.height - textHeight) / 2
-            drawingFrame.size.height = ceil(textHeight) + 2
-        }
-        super.drawInterior(withFrame: drawingFrame, in: controlView)
+        super.drawInterior(withFrame: verticallyCenteredDrawingFrame(for: cellFrame), in: controlView)
+    }
+
+    func verticallyCenteredDrawingFrame(for cellFrame: NSRect) -> NSRect {
+        var drawingFrame = cellFrame
+        // NSTextFieldCell's renderer and NSAttributedString.boundingRect can
+        // choose different wrap points for custom fonts. Measure through the
+        // cell itself so the centered frame includes every rendered line.
+        let contentHeight = ceil(cellSize(forBounds: cellFrame).height)
+        let drawingHeight = min(cellFrame.height, contentHeight + 2)
+        guard drawingHeight < cellFrame.height else { return drawingFrame }
+        drawingFrame.origin.y += (cellFrame.height - drawingHeight) / 2
+        drawingFrame.size.height = drawingHeight
+        return drawingFrame
     }
 }

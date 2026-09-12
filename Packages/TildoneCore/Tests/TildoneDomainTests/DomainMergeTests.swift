@@ -9,6 +9,30 @@ import XCTest
 @testable import TildoneDomain
 
 final class DomainMergeTests: XCTestCase {
+    func testExplicitSingleMemoFontWinsOverLegacyImplicitOverlock() throws {
+        let base = Fixtures.note()
+        var customized = base
+        try customized.setSingleMemoFont(.lacquer, version: Fixtures.stamp(2))
+        let legacy = Note(
+            id: base.id,
+            createdAt: base.createdAt,
+            title: base.title,
+            titleVersion: Fixtures.stamp(99),
+            color: base.color,
+            colorVersion: base.colorVersion,
+            kind: .singleTask,
+            kindVersion: Fixtures.stamp(99),
+            lifecycle: base.lifecycle,
+            lifecycleVersion: base.lifecycleVersion,
+            lastMeaningfulEditAt: base.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: base.lastMeaningfulEditVersion,
+            schemaVersion: 3
+        )
+
+        XCTAssertEqual(try customized.merged(with: legacy).singleMemoFont, .lacquer)
+        XCTAssertEqual(try legacy.merged(with: customized).singleMemoFont, .lacquer)
+    }
+
     func testExplicitSingleTaskKindWinsOverLegacyImplicitChecklist() throws {
         let base = Fixtures.note()
         var singleTask = base

@@ -84,11 +84,26 @@ public enum TildoneSchemaV6: VersionedSchema {
     }
 }
 
+/// V7 adds the single-memo font as a stable-ID sidecar. Existing notes have no
+/// row and therefore continue to use Overlock without rewriting older stores.
+public enum TildoneSchemaV7: VersionedSchema {
+    public static let versionIdentifier = Schema.Version(7, 0, 0)
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredNote.self, StoredNoteColor.self, StoredNoteKind.self,
+            StoredSingleMemoFont.self, StoredTask.self, StoredTaskIndentation.self,
+            StoredTaskRichText.self, PendingMutation.self, WorkspaceMetadata.self,
+            QuarantinedRecord.self, LegacyMigrationState.self, LegacyIdentityMapping.self
+        ]
+    }
+}
+
 public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
         [
             TildoneSchemaV1.self, TildoneSchemaV2.self, TildoneSchemaV3.self,
-            TildoneSchemaV4.self, TildoneSchemaV5.self, TildoneSchemaV6.self
+            TildoneSchemaV4.self, TildoneSchemaV5.self, TildoneSchemaV6.self,
+            TildoneSchemaV7.self
         ]
     }
     public static var stages: [MigrationStage] {
@@ -97,7 +112,8 @@ public enum TildoneSchemaMigrationPlan: SchemaMigrationPlan {
             .lightweight(fromVersion: TildoneSchemaV2.self, toVersion: TildoneSchemaV3.self),
             .lightweight(fromVersion: TildoneSchemaV3.self, toVersion: TildoneSchemaV4.self),
             .lightweight(fromVersion: TildoneSchemaV4.self, toVersion: TildoneSchemaV5.self),
-            .lightweight(fromVersion: TildoneSchemaV5.self, toVersion: TildoneSchemaV6.self)
+            .lightweight(fromVersion: TildoneSchemaV5.self, toVersion: TildoneSchemaV6.self),
+            .lightweight(fromVersion: TildoneSchemaV6.self, toVersion: TildoneSchemaV7.self)
         ]
     }
 }
@@ -178,6 +194,21 @@ final class StoredNoteKind {
     init(noteStableID: String, kindRawValue: String, versionCounter: Int64, versionReplicaID: String) {
         self.noteStableID = noteStableID
         self.kindRawValue = kindRawValue
+        self.versionCounter = versionCounter
+        self.versionReplicaID = versionReplicaID
+    }
+}
+
+@Model
+final class StoredSingleMemoFont {
+    var noteStableID: String
+    var fontRawValue: String
+    var versionCounter: Int64
+    var versionReplicaID: String
+
+    init(noteStableID: String, fontRawValue: String, versionCounter: Int64, versionReplicaID: String) {
+        self.noteStableID = noteStableID
+        self.fontRawValue = fontRawValue
         self.versionCounter = versionCounter
         self.versionReplicaID = versionReplicaID
     }
@@ -403,7 +434,7 @@ final class LegacyMigrationState {
         sourceContentDigest = sourceFingerprint.contentDigest
         sourceFileCount = sourceFingerprint.fileCount
         sourceTotalByteCount = Int64(sourceFingerprint.totalByteCount)
-        destinationSchemaVersion = 6
+        destinationSchemaVersion = 7
         sourceEligibleNoteCount = sourceCounts.eligibleNotes
         sourceEligibleTaskCount = sourceCounts.eligibleTasks
         sourceSystemNoteCount = sourceCounts.excludedSystemNotes

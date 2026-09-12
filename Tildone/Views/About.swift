@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct About: View {
+    @Environment(\.openWindow) private var openWindow
     private var appVersionLabel: Text? = {
         guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
             return nil
@@ -34,15 +35,14 @@ struct About: View {
                     .padding(.bottom, 10)
             }
             Text("© 2023 Diego Rivera")
-            Text("Overlock font © 2011 Dario Manuel Muhafara")
-                .font(.caption2)
             if let website = URL(string: "http://cuatro.studio") {
                 Link("cuatro.studio", destination: website)
             }
-            if let license = URL(string: "https://openfontlicense.org/") {
-                Link("Overlock — SIL Open Font License 1.1", destination: license)
-                    .font(.caption2)
+            Button("Font Attributions") {
+                openWindow(id: Id.fontAttributionsWindow)
             }
+            .buttonStyle(.link)
+            .font(.caption)
         }
         .padding()
         .frame(width: Frame.aboutWindowWidth, height: Frame.aboutWindowHeight)

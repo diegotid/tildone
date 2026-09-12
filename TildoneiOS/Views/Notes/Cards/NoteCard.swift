@@ -110,9 +110,14 @@ struct NoteCard: View {
 
     private func singleTaskText(_ task: NoteTaskPreview?, size: CGFloat) -> some View {
         Text(task.map {
-            RichTaskTextEditor.displayText(from: $0.richText, baseColor: .black)
+            RichTaskTextEditor.displayText(
+                from: $0.richText,
+                baseColor: .black,
+                fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
+                fontSize: size
+            )
         } ?? AttributedString(String(localized: "New task")))
-            .font(.custom(SingleMemoTypography.fontName, size: size))
+            .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: size))
             .lineSpacing(SingleMemoTypography.lineSpacing(for: size))
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

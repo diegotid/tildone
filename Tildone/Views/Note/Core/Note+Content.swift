@@ -12,11 +12,13 @@ extension Note {
         ZStack {
             GeometryReader { geometry in
                 if let task = note.singleTask {
+                    let fontName = SingleMemoTypography.fontName(for: note.singleMemoFont)
                     let liveRichText = singleTaskDraftID == task.id
                         ? singleTaskDraft
                         : task.richText
                     let size = singleTaskFontSize(
                         text: liveRichText.text,
+                        fontName: fontName,
                         availableSize: CGSize(
                             width: max(1, geometry.size.width - 12),
                             height: max(1, geometry.size.height - 8)
@@ -39,7 +41,7 @@ extension Note {
                         textColor: noteForeground,
                         cursorColor: noteForeground,
                         truncation: .multiple,
-                        fontName: SingleMemoTypography.fontName,
+                        fontName: fontName,
                         alignment: .center,
                         lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
                         verticallyCentersContent: true,
@@ -91,7 +93,11 @@ extension Note {
         .onHover { isPointerHovering = $0 }
     }
 
-    private func singleTaskFontSize(text: String, availableSize: CGSize) -> CGFloat {
+    private func singleTaskFontSize(
+        text: String,
+        fontName: String,
+        availableSize: CGSize
+    ) -> CGFloat {
         guard !text.isEmpty else { return min(72, availableSize.height * 0.4) }
         var low: CGFloat = 18
         var high: CGFloat = 128
@@ -102,7 +108,7 @@ extension Note {
                 fontSize: candidate,
                 baseColor: .textColor,
                 truncation: .multiple,
-                fontName: SingleMemoTypography.fontName,
+                fontName: fontName,
                 alignment: .center,
                 lineHeightMultiple: SingleMemoTypography.lineHeightMultiple
             )
@@ -235,7 +241,10 @@ extension Note {
         return ZStack(alignment: .topLeading) {
             if note.kind == .singleTask {
                 Text(note.singleTask?.text ?? "")
-                    .font(.custom(SingleMemoTypography.fontName, size: 16))
+                    .font(.custom(
+                        SingleMemoTypography.fontName(for: note.singleMemoFont),
+                        size: 16
+                    ))
                     .lineSpacing(SingleMemoTypography.lineSpacing(for: 16))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)

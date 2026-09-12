@@ -2079,6 +2079,90 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testVerticallyCenteredMemoKeepsEveryRenderedLineVisibleWhenFocusedOrNot() async throws {
+        SingleMemoTypography.registerBundledFonts()
+        let font = try XCTUnwrap(NSFont(
+            name: SingleMemoTypography.fontName(for: .overlock),
+            size: 49
+        ))
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        paragraphStyle.alignment = .center
+        paragraphStyle.lineHeightMultiple = SingleMemoTypography.lineHeightMultiple
+        let value = NSAttributedString(
+            string: "Overlock font looks fine but maybe not too large after all and these are the last words",
+            attributes: [
+                .font: font,
+                .paragraphStyle: paragraphStyle
+            ]
+        )
+        let cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        cell.isBordered = false
+        cell.wraps = true
+        cell.attributedStringValue = value
+        let availableFrame = NSRect(x: 0, y: 0, width: 464, height: 619)
+
+        let requiredHeight = ceil(cell.cellSize(forBounds: availableFrame).height)
+        let drawingFrame = cell.verticallyCenteredDrawingFrame(for: availableFrame)
+
+        XCTAssertGreaterThanOrEqual(drawingFrame.height, requiredHeight)
+        XCTAssertEqual(drawingFrame.midY, availableFrame.midY, accuracy: 0.001)
+
+        let field = MouseSafeTaskNSTextField(frame: availableFrame)
+        field.cell = cell
+        field.isEditable = true
+        field.allowsEditingTextAttributes = true
+        field.isBordered = false
+        field.drawsBackground = false
+        field.lineBreakMode = .byWordWrapping
+        field.usesSingleLineMode = false
+        field.cell?.lineBreakMode = .byWordWrapping
+        field.cell?.wraps = true
+        field.cell?.isScrollable = false
+        field.attributedStringValue = value
+        field.wrapsContent = true
+        field.verticallyCentersContent = true
+        XCTAssertEqual(field.intrinsicContentSize.height, NSView.noIntrinsicMetric)
+        let window = NSWindow(
+            contentRect: availableFrame,
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView?.addSubview(field)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+        XCTAssertTrue(window.makeFirstResponder(field))
+        field.layoutSubtreeIfNeeded()
+        let editor = try XCTUnwrap(field.currentEditor() as? MouseSafeTaskFieldEditor)
+        editor.isHorizontallyResizable = false
+        editor.isVerticallyResizable = true
+        editor.textContainer?.widthTracksTextView = true
+        editor.textContainer?.lineBreakMode = .byWordWrapping
+        editor.textContainer?.containerSize = NSSize(
+            width: max(1, editor.bounds.width),
+            height: .greatestFiniteMagnitude
+        )
+        editor.verticallyCentersContent = true
+        editor.refreshTextGeometry()
+        editor.layoutSubtreeIfNeeded()
+        await Swift.Task<Never, Never>.yield()
+        let clipView = try XCTUnwrap(editor.superview as? NSClipView)
+        let textContainer = try XCTUnwrap(editor.textContainer)
+        let layoutManager = try XCTUnwrap(editor.layoutManager)
+        layoutManager.ensureLayout(for: textContainer)
+        let usedRect = layoutManager.usedRect(for: textContainer)
+        let expectedInset = max(0, (clipView.bounds.height - usedRect.height) / 2)
+        XCTAssertEqual(editor.textContainerInset.height, expectedInset, accuracy: 0.5)
+        let visibleTextRect = usedRect.offsetBy(
+            dx: editor.textContainerOrigin.x,
+            dy: editor.textContainerOrigin.y
+        )
+        XCTAssertGreaterThanOrEqual(visibleTextRect.minY, clipView.bounds.minY)
+        XCTAssertLessThanOrEqual(visibleTextRect.maxY, clipView.bounds.maxY)
+    }
+
+    @MainActor
     func testUntouchedMacEditorDoesNotOverwriteRemoteFormattingOnBlur() async throws {
         let plain = RichText(text: "Remote format")
         let remote = plain.applying(

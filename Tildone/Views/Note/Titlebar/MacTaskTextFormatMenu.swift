@@ -7,9 +7,20 @@ import SwiftUI
 import TildoneDomain
 
 struct MacTaskTextFormatMenu: View {
+    let store: MacSharedStore
+    @ObservedObject var presentation: MacNotePresentation
+    let noteID: NoteID
     let foreground: Color
 
-    init(foreground: Color = .primary) {
+    init(
+        store: MacSharedStore,
+        presentation: MacNotePresentation,
+        noteID: NoteID,
+        foreground: Color = .primary
+    ) {
+        self.store = store
+        self.presentation = presentation
+        self.noteID = noteID
         self.foreground = foreground
     }
 
@@ -22,6 +33,10 @@ struct MacTaskTextFormatMenu: View {
             Divider()
             colorMenu("Text color", systemImage: "textformat", isHighlight: false)
             colorMenu("Highlight", systemImage: "highlighter", isHighlight: true)
+            if presentation.snapshot.kind == .singleTask {
+                Divider()
+                fontMenu
+            }
         } label: {
             Image(systemName: "textformat")
                 .font(.system(size: 12, weight: .semibold))
@@ -35,6 +50,27 @@ struct MacTaskTextFormatMenu: View {
         .tint(foreground)
         .help("Format task text")
         .accessibilityLabel("Format task text")
+    }
+
+    private var fontMenu: some View {
+        Menu {
+            ForEach(SingleMemoFont.allCases) { font in
+                Button {
+                    Swift.Task { try? await store.setSingleMemoFont(font, for: noteID) }
+                } label: {
+                    if presentation.snapshot.singleMemoFont == font {
+                        Label(font.displayName, systemImage: "checkmark")
+                            .font(.custom(SingleMemoTypography.fontName(for: font), size: 15))
+                    } else {
+                        Text(verbatim: font.displayName)
+                            .font(.custom(SingleMemoTypography.fontName(for: font), size: 15))
+                    }
+                }
+            }
+        } label: {
+            Label("Font", systemImage: "textformat.size")
+        }
+        .tint(.primary)
     }
 
     private func formatButton(

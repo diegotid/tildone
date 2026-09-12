@@ -64,7 +64,7 @@ struct NoteListRow: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(note.color.swiftUIColor)
             Text(taskListText?.isEmpty == false ? taskListText! : String(localized: "New task"))
-                .font(.custom(SingleMemoTypography.fontName, size: 25))
+                .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: 25))
                 .lineSpacing(SingleMemoTypography.lineSpacing(for: 25))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)

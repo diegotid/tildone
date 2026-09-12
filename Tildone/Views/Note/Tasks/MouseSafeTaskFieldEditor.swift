@@ -11,6 +11,7 @@ final class MouseSafeTaskFieldEditor: NSTextView {
     private weak var observedClipView: NSClipView?
     private var clipViewObservers: [NSObjectProtocol] = []
     private var isRestoringTextGeometry = false
+    private var hasPendingWrappedGeometryRefresh = false
     private var enforcedInsertionPointColor = NSColor.textColor
 
     override func becomeFirstResponder() -> Bool {
@@ -82,6 +83,16 @@ final class MouseSafeTaskFieldEditor: NSTextView {
 
     func refreshTextGeometry() {
         restoreFirstCharacterPosition()
+        guard verticallyCentersContent, !hasPendingWrappedGeometryRefresh else { return }
+        // AppKit initially installs its shared field editor with a single-line
+        // glyph layout. The wrapping geometry settles later in this run-loop
+        // turn, so recenter once more using the final line fragments.
+        hasPendingWrappedGeometryRefresh = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.hasPendingWrappedGeometryRefresh = false
+            self.restoreFirstCharacterPosition()
+        }
     }
 
     private func observeClipViewBounds() {

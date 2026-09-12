@@ -238,6 +238,8 @@ final class TildoneSyncTests: XCTestCase {
         let noteRecord = mapper.record(from: .note(fixture.note))
         XCTAssertEqual(noteRecord["color"] as? String, fixture.note.color.rawValue)
         XCTAssertNotNil(noteRecord["colorVersionCounter"])
+        XCTAssertEqual(noteRecord["singleMemoFont"] as? String, SingleMemoFont.meowScript.rawValue)
+        XCTAssertNotNil(noteRecord["singleMemoFontVersionCounter"])
     }
 
     func testDevelopmentContractManifestMatchesEveryEncodedMapperField() throws {
@@ -250,7 +252,7 @@ final class TildoneSyncTests: XCTestCase {
         )
         XCTAssertEqual(
             Set(contracts.keys),
-            Set(["TDNote-1", "TDNote-2", "TDNote-3", "TDTask-1", "TDTask-2", "TDTask-3", "TDClient-1"])
+            Set(["TDNote-1", "TDNote-2", "TDNote-3", "TDNote-4", "TDTask-1", "TDTask-2", "TDTask-3", "TDClient-1"])
         )
 
         let v1Note = Note(
@@ -300,10 +302,21 @@ final class TildoneSyncTests: XCTestCase {
             lifecycleVersion: fixture.task.lifecycleVersion,
             schemaVersion: 2
         )
+        let v3Note = Note(
+            id: fixture.note.id, createdAt: fixture.note.createdAt,
+            title: fixture.note.title, titleVersion: fixture.note.titleVersion,
+            color: fixture.note.color, colorVersion: fixture.note.colorVersion,
+            kind: fixture.note.kind, kindVersion: fixture.note.kindVersion,
+            lifecycle: fixture.note.lifecycle, lifecycleVersion: fixture.note.lifecycleVersion,
+            lastMeaningfulEditAt: fixture.note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: fixture.note.lastMeaningfulEditVersion,
+            schemaVersion: 3
+        )
         let records: [(String, CKRecord)] = [
             ("TDNote-1", mapper.record(from: .note(v1Note))),
             ("TDNote-2", mapper.record(from: .note(v2Note))),
-            ("TDNote-3", mapper.record(from: .note(fixture.note))),
+            ("TDNote-3", mapper.record(from: .note(v3Note))),
+            ("TDNote-4", mapper.record(from: .note(fixture.note))),
             ("TDTask-1", mapper.record(from: .task(v1Task))),
             ("TDTask-2", mapper.record(from: .task(v2Task))),
             ("TDTask-3", mapper.record(from: .task(fixture.task))),
@@ -315,7 +328,7 @@ final class TildoneSyncTests: XCTestCase {
         }
 
         let contentManifestFields = Set(
-            try XCTUnwrap(contracts["TDNote-3"]).fields.map(\.name) +
+            try XCTUnwrap(contracts["TDNote-4"]).fields.map(\.name) +
             (try XCTUnwrap(contracts["TDTask-3"])).fields.map(\.name)
         )
         XCTAssertEqual(contentManifestFields, Set(CloudKitRecordMapper.Field.all))
@@ -328,6 +341,7 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(optionalByRecord["TDNote-1"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDNote-2"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDNote-3"], Set(["title"]))
+        XCTAssertEqual(optionalByRecord["TDNote-4"], Set(["title"]))
         XCTAssertEqual(optionalByRecord["TDTask-1"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDTask-2"], Set(["completedAt"]))
         XCTAssertEqual(optionalByRecord["TDTask-3"], Set(["completedAt"]))
@@ -399,6 +413,28 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertEqual(note.schemaVersion, 1)
         XCTAssertEqual(note.color, .yellow)
         XCTAssertEqual(note.colorVersion, note.titleVersion)
+        XCTAssertEqual(note.singleMemoFont, .overlock)
+        XCTAssertEqual(note.singleMemoFontVersion, note.titleVersion)
+    }
+
+    func testCloudMapperReadsV1ThroughV3NotesWithoutFontAsOverlock() throws {
+        let mapper = CloudKitRecordMapper()
+        let fixture = Fixture()
+
+        for version in 1...3 {
+            let record = mapper.record(from: .note(fixture.note))
+            record["schemaVersion"] = NSNumber(value: version)
+            record["singleMemoFont"] = nil
+            record["singleMemoFontVersionCounter"] = nil
+            record["singleMemoFontVersionReplicaID"] = nil
+
+            guard case let .note(note) = try mapper.syncRecord(from: record) else {
+                return XCTFail("Expected a note")
+            }
+            XCTAssertEqual(note.schemaVersion, version)
+            XCTAssertEqual(note.singleMemoFont, .overlock)
+            XCTAssertEqual(note.singleMemoFontVersion, note.titleVersion)
+        }
     }
 
     func testCloudMapperReadsV1TasksWithoutIndentationAndUsesOrderVersion() throws {
@@ -1421,6 +1457,7 @@ final class TildoneSyncTests: XCTestCase {
         _ = try await replicas[0].repository.editTask(id: taskID, text: "Replica one")
         _ = try await replicas[1].repository.setTaskCompletion(id: taskID, completion: .completed(at: date))
         _ = try await replicas[2].repository.renameNote(id: noteID, to: "Replica three", editedAt: date)
+        _ = try await replicas[2].repository.setSingleMemoFont(id: noteID, font: .permanentMarker)
         try await upload(replicas[2], server: &server)
         try await upload(replicas[0], server: &server)
         try await upload(replicas[1], server: &server)
@@ -1436,6 +1473,7 @@ final class TildoneSyncTests: XCTestCase {
         XCTAssertTrue(tasks.dropFirst().allSatisfy { $0 == tasks[0] })
         XCTAssertEqual(tasks[0][0].text, "Replica one")
         XCTAssertTrue(tasks[0][0].isCompleted)
+        XCTAssertEqual(notes[0][0].singleMemoFont, .permanentMarker)
     }
 
 }
@@ -1472,6 +1510,10 @@ private extension TildoneSyncTests {
                 titleVersion: stamp,
                 color: .purple,
                 colorVersion: stamp,
+                kind: .singleTask,
+                kindVersion: stamp,
+                singleMemoFont: .meowScript,
+                singleMemoFontVersion: stamp,
                 lifecycleVersion: stamp,
                 lastMeaningfulEditAt: date,
                 lastMeaningfulEditVersion: stamp

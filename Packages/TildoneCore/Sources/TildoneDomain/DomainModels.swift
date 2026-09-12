@@ -50,8 +50,23 @@ public enum NoteKind: String, Codable, CaseIterable, Hashable, Identifiable, Sen
     public var id: Self { self }
 }
 
+/// A stable font choice for the single-memo presentation. Raw values are part
+/// of the local and CloudKit contracts; platform targets map them to bundled
+/// PostScript font names.
+public enum SingleMemoFont: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
+    case overlock
+    case coveredByYourGrace
+    case craftyGirls
+    case lacquer
+    case meowScript
+    case permanentMarker
+    case seaweedScript
+
+    public var id: Self { self }
+}
+
 public struct Note: Codable, Hashable, Sendable {
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
     public static let oldestSupportedSchemaVersion = 1
 
     public let id: NoteID
@@ -62,6 +77,8 @@ public struct Note: Codable, Hashable, Sendable {
     public private(set) var colorVersion: VersionStamp
     public private(set) var kind: NoteKind
     public private(set) var kindVersion: VersionStamp
+    public private(set) var singleMemoFont: SingleMemoFont
+    public private(set) var singleMemoFontVersion: VersionStamp
     public private(set) var lifecycle: LifecycleState
     public private(set) var lifecycleVersion: VersionStamp
     /// Display/sort metadata only. This date is not a conflict authority.
@@ -78,6 +95,8 @@ public struct Note: Codable, Hashable, Sendable {
         colorVersion: VersionStamp? = nil,
         kind: NoteKind = .checklist,
         kindVersion: VersionStamp? = nil,
+        singleMemoFont: SingleMemoFont = .overlock,
+        singleMemoFontVersion: VersionStamp? = nil,
         lifecycle: LifecycleState = .active,
         lifecycleVersion: VersionStamp,
         lastMeaningfulEditAt: Date,
@@ -92,6 +111,8 @@ public struct Note: Codable, Hashable, Sendable {
         self.colorVersion = colorVersion ?? titleVersion
         self.kind = kind
         self.kindVersion = kindVersion ?? titleVersion
+        self.singleMemoFont = singleMemoFont
+        self.singleMemoFontVersion = singleMemoFontVersion ?? titleVersion
         self.lifecycle = lifecycle
         self.lifecycleVersion = lifecycleVersion
         self.lastMeaningfulEditAt = lastMeaningfulEditAt
@@ -127,6 +148,17 @@ public struct Note: Codable, Hashable, Sendable {
         kindVersion = version
     }
 
+    public mutating func setSingleMemoFont(
+        _ font: SingleMemoFont,
+        version: VersionStamp
+    ) throws {
+        guard version > singleMemoFontVersion else {
+            throw DomainMutationError.versionMustAdvance
+        }
+        singleMemoFont = font
+        singleMemoFontVersion = version
+    }
+
     public mutating func delete(version: VersionStamp) throws {
         try setLifecycle(.deleted, version: version)
     }
@@ -154,7 +186,8 @@ public struct Note: Codable, Hashable, Sendable {
 
 
     private enum CodingKeys: String, CodingKey {
-        case id, createdAt, title, titleVersion, color, colorVersion, kind, kindVersion, lifecycle,
+        case id, createdAt, title, titleVersion, color, colorVersion, kind, kindVersion,
+             singleMemoFont, singleMemoFontVersion, lifecycle,
              lifecycleVersion, lastMeaningfulEditAt, lastMeaningfulEditVersion,
              schemaVersion
     }
@@ -174,6 +207,14 @@ public struct Note: Codable, Hashable, Sendable {
         kind = try values.decodeIfPresent(NoteKind.self, forKey: .kind) ?? .checklist
         kindVersion = try values.decodeIfPresent(VersionStamp.self, forKey: .kindVersion)
             ?? titleVersion
+        singleMemoFont = try values.decodeIfPresent(
+            SingleMemoFont.self,
+            forKey: .singleMemoFont
+        ) ?? .overlock
+        singleMemoFontVersion = try values.decodeIfPresent(
+            VersionStamp.self,
+            forKey: .singleMemoFontVersion
+        ) ?? titleVersion
         lifecycle = try values.decode(LifecycleState.self, forKey: .lifecycle)
         lifecycleVersion = try values.decode(VersionStamp.self, forKey: .lifecycleVersion)
         lastMeaningfulEditAt = try values.decode(Date.self, forKey: .lastMeaningfulEditAt)
@@ -194,6 +235,8 @@ public struct Note: Codable, Hashable, Sendable {
         try values.encode(colorVersion, forKey: .colorVersion)
         try values.encode(kind, forKey: .kind)
         try values.encode(kindVersion, forKey: .kindVersion)
+        try values.encode(singleMemoFont, forKey: .singleMemoFont)
+        try values.encode(singleMemoFontVersion, forKey: .singleMemoFontVersion)
         try values.encode(lifecycle, forKey: .lifecycle)
         try values.encode(lifecycleVersion, forKey: .lifecycleVersion)
         try values.encode(lastMeaningfulEditAt, forKey: .lastMeaningfulEditAt)

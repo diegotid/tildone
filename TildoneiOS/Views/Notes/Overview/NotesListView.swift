@@ -22,6 +22,7 @@ struct NotesListView: View {
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
     @State private var deckOrder: [NoteID] = []
+    @State private var showsAbout = false
 
     init(appModel: TildoneiOSApplicationModel) {
         self.appModel = appModel
@@ -114,6 +115,14 @@ struct NotesListView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showsAbout = true
+                    } label: {
+                        Label("About Tildone", systemImage: "info.circle")
+                    }
+                    .accessibilityLabel("About Tildone")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: createNote) { Label("New Note", systemImage: "plus") }
                         .accessibilityLabel("Create note")
                         .disabled(!appModel.hasWorkspace)
@@ -121,6 +130,9 @@ struct NotesListView: View {
             }
             .navigationDestination(item: $presentedNoteID) { noteID in
                 ChecklistView(appModel: appModel, noteID: noteID)
+            }
+            .navigationDestination(isPresented: $showsAbout) {
+                TildoneiOSAboutView()
             }
         }
         .onAppear { reconcileDeckOrder() }

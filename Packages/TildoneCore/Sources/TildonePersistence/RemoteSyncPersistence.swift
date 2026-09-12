@@ -90,6 +90,13 @@ public extension TildoneRepository {
                         context.insert(try StoredDomainMapping.storedNoteKind(from: merged))
                     }
                 }
+                if merged.schemaVersion >= 4 {
+                    if let font = try storedSingleMemoFont(noteID: merged.id, in: context) {
+                        try StoredDomainMapping.update(font, from: merged)
+                    } else {
+                        context.insert(try StoredDomainMapping.storedSingleMemoFont(from: merged))
+                    }
+                }
             }
         } else {
             merged = remote
@@ -100,6 +107,9 @@ public extension TildoneRepository {
             }
             if remote.schemaVersion >= 3 {
                 context.insert(try StoredDomainMapping.storedNoteKind(from: remote))
+            }
+            if remote.schemaVersion >= 4 {
+                context.insert(try StoredDomainMapping.storedSingleMemoFont(from: remote))
             }
         }
 
@@ -361,7 +371,8 @@ public extension TildoneRepository {
 private extension TildoneRepository {
     func observeRemoteVersions(in note: Note, metadata: WorkspaceMetadata) throws {
         try observe([
-            note.titleVersion, note.colorVersion, note.kindVersion, note.lifecycleVersion,
+            note.titleVersion, note.colorVersion, note.kindVersion,
+            note.singleMemoFontVersion, note.lifecycleVersion,
             note.lastMeaningfulEditVersion
         ], metadata: metadata)
     }

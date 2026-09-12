@@ -13,6 +13,7 @@ enum Id {
     static let bottomAnchor: String = "bottom"
     static let desktopWindow: String = "tildone-desktop-coordinator"
     static let aboutWindow: String = "about-tildone"
+    static let fontAttributionsWindow: String = "font-attributions"
     static let focusFilterHelpWindow: String = "focus-filter-help"
     static let keyboardShortcutsWindow: String = "keyboard-shortcuts"
     static let scrollGesturesHelpWindow: String = "scroll-gestures-help"
@@ -22,7 +23,7 @@ enum Id {
 
 enum Frame {
     static let aboutWindowWidth: CGFloat = 240
-    static let aboutWindowHeight: CGFloat = 260
+    static let aboutWindowHeight: CGFloat = 310
     static let aboutIconSize: CGFloat = 100
 }
 

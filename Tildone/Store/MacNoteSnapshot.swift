@@ -15,6 +15,7 @@ struct MacNoteSnapshot: Identifiable {
     var title: String? { note.title }
     var color: NoteColor { note.color }
     var kind: NoteKind { note.kind }
+    var singleMemoFont: SingleMemoFont { note.singleMemoFont }
     var singleTask: Task? { tasks.first }
     var isEmpty: Bool {
         if kind == .singleTask { return singleTask?.text.isEmpty != false }

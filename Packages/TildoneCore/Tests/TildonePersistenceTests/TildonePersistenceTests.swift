@@ -16,6 +16,28 @@ final class TildonePersistenceTests: XCTestCase {
     private let taskID = TaskID(UUID(uuidString: "30000000-0000-0000-0000-000000000001")!)
     private let createdAt = Date(timeIntervalSince1970: 1_000)
 
+    func testSingleMemoFontDefaultsPersistsSnapshotsAndQueuesCurrentNoteRecord() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        let created = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        XCTAssertEqual(created.singleMemoFont, .overlock)
+
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+        let changed = try await repository.setSingleMemoFont(id: noteID, font: .coveredByYourGrace)
+        let reloaded = try await repository.note(id: noteID)
+        let snapshots = try await repository.visibleNoteSnapshots()
+        let snapshot = try XCTUnwrap(snapshots.first)
+
+        XCTAssertEqual(changed.singleMemoFont, .coveredByYourGrace)
+        XCTAssertEqual(reloaded.singleMemoFont, .coveredByYourGrace)
+        XCTAssertEqual(snapshot.note.singleMemoFont, .coveredByYourGrace)
+        XCTAssertEqual(reloaded.schemaVersion, Note.currentSchemaVersion)
+        XCTAssertGreaterThan(reloaded.singleMemoFontVersion, created.singleMemoFontVersion)
+        let pending = try await repository.pendingMutations()
+        XCTAssertEqual(pending.map(\.targetStableID), [noteID.stringValue])
+    }
+
     func testNoteKindPersistsAndQueuesCurrentNoteRecord() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         let created = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
@@ -288,6 +310,10 @@ final class TildonePersistenceTests: XCTestCase {
             titleVersion: titleStamp,
             color: .purple,
             colorVersion: stamp(5),
+            kind: .singleTask,
+            kindVersion: stamp(6),
+            singleMemoFont: .seaweedScript,
+            singleMemoFontVersion: stamp(7),
             lifecycle: .deleted,
             lifecycleVersion: lifecycleStamp,
             lastMeaningfulEditAt: createdAt.addingTimeInterval(10),
@@ -296,7 +322,9 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(
             try StoredDomainMapping.note(
                 from: StoredDomainMapping.storedNote(from: note),
-                color: StoredDomainMapping.storedNoteColor(from: note)
+                color: StoredDomainMapping.storedNoteColor(from: note),
+                kind: StoredDomainMapping.storedNoteKind(from: note),
+                singleMemoFont: StoredDomainMapping.storedSingleMemoFont(from: note)
             ),
             note
         )
@@ -1035,8 +1063,10 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(TildoneSchemaV5.models.count, 10)
         XCTAssertEqual(TildoneSchemaV6.versionIdentifier, Schema.Version(6, 0, 0))
         XCTAssertEqual(TildoneSchemaV6.models.count, 11)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 6)
-        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 5)
+        XCTAssertEqual(TildoneSchemaV7.versionIdentifier, Schema.Version(7, 0, 0))
+        XCTAssertEqual(TildoneSchemaV7.models.count, 12)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.schemas.count, 7)
+        XCTAssertEqual(TildoneSchemaMigrationPlan.stages.count, 6)
     }
 
     func testV4StoreMigrationBackfillsEveryTaskAsUnformattedRichText() async throws {
@@ -1228,6 +1258,7 @@ final class TildonePersistenceTests: XCTestCase {
         let quarantine = try await repository.quarantinedRecords()
 
         XCTAssertEqual(note.title, "V1 fixture 📝")
+        XCTAssertEqual(note.singleMemoFont, .overlock)
         XCTAssertEqual(task.text, "Preserved edited task café 漢字")
         XCTAssertEqual(task.schemaVersion, Task.currentSchemaVersion)
         XCTAssertEqual(task.indentLevel, 0)
@@ -1295,6 +1326,7 @@ final class TildonePersistenceTests: XCTestCase {
         let before = try await interrupted!.note(id: noteID)
         XCTAssertEqual(before.schemaVersion, 1)
         XCTAssertEqual(before.color, .yellow)
+        XCTAssertEqual(before.singleMemoFont, .overlock)
         let evidenceBefore = try await interrupted!.legacyMigrationSnapshot()
         XCTAssertEqual(evidenceBefore.activationState, .activated)
         XCTAssertTrue(evidenceBefore.cloudSeedingEverBegun)
@@ -1359,6 +1391,7 @@ final class TildonePersistenceTests: XCTestCase {
         let afterRelaunch = try await relaunched.note(id: noteID)
         let relaunchedCounter = try await relaunched.workspaceSnapshot().logicalCounter
         XCTAssertEqual(afterRelaunch.color, .orange)
+        XCTAssertEqual(afterRelaunch.singleMemoFont, .overlock)
         XCTAssertEqual(relaunchedCounter, counterAfterMigration)
         try await relaunched.migrateMissingNoteColors(
             colorsByNoteID: [noteID: .blue],

@@ -9,6 +9,25 @@ import XCTest
 @testable import TildoneDomain
 
 final class DomainModelTests: XCTestCase {
+    func testLegacyNoteJSONDefaultsSingleMemoFontToOverlock() throws {
+        let note = Fixtures.note()
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(note)) as? [String: Any]
+        )
+        object["schemaVersion"] = 3
+        object.removeValue(forKey: "singleMemoFont")
+        object.removeValue(forKey: "singleMemoFontVersion")
+
+        let decoded = try JSONDecoder().decode(
+            Note.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertEqual(decoded.singleMemoFont, .overlock)
+        XCTAssertEqual(decoded.singleMemoFontVersion, decoded.titleVersion)
+        XCTAssertEqual(decoded.schemaVersion, 3)
+    }
+
     func testOrdinaryNoteEditDoesNotResurrectTombstone() throws {
         var note = Fixtures.note()
         try note.delete(version: Fixtures.stamp(2))
