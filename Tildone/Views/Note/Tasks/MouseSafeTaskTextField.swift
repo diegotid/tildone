@@ -18,6 +18,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let truncation: TaskLineTruncation
     var fontName: String? = nil
     var alignment: NSTextAlignment = .left
+    var lineHeightMultiple: CGFloat? = nil
     var verticallyCentersContent = false
     let onFocus: () -> Void
     let onBlur: () -> Void
@@ -77,6 +78,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         let baseColor = NSColor(textColor)
         let presentationChanged = context.coordinator.lastFontSize != fontSize
             || context.coordinator.lastFontName != fontName
+            || context.coordinator.lastLineHeightMultiple != lineHeightMultiple
             || context.coordinator.lastBaseColor?.isEqual(baseColor) != true
         if !isActivelyEditing,
            !preservingCanonicalAfterBlur,
@@ -87,7 +89,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 baseColor: baseColor,
                 truncation: truncation,
                 fontName: fontName,
-                alignment: alignment
+                alignment: alignment,
+                lineHeightMultiple: lineHeightMultiple
             )
         }
         if isActivelyEditing,
@@ -102,7 +105,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 baseColor: baseColor,
                 truncation: truncation,
                 fontName: fontName,
-                alignment: alignment
+                alignment: alignment,
+                lineHeightMultiple: lineHeightMultiple
             )
             field.attributedStringValue = attributed
             editor.textStorage?.setAttributedString(attributed)
@@ -118,12 +122,14 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                     baseColor: baseColor,
                     truncation: truncation,
                     fontName: fontName,
-                    alignment: alignment
+                    alignment: alignment,
+                    lineHeightMultiple: lineHeightMultiple
                 ).attributes(at: 0, effectiveRange: nil)
             field.invalidateIntrinsicContentSize()
         }
         context.coordinator.lastFontSize = fontSize
         context.coordinator.lastFontName = fontName
+        context.coordinator.lastLineHeightMultiple = lineHeightMultiple
         context.coordinator.lastBaseColor = baseColor
         field.cell?.lineBreakMode = truncation == .single ? .byTruncatingTail : .byWordWrapping
         field.cell?.wraps = truncation == .multiple
@@ -164,6 +170,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         weak var field: MouseSafeTaskNSTextField?
         var lastFontSize: CGFloat?
         var lastFontName: String?
+        var lastLineHeightMultiple: CGFloat?
         var lastBaseColor: NSColor?
         var lastRequestedFocus = false
         var canonicalRichText: RichText
@@ -283,6 +290,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             let truncation = parent.truncation
             let fontName = parent.fontName
             let alignment = parent.alignment
+            let lineHeightMultiple = parent.lineHeightMultiple
             DispatchQueue.main.async { [weak editedField] in
                 guard let editedField,
                       editedField.window?.firstResponder !== editedField.currentEditor() else { return }
@@ -292,7 +300,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                     baseColor: baseColor,
                     truncation: truncation,
                     fontName: fontName,
-                    alignment: alignment
+                    alignment: alignment,
+                    lineHeightMultiple: lineHeightMultiple
                 )
                 editedField.updateTruncationTooltip()
             }
@@ -384,7 +393,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 baseColor: NSColor(parent.textColor),
                 truncation: parent.truncation,
                 fontName: parent.fontName,
-                alignment: parent.alignment
+                alignment: parent.alignment,
+                lineHeightMultiple: parent.lineHeightMultiple
             )
             if isEditing, let editor {
                 editor.textStorage?.setAttributedString(attributed)
@@ -452,7 +462,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         baseColor: NSColor,
         truncation: TaskLineTruncation? = nil,
         fontName: String? = nil,
-        alignment: NSTextAlignment = .left
+        alignment: NSTextAlignment = .left,
+        lineHeightMultiple: CGFloat? = nil
     ) -> NSAttributedString {
         let baseFont = fontName.flatMap { NSFont(name: $0, size: fontSize) }
             ?? NSFont.systemFont(ofSize: fontSize)
@@ -463,6 +474,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             // drawing the tail ellipsis as their available width changes.
             style.allowsDefaultTighteningForTruncation = false
             style.alignment = alignment
+            if let lineHeightMultiple {
+                style.lineHeightMultiple = lineHeightMultiple
+            }
             return style
         }
         var baseAttributes: [NSAttributedString.Key: Any] = [

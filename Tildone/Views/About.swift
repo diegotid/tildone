@@ -34,8 +34,14 @@ struct About: View {
                     .padding(.bottom, 10)
             }
             Text("© 2023 Diego Rivera")
+            Text("Overlock font © 2011 Dario Manuel Muhafara")
+                .font(.caption2)
             if let website = URL(string: "http://cuatro.studio") {
                 Link("cuatro.studio", destination: website)
+            }
+            if let license = URL(string: "https://openfontlicense.org/") {
+                Link("Overlock — SIL Open Font License 1.1", destination: license)
+                    .font(.caption2)
             }
         }
         .padding()

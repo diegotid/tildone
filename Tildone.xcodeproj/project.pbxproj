@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		S10000000000000000000001 /* SingleMemoTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000011 /* SingleMemoTypography.swift */; };
+		S10000000000000000000002 /* SingleMemoTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000011 /* SingleMemoTypography.swift */; };
+		S10000000000000000000003 /* Overlock-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000013 /* Overlock-Regular.ttf */; };
+		S10000000000000000000004 /* Overlock-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000014 /* Overlock-OFL.txt */; };
+		S10000000000000000000005 /* Overlock-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000013 /* Overlock-Regular.ttf */; };
+		S10000000000000000000006 /* Overlock-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = S10000000000000000000014 /* Overlock-OFL.txt */; };
 		R10000000000000000000001 /* MacTaskTextFormatMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000011 /* MacTaskTextFormatMenu.swift */; };
 		R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000012 /* RichTaskTextEditor.swift */; };
 		R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = R10000000000000000000013 /* TaskTextFormatMenu.swift */; };
@@ -198,6 +204,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		S10000000000000000000011 /* SingleMemoTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMemoTypography.swift; sourceTree = "<group>"; };
+		S10000000000000000000013 /* Overlock-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/Overlock-Regular.ttf; sourceTree = SOURCE_ROOT; };
+		S10000000000000000000014 /* Overlock-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/Overlock-OFL.txt; sourceTree = SOURCE_ROOT; };
 		R10000000000000000000011 /* MacTaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTaskTextFormatMenu.swift; sourceTree = "<group>"; };
 		R10000000000000000000012 /* RichTaskTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTaskTextEditor.swift; sourceTree = "<group>"; };
 		R10000000000000000000013 /* TaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTextFormatMenu.swift; sourceTree = "<group>"; };
@@ -411,6 +420,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		S10000000000000000000021 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				S10000000000000000000011 /* SingleMemoTypography.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		A10000000000000000000051 /* TildoneiOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -829,6 +846,7 @@
 		F166703A2AF711EC000B76A5 = {
 			isa = PBXGroup;
 			children = (
+				S10000000000000000000021 /* Shared */,
 				F16670452AF711EC000B76A5 /* Tildone */,
 				F16670592AF711EE000B76A5 /* TildoneTests */,
 				F16670632AF711EE000B76A5 /* TildoneUITests */,
@@ -1137,6 +1155,8 @@
 				C10000000000000000000040 /* Localizable.xcstrings in Resources */,
 				F18A88B2301EC9FB002DF4C2 /* TildoneIcon.icon in Resources */,
 				A10000000000000000000004 /* Preview Assets.xcassets in Resources */,
+				S10000000000000000000005 /* Overlock-Regular.ttf in Resources */,
+				S10000000000000000000006 /* Overlock-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1163,6 +1183,8 @@
 				F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */,
 				F13428142B535EA40045343D /* Localizable.xcstrings in Resources */,
 				F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */,
+				S10000000000000000000003 /* Overlock-Regular.ttf in Resources */,
+				S10000000000000000000004 /* Overlock-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1187,6 +1209,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				S10000000000000000000002 /* SingleMemoTypography.swift in Sources */,
 				R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */,
 				R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */,
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
@@ -1253,6 +1276,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				S10000000000000000000001 /* SingleMemoTypography.swift in Sources */,
 				R10000000000000000000001 /* MacTaskTextFormatMenu.swift in Sources */,
 				U10000000000000000000003 /* MacUndoMenuButton.swift in Sources */,
 				D70000000000000000000201 /* NoteWindowButtonActionController.swift in Sources */,

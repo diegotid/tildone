@@ -17,6 +17,10 @@ struct TildoneApp: App {
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    init() {
+        SingleMemoTypography.registerBundledFont()
+    }
+
     var isCloseCommandDisabled: Bool {
         if let noteID = foregroundNoteID, let note = sharedStoreBootstrapper.store?.note(noteID) {
             !note.isDeletable

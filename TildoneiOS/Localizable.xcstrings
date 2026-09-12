@@ -1,86 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Bold" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bold" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Negrita" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gras" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粗体" } }
-      }
-    },
-    "Default" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Default" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Predeterminado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Par défaut" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认" } }
-      }
-    },
-    "Format task text" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format task text" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Formato del texto de la tarea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mettre en forme le texte de la tâche" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置任务文本格式" } }
-      }
-    },
-    "Gray" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gray" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gris" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gris" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "灰色" } }
-      }
-    },
-    "Highlight" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Highlight" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Resaltado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Surlignage" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "高亮" } }
-      }
-    },
-    "Italic" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Italic" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cursiva" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Italique" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "斜体" } }
-      }
-    },
-    "Red" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Red" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Rojo" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rouge" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "红色" } }
-      }
-    },
-    "Strikethrough" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strikethrough" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tachado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Barré" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除线" } }
-      }
-    },
-    "Text color" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Text color" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Color del texto" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Couleur du texte" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文本颜色" } }
-      }
-    },
-    "Underline" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Underline" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Subrayado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Souligné" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下划线" } }
-      }
-    },
     "%@. Tasks: %@" : {
       "localizations" : {
         "es" : {
@@ -551,64 +471,6 @@
         }
       }
     },
-    "Done" : {
-      "comment" : "The accessibility label for the note detail toolbar button that exits edit mode.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "完成"
-          }
-        }
-      }
-    },
-    "Edit" : {
-      "comment" : "The accessibility label for the note detail toolbar button that enters edit mode.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Edit"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Editar"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modifier"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "编辑"
-          }
-        }
-      }
-    },
     "Blue" : {
       "localizations" : {
         "es" : {
@@ -627,6 +489,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "蓝色"
+          }
+        }
+      }
+    },
+    "Bold" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bold"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Negrita"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gras"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粗体"
           }
         }
       }
@@ -997,6 +887,34 @@
         }
       }
     },
+    "Default" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Predeterminado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Par défaut"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认"
+          }
+        }
+      }
+    },
     "Delete" : {
       "comment" : "A button that deletes a task.",
       "isCommentAutoGenerated" : true,
@@ -1091,8 +1009,38 @@
         }
       }
     },
+    "Done" : {
+      "comment" : "The accessibility label for the note detail toolbar button that exits edit mode.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
     "Double tap to open the full checklist" : {
       "comment" : "A hint that describes how to interact with this view.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "es" : {
@@ -1111,6 +1059,57 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "轻点两下以打开完整清单"
+          }
+        }
+      }
+    },
+    "Double tap to open the note" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca dos veces para abrir la nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez deux fois pour ouvrir la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻点两下来打开笔记"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "comment" : "The accessibility label for the note detail toolbar button that enters edit mode.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
           }
         }
       }
@@ -1159,6 +1158,62 @@
         }
       }
     },
+    "Format task text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format task text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formato del texto de la tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mettre en forme le texte de la tâche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置任务文本格式"
+          }
+        }
+      }
+    },
+    "Gray" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gray"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gris"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gris"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "灰色"
+          }
+        }
+      }
+    },
     "Green" : {
       "localizations" : {
         "es" : {
@@ -1199,6 +1254,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "网格"
+          }
+        }
+      }
+    },
+    "Highlight" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Highlight"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Surlignage"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高亮"
           }
         }
       }
@@ -1331,6 +1414,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "缩进任务"
+          }
+        }
+      }
+    },
+    "Italic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Italic"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cursiva"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Italique"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "斜体"
           }
         }
       }
@@ -1486,6 +1597,50 @@
         }
       }
     },
+    "Mark as completed" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar como completada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marquer comme terminée"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记为已完成"
+          }
+        }
+      }
+    },
+    "Mark as pending" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar como pendiente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marquer comme en attente"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记为待办"
+          }
+        }
+      }
+    },
     "Mark task incomplete" : {
       "comment" : "A label for a button that marks a task as incomplete.",
       "isCommentAutoGenerated" : true,
@@ -1582,49 +1737,6 @@
         }
       }
     },
-    "Mark as completed" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Marcar como completada" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Marquer comme terminée" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标记为已完成" } }
-      }
-    },
-    "Double tap to open the note" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Toca dos veces para abrir la nota" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez deux fois pour ouvrir la note" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "轻点两下来打开笔记" } }
-      }
-    },
-    "Mark as pending" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Marcar como pendiente" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Marquer comme en attente" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标记为待办" } }
-      }
-    },
-    "Note type" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tipo de nota" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Type de note" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "笔记类型" } }
-      }
-    },
-    "Single memo" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Nota única" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Mémo unique" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "单条备忘录" } }
-      }
-    },
-    "Task list" : {
-      "localizations" : {
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Lista de tareas" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Liste de tâches" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "任务列表" } }
-      }
-    },
-
     "New task" : {
       "comment" : "A text field for adding a new task to a checklist.",
       "isCommentAutoGenerated" : true,
@@ -1761,6 +1873,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "笔记标题"
+          }
+        }
+      }
+    },
+    "Note type" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipo de nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type de note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记类型"
           }
         }
       }
@@ -2000,6 +2134,34 @@
         }
       }
     },
+    "Red" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Red"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rojo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rouge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "红色"
+          }
+        }
+      }
+    },
     "Rename" : {
       "comment" : "A button that renames a note.",
       "isCommentAutoGenerated" : true,
@@ -2182,6 +2344,28 @@
         }
       }
     },
+    "Single memo" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nota única"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mémo unique"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单条备忘录"
+          }
+        }
+      }
+    },
     "Some notes from iCloud could not be read. You can keep editing." : {
       "localizations" : {
         "es" : {
@@ -2200,6 +2384,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法读取 iCloud 中的部分笔记。你可以继续编辑。"
+          }
+        }
+      }
+    },
+    "Strikethrough" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strikethrough"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tachado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barré"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除线"
           }
         }
       }
@@ -2382,6 +2594,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "任务"
+          }
+        }
+      }
+    },
+    "Task list" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lista de tareas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liste de tâches"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务列表"
+          }
+        }
+      }
+    },
+    "Text color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text color"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color del texto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couleur du texte"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文本颜色"
           }
         }
       }
@@ -2819,6 +3081,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将任务标为未完成"
+          }
+        }
+      }
+    },
+    "Underline" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Underline"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subrayado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Souligné"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下划线"
           }
         }
       }

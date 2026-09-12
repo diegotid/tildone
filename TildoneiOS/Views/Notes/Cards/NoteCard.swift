@@ -112,7 +112,8 @@ struct NoteCard: View {
         Text(task.map {
             RichTaskTextEditor.displayText(from: $0.richText, baseColor: .black)
         } ?? AttributedString(String(localized: "New task")))
-            .font(.custom("BradleyHandITCTT-Bold", size: size))
+            .font(.custom(SingleMemoTypography.fontName, size: size))
+            .lineSpacing(SingleMemoTypography.lineSpacing(for: size))
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .strikethrough(task?.isCompleted == true)

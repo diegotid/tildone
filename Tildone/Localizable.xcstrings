@@ -5983,6 +5983,20 @@
           }
         }
       }
+    },
+    "Overlock font © 2011 Dario Manuel Muhafara" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Fuente Overlock © 2011 Dario Manuel Muhafara" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Police Overlock © 2011 Dario Manuel Muhafara" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Overlock 字体 © 2011 Dario Manuel Muhafara" } }
+      }
+    },
+    "Overlock — SIL Open Font License 1.1" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Overlock — Licencia SIL Open Font 1.1" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Overlock — Licence SIL Open Font 1.1" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Overlock — SIL 开放字体许可证 1.1" } }
+      }
     }
   },
   "version" : "1.1"

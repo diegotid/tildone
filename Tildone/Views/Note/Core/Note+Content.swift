@@ -34,15 +34,19 @@ extension Note {
                         ),
                         taskID: task.id,
                         isFocused: activeFocusedTaskID == task.id,
-                        placesCaretAtStartOnFocus: false,
+                        placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
                         fontSize: size,
                         textColor: noteForeground,
                         cursorColor: noteForeground,
                         truncation: .multiple,
-                        fontName: "BradleyHandITCTT-Bold",
+                        fontName: SingleMemoTypography.fontName,
                         alignment: .center,
+                        lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
                         verticallyCentersContent: true,
-                        onFocus: { activateNativeTask(task.id) },
+                        onFocus: {
+                            activateNativeTask(task.id)
+                            keyboardFocusedTaskID = nil
+                        },
                         onBlur: { handleNativeTaskBlur(task.id) },
                         onEnter: { _ in },
                         onMoveUp: {},
@@ -93,12 +97,18 @@ extension Note {
         var high: CGFloat = 128
         for _ in 0..<8 {
             let candidate = (low + high) / 2
-            let font = NSFont(name: "BradleyHandITCTT-Bold", size: candidate)
-                ?? .systemFont(ofSize: candidate)
-            let bounds = (text as NSString).boundingRect(
+            let attributed = MouseSafeTaskTextField.attributedString(
+                from: RichText(text: text),
+                fontSize: candidate,
+                baseColor: .textColor,
+                truncation: .multiple,
+                fontName: SingleMemoTypography.fontName,
+                alignment: .center,
+                lineHeightMultiple: SingleMemoTypography.lineHeightMultiple
+            )
+            let bounds = attributed.boundingRect(
                 with: NSSize(width: availableSize.width, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: font]
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
             )
             // TextKit's field editor adds line-fragment and insertion-point
             // slack beyond NSString's glyph bounds. Reserve part of a line so
@@ -106,7 +116,7 @@ extension Note {
             let safeHeight = ceil(bounds.height) + candidate * 0.45
             if safeHeight <= availableSize.height { low = candidate } else { high = candidate }
         }
-        return low
+        return low * 0.6
     }
 
     func taskList(_ note: MacNoteSnapshot) -> some View {
@@ -225,7 +235,8 @@ extension Note {
         return ZStack(alignment: .topLeading) {
             if note.kind == .singleTask {
                 Text(note.singleTask?.text ?? "")
-                    .font(.custom("BradleyHandITCTT-Bold", size: 16))
+                    .font(.custom(SingleMemoTypography.fontName, size: 16))
+                    .lineSpacing(SingleMemoTypography.lineSpacing(for: 16))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.65)
