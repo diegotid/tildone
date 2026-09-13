@@ -106,6 +106,15 @@ struct Note: View {
     @State var hoveredTaskID: TaskID?
     @State var collapsedTaskIDs: Set<TaskID> = []
     @State var keyboardMonitor: Any?
+    @State var isEmptySingleMemoHintDismissed = false
+
+    var shouldShowEmptySingleMemoHint: Bool {
+        !isEmptySingleMemoHintDismissed
+            && noteKind == .checklist
+            && note?.title == nil
+            && tasks.isEmpty
+            && newTaskText.isEmpty
+    }
 
     var visibleTaskEntries: [(index: Int, task: TildoneDomain.Task)] {
         var collapsedDepth: Int?

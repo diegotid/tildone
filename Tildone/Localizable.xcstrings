@@ -3508,6 +3508,28 @@
         }
       }
     },
+    "Press Return twice for a single memo" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa Retorno dos veces para crear una nota única"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appuyez deux fois sur Retour pour créer un mémo unique"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按两次回车键可创建单条备忘录"
+          }
+        }
+      }
+    },
     "Quit Tildone" : {
       "localizations" : {
         "es" : {

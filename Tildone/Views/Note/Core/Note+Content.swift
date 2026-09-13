@@ -200,6 +200,15 @@ extension Note {
         }
         .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
                minHeight: Layout.minNoteHeight, idealHeight: Layout.defaultNoteHeight, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            if shouldShowEmptySingleMemoHint {
+                emptySingleMemoHint()
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: shouldShowEmptySingleMemoHint)
         .background(WindowAccessor(note: self, window: $noteWindow))
         .onAppear {
             handleKeyboard()
@@ -427,6 +436,30 @@ extension Note {
         .padding(.leading, 2 + CGFloat(newTaskIndentLevel ?? 0) * (Layout.checkboxSize + 8))
         .padding(.bottom, 10)
         .allowsHitTesting(!isInsertedNewTaskFocused)
+    }
+
+    @ViewBuilder
+    func emptySingleMemoHint() -> some View {
+        let content = Text("Press Return twice for a single memo")
+            .font(.system(size: 11, weight: .medium, design: .rounded))
+            .foregroundStyle(noteForeground.opacity(0.72))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+
+        if #available(macOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: Capsule())
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+                .allowsHitTesting(false)
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule().stroke(.white.opacity(0.2), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+                .allowsHitTesting(false)
+        }
     }
 
     func topicListItem() -> some View {

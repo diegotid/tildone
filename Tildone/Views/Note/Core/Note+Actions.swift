@@ -265,6 +265,9 @@ extension Note {
             guard event.window == noteWindow else { return event }
             if event.keyCode != Keyboard.returnKey {
                 awaitsSecondEmptyNoteReturn = false
+                if shouldShowEmptySingleMemoHint {
+                    isEmptySingleMemoHintDismissed = true
+                }
             }
             if (event.keyCode == Keyboard.arrowUp || event.keyCode == Keyboard.arrowDown),
                isEditingNativeTaskField() {
