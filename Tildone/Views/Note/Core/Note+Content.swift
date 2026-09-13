@@ -234,7 +234,14 @@ extension Note {
             isPointerHovering = noteWindow?.frame.contains(NSEvent.mouseLocation) ?? false
         }
         .disabled(isContentBlurred)
-        .onHover { isPointerHovering = $0 }
+        .onHover { hovering in
+            isPointerHovering = hovering
+            if hovering {
+                isTopicHidden = false
+            } else {
+                updateTopicVisibility()
+            }
+        }
     }
 
     func taskListProgress(_ note: MacNoteSnapshot) -> some View {
@@ -355,7 +362,9 @@ extension Note {
                 }
                 .onSubmit { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() }
                 .onChange(of: geometry.frame(in: .global)) { _, frame in withAnimation(.easeInOut) { isTopScrolledOut = frame.minY < 10 } }
-                .onHover { hovering in if hovering { isTopicHidden = false } else { updateTopicVisibility() } }
+                .onHover { hovering in
+                    if hovering { isTopicHidden = false }
+                }
         }
         .padding(.bottom, size)
     }
@@ -473,7 +482,7 @@ extension Note {
                 handleTaskDrop(payload, at: destination)
             },
             onHover: { hovering in
-                if hovering { isTopicHidden = false } else { updateTopicVisibility() }
+                if hovering { isTopicHidden = false }
             },
             onRowHover: { hovering in
                 if hovering {
