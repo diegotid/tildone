@@ -205,7 +205,10 @@ struct Desktop: View {
                 updateCompactNoteScale()
             }
             .onReceive(NotificationCenter.default.publisher(for: .new)) { _ in
-                createAndShowNewNote(at: foregroundWindowUpperRightCorner())
+                createAndShowNewNote(
+                    at: foregroundWindowUpperRightCorner(),
+                    color: focusedNoteColor()
+                )
             }
             .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
                 guard let (isTextBlurred, allowsBackgroundNotes) = notification.object as? (Bool, Bool) else {
@@ -536,15 +539,23 @@ private extension Desktop {
         reconcileColorFolderWindows(selectedColors: selectedColors)
     }
 
-    func createAndShowNewNote(at position: CGPoint) {
+    func createAndShowNewNote(at position: CGPoint, color: NoteColor? = nil) {
         Swift.Task {
             do {
-                let note = try await store.createNote()
+                let note = try await store.createNote(color: color)
                 openWindow(for: note, position: position)
             } catch {
                 fatalError("Could not create a note: \(error)")
             }
         }
+    }
+
+    func focusedNoteColor() -> NoteColor? {
+        guard let keyWindow = NSApp.keyWindow,
+              let noteID = noteWindows.first(where: { $0.value === keyWindow })?.key else {
+            return nil
+        }
+        return store.note(noteID)?.color
     }
 
     func handleFocus(_ window: NSWindow) {

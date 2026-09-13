@@ -184,13 +184,16 @@ final class MacSharedStore: ObservableObject {
         notePresentations[id]
     }
 
-    func createNote(createdAt: Date = Date()) async throws -> MacNoteSnapshot {
+    func createNote(
+        createdAt: Date = Date(),
+        color: NoteColor? = nil
+    ) async throws -> MacNoteSnapshot {
         let id = NoteID()
         _ = try await repository.createNote(
             id: id,
             createdAt: createdAt,
             title: nil,
-            color: NoteColor.current()
+            color: color ?? NoteColor.current()
         )
         try await reload(id)
         scheduleSyncNotification()

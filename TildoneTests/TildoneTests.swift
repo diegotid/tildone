@@ -12,6 +12,19 @@ import TildoneSync
 @testable import Tildone
 
 final class TildoneTests: XCTestCase {
+    @MainActor
+    func testCreatedNoteCanInheritAnExplicitColor() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+
+        let note = try await store.createNote(
+            createdAt: Date(timeIntervalSince1970: 100),
+            color: .purple
+        )
+
+        XCTAssertEqual(note.color, .purple)
+    }
+
     func testUndoPrefersAFocusedTextEditorOnlyWhenItHasTypingHistory() {
         let textView = NSTextView()
         XCTAssertFalse(MacUndoMenuButton.undoFocusedTextIfAvailable(responder: textView))
