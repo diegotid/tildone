@@ -73,19 +73,11 @@ struct NoteCard: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 6 * contentScale, y: 3 * contentScale)
         .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .overlay(alignment: .topTrailing) {
-            if note.kind == .singleTask {
-                Image(systemName: tasks.first?.isCompleted == true ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20 * contentScale))
-                    .foregroundStyle(.black.opacity(0.7))
-                    .padding(14 * contentScale)
-            }
-        }
         .contextMenu {
             if note.kind == .checklist {
                 Button("Rename", action: rename)
             }
-            if summary?.isEmpty == true {
+            if note.kind == .singleTask || summary?.isEmpty == true {
                 Button("Delete", role: .destructive, action: delete)
             }
         }
@@ -98,31 +90,39 @@ struct NoteCard: View {
         GeometryReader { geometry in
             let task = tasks.first
             ViewThatFits(in: .vertical) {
-                singleTaskText(task, size: 44 * contentScale)
-                singleTaskText(task, size: 36 * contentScale)
-                singleTaskText(task, size: 30 * contentScale)
-                singleTaskText(task, size: 24 * contentScale)
-                singleTaskText(task, size: 18 * contentScale)
+                singleTaskText(task, size: 26 * contentScale, width: geometry.size.width)
+                singleTaskText(task, size: 22 * contentScale, width: geometry.size.width)
+                singleTaskText(task, size: 19 * contentScale, width: geometry.size.width)
+                singleTaskText(task, size: 16 * contentScale, width: geometry.size.width)
+                singleTaskText(task, size: 14 * contentScale, width: geometry.size.width)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
     }
 
-    private func singleTaskText(_ task: NoteTaskPreview?, size: CGFloat) -> some View {
-        Text(task.map {
-            RichTaskTextEditor.displayText(
-                from: $0.richText,
-                baseColor: .black,
-                fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
-                fontSize: size
-            )
-        } ?? AttributedString(String(localized: "New task")))
+    private func singleTaskText(_ task: NoteTaskPreview?, size: CGFloat, width: CGFloat) -> some View {
+        Text(memoPreviewText(task, size: size))
             .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: size))
             .lineSpacing(SingleMemoTypography.lineSpacing(for: size))
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .strikethrough(task?.isCompleted == true)
             .opacity(task?.isCompleted == true ? 0.6 : 1)
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(width: width, alignment: .center)
+    }
+
+    private func memoPreviewText(_ task: NoteTaskPreview?, size: CGFloat) -> AttributedString {
+        var text = task.map {
+            RichTaskTextEditor.displayText(
+                from: $0.richText,
+                baseColor: .black,
+                fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
+                fontSize: size
+            )
+        } ?? AttributedString(String(localized: "New task"))
+        // Script fonts can draw past a glyph's recorded advance. A hair space
+        // preserves that final flourish without changing the memo itself.
+        text.append(AttributedString("\u{200A}"))
+        return text
     }
 }

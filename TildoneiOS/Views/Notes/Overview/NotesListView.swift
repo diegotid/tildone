@@ -205,7 +205,8 @@ struct NotesListView: View {
                     NoteListRow(
                         note: note,
                         summary: appModel.taskSummaries[note.id],
-                        taskListText: appModel.taskListTexts[note.id]
+                        taskListText: appModel.taskListTexts[note.id],
+                        taskPreview: appModel.taskPreviews[note.id]?.first
                     )
                 }
                 .contextMenu { noteActions(for: note) }

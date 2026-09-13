@@ -11,6 +11,7 @@ struct NoteListRow: View {
     let note: Note
     let summary: NoteTaskSummary?
     let taskListText: String?
+    let taskPreview: NoteTaskPreview?
 
     private var title: String {
         note.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -60,31 +61,31 @@ struct NoteListRow: View {
     }
 
     private var singleTaskRow: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+        HStack(spacing: 16) {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(note.color.swiftUIColor)
-            Text(taskListText?.isEmpty == false ? taskListText! : String(localized: "New task"))
-                .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: 25))
-                .lineSpacing(SingleMemoTypography.lineSpacing(for: 25))
-                .multilineTextAlignment(.center)
+                .frame(width: 12, height: 40)
+
+            Text(singleTaskPreviewText)
+                .font(.body.weight(.medium))
                 .lineLimit(2)
-                .minimumScaleFactor(0.65)
-                .strikethrough(summary?.isComplete == true)
-                .opacity(summary?.isComplete == true ? 0.6 : 1)
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .padding(.horizontal, 42)
-            Image(systemName: summary?.isComplete == true ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(.black.opacity(0.7))
-                .padding(10)
+                .truncationMode(.tail)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(minHeight: 72)
+        .padding(.leading, 4)
     }
 
     private var accessibilityDescription: String {
         let completion = summary?.accessibilityDescription ?? String(localized: "No tasks")
         guard let taskListText, !taskListText.isEmpty else { return completion }
         return String(localized: "\(completion). Tasks: \(taskListText)")
+    }
+
+    private var singleTaskPreviewText: AttributedString {
+        guard let taskPreview else {
+            return AttributedString(taskListText?.isEmpty == false ? taskListText! : String(localized: "New task"))
+        }
+        return RichTaskTextEditor.displayText(from: taskPreview.richText)
     }
 }
 
@@ -142,7 +143,8 @@ extension NoteColor {
         NoteListRow(
             note: note,
             summary: NoteTaskSummary(noteID: noteID, tasks: [task]),
-            taskListText: "\(task.text), Pick up flowers, Confirm the reservation"
+            taskListText: "\(task.text), Pick up flowers, Confirm the reservation",
+            taskPreview: NoteTaskPreview(task)
         )
     }
     .listStyle(.plain)

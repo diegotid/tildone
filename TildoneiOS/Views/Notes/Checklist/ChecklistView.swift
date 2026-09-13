@@ -294,18 +294,6 @@ struct ChecklistView: View {
     private func singleTaskEditor(_ note: Note) -> some View {
         VStack(spacing: 12) {
             if let task = tasks.first {
-                HStack {
-                    Spacer()
-                    TaskCheckbox(isChecked: task.isCompleted) {
-                        Swift.Task {
-                            try? await appModel.setCompletion(
-                                taskID: task.id,
-                                completed: !task.isCompleted
-                            )
-                        }
-                    }
-                    .accessibilityLabel(task.isCompleted ? "Mark as pending" : "Mark as completed")
-                }
                 RichTaskTextEditor(
                     richText: $singleTaskDraft,
                     modelRichText: task.richText,
@@ -313,10 +301,8 @@ struct ChecklistView: View {
                     focusedTask: $focusedTask,
                     isCompleted: task.isCompleted,
                     allowsMultipleLines: true,
-                    fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
-                    textStyle: .title1,
-                    textAlignment: .center,
-                    lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
+                    textStyle: .body,
+                    textAlignment: .natural,
                     onCommit: { value in
                         Swift.Task {
                             try? await appModel.edit(taskID: task.id, richText: value)
@@ -342,15 +328,7 @@ struct ChecklistView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 noteTypeMenu(note)
-                TaskTextFormatMenu(
-                    isEnabled: focusedTask != nil,
-                    selectedFont: note.singleMemoFont,
-                    onFontChange: { font in
-                        Swift.Task {
-                            try? await appModel.setSingleMemoFont(noteID: noteID, font: font)
-                        }
-                    }
-                )
+                TaskTextFormatMenu(isEnabled: focusedTask != nil)
                 Menu {
                     Picker("Note color", selection: Binding(
                         get: { note.color },
