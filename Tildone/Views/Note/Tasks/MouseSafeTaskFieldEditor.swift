@@ -4,23 +4,51 @@
 //
 
 import AppKit
+import QuartzCore
 
 final class MouseSafeTaskFieldEditor: NSTextView {
     var onBecomeFirstResponder: (() -> Void)?
-    var verticallyCentersContent = false
+    var verticallyCentersContent = false {
+        didSet { updateEmptyInsertionPoint() }
+    }
+    var emptyInsertionPointFont: NSFont? {
+        didSet { updateEmptyInsertionPoint() }
+    }
     private weak var observedClipView: NSClipView?
     private var clipViewObservers: [NSObjectProtocol] = []
     private var isRestoringTextGeometry = false
     private var hasPendingWrappedGeometryRefresh = false
     private var enforcedInsertionPointColor = NSColor.textColor
+    private lazy var emptyInsertionPointView: NSView = {
+        let view = NSView(frame: .zero)
+        view.wantsLayer = true
+        view.layer?.cornerRadius = 1
+        view.isHidden = true
+        return view
+    }()
+
+    private var usesEmptyInsertionPoint: Bool {
+        verticallyCentersContent && string.isEmpty && emptyInsertionPointFont != nil
+    }
+
+    override var shouldDrawInsertionPoint: Bool {
+        usesEmptyInsertionPoint ? false : super.shouldDrawInsertionPoint
+    }
 
     override func becomeFirstResponder() -> Bool {
         let didBecomeFirstResponder = super.becomeFirstResponder()
         if didBecomeFirstResponder {
             enforceInsertionPointColor(enforcedInsertionPointColor)
+            updateEmptyInsertionPoint()
             onBecomeFirstResponder?()
         }
         return didBecomeFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let didResignFirstResponder = super.resignFirstResponder()
+        updateEmptyInsertionPoint()
+        return didResignFirstResponder
     }
 
     deinit {
@@ -42,6 +70,11 @@ final class MouseSafeTaskFieldEditor: NSTextView {
             color: enforcedInsertionPointColor,
             turnedOn: flag
         )
+    }
+
+    override func layout() {
+        super.layout()
+        updateEmptyInsertionPoint()
     }
 
     override func setSelectedRanges(
@@ -79,6 +112,7 @@ final class MouseSafeTaskFieldEditor: NSTextView {
     func enforceInsertionPointColor(_ color: NSColor) {
         enforcedInsertionPointColor = color.withAlphaComponent(1)
         super.insertionPointColor = enforcedInsertionPointColor
+        updateEmptyInsertionPoint()
     }
 
     func refreshTextGeometry() {
@@ -93,6 +127,10 @@ final class MouseSafeTaskFieldEditor: NSTextView {
             self.hasPendingWrappedGeometryRefresh = false
             self.restoreFirstCharacterPosition()
         }
+    }
+
+    func refreshEmptyInsertionPoint() {
+        updateEmptyInsertionPoint()
     }
 
     private func observeClipViewBounds() {
@@ -160,7 +198,47 @@ final class MouseSafeTaskFieldEditor: NSTextView {
             clipView.setBoundsOrigin(NSPoint(x: clipView.bounds.origin.x, y: 0))
         }
         isRestoringTextGeometry = false
+        updateEmptyInsertionPoint()
+    }
+
+    private func updateEmptyInsertionPoint() {
+        guard usesEmptyInsertionPoint,
+              window?.firstResponder === self,
+              let emptyInsertionPointFont,
+              !visibleRect.isEmpty else {
+            emptyInsertionPointView.isHidden = true
+            emptyInsertionPointView.layer?.removeAnimation(forKey: Self.emptyCaretBlinkAnimationKey)
+            return
+        }
+
+        if emptyInsertionPointView.superview !== self {
+            addSubview(emptyInsertionPointView, positioned: .above, relativeTo: nil)
+        }
+        let fontHeight = layoutManager?.defaultLineHeight(for: emptyInsertionPointFont)
+            ?? (emptyInsertionPointFont.ascender - emptyInsertionPointFont.descender
+                + emptyInsertionPointFont.leading)
+        let height = min(ceil(fontHeight), visibleRect.height)
+        emptyInsertionPointView.frame = NSRect(
+            x: floor(visibleRect.midX - 1),
+            y: floor(visibleRect.midY - height / 2),
+            width: 2,
+            height: height
+        )
+        emptyInsertionPointView.layer?.backgroundColor = enforcedInsertionPointColor.cgColor
+        emptyInsertionPointView.isHidden = false
+        guard emptyInsertionPointView.layer?.animation(forKey: Self.emptyCaretBlinkAnimationKey) == nil else {
+            return
+        }
+        let blink = CABasicAnimation(keyPath: "opacity")
+        blink.fromValue = 1
+        blink.toValue = 0
+        blink.duration = 0.5
+        blink.autoreverses = true
+        blink.repeatCount = .infinity
+        blink.timingFunction = CAMediaTimingFunction(name: .linear)
+        emptyInsertionPointView.layer?.add(blink, forKey: Self.emptyCaretBlinkAnimationKey)
     }
 
     private static let overflowLeadingCompensation: CGFloat = 2
+    private static let emptyCaretBlinkAnimationKey = "TildoneEmptyMemoCaretBlink"
 }

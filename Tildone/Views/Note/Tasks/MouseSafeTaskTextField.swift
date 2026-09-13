@@ -312,6 +312,24 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 editor,
                 cursorColor: NSColor(parent.cursorColor)
             )
+            if parent.verticallyCentersContent {
+                let typingAttributes = MouseSafeTaskTextField.attributedString(
+                    from: RichText(text: " "),
+                    fontSize: parent.fontSize,
+                    baseColor: NSColor(parent.textColor),
+                    truncation: parent.truncation,
+                    fontName: parent.fontName,
+                    alignment: parent.alignment,
+                    lineHeightMultiple: parent.lineHeightMultiple
+                ).attributes(at: 0, effectiveRange: nil)
+                if editor.string.isEmpty {
+                    editor.typingAttributes = typingAttributes
+                }
+                (editor as? MouseSafeTaskFieldEditor)?.emptyInsertionPointFont =
+                    typingAttributes[.font] as? NSFont
+            } else {
+                (editor as? MouseSafeTaskFieldEditor)?.emptyInsertionPointFont = nil
+            }
             if parent.truncation == .multiple {
                 editor.isHorizontallyResizable = false
                 editor.isVerticallyResizable = true
@@ -339,6 +357,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             hasLocalEdits = true
             canonicalRichText = editedRichText
             parent.richText = editedRichText
+            (editor as? MouseSafeTaskFieldEditor)?.refreshEmptyInsertionPoint()
         }
 
         private func apply(_ format: RichTextFormat) {

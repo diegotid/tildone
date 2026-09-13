@@ -98,13 +98,16 @@ extension Note {
         fontName: String,
         availableSize: CGSize
     ) -> CGFloat {
-        guard !text.isEmpty else { return min(72, availableSize.height * 0.4) }
+        // Fit an empty memo using the same single-line metrics it will have
+        // after its first character is entered. This keeps the initial caret
+        // from changing height as soon as typing begins.
+        let fittingText = text.isEmpty ? "M" : text
         var low: CGFloat = 18
         var high: CGFloat = 128
         for _ in 0..<8 {
             let candidate = (low + high) / 2
             let attributed = MouseSafeTaskTextField.attributedString(
-                from: RichText(text: text),
+                from: RichText(text: fittingText),
                 fontSize: candidate,
                 baseColor: .textColor,
                 truncation: .multiple,
