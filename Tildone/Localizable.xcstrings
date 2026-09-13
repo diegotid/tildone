@@ -745,29 +745,6 @@
         }
       }
     },
-    "Close window" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cerrar ventana"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fermer la fenêtre"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "关闭窗口"
-          }
-        }
-      }
-    },
     "Close Window" : {
       "localizations" : {
         "en" : {
@@ -1053,81 +1030,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将笔记复制到 iCloud…"
-          }
-        }
-      }
-    },
-    "Copy task text" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar el texto de la tarea"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier le texte de la tâche"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制任务文本"
-          }
-        }
-      }
-    },
-    "Copy whole task list" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar la lista de tareas completa"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier toute la liste de tâches"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制整个任务列表"
-          }
-        }
-      }
-    },
-    "Copy Whole Task List" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy Whole Task List"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiar la lista de tareas completa"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copier toute la liste de tâches"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制整个任务列表"
           }
         }
       }
@@ -1794,6 +1696,28 @@
         }
       }
     },
+    "Font size does not affect single memo notes." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El tamaño de letra no afecta a las notas únicas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La taille de police n’affecte pas les mémos uniques."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字体大小不会影响单条备忘录。"
+          }
+        }
+      }
+    },
     "For" : {
       "localizations" : {
         "es" : {
@@ -2042,87 +1966,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "帮助"
-          }
-        }
-      }
-    },
-    "Help search aliases: Gather Notes" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "gather,gathering,collect,group,bring together,scroll,mouse wheel,trackpad"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "reunir,recoger,agrupar,juntar,desplazamiento,rueda del ratón,trackpad"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "rassembler,collecter,grouper,réunir,défilement,molette,trackpad"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "收拢,聚集,收集,归拢,滚动,鼠标滚轮,触控板"
-          }
-        }
-      }
-    },
-    "Help search aliases: Note Dimming" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "dim,dimming,fade,opacity,transparency,restore,scroll,mouse wheel,trackpad"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "atenuar,atenuación,desvanecer,opacidad,transparencia,restaurar,desplazamiento,rueda del ratón,trackpad"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "atténuer,atténuation,fondu,opacité,transparence,restaurer,défilement,molette,trackpad"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "调暗,变暗,淡化,不透明度,透明度,恢复,滚动,鼠标滚轮,触控板"
-          }
-        }
-      }
-    },
-    "Hide all" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ocultar todo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tout masquer"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "全部隐藏"
           }
         }
       }
@@ -2845,6 +2688,7 @@
       }
     },
     "Mark as completed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2867,6 +2711,7 @@
       }
     },
     "Mark as pending" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3452,52 +3297,6 @@
         }
       }
     },
-    "Overlock — SIL Open Font License 1.1" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Overlock — Licencia SIL Open Font 1.1"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Overlock — Licence SIL Open Font 1.1"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Overlock — SIL 开放字体许可证 1.1"
-          }
-        }
-      }
-    },
-    "Overlock font © 2011 Dario Manuel Muhafara" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fuente Overlock © 2011 Dario Manuel Muhafara"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Police Overlock © 2011 Dario Manuel Muhafara"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Overlock 字体 © 2011 Dario Manuel Muhafara"
-          }
-        }
-      }
-    },
     "Paste" : {
       "localizations" : {
         "es" : {
@@ -3905,31 +3704,6 @@
         }
       }
     },
-    "Requires at least %@ note background transparency." : {
-      "comment" : "A description of the limitations of the click-through feature.",
-      "extractionState" : "stale",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Requiere al menos un %@ de transparencia en el fondo de la nota."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nécessite au moins %@ de transparence de l’arrière-plan de la note."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "笔记背景透明度至少需要达到 %@。"
-          }
-        }
-      }
-    },
     "Resume Sync" : {
       "localizations" : {
         "es" : {
@@ -4156,29 +3930,6 @@
         }
       }
     },
-    "Settings..." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configuración..."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paramètres..."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "设置..."
-          }
-        }
-      }
-    },
     "Settings…" : {
       "localizations" : {
         "es" : {
@@ -4247,31 +3998,6 @@
         }
       }
     },
-    "Show Dock icon" : {
-      "comment" : "A toggle that shows or hides the dock icon.",
-      "extractionState" : "stale",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar el icono en el Dock"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Afficher l’icône dans le Dock"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在程序坞中显示图标"
-          }
-        }
-      }
-    },
     "Show Dock Icon and App Menus" : {
       "comment" : "A toggle that shows or hides the Tildone icon in the Dock and app menus.",
       "isCommentAutoGenerated" : true,
@@ -4298,31 +4024,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "显示程序坞图标和 App 菜单"
-          }
-        }
-      }
-    },
-    "Show or hide Tildone in the Dock." : {
-      "comment" : "A description of the toggle that lets the user show or hide Tildone in the Dock.",
-      "extractionState" : "stale",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Muestra u oculta Tildone en el Dock."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Affiche ou masque Tildone dans le Dock."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在程序坞中显示或隐藏 Tildone。"
           }
         }
       }
@@ -5339,30 +5040,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "主题"
-          }
-        }
-      }
-    },
-    "Type new" : {
-      "comment" : "A short prompt displayed while recording a replacement keyboard shortcut.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escribe uno nuevo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saisir un nouveau"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "输入新的"
           }
         }
       }

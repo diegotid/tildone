@@ -31,7 +31,13 @@ extension Note {
     }
 
     func handleClose() {
-        guard note?.isDeletable == true else { return }
+        guard let note else { return }
+        if case let .completeSingleMemo(taskID) = note.closeAction,
+           let task = note.tasks.first(where: { $0.id == taskID }) {
+            handleTaskToggle(task)
+            return
+        }
+        guard note.closeAction == .delete else { return }
         Swift.Task {
             do {
                 try await store.deleteNote(noteID)
@@ -712,7 +718,7 @@ extension Note {
     }
 
     func updateWindowClosability() {
-        noteWindow?.standardWindowButton(.closeButton)?.isEnabled = note?.isDeletable ?? false
+        noteWindow?.standardWindowButton(.closeButton)?.isEnabled = note?.isCloseButtonEnabled ?? false
     }
 
     func updateTopicVisibility() {

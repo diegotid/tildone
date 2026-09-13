@@ -1200,52 +1200,27 @@ final class TildoneTests: XCTestCase {
 
     @MainActor
     func testMacNoteSyncIndicatorDistinguishesLocalChoiceAndAttention() {
-        let checklistWidth = MacNoteTitlebarLayout.accessoryWidth(
-            showsSingleTaskCheckbox: false
-        )
-        let singleTaskWidth = MacNoteTitlebarLayout.accessoryWidth(
-            showsSingleTaskCheckbox: true
-        )
+        let accessoryWidth = MacNoteTitlebarLayout.accessoryWidth
         XCTAssertEqual(
-            singleTaskWidth - checklistWidth,
-            MacNoteTitlebarLayout.singleTaskCheckboxWidth + MacNoteTitlebarLayout.controlSpacing
-        )
-        XCTAssertEqual(
-            MacNoteTitlebarLayout.titleTrailingInset(showsSingleTaskCheckbox: false),
-            checklistWidth + MacNoteTitlebarLayout.titleControlSpacing
+            MacNoteTitlebarLayout.titleTrailingInset,
+            accessoryWidth + MacNoteTitlebarLayout.titleControlSpacing
         )
         XCTAssertGreaterThan(
-            MacNoteTitlebarLayout.titleTrailingInset(showsSingleTaskCheckbox: true),
-            MacNoteTitlebarLayout.trailingMargin
-                + MacNoteTitlebarLayout.colorPickerWidth
-                + MacNoteTitlebarLayout.controlSpacing
-                + MacNoteTitlebarLayout.syncIndicatorWidth
+            MacNoteTitlebarLayout.titleTrailingInset,
+            MacNoteTitlebarLayout.trailingMargin + MacNoteTitlebarLayout.colorPickerWidth
         )
         let bounds = NSRect(
             x: 0,
             y: 0,
-            width: singleTaskWidth,
+            width: accessoryWidth,
             height: MacNoteTitlebarLayout.controlHeight
         )
-        let checklistPicker = MacNoteTitlebarLayout.colorPickerFrame(
-            in: bounds,
-            showsSingleTaskCheckbox: false
-        )
-        let singleTaskPicker = MacNoteTitlebarLayout.colorPickerFrame(
-            in: bounds,
-            showsSingleTaskCheckbox: true
-        )
-        let checkbox = MacNoteTitlebarLayout.singleTaskCheckboxFrame(
-            alignedWith: singleTaskPicker
-        )
-        XCTAssertEqual(checklistPicker.maxX, bounds.maxX - MacNoteTitlebarLayout.trailingMargin)
-        XCTAssertEqual(checkbox.maxX, bounds.maxX - MacNoteTitlebarLayout.trailingMargin)
+        let picker = MacNoteTitlebarLayout.colorPickerFrame(in: bounds)
+        XCTAssertEqual(picker.maxX, bounds.maxX - MacNoteTitlebarLayout.trailingMargin)
         XCTAssertEqual(
-            MacNoteTitlebarLayout.kindControlFrame(alignedWith: singleTaskPicker).minY,
-            MacNoteTitlebarLayout.formatControlFrame(alignedWith: singleTaskPicker).minY
+            MacNoteTitlebarLayout.kindControlFrame(alignedWith: picker).minY,
+            MacNoteTitlebarLayout.formatControlFrame(alignedWith: picker).minY
         )
-        XCTAssertGreaterThanOrEqual(checkbox.minY, bounds.minY - 1)
-        XCTAssertLessThanOrEqual(checkbox.maxY, bounds.maxY)
         XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
             isUsingNotesOnMacByChoice: false,
             syncNeedsAttention: false
@@ -1792,7 +1767,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(desktopSource.contains("themeFrame.addSubview"))
         XCTAssertTrue(desktopSource.contains(".onChange(of: noteSyncIndicatorState)"))
         XCTAssertTrue(desktopSource.contains("setNoteSyncIndicatorState(state)"))
-        XCTAssertTrue(noteSource.contains("MacNoteTitlebarLayout.titleTrailingInset("))
+        XCTAssertTrue(noteSource.contains("MacNoteTitlebarLayout.titleTrailingInset"))
         XCTAssertTrue(storeSource.contains("revalidateAccount(workspaceID:"))
         XCTAssertTrue(storeSource.contains("didJustChooseNotesOnMac = true"))
         XCTAssertTrue(storeSource.contains("func dismissNotesOnMacNotice()"))
@@ -2544,6 +2519,34 @@ final class TildoneTests: XCTestCase {
         try await store.deleteNote(note.id)
         let remaining = try await repository.visibleNotes()
         XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func testSingleMemoCloseActionCompletesPendingMemoBeforeDeletion() async throws {
+        let repository = try TildoneRepository(
+            descriptor: .inMemory(),
+            replicaID: ReplicaID(UUID(uuidString: "ABABABAB-ABAB-ABAB-ABAB-ABABABABABAB")!),
+            now: { Date(timeIntervalSince1970: 2_100) }
+        )
+        let store = await MainActor.run { MacSharedStore(repository: repository) }
+
+        let checklist = try await store.createNote(createdAt: Date(timeIntervalSince1970: 110))
+        let task = try await store.addTask(to: checklist.id, text: "Memo")
+        let loadedPendingChecklist = await MainActor.run { store.note(checklist.id) }
+        let pendingChecklist = try XCTUnwrap(loadedPendingChecklist)
+        XCTAssertEqual(pendingChecklist.closeAction, .unavailable)
+        XCTAssertFalse(pendingChecklist.isCloseButtonEnabled)
+
+        try await store.setKind(.singleTask, for: checklist.id)
+        let loadedPendingMemo = await MainActor.run { store.note(checklist.id) }
+        let pendingMemo = try XCTUnwrap(loadedPendingMemo)
+        XCTAssertEqual(pendingMemo.closeAction, .completeSingleMemo(task.id))
+        XCTAssertTrue(pendingMemo.isCloseButtonEnabled)
+
+        try await store.setTaskCompletion(task.id, completed: true)
+        let loadedCompletedMemo = await MainActor.run { store.note(checklist.id) }
+        let completedMemo = try XCTUnwrap(loadedCompletedMemo)
+        XCTAssertEqual(completedMemo.closeAction, .delete)
+        XCTAssertTrue(completedMemo.isCloseButtonEnabled)
     }
 
     func testLegacyMacColorLookupPrefersPerNoteValueAndPreservesGlobalFallback() throws {

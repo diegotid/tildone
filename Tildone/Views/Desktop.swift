@@ -756,7 +756,7 @@ private extension Desktop {
         ) && !isClickThroughWheelShortcutActive
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
-        window.standardWindowButton(.closeButton)?.isEnabled = note.isDeletable
+        window.standardWindowButton(.closeButton)?.isEnabled = note.isCloseButtonEnabled
         window.setNoteHostingContentView(NSHostingView(rootView: noteWindow(for: note)))
         addNoteTitlebarAccessory(to: window, noteID: note.id)
         window.applyNoteBackgroundColor(
@@ -1403,7 +1403,7 @@ private struct ClickThroughHint: View {
         .font(.caption)
         .foregroundStyle(.primary)
         .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
-        .padding(.trailing, MacNoteTitlebarLayout.maximumTitleTrailingInset)
+        .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
         .offset(y: -1)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .allowsHitTesting(false)

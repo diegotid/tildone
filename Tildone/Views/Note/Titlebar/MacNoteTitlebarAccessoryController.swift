@@ -4,7 +4,6 @@
 //
 
 import AppKit
-import Combine
 import SwiftUI
 import TildoneDomain
 
@@ -14,10 +13,7 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
     private let colorPicker: NSView
     private let formatControl: NSHostingView<MacTaskTextFormatMenu>
     private let kindControl: NSHostingView<MacNoteKindMenu>
-    private let singleTaskCheckbox: NSHostingView<MacSingleTaskCompletionControl>
-    private let presentation: MacNotePresentation
     private let initialSyncIndicatorState: MacNoteSyncIndicatorState
-    private var presentationObservation: AnyCancellable?
     private var syncIndicator: MacNoteSyncTitlebarControl?
     private var restoreControl: MinimizedNoteRestoreTitlebarControl?
 
@@ -29,22 +25,22 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         noteID: NoteID
     ) {
         self.colorPicker = colorPicker
-        self.presentation = presentation
-        formatControl = NSHostingView(rootView: MacTaskTextFormatMenu(
+        let formatControl = NSHostingView(rootView: MacTaskTextFormatMenu(
             store: store, presentation: presentation, noteID: noteID
         ))
-        kindControl = NSHostingView(rootView: MacNoteKindMenu(
+        let kindControl = NSHostingView(rootView: MacNoteKindMenu(
             store: store, presentation: presentation, noteID: noteID
         ))
-        singleTaskCheckbox = NSHostingView(rootView: MacSingleTaskCompletionControl(
-            store: store, presentation: presentation
-        ))
+        // These controls are positioned explicitly beside the AppKit color
+        // picker. Prevent localized SwiftUI menu content from changing their
+        // hosting-view frames after the titlebar has laid them out.
+        formatControl.sizingOptions = []
+        kindControl.sizingOptions = []
+        self.formatControl = formatControl
+        self.kindControl = kindControl
         initialSyncIndicatorState = syncIndicatorState
         super.init(nibName: nil, bundle: nil)
         layoutAttribute = .right
-        presentationObservation = presentation.$snapshot.sink { [weak self] _ in
-            DispatchQueue.main.async { self?.layoutControls() }
-        }
     }
 
     @available(*, unavailable)
@@ -53,13 +49,10 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
     }
 
     override func loadView() {
-        let showsSingleTaskCheckbox = presentation.snapshot.kind == .singleTask
         let container = NSView(frame: NSRect(
             x: 0,
             y: 0,
-            width: MacNoteTitlebarLayout.accessoryWidth(
-                showsSingleTaskCheckbox: showsSingleTaskCheckbox
-            ),
+            width: MacNoteTitlebarLayout.accessoryWidth,
             height: MacNoteTitlebarLayout.controlHeight
         ))
         view = container
@@ -67,7 +60,6 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         container.addSubview(colorPicker)
         container.addSubview(formatControl)
         container.addSubview(kindControl)
-        container.addSubview(singleTaskCheckbox)
         installSyncIndicator(for: initialSyncIndicatorState)
         layoutControls()
     }
@@ -85,7 +77,6 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         colorPicker.isHidden = hidden
         formatControl.isHidden = hidden
         kindControl.isHidden = hidden
-        singleTaskCheckbox.isHidden = hidden
     }
 
     func setFormatControlForeground(_ foreground: Color) {
@@ -144,22 +135,15 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
     }
 
     private func layoutControls() {
-        let showsSingleTaskCheckbox = presentation.snapshot.kind == .singleTask
-        let accessoryWidth = MacNoteTitlebarLayout.accessoryWidth(
-            showsSingleTaskCheckbox: showsSingleTaskCheckbox
-        )
+        let accessoryWidth = MacNoteTitlebarLayout.accessoryWidth
         if abs(view.frame.width - accessoryWidth) > 0.5 {
             view.setFrameSize(NSSize(width: accessoryWidth, height: view.frame.height))
         }
-        colorPicker.frame = MacNoteTitlebarLayout.colorPickerFrame(
-            in: view.bounds,
-            showsSingleTaskCheckbox: showsSingleTaskCheckbox
-        )
+        colorPicker.frame = MacNoteTitlebarLayout.colorPickerFrame(in: view.bounds)
         formatControl.frame = MacNoteTitlebarLayout.formatControlFrame(
             alignedWith: colorPicker.frame
         )
         kindControl.frame = MacNoteTitlebarLayout.kindControlFrame(alignedWith: colorPicker.frame)
-        singleTaskCheckbox.frame = MacNoteTitlebarLayout.singleTaskCheckboxFrame(alignedWith: colorPicker.frame)
         syncIndicator?.frame = MacNoteTitlebarLayout.syncIndicatorFrame(
             alignedWith: colorPicker.frame
         )
@@ -202,35 +186,6 @@ private struct MacNoteKindMenu: View {
 
     private func setKind(_ kind: NoteKind) {
         Swift.Task { try? await store.setKind(kind, for: noteID) }
-    }
-}
-
-private struct MacSingleTaskCompletionControl: View {
-    let store: MacSharedStore
-    @ObservedObject var presentation: MacNotePresentation
-    @State private var optimisticCompletion: Bool?
-
-    var body: some View {
-        Group {
-            if presentation.snapshot.kind == .singleTask,
-               let task = presentation.snapshot.singleTask {
-                let displayedCompletion = optimisticCompletion ?? task.isCompleted
-                Checkbox(checked: displayedCompletion, size: 15)
-                    .disabled(task.text.isEmpty || optimisticCompletion != nil)
-                    .onToggle { toggle(task, to: !displayedCompletion) }
-                    .accessibilityLabel(displayedCompletion ? "Mark as pending" : "Mark as completed")
-            }
-        }
-        .frame(width: MacNoteTitlebarLayout.singleTaskCheckboxWidth, height: MacNoteTitlebarLayout.controlHeight)
-    }
-
-    private func toggle(_ task: TildoneDomain.Task, to completion: Bool) {
-        guard optimisticCompletion == nil else { return }
-        optimisticCompletion = completion
-        Swift.Task {
-            _ = try? await store.setTaskCompletion(task.id, completed: completion)
-            optimisticCompletion = nil
-        }
     }
 }
 

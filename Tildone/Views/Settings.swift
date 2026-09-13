@@ -699,6 +699,10 @@ private extension SettingsForm {
                 )
             )
         }
+        Text("Font size does not affect single memo notes.")
+            .font(.caption2)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
     
     @ViewBuilder

@@ -7,6 +7,12 @@ import Foundation
 import TildoneDomain
 
 struct MacNoteSnapshot: Identifiable {
+    enum CloseAction: Equatable {
+        case completeSingleMemo(TaskID)
+        case delete
+        case unavailable
+    }
+
     let note: TildoneDomain.Note
     let tasks: [TildoneDomain.Task]
 
@@ -28,6 +34,16 @@ struct MacNoteSnapshot: Identifiable {
         !progressTasks.isEmpty && progressTasks.allSatisfy(\.isCompleted)
     }
     var isDeletable: Bool { isEmpty || isComplete }
+    var closeAction: CloseAction {
+        if kind == .singleTask,
+           let task = singleTask,
+           !task.text.isEmpty,
+           !task.isCompleted {
+            return .completeSingleMemo(task.id)
+        }
+        return isDeletable ? .delete : .unavailable
+    }
+    var isCloseButtonEnabled: Bool { closeAction != .unavailable }
     var pendingTasks: [Task] { progressTasks.filter { !$0.isCompleted } }
     var completedAt: Date? {
         guard isComplete else { return nil }

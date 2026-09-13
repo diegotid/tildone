@@ -81,7 +81,7 @@ extension Note {
             if let task = note.singleTask { focusTaskUsingKeyboard(task.id) }
         }
         .onDisappear { stopHandlingKeyboard() }
-        .onChange(of: note.isDeletable) { _, _ in updateWindowClosability() }
+        .onChange(of: note.isCloseButtonEnabled) { _, _ in updateWindowClosability() }
         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
         .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
             if let (blur, normal) = notification.object as? (Bool, Bool) {
@@ -156,8 +156,12 @@ extension Note {
                             }
                         }
                         .onAppear {
-                            if note.title == nil { focusOnTopic() } else { focusOnNewTask() }
-                            applyInitialFocusIfNeeded()
+                            isTopicHidden = false
+                            DispatchQueue.main.async {
+                                guard noteKind == .checklist else { return }
+                                if note.title == nil { focusOnTopic() } else { focusOnNewTask() }
+                                applyInitialFocusIfNeeded()
+                            }
                         }
                         .onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
                             guard focusedField == .newTask else { return }
@@ -210,7 +214,7 @@ extension Note {
                 updateFadeAppearance()
             }
         }
-        .onChange(of: note.isDeletable) { _, _ in updateWindowClosability() }
+        .onChange(of: note.isCloseButtonEnabled) { _, _ in updateWindowClosability() }
         .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
             if let (blur, normal) = notification.object as? (Bool, Bool) {
                 noteWindow?.level = normal ? .normal : .floating
@@ -374,9 +378,7 @@ extension Note {
                         Spacer(minLength: 0)
                     }
                     .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
-                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset(
-                        showsSingleTaskCheckbox: noteKind == .singleTask
-                    ))
+                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
                     .offset(y: -1.5)
                 }
             }
