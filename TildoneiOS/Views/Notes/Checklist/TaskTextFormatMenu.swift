@@ -55,7 +55,9 @@ struct TaskTextFormatMenu: View {
 
     private var fontOptions: [SingleMemoFont] {
         let fonts = SingleMemoFont.allCases
-        guard Locale.current.language.languageCode?.identifier == "zh" else { return fonts }
+        guard Locale.current.language.languageCode?.identifier == "zh" else {
+            return fonts.filter { $0 != .notoSansSC && $0 != .notoSerifSC }
+        }
         return [.notoSansSC, .notoSerifSC, .pingFangSC, .songtiSC]
     }
 
