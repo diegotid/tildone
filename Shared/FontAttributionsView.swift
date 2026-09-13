@@ -2,7 +2,9 @@ import SwiftUI
 
 struct FontAttributionsView: View {
     var body: some View {
-        List(SingleMemoTypography.attributions) { attribution in
+        List(SingleMemoTypography.attributions.filter { attribution in
+            attribution.font.isChinese == isChineseLocale
+        }) { attribution in
             VStack(alignment: .leading, spacing: 7) {
                 Text(verbatim: attribution.font.displayName)
                     .font(.custom(
@@ -25,5 +27,9 @@ struct FontAttributionsView: View {
             .padding(.vertical, 5)
         }
         .navigationTitle("Font Attributions")
+    }
+
+    private var isChineseLocale: Bool {
+        Locale.current.language.languageCode?.identifier == "zh"
     }
 }

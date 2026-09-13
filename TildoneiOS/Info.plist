@@ -7,10 +7,11 @@
 		<string>Overlock-Regular.ttf</string>
 		<string>CoveredByYourGrace-Regular.ttf</string>
 		<string>CraftyGirls-Regular.ttf</string>
-		<string>Lacquer-Regular.ttf</string>
 		<string>MeowScript-Regular.ttf</string>
 		<string>PermanentMarker-Regular.ttf</string>
 		<string>SeaweedScript-Regular.ttf</string>
+		<string>NotoSansSC.ttf</string>
+		<string>NotoSerifSC.ttf</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

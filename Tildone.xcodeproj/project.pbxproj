@@ -20,20 +20,20 @@
 		Z70000000000000000000011 /* CoveredByYourGrace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000111 /* CoveredByYourGrace-OFL.txt */; };
 		Z70000000000000000000012 /* CraftyGirls-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000112 /* CraftyGirls-Regular.ttf */; };
 		Z70000000000000000000013 /* CraftyGirls-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000113 /* CraftyGirls-LICENSE.txt */; };
-		Z70000000000000000000014 /* Lacquer-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000114 /* Lacquer-Regular.ttf */; };
-		Z70000000000000000000015 /* Lacquer-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000115 /* Lacquer-OFL.txt */; };
 		Z70000000000000000000016 /* MeowScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000116 /* MeowScript-Regular.ttf */; };
 		Z70000000000000000000017 /* MeowScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000117 /* MeowScript-OFL.txt */; };
 		Z70000000000000000000018 /* PermanentMarker-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000118 /* PermanentMarker-Regular.ttf */; };
 		Z70000000000000000000019 /* PermanentMarker-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000119 /* PermanentMarker-LICENSE.txt */; };
 		Z7000000000000000000001A /* SeaweedScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011A /* SeaweedScript-Regular.ttf */; };
 		Z7000000000000000000001B /* SeaweedScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011B /* SeaweedScript-OFL.txt */; };
+		Z7000000000000000000001C /* NotoSansSC.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011C /* NotoSansSC.ttf */; };
+		Z7000000000000000000001D /* NotoSansSC-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011D /* NotoSansSC-OFL.txt */; };
+		Z7000000000000000000001E /* NotoSerifSC.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011E /* NotoSerifSC.ttf */; };
+		Z7000000000000000000001F /* NotoSerifSC-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011F /* NotoSerifSC-OFL.txt */; };
 		Z70000000000000000000030 /* CoveredByYourGrace-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000110 /* CoveredByYourGrace-Regular.ttf */; };
 		Z70000000000000000000031 /* CoveredByYourGrace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000111 /* CoveredByYourGrace-OFL.txt */; };
 		Z70000000000000000000032 /* CraftyGirls-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000112 /* CraftyGirls-Regular.ttf */; };
 		Z70000000000000000000033 /* CraftyGirls-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000113 /* CraftyGirls-LICENSE.txt */; };
-		Z70000000000000000000034 /* Lacquer-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000114 /* Lacquer-Regular.ttf */; };
-		Z70000000000000000000035 /* Lacquer-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000115 /* Lacquer-OFL.txt */; };
 		Z70000000000000000000036 /* MeowScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000116 /* MeowScript-Regular.ttf */; };
 		Z70000000000000000000037 /* MeowScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000117 /* MeowScript-OFL.txt */; };
 		Z70000000000000000000038 /* PermanentMarker-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000118 /* PermanentMarker-Regular.ttf */; };
@@ -240,14 +240,16 @@
 		Z70000000000000000000111 /* CoveredByYourGrace-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/CoveredByYourGrace-OFL.txt; sourceTree = SOURCE_ROOT; };
 		Z70000000000000000000112 /* CraftyGirls-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/CraftyGirls-Regular.ttf; sourceTree = SOURCE_ROOT; };
 		Z70000000000000000000113 /* CraftyGirls-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/CraftyGirls-LICENSE.txt; sourceTree = SOURCE_ROOT; };
-		Z70000000000000000000114 /* Lacquer-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/Lacquer-Regular.ttf; sourceTree = SOURCE_ROOT; };
-		Z70000000000000000000115 /* Lacquer-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/Lacquer-OFL.txt; sourceTree = SOURCE_ROOT; };
 		Z70000000000000000000116 /* MeowScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/MeowScript-Regular.ttf; sourceTree = SOURCE_ROOT; };
 		Z70000000000000000000117 /* MeowScript-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/MeowScript-OFL.txt; sourceTree = SOURCE_ROOT; };
 		Z70000000000000000000118 /* PermanentMarker-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/PermanentMarker-Regular.ttf; sourceTree = SOURCE_ROOT; };
 		Z70000000000000000000119 /* PermanentMarker-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/PermanentMarker-LICENSE.txt; sourceTree = SOURCE_ROOT; };
 		Z7000000000000000000011A /* SeaweedScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/SeaweedScript-Regular.ttf; sourceTree = SOURCE_ROOT; };
 		Z7000000000000000000011B /* SeaweedScript-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/SeaweedScript-OFL.txt; sourceTree = SOURCE_ROOT; };
+		Z7000000000000000000011C /* NotoSansSC.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/NotoSansSC.ttf; sourceTree = SOURCE_ROOT; };
+		Z7000000000000000000011D /* NotoSansSC-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/NotoSansSC-OFL.txt; sourceTree = SOURCE_ROOT; };
+		Z7000000000000000000011E /* NotoSerifSC.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/NotoSerifSC.ttf; sourceTree = SOURCE_ROOT; };
+		Z7000000000000000000011F /* NotoSerifSC-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tildone/Resources/Fonts/NotoSerifSC-OFL.txt; sourceTree = SOURCE_ROOT; };
 		R10000000000000000000011 /* MacTaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTaskTextFormatMenu.swift; sourceTree = "<group>"; };
 		R10000000000000000000012 /* RichTaskTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTaskTextEditor.swift; sourceTree = "<group>"; };
 		R10000000000000000000013 /* TaskTextFormatMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTextFormatMenu.swift; sourceTree = "<group>"; };
@@ -1204,14 +1206,16 @@
 				Z70000000000000000000031 /* CoveredByYourGrace-OFL.txt in Resources */,
 				Z70000000000000000000032 /* CraftyGirls-Regular.ttf in Resources */,
 				Z70000000000000000000033 /* CraftyGirls-LICENSE.txt in Resources */,
-				Z70000000000000000000034 /* Lacquer-Regular.ttf in Resources */,
-				Z70000000000000000000035 /* Lacquer-OFL.txt in Resources */,
 				Z70000000000000000000036 /* MeowScript-Regular.ttf in Resources */,
 				Z70000000000000000000037 /* MeowScript-OFL.txt in Resources */,
 				Z70000000000000000000038 /* PermanentMarker-Regular.ttf in Resources */,
 				Z70000000000000000000039 /* PermanentMarker-LICENSE.txt in Resources */,
 				Z7000000000000000000003A /* SeaweedScript-Regular.ttf in Resources */,
 				Z7000000000000000000003B /* SeaweedScript-OFL.txt in Resources */,
+				Z7000000000000000000001C /* NotoSansSC.ttf in Resources */,
+				Z7000000000000000000001D /* NotoSansSC-OFL.txt in Resources */,
+				Z7000000000000000000001E /* NotoSerifSC.ttf in Resources */,
+				Z7000000000000000000001F /* NotoSerifSC-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1244,14 +1248,16 @@
 				Z70000000000000000000011 /* CoveredByYourGrace-OFL.txt in Resources */,
 				Z70000000000000000000012 /* CraftyGirls-Regular.ttf in Resources */,
 				Z70000000000000000000013 /* CraftyGirls-LICENSE.txt in Resources */,
-				Z70000000000000000000014 /* Lacquer-Regular.ttf in Resources */,
-				Z70000000000000000000015 /* Lacquer-OFL.txt in Resources */,
 				Z70000000000000000000016 /* MeowScript-Regular.ttf in Resources */,
 				Z70000000000000000000017 /* MeowScript-OFL.txt in Resources */,
 				Z70000000000000000000018 /* PermanentMarker-Regular.ttf in Resources */,
 				Z70000000000000000000019 /* PermanentMarker-LICENSE.txt in Resources */,
 				Z7000000000000000000001A /* SeaweedScript-Regular.ttf in Resources */,
 				Z7000000000000000000001B /* SeaweedScript-OFL.txt in Resources */,
+				Z7000000000000000000001C /* NotoSansSC.ttf in Resources */,
+				Z7000000000000000000001D /* NotoSansSC-OFL.txt in Resources */,
+				Z7000000000000000000001E /* NotoSerifSC.ttf in Resources */,
+				Z7000000000000000000001F /* NotoSerifSC-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

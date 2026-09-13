@@ -54,15 +54,18 @@ struct MacTaskTextFormatMenu: View {
 
     private var fontMenu: some View {
         Menu {
-            ForEach(SingleMemoFont.allCases) { font in
-                Button {
+            ForEach(fontOptions) { font in
+                    Button {
                     Swift.Task { try? await store.setSingleMemoFont(font, for: noteID) }
                 } label: {
                     if presentation.snapshot.singleMemoFont == font {
-                        Label(font.displayName, systemImage: "checkmark")
-                            .font(.custom(SingleMemoTypography.fontName(for: font), size: 15))
+                        HStack {
+                            Text(verbatim: SingleMemoTypography.previewText)
+                                .font(.custom(SingleMemoTypography.fontName(for: font), size: 15))
+                            Image(systemName: "checkmark")
+                        }
                     } else {
-                        Text(verbatim: font.displayName)
+                        Text(verbatim: SingleMemoTypography.previewText)
                             .font(.custom(SingleMemoTypography.fontName(for: font), size: 15))
                     }
                 }
@@ -71,6 +74,12 @@ struct MacTaskTextFormatMenu: View {
             Label("Font", systemImage: "textformat.size")
         }
         .tint(.primary)
+    }
+
+    private var fontOptions: [SingleMemoFont] {
+        let fonts = SingleMemoFont.allCases
+        guard Locale.current.language.languageCode?.identifier == "zh" else { return fonts }
+        return [.notoSansSC, .notoSerifSC, .pingFangSC, .songtiSC]
     }
 
     private func formatButton(

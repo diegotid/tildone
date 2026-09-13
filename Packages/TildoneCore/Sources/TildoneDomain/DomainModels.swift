@@ -55,12 +55,22 @@ public enum NoteKind: String, Codable, CaseIterable, Hashable, Identifiable, Sen
 /// PostScript font names.
 public enum SingleMemoFont: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
     case overlock
+    case pingFangSC
+    case songtiSC
+    case notoSansSC
+    case notoSerifSC
     case coveredByYourGrace
     case craftyGirls
+    /// Retained so notes written with an earlier build remain decodable. The
+    /// font is no longer bundled or offered as a selectable option.
     case lacquer
     case meowScript
     case permanentMarker
     case seaweedScript
+
+    public static var allCases: [Self] {
+        [.overlock, .pingFangSC, .songtiSC, .notoSansSC, .notoSerifSC, .coveredByYourGrace, .craftyGirls, .meowScript, .permanentMarker, .seaweedScript]
+    }
 
     public var id: Self { self }
 }

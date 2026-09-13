@@ -23,15 +23,18 @@ struct TaskTextFormatMenu: View {
             if let selectedFont, let onFontChange {
                 Divider()
                 Menu {
-                    ForEach(SingleMemoFont.allCases) { font in
+                    ForEach(fontOptions) { font in
                         Button {
                             onFontChange(font)
                         } label: {
                             if selectedFont == font {
-                                Label(font.displayName, systemImage: "checkmark")
-                                    .font(.custom(SingleMemoTypography.fontName(for: font), size: 17))
+                                HStack {
+                                    Text(verbatim: SingleMemoTypography.previewText)
+                                        .font(.custom(SingleMemoTypography.fontName(for: font), size: 17))
+                                    Image(systemName: "checkmark")
+                                }
                             } else {
-                                Text(verbatim: font.displayName)
+                                Text(verbatim: SingleMemoTypography.previewText)
                                     .font(.custom(SingleMemoTypography.fontName(for: font), size: 17))
                             }
                         }
@@ -48,6 +51,12 @@ struct TaskTextFormatMenu: View {
         // remains the authority for whether a command has a target.
         .foregroundStyle(.primary)
         .accessibilityLabel("Format task text")
+    }
+
+    private var fontOptions: [SingleMemoFont] {
+        let fonts = SingleMemoFont.allCases
+        guard Locale.current.language.languageCode?.identifier == "zh" else { return fonts }
+        return [.notoSansSC, .notoSerifSC, .pingFangSC, .songtiSC]
     }
 
     private func button(
