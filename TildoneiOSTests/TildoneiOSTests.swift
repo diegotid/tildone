@@ -932,6 +932,10 @@ final class TildoneiOSTests: XCTestCase {
         let paused = SyncStatus(availability: .available, activity: .paused)
         XCTAssertEqual(SyncStatusPresentation.title(for: paused), "Sync is paused")
         XCTAssertEqual(SyncStatusPresentation.symbol(for: paused), "pause.circle")
+        XCTAssertEqual(
+            SyncStatusPresentation.symbol(for: paused, showsProgress: true),
+            "arrow.trianglehead.2.clockwise"
+        )
         let pausedDetail = try XCTUnwrap(SyncStatusPresentation.detail(for: paused))
         XCTAssertFalse(pausedDetail.localizedCaseInsensitiveContains("workspace"))
 

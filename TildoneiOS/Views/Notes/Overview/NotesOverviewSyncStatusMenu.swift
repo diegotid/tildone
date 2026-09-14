@@ -28,15 +28,8 @@ struct TildoneiOSSyncStatusMenu: View {
             pause: appModel.pauseTransport,
             resume: appModel.resumeTransport,
             offerCloudAdoption: appModel.offerCloudAdoption,
-            showAbout: showAbout
+            showAbout: showAbout,
+            animatesSyncSymbol: showsLaunchProgress
         )
-        .overlay(alignment: .bottomTrailing) {
-            if showsLaunchProgress {
-                ProgressView()
-                    .controlSize(.mini)
-                    .offset(x: 5, y: 5)
-                    .accessibilityHidden(true)
-            }
-        }
     }
 }

@@ -18,6 +18,8 @@ struct SyncStatusMenu: View {
     let resume: () -> Void
     let offerCloudAdoption: () -> Void
     var showAbout: (() -> Void)? = nil
+    var animatesSyncSymbol = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Menu {
@@ -54,14 +56,30 @@ struct SyncStatusMenu: View {
                 Button("About Tildone", systemImage: "info.circle", action: showAbout)
             }
         } label: {
-            Image(systemName: SyncStatusPresentation.symbol(for: status))
-                .accessibilityLabel(SyncStatusPresentation.title(for: status))
-                .accessibilityValue(
-                    transportState == .paused
-                        ? String(localized: "Sync is paused")
-                        : SyncStatusPresentation.title(for: status)
-                )
+            TimelineView(.animation(
+                minimumInterval: 1.0 / 30.0,
+                paused: !animatesSyncSymbol || reduceMotion
+            )) { context in
+                Image(systemName: SyncStatusPresentation.symbol(
+                    for: status,
+                    showsProgress: animatesSyncSymbol
+                ))
+                .rotationEffect(rotationAngle(at: context.date))
+            }
+            .accessibilityLabel(SyncStatusPresentation.title(for: status))
+            .accessibilityValue(
+                transportState == .paused
+                    ? String(localized: "Sync is paused")
+                    : SyncStatusPresentation.title(for: status)
+            )
         }
+    }
+
+    private func rotationAngle(at date: Date) -> Angle {
+        guard animatesSyncSymbol, !reduceMotion else { return .zero }
+        let progress = date.timeIntervalSinceReferenceDate
+            .truncatingRemainder(dividingBy: 1)
+        return .degrees(progress * 360)
     }
 }
 

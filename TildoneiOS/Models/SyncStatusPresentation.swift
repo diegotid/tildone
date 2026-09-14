@@ -53,8 +53,9 @@ enum SyncStatusPresentation {
         }
     }
 
-    static func symbol(for status: SyncStatus) -> String {
-        switch status.availability {
+    static func symbol(for status: SyncStatus, showsProgress: Bool = false) -> String {
+        if showsProgress { return "arrow.trianglehead.2.clockwise" }
+        return switch status.availability {
         case .available where status.activity == .syncing: "arrow.triangle.2.circlepath"
         case .available where status.activity == .paused: "pause.circle"
         case .available: "icloud"
