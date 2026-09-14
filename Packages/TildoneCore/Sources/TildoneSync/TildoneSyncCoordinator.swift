@@ -200,7 +200,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
                 zoneResetRequired: persistent.zoneResetRequired
             ) {
                 try await engine.fetchChanges(
-                    CKSyncEngine.FetchChangesOptions(scope: .zoneIDs([TildoneCloudSchema.zoneID]))
+                    CKSyncEngine.FetchChangesOptions(scope: .all)
                 )
             }
         } catch {

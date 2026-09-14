@@ -19,6 +19,7 @@ struct ChecklistView: View {
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
+    @State private var hasInitializedTitleDraft = false
     @State private var keepsTitleInputVisible = false
     @State private var collapsedTaskIDs: Set<TaskID> = []
     @State private var taskInsertionTargetID: TaskID?
@@ -376,10 +377,21 @@ struct ChecklistView: View {
             TaskHierarchy.hasSubtasks(at: index, in: tasks) ? tasks[index].id : nil
         })
         collapsedTaskIDs.formIntersection(parentIDs)
-        if !isEditingTitle || titleBaseline == nil {
+        if Self.shouldSynchronizeTitleDraft(
+            isEditingTitle: isEditingTitle,
+            hasInitializedTitleDraft: hasInitializedTitleDraft
+        ) {
             title = note?.title ?? ""
             titleBaseline = Self.normalizedTitle(note?.title)
+            hasInitializedTitleDraft = true
         }
+    }
+
+    static func shouldSynchronizeTitleDraft(
+        isEditingTitle: Bool,
+        hasInitializedTitleDraft: Bool
+    ) -> Bool {
+        !isEditingTitle || !hasInitializedTitleDraft
     }
 
     private func saveTitle() {

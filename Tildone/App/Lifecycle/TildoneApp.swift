@@ -51,28 +51,30 @@ struct TildoneApp: App {
         )
     }
 
-    var body: some Scene {
-        TildonePrimaryScene(isVisible: sharedStoreBootstrapper.error != nil) {
-            Group {
-                if let store = sharedStoreBootstrapper.store {
-                    Desktop(
-                        store: store,
-                        noteSyncIndicatorState: noteSyncIndicatorState,
-                        foregroundNoteID: $foregroundNoteID
-                    )
-                        .id(ObjectIdentifier(store))
-                } else if sharedStoreBootstrapper.error != nil {
-                    VStack(spacing: 12) {
-                        Text("Tildone could not open your notes.").font(.headline)
-                        Text("Your existing notes have not been changed. Tildone needs your help before it can open them.")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(24)
-                } else {
-                    ProgressView()
-                        .onAppear { sharedStoreBootstrapper.start() }
-                }
+    @ViewBuilder
+    private var desktopContent: some View {
+        if let store = sharedStoreBootstrapper.store {
+            Desktop(
+                store: store,
+                noteSyncIndicatorState: noteSyncIndicatorState,
+                foregroundNoteID: $foregroundNoteID
+            )
+            .id(ObjectIdentifier(store))
+        } else if sharedStoreBootstrapper.error != nil {
+            VStack(spacing: 12) {
+                Text("Tildone could not open your notes.").font(.headline)
+                Text("Your existing notes have not been changed. Tildone needs your help before it can open them.")
+                    .foregroundStyle(.secondary)
             }
+            .padding(24)
+        } else {
+            ProgressView()
+                .onAppear { sharedStoreBootstrapper.start() }
+        }
+    }
+
+    private var observedDesktopContent: some View {
+        desktopContent
             .onAppear {
                 appDelegate.setCoordinatorWindowVisible(
                     sharedStoreBootstrapper.error != nil
@@ -104,6 +106,10 @@ struct TildoneApp: App {
             .onChange(of: sharedStoreBootstrapper.isUsingAccountWorkspace) { _, _ in
                 updateMenuBarSyncPresentation()
             }
+    }
+
+    private var notificationHandlingDesktopContent: some View {
+        observedDesktopContent
             .onReceive(NotificationCenter.default.publisher(for: .pauseSync)) { _ in
                 sharedStoreBootstrapper.pauseTransport()
             }
@@ -124,6 +130,10 @@ struct TildoneApp: App {
                 showsSyncResolutionOptions = true
                 openWindow(id: Id.syncStatusWindow)
             }
+    }
+
+    private var primarySceneContent: some View {
+        notificationHandlingDesktopContent
             .alert("Couldn’t undo this change", isPresented: Binding(
                 get: { undoErrorMessage != nil },
                 set: { if !$0 { undoErrorMessage = nil } }
@@ -132,6 +142,11 @@ struct TildoneApp: App {
             } message: {
                 Text(undoErrorMessage ?? "")
             }
+    }
+
+    var body: some Scene {
+        TildonePrimaryScene(isVisible: sharedStoreBootstrapper.error != nil) {
+            primarySceneContent
         }
         .environment(\.license, .free)
         .windowStyle(HiddenTitleBarWindowStyle())
@@ -208,21 +223,11 @@ struct TildoneApp: App {
                     }
                 }
             }
-            CommandGroup(before: .windowArrangement) {
-                Button("Minimize All") {
-                    NotificationCenter.default.post(name: .minimizeAll, object: nil)
-                }
-                .keyboardShortcut("m", modifiers: [.shift, .command])
-                Button("Bring All Up") {
-                    NotificationCenter.default.post(name: .bringAllUp, object: nil)
-                }
-                .keyboardShortcut("u", modifiers: [.shift, .command])
-                Divider()
-                Button("Line Up Notes") {
-                    NotificationCenter.default.post(name: .arrange, object: nil)
-                }
+            MacICloudSyncCommands(bootstrapper: sharedStoreBootstrapper) {
+                showsSyncResolutionOptions = false
+                openWindow(id: Id.syncStatusWindow)
             }
-            CommandGroup(replacing: .windowList) {}
+            MacWindowManagementCommands()
             TildoneHelpCommands(
                 openKeyboardShortcuts: { openWindow(id: Id.keyboardShortcutsWindow) },
                 openScrollGesturesHelp: { openWindow(id: Id.scrollGesturesHelpWindow) },
@@ -309,6 +314,52 @@ struct TildoneApp: App {
     }
 }
 
+private struct MacICloudSyncCommands: Commands {
+    @ObservedObject var bootstrapper: MacSharedStoreBootstrapper
+    let openSyncStatus: () -> Void
+
+    private var displayState: MacSyncDisplayState {
+        MacSyncPresentation.state(
+            status: bootstrapper.syncStatus,
+            transportState: bootstrapper.transportState,
+            enabledByDefault: MacSharedStoreBootstrapper.transportEnabledByDefault,
+            hasUnadoptedLocalWorkspace: bootstrapper.hasUnadoptedLocalWorkspace
+        )
+    }
+
+    var body: some Commands {
+        CommandMenu("iCloud Sync") {
+            Button(action: {}) {
+                Label(
+                    MacSyncPresentation.title(for: displayState),
+                    systemImage: MacSyncPresentation.symbol(for: displayState)
+                )
+            }
+            .disabled(true)
+
+            if bootstrapper.syncStatus.pendingMutationCount > 0 {
+                Button(action: {}) {
+                    Text("Changes waiting to sync: \(bootstrapper.syncStatus.pendingMutationCount)")
+                }
+                .disabled(true)
+            }
+
+            Divider()
+            if bootstrapper.canControlTransport {
+                if bootstrapper.transportState == .paused {
+                    Button("Resume Sync") { bootstrapper.resumeTransport() }
+                } else {
+                    Button("Sync Now") { bootstrapper.syncNow() }
+                    Button("Pause Sync") { bootstrapper.pauseTransport() }
+                }
+            }
+
+            Divider()
+            Button("Sync Status…", action: openSyncStatus)
+        }
+    }
+}
+
 private struct TildoneHelpCommands: Commands {
     let openKeyboardShortcuts: () -> Void
     let openScrollGesturesHelp: () -> Void
@@ -322,6 +373,26 @@ private struct TildoneHelpCommands: Commands {
             Divider()
             Button("How to Use Focus Filters…", action: openFocusFilterHelp)
         }
+    }
+}
+
+private struct MacWindowManagementCommands: Commands {
+    var body: some Commands {
+        CommandGroup(before: .windowArrangement) {
+            Button("Minimize All") {
+                NotificationCenter.default.post(name: .minimizeAll, object: nil)
+            }
+            .keyboardShortcut("m", modifiers: [.shift, .command])
+            Button("Bring All Up") {
+                NotificationCenter.default.post(name: .bringAllUp, object: nil)
+            }
+            .keyboardShortcut("u", modifiers: [.shift, .command])
+            Divider()
+            Button("Line Up Notes") {
+                NotificationCenter.default.post(name: .arrange, object: nil)
+            }
+        }
+        CommandGroup(replacing: .windowList) {}
     }
 }
 

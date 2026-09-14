@@ -16,6 +16,21 @@ import TildoneSync
 
 @MainActor
 final class TildoneiOSTests: XCTestCase {
+    func testUntitledNoteSyncDoesNotReplaceAnInitializedTitleDraftWhileEditing() {
+        XCTAssertTrue(ChecklistView.shouldSynchronizeTitleDraft(
+            isEditingTitle: true,
+            hasInitializedTitleDraft: false
+        ))
+        XCTAssertFalse(ChecklistView.shouldSynchronizeTitleDraft(
+            isEditingTitle: true,
+            hasInitializedTitleDraft: true
+        ))
+        XCTAssertTrue(ChecklistView.shouldSynchronizeTitleDraft(
+            isEditingTitle: false,
+            hasInitializedTitleDraft: true
+        ))
+    }
+
     func testNotePreviewUsesFixedDarkBaseTextColor() throws {
         let preview = RichTaskTextEditor.displayText(
             from: RichText(text: "Preview task"),

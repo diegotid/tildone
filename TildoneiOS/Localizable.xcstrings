@@ -1,29 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "The quick brown fox jumps over the lazy dog" : {
-      "comment" : "Typography preview sentence shown in the single-memo font selector.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El juez pidió café, whisky y agua fría durante la audiencia"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buvez de ce whisky que le patron juge fameux"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "春风拂过湖面，月光照亮远山与小桥"
-          }
-        }
-      }
-    },
     "%@. Tasks: %@" : {
       "localizations" : {
         "es" : {
@@ -1709,6 +1686,7 @@
       }
     },
     "Mark as completed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1731,6 +1709,7 @@
       }
     },
     "Mark as pending" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -2871,6 +2850,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud 中的笔记由较新版本的 Tildone 保存。"
+          }
+        }
+      }
+    },
+    "The quick brown fox jumps over the lazy dog" : {
+      "comment" : "Typography preview sentence shown in the single-memo font selector.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El juez pidió café, whisky y agua fría durante la audiencia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buvez de ce whisky que le patron juge fameux"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "春风拂过湖面，月光照亮远山与小桥"
           }
         }
       }
