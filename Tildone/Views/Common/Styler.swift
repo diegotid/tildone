@@ -88,16 +88,22 @@ enum NoteWindowBackground {
 enum NoteContentForeground {
     static func usesLightText(
         colorScheme: ColorScheme,
-        backgroundOpacity: Double
+        backgroundOpacity: Double,
+        windowOpacity: CGFloat = 1
     ) -> Bool {
-        colorScheme == .dark && backgroundOpacity < 0.5
+        colorScheme == .dark
     }
 
     static func color(
         colorScheme: ColorScheme,
-        backgroundOpacity: Double
+        backgroundOpacity: Double,
+        windowOpacity: CGFloat = 1
     ) -> Color {
-        usesLightText(colorScheme: colorScheme, backgroundOpacity: backgroundOpacity)
+        usesLightText(
+            colorScheme: colorScheme,
+            backgroundOpacity: backgroundOpacity,
+            windowOpacity: windowOpacity
+        )
             ? Color(.primaryFontWhite)
             : .black
     }

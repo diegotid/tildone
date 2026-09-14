@@ -118,7 +118,7 @@ final class TildoneTests: XCTestCase {
                 backgroundOpacity: 0
             )
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             NoteContentForeground.usesLightText(
                 colorScheme: .dark,
                 backgroundOpacity: 0.5

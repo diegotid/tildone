@@ -77,6 +77,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             context.coordinator.canonicalRichText = richText
         }
         let baseColor = NSColor(textColor)
+        field.textColor = baseColor
         let presentationChanged = context.coordinator.lastFontSize != fontSize
             || context.coordinator.lastFontName != fontName
             || context.coordinator.lastLineHeightMultiple != lineHeightMultiple
@@ -145,6 +146,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         (field.cell as? MouseSafeTaskNSTextFieldCell)?.verticallyCentersContent = verticallyCentersContent
         field.updateTruncationTooltip()
         if let editor = editor as? NSTextView {
+            editor.textColor = baseColor
             Self.configure(
                 editor,
                 cursorColor: NSColor(cursorColor)

@@ -27,7 +27,8 @@ struct Note: View {
     var isDark: Bool {
         NoteContentForeground.usesLightText(
             colorScheme: colorScheme,
-            backgroundOpacity: noteBackgroundOpacity
+            backgroundOpacity: noteBackgroundOpacity,
+            windowOpacity: contentWindowAlpha
         )
     }
     var noteColor: NoteColor { note?.color ?? .yellow }
@@ -36,7 +37,8 @@ struct Note: View {
     var noteForeground: Color {
         NoteContentForeground.color(
             colorScheme: colorScheme,
-            backgroundOpacity: noteBackgroundOpacity
+            backgroundOpacity: noteBackgroundOpacity,
+            windowOpacity: contentWindowAlpha
         )
     }
     var isInsertedNewTaskFocused: Bool {
@@ -92,6 +94,7 @@ struct Note: View {
     @State var isTopicHidden = false
     @State var didSetInitialFocus = false
     @State var windowAlpha = 1.0
+    @State var contentWindowAlpha: CGFloat = 1
     @State var minimizationState = NoteWindowMinimizationState()
     @State var completionFade = CompletionFadeLifecycle()
     @State var fadeAwayProgress: TimeInterval = 0
@@ -169,7 +172,8 @@ struct Note: View {
             applyCurrentNoteBackground()
             updateRestoreControlForeground()
         }
-        .onChange(of: noteWindow) { _, _ in
+        .onChange(of: noteWindow) { _, window in
+            contentWindowAlpha = window?.alphaValue ?? 1
             updateWindowMenuTitle()
             updateFormatControlForeground()
         }
@@ -191,6 +195,7 @@ struct Note: View {
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,
                   changedWindow === noteWindow else { return }
+            contentWindowAlpha = changedWindow.alphaValue
             applyCurrentNoteBackground()
             updateRestoreControlForeground()
             updateFormatControlForeground()
