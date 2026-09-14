@@ -378,6 +378,87 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return try mappedNote(from: stored, in: context)
     }
 
+    /// Converts an empty checklist into a single memo and creates the memo's
+    /// editable task in the same transaction. Presentation must not expose the
+    /// task before this operation returns because task edits require a durable
+    /// row and stable ownership.
+    public func convertEmptyNoteToSingleTask(
+        id: NoteID,
+        taskID: TaskID,
+        createdAt: Date,
+        orderToken: OrderToken
+    ) throws -> Task {
+        let context = mutationContext()
+        let stored = try requireStoredNote(id: id, in: context)
+        var note = try mappedNote(from: stored, in: context)
+        guard note.lifecycle == .active,
+              try mappedUniqueTasks(noteID: id, in: context).allSatisfy({
+                  $0.lifecycle == .deleted
+              }),
+              try storedTask(id: taskID, in: context) == nil else {
+            throw PersistenceError.domainInvariant
+        }
+
+        let metadata = try workspaceMetadata(in: context)
+        let kindStamp = try nextStamp(metadata, observing: maxVersion(in: note))
+        do { try note.setKind(.singleTask, version: kindStamp) }
+        catch { throw PersistenceError.domainInvariant }
+        if let row = try storedNoteKind(noteID: id, in: context) {
+            try StoredDomainMapping.update(row, from: note)
+        } else {
+            context.insert(try StoredDomainMapping.storedNoteKind(from: note))
+        }
+        if try storedSingleMemoFont(noteID: id, in: context) == nil {
+            context.insert(try StoredDomainMapping.storedSingleMemoFont(from: note))
+        }
+        stored.recordSchemaVersion = Note.currentSchemaVersion
+
+        let taskStamp = try nextStamp(metadata, observing: kindStamp)
+        let task = Task(
+            id: taskID,
+            noteID: id,
+            createdAt: createdAt,
+            text: "",
+            textVersion: taskStamp,
+            completionVersion: taskStamp,
+            orderToken: orderToken,
+            orderVersion: taskStamp,
+            indentLevel: 0,
+            indentVersion: taskStamp,
+            lifecycleVersion: taskStamp
+        )
+        let meaningfulEditStamp = try nextStamp(
+            metadata,
+            observing: max(note.lastMeaningfulEditVersion, taskStamp)
+        )
+        do {
+            try note.recordMeaningfulEdit(
+                at: createdAt,
+                version: meaningfulEditStamp
+            )
+        } catch {
+            throw PersistenceError.domainInvariant
+        }
+        try StoredDomainMapping.update(stored, from: note)
+        context.insert(try StoredDomainMapping.storedTask(from: task))
+        context.insert(try StoredDomainMapping.storedTaskIndentation(from: task))
+        context.insert(try StoredDomainMapping.storedTaskRichText(from: task))
+        try enqueue(
+            .task,
+            id: taskID.stringValue,
+            sequence: taskStamp.logicalCounter,
+            in: context
+        )
+        try enqueue(
+            .note,
+            id: id.stringValue,
+            sequence: meaningfulEditStamp.logicalCounter,
+            in: context
+        )
+        try saveMutation(context)
+        return task
+    }
+
     public func setSingleMemoFont(id: NoteID, font: SingleMemoFont) throws -> Note {
         let context = mutationContext()
         let stored = try requireStoredNote(id: id, in: context)

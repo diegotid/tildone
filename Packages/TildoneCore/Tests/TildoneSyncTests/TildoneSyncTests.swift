@@ -30,6 +30,21 @@ final class TildoneSyncTests: XCTestCase {
         ))
     }
 
+    func testExistingZoneFetchesBeforeSendingWhileNewZoneMustBeCreatedFirst() {
+        XCTAssertTrue(SyncCheckpointOrderPolicy.shouldFetchBeforeSending(
+            zoneCreated: true,
+            zoneResetRequired: false
+        ))
+        XCTAssertFalse(SyncCheckpointOrderPolicy.shouldFetchBeforeSending(
+            zoneCreated: false,
+            zoneResetRequired: false
+        ))
+        XCTAssertFalse(SyncCheckpointOrderPolicy.shouldFetchBeforeSending(
+            zoneCreated: true,
+            zoneResetRequired: true
+        ))
+    }
+
     func testTransportPreferencePersistsPerAccountAndCannotEnableRelease() throws {
         let suiteName = "TildoneTransportStateTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

@@ -2562,6 +2562,24 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(completedMemo.isCloseButtonEnabled)
     }
 
+    @MainActor
+    func testEmptyNoteConversionPublishesOnlyPersistedEditableMemoTask() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 120))
+
+        try await store.setKind(.singleTask, for: note.id)
+        let memo = try XCTUnwrap(store.note(note.id)?.singleTask)
+        _ = await store.queueTaskTextEdit(
+            memo.id,
+            text: "First character",
+            onFailure: { XCTFail("The published memo task must already be persisted: \($0)") }
+        ).value
+
+        let persistedMemo = try await repository.task(id: memo.id)
+        XCTAssertEqual(persistedMemo.text, "First character")
+    }
+
     func testLegacyMacColorLookupPrefersPerNoteValueAndPreservesGlobalFallback() throws {
         let suiteName = "TildoneColorMigrationTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

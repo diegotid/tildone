@@ -56,6 +56,57 @@ final class TildonePersistenceTests: XCTestCase {
         })
     }
 
+    func testEmptyNoteConversionPersistsMemoTaskAndOutboxAtomically() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+
+        let task = try await repository.convertEmptyNoteToSingleTask(
+            id: noteID,
+            taskID: taskID,
+            createdAt: createdAt,
+            orderToken: try OrderToken.between(nil, nil)
+        )
+
+        let persistedNote = try await repository.note(id: noteID)
+        let persistedTask = try await repository.task(id: taskID)
+        XCTAssertEqual(persistedNote.kind, .singleTask)
+        XCTAssertEqual(persistedTask, task)
+        let pending = try await repository.pendingMutations()
+        XCTAssertEqual(Set(pending.map(\.targetStableID)), [
+            noteID.stringValue,
+            taskID.stringValue
+        ])
+    }
+
+    func testEmptyNoteConversionRollsBackKindTaskAndOutboxOnSaveFailure() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        try await repository.acknowledgeMutations(
+            ids: Set(try await repository.pendingMutations().map(\.id))
+        )
+
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            _ = try await repository.convertEmptyNoteToSingleTask(
+                id: self.noteID,
+                taskID: self.taskID,
+                createdAt: self.createdAt,
+                orderToken: try OrderToken.between(nil, nil)
+            )
+        }
+
+        let rolledBackNote = try await repository.note(id: noteID)
+        XCTAssertEqual(rolledBackNote.kind, .checklist)
+        await XCTAssertThrowsPersistenceError(.missing(.task, taskID.stringValue)) {
+            _ = try await repository.task(id: self.taskID, includingDeleted: true)
+        }
+        let rolledBackMutations = try await repository.pendingMutations(includeSuperseded: true)
+        XCTAssertTrue(rolledBackMutations.isEmpty)
+    }
+
     func testRichTextEditsPersistThroughConcreteAndProtocolRepositoryCalls() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)

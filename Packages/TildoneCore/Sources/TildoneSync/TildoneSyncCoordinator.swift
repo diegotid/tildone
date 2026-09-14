@@ -77,6 +77,34 @@ enum SyncZoneBootstrapPolicy {
     }
 }
 
+enum SyncCheckpointOrderPolicy {
+    static func shouldFetchBeforeSending(
+        zoneCreated: Bool,
+        zoneResetRequired: Bool
+    ) -> Bool {
+        SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: zoneCreated,
+            zoneResetRequired: zoneResetRequired
+        )
+    }
+}
+
+private actor SyncCheckpointGate {
+    private var running: (id: UUID, task: Swift.Task<Void, Never>)?
+
+    func run(_ operation: @escaping @Sendable () async -> Void) async {
+        if let running {
+            await running.task.value
+            return
+        }
+        let id = UUID()
+        let task = Swift.Task { await operation() }
+        running = (id, task)
+        await task.value
+        if running?.id == id { running = nil }
+    }
+}
+
 public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Sendable {
     public typealias AccountChangeHandler = @Sendable (SyncAccountChange) -> Void
     public typealias RemoteChangeHandler = @Sendable (RemoteContentChange) async throws -> Void
@@ -93,6 +121,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     private let clientPlatform: SyncClientPlatform
     private let onAccountChange: AccountChangeHandler
     private let onRemoteChange: RemoteChangeHandler
+    private let checkpointGate = SyncCheckpointGate()
     private var engine: CKSyncEngine?
 
     public init(
@@ -166,7 +195,9 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     /// Starts an immediate checkpoint while leaving normal scheduling to
     /// CKSyncEngine. Editing never waits for this method.
     public func start() async {
-        await runCheckpoint(retryAfterRecovery: true)
+        await checkpointGate.run { [weak self] in
+            await self?.runCheckpoint(retryAfterRecovery: true)
+        }
     }
 
     private func runCheckpoint(retryAfterRecovery: Bool) async {
@@ -182,30 +213,38 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             await refreshStatus(activity: .attentionNeeded, issue: .zoneReset)
             return
         }
+        let pendingCount: Int
         do {
             try await refreshPendingEngineChanges()
-            SyncDiagnostics.checkpointStarted(pendingCount: try await pipeline.pendingCount())
-            await refreshStatus(activity: .syncing)
-            try await engine.sendChanges()
+            pendingCount = try await pipeline.pendingCount()
         } catch {
             await apply(error: error)
             return
         }
+        SyncDiagnostics.checkpointStarted(pendingCount: pendingCount)
+        await refreshStatus(activity: .syncing)
+
+        let persistent = await coordinatorState.snapshot()
+        let fetchesFirst = SyncCheckpointOrderPolicy.shouldFetchBeforeSending(
+            zoneCreated: persistent.zoneCreated,
+            zoneResetRequired: persistent.zoneResetRequired
+        )
+        if fetchesFirst,
+           !(await fetchChanges(engine, retryAfterRecovery: retryAfterRecovery)) {
+            return
+        }
 
         guard engine === self.engine, !(await coordinatorState.isFrozen()) else { return }
-        do {
-            let persistent = await coordinatorState.snapshot()
+        guard await sendChanges(engine) else { return }
+
+        guard engine === self.engine, !(await coordinatorState.isFrozen()) else { return }
+        if !fetchesFirst {
+            let updated = await coordinatorState.snapshot()
             if SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
-                zoneCreated: persistent.zoneCreated,
-                zoneResetRequired: persistent.zoneResetRequired
+                zoneCreated: updated.zoneCreated,
+                zoneResetRequired: updated.zoneResetRequired
             ) {
-                try await engine.fetchChanges(
-                    CKSyncEngine.FetchChangesOptions(scope: .all)
-                )
-            }
-        } catch {
-            if await requireFullReconciliation(forFetchError: error), retryAfterRecovery {
-                await runCheckpoint(retryAfterRecovery: false)
+                _ = await fetchChanges(engine, retryAfterRecovery: retryAfterRecovery)
             }
         }
     }
@@ -384,6 +423,45 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
 }
 
 private extension TildoneSyncCoordinator {
+    func fetchChanges(
+        _ engine: CKSyncEngine,
+        retryAfterRecovery: Bool
+    ) async -> Bool {
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        SyncDiagnostics.phaseStarted(.fetch)
+        do {
+            try await engine.fetchChanges(
+                CKSyncEngine.FetchChangesOptions(scope: .all)
+            )
+            SyncDiagnostics.phaseCompleted(
+                .fetch,
+                elapsedSeconds: ProcessInfo.processInfo.systemUptime - startedAt
+            )
+            return true
+        } catch {
+            if await requireFullReconciliation(forFetchError: error), retryAfterRecovery {
+                await runCheckpoint(retryAfterRecovery: false)
+            }
+            return false
+        }
+    }
+
+    func sendChanges(_ engine: CKSyncEngine) async -> Bool {
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        SyncDiagnostics.phaseStarted(.send)
+        do {
+            try await engine.sendChanges()
+            SyncDiagnostics.phaseCompleted(
+                .send,
+                elapsedSeconds: ProcessInfo.processInfo.systemUptime - startedAt
+            )
+            return true
+        } catch {
+            await apply(error: error)
+            return false
+        }
+    }
+
     func rebuildEngineForFullReconciliation() async throws {
         let previousEngine = engine
         engine = nil

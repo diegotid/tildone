@@ -15,6 +15,11 @@ enum SyncAccountChangeDiagnosticCategory: String {
     case switched
 }
 
+enum SyncCheckpointPhase: String {
+    case fetch
+    case send
+}
+
 enum SyncFailureDiagnosticCategory: Equatable {
     case cloud(Int)
     case nonCloudNonPersistence
@@ -99,6 +104,23 @@ enum SyncDiagnostics {
     static func checkpointStarted(pendingCount: Int) {
 #if DEBUG
         logger.debug("checkpoint-started pending=\(pendingCount, privacy: .public)")
+#endif
+    }
+
+    static func phaseStarted(_ phase: SyncCheckpointPhase) {
+#if DEBUG
+        logger.debug("checkpoint-phase-started phase=\(phase.rawValue, privacy: .public)")
+#endif
+    }
+
+    static func phaseCompleted(
+        _ phase: SyncCheckpointPhase,
+        elapsedSeconds: TimeInterval
+    ) {
+#if DEBUG
+        logger.debug(
+            "checkpoint-phase-completed phase=\(phase.rawValue, privacy: .public) elapsed-seconds=\(elapsedSeconds, privacy: .public)"
+        )
 #endif
     }
 

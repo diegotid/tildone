@@ -252,34 +252,16 @@ final class MacSharedStore: ObservableObject {
 
     func setKind(_ kind: NoteKind, for id: NoteID) async throws {
         guard let original = note(id) else { throw PersistenceError.missing(.note, id.stringValue) }
-        var stagedTask: Task?
-        if kind == .singleTask, original.tasks.isEmpty {
-            stagedTask = try stageEmptyTaskInsertion(
-                in: id,
-                at: 0,
-                deleting: [],
-                indentLevel: 0
-            )
-        }
-        if let staged = note(id), staged.kind != kind {
-            publish(MacNoteSnapshot(
-                note: presentationNote(staged.note, kind: kind),
-                tasks: staged.tasks
-            ))
-        }
         do {
-            if original.kind != kind {
-                _ = try await repository.setNoteKind(id: id, kind: kind)
-            }
-            if let stagedTask {
-                _ = try await repository.addTask(
-                    id: stagedTask.id,
-                    to: id,
-                    createdAt: stagedTask.createdAt,
-                    text: stagedTask.text,
-                    orderToken: stagedTask.orderToken,
-                    indentLevel: stagedTask.indentLevel
+            if kind == .singleTask, original.tasks.isEmpty {
+                _ = try await repository.convertEmptyNoteToSingleTask(
+                    id: id,
+                    taskID: TaskID(),
+                    createdAt: Date(),
+                    orderToken: try OrderToken.between(nil, nil)
                 )
+            } else if original.kind != kind {
+                _ = try await repository.setNoteKind(id: id, kind: kind)
             }
             try await reload(id)
             scheduleSyncNotification()
@@ -1127,29 +1109,6 @@ private extension MacSharedStore {
             color: note.color,
             colorVersion: note.colorVersion,
             kind: note.kind,
-            kindVersion: note.kindVersion,
-            singleMemoFont: note.singleMemoFont,
-            singleMemoFontVersion: note.singleMemoFontVersion,
-            lifecycle: note.lifecycle,
-            lifecycleVersion: note.lifecycleVersion,
-            lastMeaningfulEditAt: note.lastMeaningfulEditAt,
-            lastMeaningfulEditVersion: note.lastMeaningfulEditVersion,
-            schemaVersion: note.schemaVersion
-        )
-    }
-
-    func presentationNote(
-        _ note: TildoneDomain.Note,
-        kind: NoteKind
-    ) -> TildoneDomain.Note {
-        TildoneDomain.Note(
-            id: note.id,
-            createdAt: note.createdAt,
-            title: note.title,
-            titleVersion: note.titleVersion,
-            color: note.color,
-            colorVersion: note.colorVersion,
-            kind: kind,
             kindVersion: note.kindVersion,
             singleMemoFont: note.singleMemoFont,
             singleMemoFontVersion: note.singleMemoFontVersion,
