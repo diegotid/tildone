@@ -24,7 +24,7 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         store: MacSharedStore,
         presentation: MacNotePresentation,
         noteID: NoteID,
-        focusPrivacy: NoteFocusPrivacyState
+        focusPrivacy: NoteFocusPrivacyState? = nil
     ) {
         self.colorPicker = colorPicker
         let formatControl = NSHostingView(rootView: MacTaskTextFormatMenu(
@@ -35,7 +35,11 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         ))
         let focusPrivacyControl = NSHostingView(rootView: MacNoteFocusPrivacyMenu(
             noteID: noteID,
-            initialState: focusPrivacy
+            initialState: focusPrivacy ?? NoteFocusPrivacyState(
+                noteID: noteID,
+                isContentBlurred: false,
+                staysInBackground: false
+            )
         ))
         // These controls are positioned explicitly beside the AppKit color
         // picker. Prevent localized SwiftUI menu content from changing their
