@@ -327,6 +327,34 @@
         }
       }
     },
+    "Blur Content" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desenfocar contenido" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Flouter le contenu" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模糊内容" } }
+      }
+    },
+    "Stay in Background" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantener en segundo plano" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rester en arrière-plan" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保持在后台" } }
+      }
+    },
+    "Use Focus Filter Defaults" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usar los valores predeterminados del filtro de concentración" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utiliser les réglages par défaut du filtre de concentration" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "使用专注模式过滤条件的默认设置" } }
+      }
+    },
+    "Using Focus Filter Defaults" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usando los valores predeterminados del filtro de concentración" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisation des réglages par défaut du filtre de concentration" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在使用专注模式过滤条件的默认设置" } }
+      }
+    },
     "Blue" : {
       "localizations" : {
         "es" : {
@@ -1683,6 +1711,13 @@
             "value" : "专注模式过滤条件"
           }
         }
+      }
+    },
+    "Focus & Privacy" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Enfoque y privacidad" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Concentration et confidentialité" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "专注与隐私" } }
       }
     },
     "Focus Filters can automatically blur task text or let notes stay behind other windows while a Focus is active." : {

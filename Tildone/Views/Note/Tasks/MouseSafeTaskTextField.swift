@@ -318,19 +318,22 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 editor,
                 cursorColor: NSColor(parent.cursorColor)
             )
+            let typingAttributes = MouseSafeTaskTextField.attributedString(
+                from: RichText(text: " "),
+                fontSize: parent.fontSize,
+                baseColor: NSColor(parent.textColor),
+                truncation: parent.truncation,
+                fontName: parent.fontName,
+                alignment: parent.alignment,
+                lineHeightMultiple: parent.lineHeightMultiple
+            ).attributes(at: 0, effectiveRange: nil)
+            if editor.string.isEmpty {
+                // A newly staged checklist row has no attributed text yet.
+                // Give its native editor the note's calculated foreground
+                // before the first character is inserted.
+                editor.typingAttributes = typingAttributes
+            }
             if parent.verticallyCentersContent {
-                let typingAttributes = MouseSafeTaskTextField.attributedString(
-                    from: RichText(text: " "),
-                    fontSize: parent.fontSize,
-                    baseColor: NSColor(parent.textColor),
-                    truncation: parent.truncation,
-                    fontName: parent.fontName,
-                    alignment: parent.alignment,
-                    lineHeightMultiple: parent.lineHeightMultiple
-                ).attributes(at: 0, effectiveRange: nil)
-                if editor.string.isEmpty {
-                    editor.typingAttributes = typingAttributes
-                }
                 (editor as? MouseSafeTaskFieldEditor)?.emptyInsertionPointFont =
                     typingAttributes[.font] as? NSFont
             } else {

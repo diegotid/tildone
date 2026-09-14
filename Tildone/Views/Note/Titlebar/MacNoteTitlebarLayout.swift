@@ -12,6 +12,7 @@ enum MacNoteTitlebarLayout {
     static let colorPickerWidth: CGFloat = 24
     static let formatControlWidth: CGFloat = 22
     static let kindControlWidth: CGFloat = 22
+    static let focusPrivacyControlWidth: CGFloat = 22
     static let minimizedRestoreWidth: CGFloat = 19
     static let syncIndicatorWidth: CGFloat = 22
     static let controlHeight: CGFloat = 22
@@ -21,6 +22,7 @@ enum MacNoteTitlebarLayout {
     static var accessoryWidth: CGFloat {
         trailingMargin + colorPickerWidth
             + controlSpacing + formatControlWidth + controlSpacing + kindControlWidth
+            + controlSpacing + focusPrivacyControlWidth
     }
 
     static var titleTrailingInset: CGFloat {
@@ -55,11 +57,21 @@ enum MacNoteTitlebarLayout {
     }
 
     static func kindControlFrame(alignedWith pickerFrame: NSRect) -> NSRect {
-        let formatFrame = formatControlFrame(alignedWith: pickerFrame)
+        let focusPrivacyFrame = focusPrivacyControlFrame(alignedWith: pickerFrame)
         return NSRect(
-            x: formatFrame.minX - kindControlWidth - controlSpacing,
+            x: focusPrivacyFrame.minX - kindControlWidth - controlSpacing,
             y: pickerFrame.midY - 1,
             width: kindControlWidth,
+            height: controlHeight
+        )
+    }
+
+    static func focusPrivacyControlFrame(alignedWith pickerFrame: NSRect) -> NSRect {
+        let formatFrame = formatControlFrame(alignedWith: pickerFrame)
+        return NSRect(
+            x: formatFrame.minX - focusPrivacyControlWidth - controlSpacing - 2,
+            y: pickerFrame.midY - 1,
+            width: focusPrivacyControlWidth,
             height: controlHeight
         )
     }

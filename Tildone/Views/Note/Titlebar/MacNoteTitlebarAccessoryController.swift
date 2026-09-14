@@ -13,6 +13,7 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
     private let colorPicker: NSView
     private let formatControl: NSHostingView<MacTaskTextFormatMenu>
     private let kindControl: NSHostingView<MacNoteKindMenu>
+    private let focusPrivacyControl: NSHostingView<MacNoteFocusPrivacyMenu>
     private let initialSyncIndicatorState: MacNoteSyncIndicatorState
     private var syncIndicator: MacNoteSyncTitlebarControl?
     private var restoreControl: MinimizedNoteRestoreTitlebarControl?
@@ -22,7 +23,8 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         syncIndicatorState: MacNoteSyncIndicatorState,
         store: MacSharedStore,
         presentation: MacNotePresentation,
-        noteID: NoteID
+        noteID: NoteID,
+        focusPrivacy: NoteFocusPrivacyState
     ) {
         self.colorPicker = colorPicker
         let formatControl = NSHostingView(rootView: MacTaskTextFormatMenu(
@@ -31,13 +33,19 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         let kindControl = NSHostingView(rootView: MacNoteKindMenu(
             store: store, presentation: presentation, noteID: noteID
         ))
+        let focusPrivacyControl = NSHostingView(rootView: MacNoteFocusPrivacyMenu(
+            noteID: noteID,
+            initialState: focusPrivacy
+        ))
         // These controls are positioned explicitly beside the AppKit color
         // picker. Prevent localized SwiftUI menu content from changing their
         // hosting-view frames after the titlebar has laid them out.
         formatControl.sizingOptions = []
         kindControl.sizingOptions = []
+        focusPrivacyControl.sizingOptions = []
         self.formatControl = formatControl
         self.kindControl = kindControl
+        self.focusPrivacyControl = focusPrivacyControl
         initialSyncIndicatorState = syncIndicatorState
         super.init(nibName: nil, bundle: nil)
         layoutAttribute = .right
@@ -60,6 +68,7 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         container.addSubview(colorPicker)
         container.addSubview(formatControl)
         container.addSubview(kindControl)
+        container.addSubview(focusPrivacyControl)
         installSyncIndicator(for: initialSyncIndicatorState)
         layoutControls()
     }
@@ -77,6 +86,7 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
         colorPicker.isHidden = hidden
         formatControl.isHidden = hidden
         kindControl.isHidden = hidden
+        focusPrivacyControl.isHidden = hidden
     }
 
     func setFormatControlForeground(_ foreground: Color) {
@@ -93,6 +103,11 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
             store: kindControl.rootView.store,
             presentation: kindControl.rootView.presentation,
             noteID: kindControl.rootView.noteID,
+            foreground: foreground
+        )
+        focusPrivacyControl.rootView = MacNoteFocusPrivacyMenu(
+            noteID: focusPrivacyControl.rootView.noteID,
+            initialState: focusPrivacyControl.rootView.initialState,
             foreground: foreground
         )
     }
@@ -144,6 +159,9 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
             alignedWith: colorPicker.frame
         )
         kindControl.frame = MacNoteTitlebarLayout.kindControlFrame(alignedWith: colorPicker.frame)
+        focusPrivacyControl.frame = MacNoteTitlebarLayout.focusPrivacyControlFrame(
+            alignedWith: colorPicker.frame
+        )
         syncIndicator?.frame = MacNoteTitlebarLayout.syncIndicatorFrame(
             alignedWith: colorPicker.frame
         )
@@ -151,6 +169,124 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
             in: view.bounds,
             alignedWith: colorPicker.frame
         )
+    }
+}
+
+private struct MacNoteFocusPrivacyMenu: View {
+    let noteID: NoteID
+    let initialState: NoteFocusPrivacyState
+    var foreground: Color = .primary
+    @State private var state: NoteFocusPrivacyState
+    @State private var focusBlurred: Bool
+    @State private var focusAllowsBackground: Bool
+    @State private var usesFocusFilterDefaults: Bool
+
+    init(
+        noteID: NoteID,
+        initialState: NoteFocusPrivacyState,
+        foreground: Color = .primary
+    ) {
+        self.noteID = noteID
+        self.initialState = initialState
+        self.foreground = foreground
+        _state = State(initialValue: initialState)
+        _focusBlurred = State(initialValue: initialState.isContentBlurred)
+        _focusAllowsBackground = State(initialValue: initialState.staysInBackground)
+        _usesFocusFilterDefaults = State(initialValue:
+            NoteFocusPrivacySettings.blurOverride(for: noteID) == nil
+                && NoteFocusPrivacySettings.backgroundOverride(for: noteID) == nil
+        )
+    }
+
+    var body: some View {
+        Menu {
+            Toggle(isOn: Binding(
+                get: { state.isContentBlurred },
+                set: setContentBlurred
+            )) {
+                Label(
+                    "Blur Content",
+                    systemImage: "drop"
+                )
+            }
+            Toggle(isOn: Binding(
+                get: { state.staysInBackground },
+                set: setStaysInBackground
+            )) {
+                Label(
+                    "Stay in Background",
+                    systemImage: "macwindow.on.rectangle"
+                )
+            }
+            Divider()
+            Button(
+                usesFocusFilterDefaults
+                    ? "Using Focus Filter Defaults"
+                    : "Use Focus Filter Defaults",
+                action: resetToFocusFilterDefaults
+            )
+            .disabled(usesFocusFilterDefaults)
+        } label: {
+            Image(systemName: usesFocusFilterDefaults ? "moon" : "moon.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(foreground)
+                .frame(
+                    width: MacNoteTitlebarLayout.focusPrivacyControlWidth,
+                    height: MacNoteTitlebarLayout.controlHeight
+                )
+                .contentShape(Rectangle())
+                .offset(y: 3)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .tint(foreground)
+        .help("Focus & Privacy")
+        .accessibilityLabel("Focus & Privacy")
+        .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+            guard let (blurred, allowsBackground) = notification.object as? (Bool, Bool) else { return }
+            focusBlurred = blurred
+            focusAllowsBackground = allowsBackground
+            refreshState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .noteFocusPrivacyChanged)) { notification in
+            guard let changedState = notification.object as? NoteFocusPrivacyState,
+                  changedState.noteID == noteID else { return }
+            state = changedState
+        }
+    }
+
+    private func setContentBlurred(_ isBlurred: Bool) {
+        NoteFocusPrivacySettings.setBlurOverride(
+            isBlurred == focusBlurred ? nil : isBlurred,
+            for: noteID
+        )
+        refreshState()
+    }
+
+    private func setStaysInBackground(_ staysInBackground: Bool) {
+        NoteFocusPrivacySettings.setBackgroundOverride(
+            staysInBackground == focusAllowsBackground ? nil : staysInBackground,
+            for: noteID
+        )
+        refreshState()
+    }
+
+    private func resetToFocusFilterDefaults() {
+        NoteFocusPrivacySettings.setBlurOverride(nil, for: noteID)
+        NoteFocusPrivacySettings.setBackgroundOverride(nil, for: noteID)
+        refreshState()
+    }
+
+    private func refreshState() {
+        usesFocusFilterDefaults = NoteFocusPrivacySettings.blurOverride(for: noteID) == nil
+            && NoteFocusPrivacySettings.backgroundOverride(for: noteID) == nil
+        state = NoteFocusPrivacySettings.state(
+            for: noteID,
+            focusBlurred: focusBlurred,
+            focusAllowsBackground: focusAllowsBackground
+        )
+        NotificationCenter.default.post(name: .noteFocusPrivacyChanged, object: state)
     }
 }
 

@@ -20,6 +20,7 @@ extension Notification.Name {
     static let minimizeAll = Notification.Name("minimizeAll")
     static let bringAllUp = Notification.Name("bringAllUp")
     static let visibility = Notification.Name("visibility")
+    static let noteFocusPrivacyChanged = Notification.Name("noteFocusPrivacyChanged")
     static let openSettings = Notification.Name("openSettings")
     static let openAbout = Notification.Name("openAbout")
     static let openFocusFilterHelp = Notification.Name("openFocusFilterHelp")

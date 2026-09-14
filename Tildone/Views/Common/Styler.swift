@@ -103,6 +103,54 @@ enum NoteContentForeground {
     }
 }
 
+struct NoteFocusPrivacyState: Equatable {
+    let noteID: NoteID
+    let isContentBlurred: Bool
+    let staysInBackground: Bool
+}
+
+enum NoteFocusPrivacySettings {
+    private static let blurKeyPrefix = "noteFocusPrivacy.blur."
+    private static let backgroundKeyPrefix = "noteFocusPrivacy.background."
+
+    static func blurOverride(for noteID: NoteID, defaults: UserDefaults = .standard) -> Bool? {
+        optionalBool(forKey: blurKeyPrefix + noteID.stringValue, defaults: defaults)
+    }
+
+    static func backgroundOverride(for noteID: NoteID, defaults: UserDefaults = .standard) -> Bool? {
+        optionalBool(forKey: backgroundKeyPrefix + noteID.stringValue, defaults: defaults)
+    }
+
+    static func setBlurOverride(_ value: Bool?, for noteID: NoteID, defaults: UserDefaults = .standard) {
+        setOptionalBool(value, forKey: blurKeyPrefix + noteID.stringValue, defaults: defaults)
+    }
+
+    static func setBackgroundOverride(_ value: Bool?, for noteID: NoteID, defaults: UserDefaults = .standard) {
+        setOptionalBool(value, forKey: backgroundKeyPrefix + noteID.stringValue, defaults: defaults)
+    }
+
+    static func state(
+        for noteID: NoteID,
+        focusBlurred: Bool,
+        focusAllowsBackground: Bool
+    ) -> NoteFocusPrivacyState {
+        NoteFocusPrivacyState(
+            noteID: noteID,
+            isContentBlurred: blurOverride(for: noteID) ?? focusBlurred,
+            staysInBackground: backgroundOverride(for: noteID) ?? focusAllowsBackground
+        )
+    }
+
+    private static func optionalBool(forKey key: String, defaults: UserDefaults) -> Bool? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return defaults.bool(forKey: key)
+    }
+
+    private static func setOptionalBool(_ value: Bool?, forKey key: String, defaults: UserDefaults) {
+        if let value { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
+    }
+}
+
 enum NoteWindowOpacity {
     static let defaultAlpha: CGFloat = 1
     static let minimumAlpha: CGFloat = 0.1

@@ -84,12 +84,23 @@ extension Note {
         .onDisappear { stopHandlingKeyboard() }
         .onChange(of: note.isCloseButtonEnabled) { _, _ in updateWindowClosability() }
         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
-        .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
-            if let (blur, normal) = notification.object as? (Bool, Bool) {
-                noteWindow?.level = normal ? .normal : .floating
-                isTextBlurred = blur
+            .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
+                if let (blur, normal) = notification.object as? (Bool, Bool) {
+                    let state = NoteFocusPrivacySettings.state(
+                        for: noteID,
+                        focusBlurred: blur,
+                        focusAllowsBackground: normal
+                    )
+                    noteWindow?.level = state.staysInBackground ? .normal : .floating
+                    isTextBlurred = state.isContentBlurred
+                }
             }
-        }
+            .onReceive(NotificationCenter.default.publisher(for: .noteFocusPrivacyChanged)) { notification in
+                guard let state = notification.object as? NoteFocusPrivacyState,
+                      state.noteID == noteID else { return }
+                noteWindow?.level = state.staysInBackground ? .normal : .floating
+                isTextBlurred = state.isContentBlurred
+            }
         .disabled(isContentBlurred)
         .onHover { isPointerHovering = $0 }
     }
@@ -233,9 +244,20 @@ extension Note {
         .onChange(of: note.isCloseButtonEnabled) { _, _ in updateWindowClosability() }
         .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
             if let (blur, normal) = notification.object as? (Bool, Bool) {
-                noteWindow?.level = normal ? .normal : .floating
-                isTextBlurred = blur
+                let state = NoteFocusPrivacySettings.state(
+                    for: noteID,
+                    focusBlurred: blur,
+                    focusAllowsBackground: normal
+                )
+                noteWindow?.level = state.staysInBackground ? .normal : .floating
+                isTextBlurred = state.isContentBlurred
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .noteFocusPrivacyChanged)) { notification in
+            guard let state = notification.object as? NoteFocusPrivacyState,
+                  state.noteID == noteID else { return }
+            noteWindow?.level = state.staysInBackground ? .normal : .floating
+            isTextBlurred = state.isContentBlurred
         }
         .onReceive(NotificationCenter.default.publisher(for: .clean), perform: cleanIfRequested)
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowClickThroughCommandChanged)) { notification in

@@ -220,6 +220,11 @@ struct Desktop: View {
                 }
                 isFocusFilterTextBlurred = isTextBlurred
                 focusFilterAllowsBackgroundNotes = allowsBackgroundNotes
+                applyFocusPrivacyToNoteWindows()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .noteFocusPrivacyChanged)) { notification in
+                guard let state = notification.object as? NoteFocusPrivacyState else { return }
+                applyFocusPrivacy(state)
             }
             .onReceive(NotificationCenter.default.publisher(for: .close)) { _ in handleClose() }
             .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in openSettings() }
@@ -791,7 +796,11 @@ private extension Desktop {
             store: store,
             presentation: presentation,
             noteID: note.id,
-            initialFocusBlurred: isFocusFilterTextBlurred
+            initialFocusBlurred: NoteFocusPrivacySettings.state(
+                for: note.id,
+                focusBlurred: isFocusFilterTextBlurred,
+                focusAllowsBackground: focusFilterAllowsBackgroundNotes
+            ).isContentBlurred
         )
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 guard let window = event.object as? NSWindow else { return }
@@ -821,7 +830,12 @@ private extension Desktop {
         )
         window.setNoteStyle(noteColor: note.color)
         window.contentMinSize = NSSize(width: Layout.minNoteWidth, height: Layout.minNoteHeight)
-        window.level = focusFilterAllowsBackgroundNotes ? .normal : .floating
+        let focusPrivacy = NoteFocusPrivacySettings.state(
+            for: note.id,
+            focusBlurred: isFocusFilterTextBlurred,
+            focusAllowsBackground: focusFilterAllowsBackgroundNotes
+        )
+        window.level = focusPrivacy.staysInBackground ? .normal : .floating
         window.ignoresMouseEvents = NoteWindowClickThrough.shouldIgnoreMouseEvents(
             isEnabled: clickThroughNotes,
             isCommandPressed: isClickThroughCommandPressed
@@ -1148,7 +1162,12 @@ private extension Desktop {
             syncIndicatorState: noteSyncIndicatorState,
             store: store,
             presentation: presentation,
-            noteID: noteID
+            noteID: noteID,
+            focusPrivacy: NoteFocusPrivacySettings.state(
+                for: noteID,
+                focusBlurred: isFocusFilterTextBlurred,
+                focusAllowsBackground: focusFilterAllowsBackgroundNotes
+            )
         )
         window.addTitlebarAccessoryViewController(accessory)
     }
@@ -1157,6 +1176,20 @@ private extension Desktop {
         for window in noteWindows.values {
             window.noteTitlebarAccessoryController?.setSyncIndicatorState(state)
         }
+    }
+
+    func applyFocusPrivacyToNoteWindows() {
+        for noteID in noteWindows.keys {
+            applyFocusPrivacy(NoteFocusPrivacySettings.state(
+                for: noteID,
+                focusBlurred: isFocusFilterTextBlurred,
+                focusAllowsBackground: focusFilterAllowsBackgroundNotes
+            ))
+        }
+    }
+
+    func applyFocusPrivacy(_ state: NoteFocusPrivacyState) {
+        noteWindows[state.noteID]?.level = state.staysInBackground ? .normal : .floating
     }
 
     func openSystemReleaseNote(version: String?) {
