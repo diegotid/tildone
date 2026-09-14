@@ -1870,6 +1870,7 @@
       }
     },
     "Global keyboard shortcut" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

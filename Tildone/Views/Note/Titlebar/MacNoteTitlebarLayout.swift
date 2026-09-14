@@ -7,11 +7,11 @@ import AppKit
 
 enum MacNoteTitlebarLayout {
     static let titleLeadingInset: CGFloat = 82
-    static let trailingMargin: CGFloat = 4
+    static let trailingMargin: CGFloat = 3.5
+    static let colorPickerTopMargin: CGFloat = 4.8
     static let colorPickerWidth: CGFloat = 24
     static let formatControlWidth: CGFloat = 22
     static let kindControlWidth: CGFloat = 22
-    static let colorPickerTopMargin: CGFloat = 5
     static let minimizedRestoreWidth: CGFloat = 19
     static let syncIndicatorWidth: CGFloat = 22
     static let controlHeight: CGFloat = 22
@@ -39,7 +39,7 @@ enum MacNoteTitlebarLayout {
     static func syncIndicatorFrame(alignedWith pickerFrame: NSRect) -> NSRect {
         NSRect(
             x: kindControlFrame(alignedWith: pickerFrame).minX - controlSpacing - syncIndicatorWidth,
-            y: pickerFrame.minY,
+            y: pickerFrame.midY - 1,
             width: syncIndicatorWidth,
             height: controlHeight
         )
@@ -48,7 +48,7 @@ enum MacNoteTitlebarLayout {
     static func formatControlFrame(alignedWith pickerFrame: NSRect) -> NSRect {
         NSRect(
             x: pickerFrame.minX - formatControlWidth,
-            y: pickerFrame.midY,
+            y: pickerFrame.midY - 1,
             width: formatControlWidth,
             height: controlHeight
         )
@@ -58,7 +58,7 @@ enum MacNoteTitlebarLayout {
         let formatFrame = formatControlFrame(alignedWith: pickerFrame)
         return NSRect(
             x: formatFrame.minX - kindControlWidth - controlSpacing,
-            y: pickerFrame.midY,
+            y: pickerFrame.midY - 1,
             width: kindControlWidth,
             height: controlHeight
         )
