@@ -12,6 +12,8 @@ extension Notification.Name {
     static let copy = Notification.Name("copy")
     static let copyNoteContents = Notification.Name("copyNoteContents")
     static let paste = Notification.Name("paste")
+    static let find = Notification.Name("find")
+    static let findQueryChanged = Notification.Name("findQueryChanged")
     static let clean = Notification.Name("clean")
     static let arrange = Notification.Name("arrange")
     static let arrangeMinimized = Notification.Name("arrangeMinimized")

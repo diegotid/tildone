@@ -5,12 +5,13 @@
 
 import AppKit
 import Foundation
+import SwiftUI
 import TildoneDomain
 import TildoneSync
 
 /// AppKit exposes the status button, which lets a new empty menu-bar-only
 /// installation present its menu once without relying on private APIs.
-final class MenuBarController: NSObject {
+final class MenuBarController: NSObject, NSPopoverDelegate {
     static let shared = MenuBarController()
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -21,6 +22,7 @@ final class MenuBarController: NSObject {
     private var copyNoteContentsItem: NSMenuItem?
     private var copyNoteTitle: String?
     private var hasCopyableNote = false
+    private let findPopover = NSPopover()
 
     static let copyNoteTitleLengthLimit = 32
 
@@ -36,6 +38,15 @@ final class MenuBarController: NSObject {
         button.toolTip = "Tildone"
         button.setAccessibilityHelp(String(localized: "Open Tildone and review iCloud sync status"))
         statusItem.menu = makeMenu()
+        findPopover.behavior = .transient
+        findPopover.delegate = self
+        findPopover.contentViewController = NSHostingController(rootView: MacFindInputView())
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(showFindPopover),
+            name: .find,
+            object: nil
+        )
     }
 
     func updateSyncPresentation(
@@ -166,6 +177,14 @@ final class MenuBarController: NSObject {
         menu.addItem(.separator())
 
         menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), symbolName: "square.and.pencil"))
+        let find = item(
+            String(localized: "Find in Notes…"),
+            action: #selector(findNotes),
+            keyEquivalent: "f",
+            symbolName: "magnifyingglass"
+        )
+        find.keyEquivalentModifierMask = .command
+        menu.addItem(find)
 
         let copyNoteContents = item(
             String(localized: "Copy Note Contents"),
@@ -277,6 +296,7 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func createNote() { sendToActiveApp(.new) }
+    @objc private func findNotes() { showFindPopover() }
     @objc private func copyNoteContents() { sendToActiveApp(.copyNoteContents) }
     @objc private func minimizeAll() { sendToActiveApp(.minimizeAll) }
     @objc private func bringAllUp() { sendToActiveApp(.bringAllUp) }
@@ -298,6 +318,47 @@ final class MenuBarController: NSObject {
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: name, object: nil)
         }
+    }
+
+    @objc private func showFindPopover() {
+        NSApplication.shared.activate()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let button = self.statusItem.button else { return }
+            self.findPopover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        NotificationCenter.default.post(name: .findQueryChanged, object: "")
+    }
+}
+
+private struct MacFindInputView: View {
+    @State private var query = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Find in Notes")
+                .font(.headline)
+            TextField("Search Notes and Tasks", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFocused)
+                .onChange(of: query) { _, newQuery in
+                    NotificationCenter.default.post(
+                        name: .findQueryChanged,
+                        object: newQuery.count >= 3 ? newQuery : ""
+                    )
+                }
+            Text("Enter at least 3 characters to start searching notes and tasks.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(width: 320, alignment: .leading)
+        .onAppear { isFocused = true }
+        .onDisappear { query = "" }
     }
 }
 

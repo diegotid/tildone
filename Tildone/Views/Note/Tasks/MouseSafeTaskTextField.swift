@@ -15,6 +15,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let fontSize: CGFloat
     let textColor: Color
     let cursorColor: Color
+    var searchQuery = ""
     let truncation: TaskLineTruncation
     var fontName: String? = nil
     var alignment: NSTextAlignment = .left
@@ -80,17 +81,19 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             || context.coordinator.lastFontName != fontName
             || context.coordinator.lastLineHeightMultiple != lineHeightMultiple
             || context.coordinator.lastBaseColor?.isEqual(baseColor) != true
+            || context.coordinator.lastSearchQuery != searchQuery
         if !isActivelyEditing,
            !preservingCanonicalAfterBlur,
            fieldRichText != richText || presentationChanged {
-            field.attributedStringValue = Self.attributedString(
+            field.attributedStringValue = Self.highlightedAttributedString(
                 from: richText,
                 fontSize: fontSize,
                 baseColor: baseColor,
                 truncation: truncation,
                 fontName: fontName,
                 alignment: alignment,
-                lineHeightMultiple: lineHeightMultiple
+                lineHeightMultiple: lineHeightMultiple,
+                searchQuery: searchQuery
             )
         }
         if isActivelyEditing,
@@ -99,14 +102,15 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             let selection = editor.selectedRange()
             let nativeRichText = Self.richText(from: editor.attributedString())
             let displayedRichText = nativeRichText.text == richText.text ? richText : nativeRichText
-            let attributed = Self.attributedString(
+            let attributed = Self.highlightedAttributedString(
                 from: displayedRichText,
                 fontSize: fontSize,
                 baseColor: baseColor,
                 truncation: truncation,
                 fontName: fontName,
                 alignment: alignment,
-                lineHeightMultiple: lineHeightMultiple
+                lineHeightMultiple: lineHeightMultiple,
+                searchQuery: searchQuery
             )
             field.attributedStringValue = attributed
             editor.textStorage?.setAttributedString(attributed)
@@ -131,6 +135,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         context.coordinator.lastFontName = fontName
         context.coordinator.lastLineHeightMultiple = lineHeightMultiple
         context.coordinator.lastBaseColor = baseColor
+        context.coordinator.lastSearchQuery = searchQuery
         field.cell?.lineBreakMode = truncation == .single ? .byTruncatingTail : .byWordWrapping
         field.cell?.wraps = truncation == .multiple
         field.cell?.truncatesLastVisibleLine = truncation == .single
@@ -172,6 +177,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         var lastFontName: String?
         var lastLineHeightMultiple: CGFloat?
         var lastBaseColor: NSColor?
+        var lastSearchQuery = ""
         var lastRequestedFocus = false
         var canonicalRichText: RichText
         private var lastSelection = NSRange(location: 0, length: 0)
@@ -544,6 +550,47 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 }
             }
             result.addAttributes(attributes, range: range)
+        }
+        return result
+    }
+
+    static func highlightedAttributedString(
+        from richText: RichText,
+        fontSize: CGFloat,
+        baseColor: NSColor,
+        truncation: TaskLineTruncation? = nil,
+        fontName: String? = nil,
+        alignment: NSTextAlignment = .left,
+        lineHeightMultiple: CGFloat? = nil,
+        searchQuery: String
+    ) -> NSAttributedString {
+        let result = NSMutableAttributedString(attributedString: attributedString(
+            from: richText,
+            fontSize: fontSize,
+            baseColor: baseColor,
+            truncation: truncation,
+            fontName: fontName,
+            alignment: alignment,
+            lineHeightMultiple: lineHeightMultiple
+        ))
+        guard !searchQuery.isEmpty else { return result }
+
+        let text = result.string as NSString
+        var searchRange = NSRange(location: 0, length: text.length)
+        while searchRange.length > 0 {
+            let range = text.range(
+                of: searchQuery,
+                options: [.caseInsensitive, .diacriticInsensitive],
+                range: searchRange
+            )
+            guard range.location != NSNotFound else { break }
+            result.addAttribute(
+                .backgroundColor,
+                value: NSColor.systemYellow.withAlphaComponent(0.55),
+                range: range
+            )
+            let nextLocation = range.location + range.length
+            searchRange = NSRange(location: nextLocation, length: text.length - nextLocation)
         }
         return result
     }

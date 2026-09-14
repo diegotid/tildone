@@ -63,6 +63,7 @@ struct Desktop: View {
     @State private var closedNoteIDs: Set<NoteID> = []
     @State private var foregroundWindow: NSWindow?
     @State private var updateWindow: NSWindow?
+    @State private var hiddenFindNoteWindowIDs: Set<NoteID> = []
     @State private var noteScrollMonitor = NoteScrollMonitor()
     @State private var cornerConvergence: NoteCornerConvergence?
     @State private var cornerScrollSession = NoteCornerConvergence.ScrollSession()
@@ -210,6 +211,9 @@ struct Desktop: View {
                     color: focusedNoteColor()
                 )
             }
+            .onReceive(NotificationCenter.default.publisher(for: .findQueryChanged)) { notification in
+                updateFindResults(for: notification.object as? String ?? "")
+            }
             .onReceive(NotificationCenter.default.publisher(for: .visibility)) { notification in
                 guard let (isTextBlurred, allowsBackgroundNotes) = notification.object as? (Bool, Bool) else {
                     return
@@ -303,6 +307,63 @@ private extension Desktop {
         closedNoteIDs.removeAll()
         foregroundWindow = nil
         foregroundNoteID = nil
+        hiddenFindNoteWindowIDs.removeAll()
+    }
+
+    func updateFindResults(for query: String) {
+        guard !query.isEmpty else {
+            for noteID in hiddenFindNoteWindowIDs {
+                noteWindows[noteID]?.orderFrontRegardless()
+            }
+            hiddenFindNoteWindowIDs.removeAll()
+            return
+        }
+
+        let matchingIDs = Set(store.notes.filter { note in
+            note.title?.matchesSearch(query) == true
+                || note.tasks.contains { $0.text.matchesSearch(query) }
+        }.map(\.id))
+
+        for note in store.notes where matchingIDs.contains(note.id) && noteWindows[note.id] == nil {
+            openWindow(for: note)
+        }
+        // First remove every non-match, then raise matches. Keeping these as
+        // separate passes prevents an existing frontmost note from winning due
+        // to the unspecified iteration order of the window dictionary.
+        for (noteID, window) in noteWindows where !matchingIDs.contains(noteID) {
+            if window.isVisible {
+                window.orderOut(nil)
+                hiddenFindNoteWindowIDs.insert(noteID)
+            }
+        }
+        for note in store.notes where matchingIDs.contains(note.id) {
+            guard let window = noteWindows[note.id] else { continue }
+            window.orderFrontRegardless()
+            pulse(window)
+        }
+    }
+
+    func pulse(_ window: NSWindow) {
+        let originalFrame = window.frame
+        let scale: CGFloat = 1.035
+        let enlargedFrame = NSRect(
+            x: originalFrame.midX - originalFrame.width * scale / 2,
+            y: originalFrame.midY - originalFrame.height * scale / 2,
+            width: originalFrame.width * scale,
+            height: originalFrame.height * scale
+        )
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.12
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            window.animator().setFrame(enlargedFrame, display: true)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.16
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                window.animator().setFrame(originalFrame, display: true)
+            }
+        }
     }
 
     func installScrollMonitor() {
@@ -1496,6 +1557,12 @@ private struct NoteColorFolderView: View {
         .frame(width: baseSize, height: baseSize)
         .scaleEffect(scale)
         .frame(width: size.width, height: size.height)
+    }
+}
+
+private extension String {
+    func matchesSearch(_ query: String) -> Bool {
+        range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 }
 

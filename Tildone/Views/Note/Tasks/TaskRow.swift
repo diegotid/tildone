@@ -16,6 +16,7 @@ struct TaskRow: View {
     let noteBackgroundColor: Color
     let contentColor: Color
     let cursorColor: Color
+    let searchQuery: String
     let placeholderColor: Color
     let truncation: TaskLineTruncation
     let isFirst: Bool
@@ -172,6 +173,7 @@ struct TaskRow: View {
                             fontSize: CGFloat(fontSize),
                             textColor: contentColor,
                             cursorColor: cursorColor,
+                            searchQuery: searchQuery,
                             truncation: truncation,
                             onFocus: onNativeFocus,
                             onBlur: onNativeBlur,
@@ -196,6 +198,7 @@ struct TaskRow: View {
                             fontSize: CGFloat(fontSize),
                             textColor: contentColor,
                             cursorColor: cursorColor,
+                            searchQuery: searchQuery,
                             truncation: truncation,
                             onFocus: onNativeFocus,
                             onBlur: onNativeBlur,

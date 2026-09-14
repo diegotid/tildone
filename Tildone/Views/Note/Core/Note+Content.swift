@@ -40,6 +40,7 @@ extension Note {
                         fontSize: size,
                         textColor: noteForeground,
                         cursorColor: noteForeground,
+                        searchQuery: findQuery,
                         truncation: .multiple,
                         fontName: fontName,
                         alignment: .center,
@@ -134,7 +135,7 @@ extension Note {
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 0) {
-                            topicListItem()
+                            topicListItem().id(Id.findTopicAnchor)
                             taskDropTarget(at: 0)
                             ForEach(visibleTaskEntries, id: \.task.id) { entry in
                                 taskRow(entry.task, at: entry.index)
@@ -178,6 +179,9 @@ extension Note {
                         }
                         guard let taskID else { return }
                         scrollToTaskAfterLayout(taskID, using: scroll)
+                    }
+                    .onChange(of: findQuery) { _, query in
+                        scrollToFirstFindMatch(query, in: note, using: scroll)
                     }
                     .modifier(ScrollFrame())
                     .onChange(of: tasks.count) { _, _ in
@@ -363,7 +367,14 @@ extension Note {
     func listTopic() -> some View {
         let size = NoteTypography.topicFontSize(for: CGFloat(fontSize))
         return GeometryReader { geometry in
-            TextField("Topic", text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit))
+            Group {
+                if let title = note?.title, title.matchesSearch(findQuery) {
+                    SearchHighlightedText(text: title, query: findQuery)
+                        .font(.system(size: size, weight: .bold, design: .rounded))
+                        .foregroundColor(noteForeground)
+                        .padding(.top, 5)
+                } else {
+                    TextField("Topic", text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit))
                 .textFieldStyle(.plain).truncationMode(.tail).font(.system(size: size, weight: .bold, design: .rounded))
                 .foregroundColor(noteForeground).background(Color.clear).padding(.top, 5)
                 .tint(noteForeground)
@@ -377,6 +388,8 @@ extension Note {
                 .onHover { hovering in
                     if hovering { isTopicHidden = false }
                 }
+                }
+            }
         }
         .padding(.bottom, size)
     }
@@ -391,7 +404,7 @@ extension Note {
                     }
                 if let title = note?.title {
                     HStack(spacing: 0) {
-                        Text(title)
+                        SearchHighlightedText(text: title, query: findQuery)
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -480,6 +493,7 @@ extension Note {
             noteBackgroundColor: Color(nsColor: noteColor.nsColor),
             contentColor: noteForeground,
             cursorColor: noteForeground,
+            searchQuery: findQuery,
             placeholderColor: minimizedForeground,
             truncation: taskLineTruncation,
             isFirst: task.id == tasks.first?.id,
@@ -555,6 +569,25 @@ extension Note {
         DispatchQueue.main.async {
             withAnimation {
                 scroll.scrollTo(taskID, anchor: .center)
+            }
+        }
+    }
+
+    func scrollToFirstFindMatch(
+        _ query: String,
+        in note: MacNoteSnapshot,
+        using scroll: ScrollViewProxy
+    ) {
+        guard !query.isEmpty else { return }
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                if note.title?.matchesSearch(query) == true {
+                    scroll.scrollTo(Id.findTopicAnchor, anchor: .center)
+                } else if let taskID = visibleTaskEntries.first(
+                    where: { $0.task.text.matchesSearch(query) }
+                )?.task.id {
+                    scroll.scrollTo(taskID, anchor: .center)
+                }
             }
         }
     }
@@ -675,5 +708,38 @@ struct CompactNotePresentation: View {
                     .padding(.leading, 8)
             }
         }
+    }
+}
+
+private struct SearchHighlightedText: View {
+    let text: String
+    let query: String
+
+    var body: some View {
+        highlightedText
+    }
+
+    private var highlightedText: Text {
+        guard !query.isEmpty else { return Text(text) }
+        var result = Text("")
+        var cursor = text.startIndex
+        while let range = text.range(
+            of: query,
+            options: [.caseInsensitive, .diacriticInsensitive],
+            range: cursor..<text.endIndex
+        ) {
+            result = result + Text(String(text[cursor..<range.lowerBound]))
+            result = result + Text(String(text[range]))
+                .foregroundColor(.orange)
+                .bold()
+            cursor = range.upperBound
+        }
+        return result + Text(String(text[cursor...]))
+    }
+}
+
+private extension String {
+    func matchesSearch(_ query: String) -> Bool {
+        !query.isEmpty && range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 }

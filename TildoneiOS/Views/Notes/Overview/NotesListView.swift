@@ -23,6 +23,7 @@ struct NotesListView: View {
     @State private var noteToDelete: Note?
     @State private var deckOrder: [NoteID] = []
     @State private var showsAbout = false
+    @State private var searchText = ""
 
     init(appModel: TildoneiOSApplicationModel) {
         self.appModel = appModel
@@ -37,6 +38,14 @@ struct NotesListView: View {
     private var activeNotes: [Note] {
         appModel.notes.filter { note in
             appModel.taskSummaries[note.id]?.isComplete != true
+        }
+    }
+
+    private var displayedNotes: [Note] {
+        guard !searchText.isEmpty else { return activeNotes }
+        return activeNotes.filter { note in
+            note.title?.matchesSearch(searchText) == true
+                || appModel.taskListTexts[note.id]?.matchesSearch(searchText) == true
         }
     }
 
@@ -59,13 +68,15 @@ struct NotesListView: View {
                     } actions: {
                         Button("Create Note", action: createNote)
                     }
+                } else if displayedNotes.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 } else {
                     switch layout {
                     case .list:
                         notesList
                     case .grid:
                         NotesGridView(
-                            notes: activeNotes,
+                            notes: displayedNotes,
                             summaries: appModel.taskSummaries,
                             taskPreviews: appModel.taskPreviews,
                             open: open,
@@ -85,6 +96,7 @@ struct NotesListView: View {
                 }
             }
             .navigationTitle("Notes")
+            .searchable(text: $searchText, prompt: "Search Notes and Tasks")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     TildoneiOSSyncStatusMenu(
@@ -191,7 +203,7 @@ struct NotesListView: View {
 
     private var notesList: some View {
         List {
-            ForEach(activeNotes, id: \.id) { note in
+            ForEach(displayedNotes, id: \.id) { note in
                 NavigationLink {
                     ChecklistView(appModel: appModel, noteID: note.id)
                 } label: {
@@ -235,7 +247,7 @@ struct NotesListView: View {
     }
 
     private var orderedDeckNotes: [Note] {
-        deckOrder.compactMap { noteID in activeNotes.first(where: { $0.id == noteID }) }
+        deckOrder.compactMap { noteID in displayedNotes.first(where: { $0.id == noteID }) }
     }
 
     private func open(_ note: Note) {
@@ -247,6 +259,12 @@ struct NotesListView: View {
         let retainedIDs = deckOrder.filter(activeIDs.contains)
         let newIDs = activeNotes.map(\.id).filter { !retainedIDs.contains($0) }
         deckOrder = retainedIDs + newIDs
+    }
+}
+
+private extension String {
+    func matchesSearch(_ query: String) -> Bool {
+        range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 }
 

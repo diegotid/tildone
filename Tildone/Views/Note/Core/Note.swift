@@ -107,6 +107,7 @@ struct Note: View {
     @State var collapsedTaskIDs: Set<TaskID> = []
     @State var keyboardMonitor: Any?
     @State var isEmptySingleMemoHintDismissed = false
+    @State var findQuery = ""
 
     var shouldShowEmptySingleMemoHint: Bool {
         !isEmptySingleMemoHintDismissed
@@ -193,6 +194,9 @@ struct Note: View {
             applyCurrentNoteBackground()
             updateRestoreControlForeground()
             updateFormatControlForeground()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .findQueryChanged)) { notification in
+            findQuery = notification.object as? String ?? ""
         }
         .onAppear {
             synchronizeCompletionFade(completedAt: note?.completedAt)

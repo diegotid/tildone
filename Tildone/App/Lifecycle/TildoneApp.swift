@@ -214,6 +214,11 @@ struct TildoneApp: App {
                     NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
                 }
                 .keyboardShortcut("a")
+                Divider()
+                Button("Find in Notes…") {
+                    NotificationCenter.default.post(name: .find, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
             }
             MacTaskTextFormatCommands(isEnabled: foregroundNoteID != nil)
             CommandGroup(after: .toolbar) {
