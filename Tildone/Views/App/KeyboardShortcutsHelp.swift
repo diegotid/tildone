@@ -42,11 +42,26 @@ struct KeyboardShortcutsHelp: View {
 
             VStack(alignment: .leading, spacing: 16) {
                 section("Essentials") {
-                    row("New Note", shortcut: newNoteShortcut.displayName)
+                    row("New Note from Anywhere", shortcut: newNoteShortcut.displayName)
                     row("Close Note", shortcut: "⌘W")
                     row("Undo", shortcut: "⌘Z")
                     row("Copy Note Contents", shortcut: "⇧⌘C")
                     row("Settings…", shortcut: "⌘,")
+                }
+
+                Divider()
+
+                section("Text Formatting") {
+                    row("Bold", shortcut: "⌘B")
+                    row("Italic", shortcut: "⌘I")
+                    row("Underline", shortcut: "⌘U")
+                    row("Strikethrough", shortcut: "⇧⌘X")
+                }
+
+                Divider()
+
+                section("Search") {
+                    row("Find in Notes…", shortcut: "⌘F")
                 }
 
                 Divider()
