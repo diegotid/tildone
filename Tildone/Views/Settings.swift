@@ -362,12 +362,15 @@ private extension SettingsForm {
                 Text("New Note")
                     .font(.headline)
                 ShortcutSettingRow(
-                    "Keyboard shortcut",
+                    "Global shortcut",
                     shortcut: newNoteShortcutBinding,
                     kind: .key,
                     validationMessage: $newNoteShortcutValidationMessage
                 )
                 shortcutValidationMessage(newNoteShortcutValidationMessage)
+                Text("Works even when Tildone isn’t active. While using a note, press ⌘N to create another.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 if globalNewNoteHotKey.hasConflict {
                     globalShortcutConflictWarning
                 }
