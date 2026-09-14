@@ -89,7 +89,8 @@ struct NotesListView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     TildoneiOSSyncStatusMenu(
                         appModel: appModel,
-                        showsLaunchProgress: appModel.isCheckingCloudForNotes && !activeNotes.isEmpty
+                        showsLaunchProgress: appModel.isCheckingCloudForNotes && !activeNotes.isEmpty,
+                        showAbout: { showsAbout = true }
                     )
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -113,14 +114,6 @@ struct NotesListView: View {
                     ) {
                         try await appModel.undoLatestAction()
                     }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showsAbout = true
-                    } label: {
-                        Label("About Tildone", systemImage: "info.circle")
-                    }
-                    .accessibilityLabel("About Tildone")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: createNote) { Label("New Note", systemImage: "plus") }

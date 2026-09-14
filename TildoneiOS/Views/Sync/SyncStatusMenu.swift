@@ -17,6 +17,7 @@ struct SyncStatusMenu: View {
     let pause: () -> Void
     let resume: () -> Void
     let offerCloudAdoption: () -> Void
+    var showAbout: (() -> Void)? = nil
 
     var body: some View {
         Menu {
@@ -47,6 +48,10 @@ struct SyncStatusMenu: View {
                 Button("Use iCloud…", systemImage: "icloud") {
                     offerCloudAdoption()
                 }
+            }
+            if let showAbout {
+                Divider()
+                Button("About Tildone", systemImage: "info.circle", action: showAbout)
             }
         } label: {
             Image(systemName: SyncStatusPresentation.symbol(for: status))
