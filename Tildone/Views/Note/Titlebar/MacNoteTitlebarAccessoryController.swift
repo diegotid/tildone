@@ -180,6 +180,7 @@ private struct MacNoteFocusPrivacyMenu: View {
     let noteID: NoteID
     let initialState: NoteFocusPrivacyState
     var foreground: Color = .primary
+    @Environment(\.colorScheme) private var colorScheme
     @State private var state: NoteFocusPrivacyState
     @State private var focusBlurred: Bool
     @State private var focusAllowsBackground: Bool
@@ -223,13 +224,23 @@ private struct MacNoteFocusPrivacyMenu: View {
                 )
             }
             Divider()
-            Button(
-                usesFocusFilterDefaults
-                    ? "Using Focus Filter Defaults"
-                    : "Use Focus Filter Defaults",
-                action: resetToFocusFilterDefaults
-            )
+            Button(action: resetToFocusFilterDefaults) {
+                Label {
+                    Text(
+                        usesFocusFilterDefaults
+                            ? "Using Focus Filter Defaults"
+                            : "Use Focus Filter Defaults"
+                    )
+                } icon: {
+                    focusFilterDefaultsMenuIcon
+                }
+            }
             .disabled(usesFocusFilterDefaults)
+            Button {
+                NotificationCenter.default.post(name: .openFocusFilterHelp, object: nil)
+            } label: {
+                Label("Focus Filter Help", systemImage: "info.circle")
+            }
         } label: {
             Image(systemName: usesFocusFilterDefaults ? "moon" : "moon.fill")
                 .font(.system(size: 12, weight: .semibold))
@@ -280,6 +291,58 @@ private struct MacNoteFocusPrivacyMenu: View {
         NoteFocusPrivacySettings.setBlurOverride(nil, for: noteID)
         NoteFocusPrivacySettings.setBackgroundOverride(nil, for: noteID)
         refreshState()
+    }
+
+    private var focusFilterDefaultsMenuIcon: some View {
+        Group {
+            if let image = focusFilterDefaultsMenuImage {
+                Image(nsImage: image)
+                    .renderingMode(.original)
+            } else {
+                Image(systemName: usesFocusFilterDefaults ? "moon.fill" : "moon")
+            }
+        }
+    }
+
+    private var focusFilterDefaultsMenuImage: NSImage? {
+        let symbolName = usesFocusFilterDefaults ? "moon.fill" : "moon"
+        let color = usesFocusFilterDefaults
+            ? NSColor.disabledControlTextColor
+            : NSColor.controlTextColor
+        let appearanceName: NSAppearance.Name = colorScheme == .dark ? .darkAqua : .aqua
+        let appearance = NSAppearance(named: appearanceName)!
+        let configuration = NSImage.SymbolConfiguration(
+            pointSize: 16,
+            weight: .regular
+        )
+
+        guard let symbol = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(configuration),
+            let mask = symbol.cgImage(
+                forProposedRect: nil,
+                context: nil,
+                hints: nil
+            ) else { return nil }
+
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        image.lockFocus()
+        guard let context = NSGraphicsContext.current?.cgContext else {
+            image.unlockFocus()
+            return nil
+        }
+        let rect = NSRect(origin: .zero, size: image.size)
+        context.saveGState()
+        context.clip(to: rect, mask: mask)
+        appearance.performAsCurrentDrawingAppearance {
+            color.setFill()
+            context.fill(rect)
+        }
+        context.restoreGState()
+        image.unlockFocus()
+        image.isTemplate = false
+        return image
     }
 
     private func refreshState() {
