@@ -479,6 +479,107 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testStickyTitlebarGeometryAcrossWindowHeights() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let snapshot = try await store.createNote()
+        try await store.renameNote(snapshot.id, to: "Sticky title geometry")
+        for index in 1...35 {
+            _ = try await store.addTask(to: snapshot.id, text: "Fixture task \(index)")
+        }
+        let presentation = try XCTUnwrap(store.presentation(for: snapshot.id))
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 360, height: 600),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false
+        )
+        window.setNoteStyle(noteColor: .yellow)
+        window.titleVisibility = .hidden
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: snapshot.id))
+        window.setNoteHostingContentView(host)
+        let accessory = MacNoteTitlebarAccessoryController(
+            colorPicker: NoteColorPickerTitlebarControl(store: store, presentation: presentation, noteID: snapshot.id),
+            syncIndicatorState: .hidden, store: store, presentation: presentation, noteID: snapshot.id
+        )
+        window.addTitlebarAccessoryViewController(accessory)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+
+        func settle() async throws {
+            for _ in 0..<8 {
+                window.contentView?.layoutSubtreeIfNeeded()
+                try await Swift.Task.sleep(for: .milliseconds(50))
+            }
+        }
+        func descendants(_ view: NSView) -> [NSView] {
+            view.subviews.flatMap { [$0] + descendants($0) }
+        }
+        try await settle()
+        let scroll = try XCTUnwrap(descendants(host).compactMap { $0 as? NSScrollView }.first)
+        var visibleHeaderPixels: Data?
+        var accessoryTop: CGFloat?
+        var trafficLightTop: CGFloat?
+        for height: CGFloat in [600, 300, 240, 600] {
+            window.setFrame(NSRect(x: 100, y: 100, width: 360, height: height), display: true)
+            try await settle()
+            window.makeFirstResponder(nil)
+            // A fractional/partial scroll must not replace a still-visible title.
+            // Returning to the top must also restore it after the sticky state.
+            for offset: CGFloat in [0, 0.25, 1, 5, 200, 5, 0] {
+                let scrolled = offset == 200
+                scroll.contentView.scroll(to: NSPoint(x: 0, y: offset))
+                scroll.reflectScrolledClipView(scroll.contentView)
+                try await settle()
+                let root = try XCTUnwrap(window.contentView)
+                print("STICKY height=\(height) offset=\(offset) scrolled=\(scrolled) content=\(root.bounds) layout=\(window.contentLayoutRect) safe=\(root.safeAreaInsets) host=\(host.frame) hostSafe=\(host.safeAreaInsets) scroll=\(scroll.convert(scroll.bounds, to: root)) accessory=\(accessory.view.convert(accessory.view.bounds, to: root))")
+                let header = try XCTUnwrap(root.subviews.first { $0.identifier?.rawValue == "noteStickyTitlebar" })
+                print("STICKY header=\(header.frame) bounds=\(header.bounds) safe=\(header.safeAreaInsets)")
+                XCTAssertEqual(header.frame.minY, window.contentLayoutRect.maxY, accuracy: 0.01)
+                XCTAssertEqual(header.frame.height, 30, accuracy: 0.01)
+                XCTAssertEqual(header.frame.width, root.bounds.width, accuracy: 0.01)
+                XCTAssertNil(header.hitTest(NSPoint(x: 100, y: 15)))
+                XCTAssertEqual(host.frame, window.contentLayoutRect)
+                XCTAssertEqual(scroll.convert(scroll.bounds, to: root).maxY, host.frame.maxY, accuracy: 0.01)
+                let accessoryFrame = accessory.view.convert(accessory.view.bounds, to: root)
+                let closeButton = try XCTUnwrap(window.standardWindowButton(.closeButton))
+                let closeFrame = closeButton.convert(closeButton.bounds, to: root)
+                let currentAccessoryTop = root.bounds.maxY - accessoryFrame.maxY
+                let currentTrafficLightTop = root.bounds.maxY - closeFrame.maxY
+                if let accessoryTop, let trafficLightTop {
+                    XCTAssertEqual(currentAccessoryTop, accessoryTop, accuracy: 0.01)
+                    XCTAssertEqual(currentTrafficLightTop, trafficLightTop, accuracy: 0.01)
+                } else {
+                    accessoryTop = currentAccessoryTop
+                    trafficLightTop = currentTrafficLightTop
+                }
+                let headerBitmap = try XCTUnwrap(header.bitmapImageRepForCachingDisplay(in: header.bounds))
+                header.cacheDisplay(in: header.bounds, to: headerBitmap)
+                let headerPixels = try XCTUnwrap(headerBitmap.representation(using: .png, properties: [:]))
+                if scrolled {
+                    // Compare rendered pixels, not just the outer host frame.
+                    if let visibleHeaderPixels {
+                        XCTAssertEqual(headerPixels, visibleHeaderPixels)
+                    } else {
+                        visibleHeaderPixels = headerPixels
+                    }
+                    XCTAssertGreaterThan(headerBitmap.colorAt(x: 0, y: headerBitmap.pixelsHigh - 1)?.alphaComponent ?? 0, 0)
+                } else {
+                    XCTAssertEqual(headerBitmap.colorAt(x: 0, y: headerBitmap.pixelsHigh - 1)?.alphaComponent ?? 0, 0)
+                }
+                let frameView = try XCTUnwrap(root.superview)
+                let bitmap = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds))
+                frameView.cacheDisplay(in: frameView.bounds, to: bitmap)
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                let name = "sticky-\(Int(height))-offset-\(offset).png"
+                let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+                attachment.name = name
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
+    }
+
+    @MainActor
     func testHostedNoteCanTransitionToCompactWindowWithoutConstraintFeedback() async throws {
         let defaults = UserDefaults.standard
         let previousScale = defaults.object(forKey: CompactNoteScale.storageKey)

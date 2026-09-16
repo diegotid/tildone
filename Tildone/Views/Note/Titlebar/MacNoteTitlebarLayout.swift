@@ -6,6 +6,7 @@
 import AppKit
 
 enum MacNoteTitlebarLayout {
+    static let stickyHeaderHeight: CGFloat = 30
     static let titleLeadingInset: CGFloat = 82
     static let trailingMargin: CGFloat = 3.5
     static let colorPickerTopMargin: CGFloat = 4.8

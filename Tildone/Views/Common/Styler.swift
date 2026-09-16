@@ -304,6 +304,19 @@ private final class NoteBackgroundEffectView: NSVisualEffectView {
         contentTopConstraint = replacement
     }
 
+    func installStickyTitlebar(_ titlebar: NSView) {
+        titlebar.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(titlebar, positioned: .above, relativeTo: noteContentView)
+        NSLayoutConstraint.activate([
+            titlebar.leadingAnchor.constraint(equalTo: leadingAnchor),
+            titlebar.trailingAnchor.constraint(equalTo: trailingAnchor),
+            // Preserve the expanded note's original 30-point titlebar band,
+            // ending exactly where AppKit's unobscured content begins.
+            titlebar.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
+            titlebar.heightAnchor.constraint(equalToConstant: MacNoteTitlebarLayout.stickyHeaderHeight)
+        ])
+    }
+
     func setCompactCornerRadius(_ cornerRadius: CGFloat?) {
         compactCornerRadius = cornerRadius
         wantsLayer = true
@@ -452,6 +465,10 @@ extension NSWindow {
     func setNoteContentExtendsUnderTitlebar(_ extendsUnderTitlebar: Bool) {
         (contentView as? NoteBackgroundEffectView)?
             .setContentExtendsUnderTitlebar(extendsUnderTitlebar)
+    }
+
+    func setNoteStickyTitlebarView(_ titlebar: NSView) {
+        (contentView as? NoteBackgroundEffectView)?.installStickyTitlebar(titlebar)
     }
 
     func applyNoteBackgroundColor(_ color: NSColor, alpha: CGFloat = NoteWindowBackground.currentAlpha()) {

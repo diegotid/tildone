@@ -194,6 +194,7 @@ extension Note {
                     .onChange(of: findQuery) { _, query in
                         scrollToFirstFindMatch(query, in: note, using: scroll)
                     }
+                    .coordinateSpace(name: "noteTaskViewport")
                     .modifier(ScrollFrame())
                     .onChange(of: tasks.count) { _, _ in
                         guard !skipsNextTaskCountBottomScroll else {
@@ -203,7 +204,6 @@ extension Note {
                         scrollToBottomAfterLayout(using: scroll)
                     }
                 }
-                if isTopScrolledOut { scrollingHeader() }
             }
             .blur(radius: isContentBlurred ? 3 : 0)
             .opacity(1)
@@ -213,8 +213,9 @@ extension Note {
             )
             if isDone { doneOverlay() }
         }
-        .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
-               minHeight: Layout.minNoteHeight, idealHeight: Layout.defaultNoteHeight, maxHeight: .infinity)
+        // NSWindow owns the minimum outer size. Its titlebar leaves a smaller
+        // content proposal, which the scroll viewport must be allowed to fill.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
             if shouldShowEmptySingleMemoHint {
                 emptySingleMemoHint()
@@ -224,6 +225,16 @@ extension Note {
             }
         }
         .animation(.easeOut(duration: 0.18), value: shouldShowEmptySingleMemoHint)
+        .background(MacNoteStickyTitlebar(content:
+            scrollingHeader()
+                .blur(radius: isContentBlurred ? 3 : 0)
+                .opacity(isTopScrolledOut ? 1 : 0)
+                .animation(.easeInOut, value: isTopScrolledOut)
+                .animation(
+                    .easeInOut(duration: NoteWindowClickThrough.visualTransitionDuration),
+                    value: isContentBlurred
+                )
+        ))
         .background(WindowAccessor(note: self, window: $noteWindow))
         .onAppear {
             handleKeyboard()
@@ -388,7 +399,7 @@ extension Note {
 
     func listTopic() -> some View {
         let size = NoteTypography.topicFontSize(for: CGFloat(fontSize))
-        return GeometryReader { geometry in
+        return GeometryReader { _ in
             Group {
                 if let title = note?.title, title.matchesSearch(findQuery) {
                     SearchHighlightedText(text: title, query: findQuery)
@@ -406,10 +417,22 @@ extension Note {
                     updateTopicVisibility()
                 }
                 .onSubmit { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() }
-                .onChange(of: geometry.frame(in: .global)) { _, frame in withAnimation(.easeInOut) { isTopScrolledOut = frame.minY < 10 } }
                 .onHover { hovering in
                     if hovering { isTopicHidden = false }
                 }
+                }
+            }
+            .background {
+                GeometryReader { titleGeometry in
+                    Color.clear
+                        .onChange(
+                            of: titleGeometry.frame(in: .named("noteTaskViewport")),
+                            initial: true
+                        ) { _, frame in
+                            // Follow the actual title's trailing edge. Its top can
+                            // cross zero while most of the title is still visible.
+                            isTopScrolledOut = frame.maxY <= 0
+                        }
                 }
             }
         }
@@ -417,29 +440,27 @@ extension Note {
     }
 
     func scrollingHeader() -> some View {
-        VStack {
-            ZStack {
-                Color.clear
-                    .frame(height: 30)
-                    .overlay(alignment: .bottom) {
-                        Rectangle().fill(.black.opacity(0.2)).frame(height: 1)
-                    }
-                if let title = note?.title {
-                    HStack(spacing: 0) {
-                        SearchHighlightedText(text: title, query: findQuery)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(noteForeground)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
-                    .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
-                    .offset(y: -1.5)
+        ZStack(alignment: .bottom) {
+            Rectangle().fill(.black.opacity(0.2)).frame(height: 1)
+            if let title = note?.title {
+                HStack(spacing: 0) {
+                    SearchHighlightedText(text: title, query: findQuery)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(noteForeground)
+                    Spacer(minLength: 0)
                 }
+                .padding(.leading, MacNoteTitlebarLayout.titleLeadingInset)
+                .padding(.trailing, MacNoteTitlebarLayout.titleTrailingInset)
+                // Preserve the existing 1.5-point optical centering of the text.
+                .padding(.bottom, 3)
+                .frame(maxHeight: .infinity)
             }
-            Spacer()
-        }.padding(.top, -30)
+        }
+        .frame(height: MacNoteTitlebarLayout.stickyHeaderHeight)
+        .environment(\.colorScheme, colorScheme)
+        .allowsHitTesting(false)
     }
 
     func newListItem() -> some View {
@@ -500,7 +521,7 @@ extension Note {
     func topicListItem() -> some View {
         let taskFontSize = CGFloat(fontSize)
         return listTopic()
-            .opacity(isTopScrolledOut || isTopicHidden ? 0 : 1)
+            .opacity(isTopicHidden ? 0 : 1)
             .frame(height: isTopicHidden ? 1 : NoteTypography.topicRowHeight(for: taskFontSize))
             .padding(.bottom, max(0, taskFontSize - 10))
     }
