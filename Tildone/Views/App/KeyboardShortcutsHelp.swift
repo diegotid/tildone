@@ -40,55 +40,59 @@ struct KeyboardShortcutsHelp: View {
             Text("A quick reference for Tildone commands and gestures. Customizable shortcuts reflect your current Settings.")
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 16) {
-                section("Essentials") {
-                    row("New Note from Anywhere", shortcut: newNoteShortcut.displayName)
-                    row("Close Note", shortcut: "⌘W")
-                    row("Undo", shortcut: "⌘Z")
-                    row("Copy Note Contents", shortcut: "⇧⌘C")
-                    row("Settings…", shortcut: "⌘,")
+            HStack(alignment: .top, spacing: 28) {
+                VStack(alignment: .leading, spacing: 16) {
+                    section("Essentials") {
+                        row("New Note from Anywhere", shortcut: newNoteShortcut.keySymbols)
+                        row("Close Note", shortcut: ["⌘", "W"])
+                        row("Undo", shortcut: ["⌘", "Z"])
+                        row("Copy Note Contents", shortcut: ["⇧", "⌘", "C"])
+                        row("Settings…", shortcut: ["⌘", ","])
+                    }
+
+                    Divider()
+
+                    section("Text Formatting") {
+                        row("Bold", shortcut: ["⌘", "B"])
+                        row("Italic", shortcut: ["⌘", "I"])
+                        row("Underline", shortcut: ["⌘", "U"])
+                        row("Strikethrough", shortcut: ["⇧", "⌘", "X"])
+                    }
+
+                    Divider()
+
+                    section("Search") {
+                        row("Find in Notes…", shortcut: ["⌘", "F"])
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                Divider()
+                VStack(alignment: .leading, spacing: 16) {
+                    section("Window Management") {
+                        row("Line Up Notes", shortcut: lineUpShortcut.keySymbols)
+                        row("Minimize All", shortcut: ["⇧", "⌘", "M"])
+                        row("Bring All Up", shortcut: ["⇧", "⌘", "U"])
+                    }
 
-                section("Text Formatting") {
-                    row("Bold", shortcut: "⌘B")
-                    row("Italic", shortcut: "⌘I")
-                    row("Underline", shortcut: "⌘U")
-                    row("Strikethrough", shortcut: "⇧⌘X")
+                    Divider()
+
+                    section("Gestures") {
+                        row("Dim or Restore Note", shortcut: scrollGesture(opacityShortcut), suffix: "Scroll")
+                        row("Dim or Restore All Notes", shortcut: scrollGesture(opacityShortcut, addsShift: true), suffix: "Scroll")
+                        row("Gather Notes", shortcut: scrollGesture(gatherShortcut), suffix: "Scroll")
+                    }
+
+                    Divider()
+
+                    section("Help") {
+                        row("Keyboard Shortcuts", shortcut: ["⌘", "/"])
+                    }
                 }
-
-                Divider()
-
-                section("Search") {
-                    row("Find in Notes…", shortcut: "⌘F")
-                }
-
-                Divider()
-
-                section("Window Management") {
-                    row("Line Up Notes", shortcut: lineUpShortcut.displayName)
-                    row("Minimize All", shortcut: "⇧⌘M")
-                    row("Bring All Up", shortcut: "⇧⌘U")
-                }
-
-                Divider()
-
-                section("Gestures") {
-                    row("Dim or Restore Note", shortcut: scrollGesture(opacityShortcut))
-                    row("Dim or Restore All Notes", shortcut: scrollGesture(opacityShortcut, addsShift: true))
-                    row("Gather Notes", shortcut: scrollGesture(gatherShortcut))
-                }
-
-                Divider()
-
-                section("Help") {
-                    row("Keyboard Shortcuts", shortcut: "⌘/")
-                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
         .padding(24)
-        .frame(width: 500)
+        .frame(width: 640)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -116,11 +120,10 @@ struct KeyboardShortcutsHelp: View {
         )
     }
 
-    private func scrollGesture(_ shortcut: MacAppShortcut, addsShift: Bool = false) -> String {
+    private func scrollGesture(_ shortcut: MacAppShortcut, addsShift: Bool = false) -> [String] {
         var modifiers = shortcut.modifiers
         if addsShift { modifiers.insert(.shift) }
-        let keys = MacAppShortcut(key: nil, keyCode: nil, modifiers: modifiers).displayName
-        return keys + " + " + String(localized: "Scroll")
+        return MacAppShortcut(key: nil, keyCode: nil, modifiers: modifiers).keySymbols
     }
 
     private func section<Content: View>(
@@ -134,17 +137,23 @@ struct KeyboardShortcutsHelp: View {
         }
     }
 
-    private func row(_ title: LocalizedStringKey, shortcut: String) -> some View {
+    private func row(
+        _ title: LocalizedStringKey,
+        shortcut: [String],
+        suffix: LocalizedStringKey? = nil
+    ) -> some View {
         HStack(spacing: 16) {
             Text(title)
             Spacer(minLength: 24)
-            Text(verbatim: shortcut)
-                .font(.system(.body, design: .monospaced).weight(.medium))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
-                .accessibilityLabel(shortcut.map(String.init).joined(separator: " "))
+            HStack(spacing: 8) {
+                ShortcutKeyCombination(symbols: shortcut)
+                    .accessibilityLabel(shortcut.joined(separator: " "))
+                if let suffix {
+                    Text(suffix)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 }

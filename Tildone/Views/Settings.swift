@@ -1703,7 +1703,7 @@ private struct ShortcutRecorder: View {
     }
 }
 
-private struct ShortcutKeyCombination: View {
+struct ShortcutKeyCombination: View {
     let symbols: [String]
 
     var body: some View {
