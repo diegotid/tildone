@@ -24,6 +24,7 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
                 field?.onEditorFocus?()
             }
             taskFieldEditor.onPastedList = field.onPastedList
+            taskFieldEditor.onPasteboardList = field.onPasteboardList
         }
         return taskFieldEditor
     }

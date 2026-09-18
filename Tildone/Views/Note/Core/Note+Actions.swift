@@ -232,7 +232,11 @@ extension Note {
                     try await store.editTask(task.id, richText: item.richText)
                 }
                 if let firstTaskID = store.note(noteID)?.tasks.first?.id {
-                    focusTaskUsingKeyboard(firstTaskID)
+                    // Let SwiftUI install every imported field with its final
+                    // rich value before AppKit attaches the shared editor.
+                    DispatchQueue.main.async {
+                        focusTaskUsingKeyboard(firstTaskID)
+                    }
                 }
             } catch {
                 mutationErrorMessage = Self.mutationFailureMessage(

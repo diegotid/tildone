@@ -37,6 +37,9 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false
         }
+        field.onPasteboardList = { [weak coordinator = context.coordinator] list in
+            coordinator?.parent.onPastedList(list) ?? false
+        }
         context.coordinator.field = field
         return field
     }
@@ -49,6 +52,9 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.textColor = textColor
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false
+        }
+        field.onPasteboardList = { [weak coordinator = context.coordinator] list in
+            coordinator?.parent.onPastedList(list) ?? false
         }
         let isEditing = field.window?.firstResponder === field.currentEditor()
         if !isEditing, field.stringValue != text {

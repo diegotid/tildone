@@ -73,6 +73,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false
         }
+        field.onPasteboardList = { [weak coordinator = context.coordinator] list in
+            coordinator?.handlePastedList(list) ?? false
+        }
         context.coordinator.field = field
         return field
     }
@@ -85,6 +88,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.cursorColor = NSColor(cursorColor)
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false
+        }
+        field.onPasteboardList = { [weak coordinator = context.coordinator] list in
+            coordinator?.handlePastedList(list) ?? false
         }
         let editor = field.currentEditor()
         let isActivelyEditing = editor != nil && field.window?.firstResponder === editor
@@ -118,14 +124,16 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             )
         }
         if isActivelyEditing,
-           presentationChanged,
+           (presentationChanged || fieldRichText.text.isEmpty && !richText.text.isEmpty),
            let editor = editor as? NSTextView {
             let selection = editor.selectedRange()
             let nativeRichText = Self.richText(
                 from: editor.attributedString(),
                 defaultAlignment: alignment
             )
-            let displayedRichText = nativeRichText.text == richText.text ? richText : nativeRichText
+            let displayedRichText = nativeRichText.text.isEmpty && !richText.text.isEmpty
+                ? richText
+                : nativeRichText.text == richText.text ? richText : nativeRichText
             let attributed = Self.highlightedAttributedString(
                 from: displayedRichText,
                 fontSize: fontSize,
@@ -407,6 +415,10 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             guard let list = MouseSafeTaskTextField.pastedListItems(from: attributed) else {
                 return false
             }
+            return handlePastedList(list)
+        }
+
+        func handlePastedList(_ list: PastedList) -> Bool {
             return parent.onPastedList?(list) ?? false
         }
 
@@ -699,6 +711,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     }
 
     static func pastedList(from pasteboard: NSPasteboard = .general) -> PastedList? {
+        var lists: [PastedList] = []
         for type in [NSPasteboard.PasteboardType.rtf, .html] {
             let documentType: NSAttributedString.DocumentType = type == .rtf ? .rtf : .html
             guard let data = pasteboard.data(forType: type),
@@ -707,11 +720,36 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                       options: [.documentType: documentType],
                       documentAttributes: nil
                   ) else { continue }
-            if let list = pastedListItems(from: attributed) { return list }
+            if let list = pastedListItems(from: attributed) { lists.append(list) }
         }
-        return pasteboard.string(forType: .string).flatMap {
-            pastedListItems(from: NSAttributedString(string: $0))
+        if let plainText = pasteboard.string(forType: .string),
+           let list = pastedListItems(from: NSAttributedString(string: plainText)) {
+            lists.append(list)
         }
+        guard let primary = lists.first else { return nil }
+        return mergedListIndentation(primary: primary, alternatives: lists.dropFirst())
+    }
+
+    static func mergedListIndentation(
+        primary: PastedList,
+        alternatives: some Sequence<PastedList>
+    ) -> PastedList {
+        let compatibleAlternatives = alternatives.filter {
+            $0.items.count == primary.items.count
+                && $0.title == primary.title
+        }
+        guard !compatibleAlternatives.isEmpty else { return primary }
+        return PastedList(
+            title: primary.title,
+            items: primary.items.enumerated().map { index, item in
+                PastedListItem(
+                    richText: item.richText,
+                    indentLevel: compatibleAlternatives.reduce(item.indentLevel) {
+                        max($0, $1.items[index].indentLevel)
+                    }
+                )
+            }
+        )
     }
 
     static func pastedListItems(
@@ -741,15 +779,23 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 ) as? NSParagraphStyle
                 let hasBulletPrefix = bulletPrefixRange(in: value.string) != nil
                 let isList = style?.textLists.isEmpty == false || hasBulletPrefix
+                let sourceIndentation = leadingWhitespaceIndentation(in: value.string)
                 if let bulletRange = bulletPrefixRange(in: value.string) {
                     value.deleteCharacters(in: bulletRange)
                 }
                 let richText = richText(from: value, defaultAlignment: .left)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 if !richText.text.isEmpty {
+                    let richIndentation = max(
+                        style?.headIndent ?? 0,
+                        style?.firstLineHeadIndent ?? 0
+                    )
                     paragraphs.append((
                         richText,
-                        max(style?.headIndent ?? 0, style?.firstLineHeadIndent ?? 0),
+                        // Rich paragraph indentation is authoritative. Plain and
+                        // Markdown lists have no paragraph style, so preserve their
+                        // leading whitespace as the hierarchy signal instead.
+                        richIndentation + sourceIndentation,
                         isList
                     ))
                 }
@@ -774,13 +820,22 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     }
 
     private static func bulletPrefixRange(in text: String) -> NSRange? {
-        let pattern = "^\\s*(?:[-*+•◦▪‣]|\\d+[.)])\\s+"
+        let pattern = "^\\s*(?:(?:[-*+•◦▪‣]\\s+(?:\\[[ xX]\\]\\s+)?)|(?:\\d+[.)]\\s+))"
         guard let expression = try? NSRegularExpression(pattern: pattern),
               let match = expression.firstMatch(
                 in: text,
                 range: NSRange(location: 0, length: text.utf16.count)
               ) else { return nil }
         return match.range
+    }
+
+    private static func leadingWhitespaceIndentation(in text: String) -> CGFloat {
+        var indentation: CGFloat = 0
+        for scalar in text.unicodeScalars {
+            guard CharacterSet.whitespaces.contains(scalar) else { return indentation }
+            indentation += scalar.value == 9 ? 4 : 1
+        }
+        return indentation
     }
 
     static func displayAttributedString(

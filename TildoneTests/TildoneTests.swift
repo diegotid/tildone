@@ -2104,6 +2104,53 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(receivedList?.items.map(\.richText.text), ["Confirm scope", "Book room"])
     }
 
+    func testPastingMarkdownChecklistUsesLeadingWhitespaceForTaskIndentation() {
+        let pasted = NSAttributedString(string: """
+        Onboarding
+        - [ ] Clientes: Repsol, ID Logistics (Medimarkt)
+        - [ ] Tecnalia partner primera PoC (robot training + feedback loop)
+           - [ ] CDO adquiere knowhow para implementar sin partner siguientes PoCs
+        - [ ] Revisar cadena de valor (incluido primer draft 30’ en el deck)
+        - [ ] Alinear con Innovación TE (cuando se forme el squad)
+        """)
+
+        let list = MouseSafeTaskTextField.pastedListItems(from: pasted)
+
+        XCTAssertEqual(list?.title, "Onboarding")
+        XCTAssertEqual(list?.items.map(\.richText.text), [
+            "Clientes: Repsol, ID Logistics (Medimarkt)",
+            "Tecnalia partner primera PoC (robot training + feedback loop)",
+            "CDO adquiere knowhow para implementar sin partner siguientes PoCs",
+            "Revisar cadena de valor (incluido primer draft 30’ en el deck)",
+            "Alinear con Innovación TE (cuando se forme el squad)"
+        ])
+        XCTAssertEqual(list?.items.map(\.indentLevel), [0, 0, 1, 0, 0])
+    }
+
+    func testRichListKeepsPlainTextClipboardIndentationWhenTheRichListIsFlat() {
+        let texts = ["First", "Second", "Nested", "Fourth"]
+        let rich = MouseSafeTaskTextField.PastedList(
+            title: "Onboarding",
+            items: texts.map {
+                .init(richText: RichText(text: $0), indentLevel: 0)
+            }
+        )
+        let plain = MouseSafeTaskTextField.PastedList(
+            title: "Onboarding",
+            items: texts.enumerated().map { index, text in
+                .init(richText: RichText(text: text), indentLevel: index == 2 ? 1 : 0)
+            }
+        )
+
+        let merged = MouseSafeTaskTextField.mergedListIndentation(
+            primary: rich,
+            alternatives: [plain]
+        )
+
+        XCTAssertEqual(merged.items.map(\.richText.text), texts)
+        XCTAssertEqual(merged.items.map(\.indentLevel), [0, 0, 1, 0])
+    }
+
     @MainActor
     func testPrimarySceneUsesSingleUniqueCoordinatorWindow() {
         let scene = TildonePrimaryScene { EmptyView() }

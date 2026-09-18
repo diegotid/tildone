@@ -15,6 +15,7 @@ final class MouseSafeTaskFieldEditor: NSTextView {
         didSet { updateEmptyInsertionPoint() }
     }
     var onPastedList: ((NSAttributedString) -> Bool)?
+    var onPasteboardList: ((MouseSafeTaskTextField.PastedList) -> Bool)?
     private weak var observedClipView: NSClipView?
     private var clipViewObservers: [NSObjectProtocol] = []
     private var isRestoringTextGeometry = false
@@ -54,6 +55,10 @@ final class MouseSafeTaskFieldEditor: NSTextView {
 
     override func paste(_ sender: Any?) {
         let pasteboard = NSPasteboard.general
+        if let list = MouseSafeTaskTextField.pastedList(from: pasteboard),
+           onPasteboardList?(list) == true {
+            return
+        }
         var fallback: NSAttributedString?
         for type in [NSPasteboard.PasteboardType.rtf, .html] {
             guard let data = pasteboard.data(forType: type),

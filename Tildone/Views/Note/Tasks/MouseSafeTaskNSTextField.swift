@@ -12,6 +12,7 @@ final class MouseSafeTaskNSTextField: NSTextField {
     var cursorColor = NSColor.textColor
     var onEditorFocus: (() -> Void)?
     var onPastedList: ((NSAttributedString) -> Bool)?
+    var onPasteboardList: ((MouseSafeTaskTextField.PastedList) -> Bool)?
     var hasPendingFocusRequest = false
     var wrapsContent = false
     var verticallyCentersContent = false {
