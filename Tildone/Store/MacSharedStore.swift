@@ -189,16 +189,21 @@ final class MacSharedStore: ObservableObject {
         color: NoteColor? = nil
     ) async throws -> MacNoteSnapshot {
         let id = NoteID()
-        _ = try await repository.createNote(
+        let note = try await repository.createNote(
             id: id,
             createdAt: createdAt,
             title: nil,
             color: color ?? NoteColor.current()
         )
-        try await reload(id)
+        // Publish from the successful mutation result. A concurrent full reload
+        // can supersede reload(id) before it publishes, even though the note was
+        // durably created, which previously produced a false domain invariant.
+        nextReloadRevision &+= 1
+        latestNoteReloadRevisions[id] = nextReloadRevision
+        let snapshot = MacNoteSnapshot(note: note, tasks: [])
+        publish(snapshot)
         scheduleSyncNotification()
-        guard let note = note(id) else { throw PersistenceError.domainInvariant }
-        return note
+        return snapshot
     }
 
     func renameNote(_ id: NoteID, to title: String?) async throws {

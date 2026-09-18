@@ -1079,6 +1079,28 @@
         }
       }
     },
+    "Couldn’t create a note" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo crear una nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de créer une note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法创建备忘录"
+          }
+        }
+      }
+    },
     "Couldn’t apply the completed-task setting." : {
       "localizations" : {
         "es" : {
@@ -6242,6 +6264,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无论选择哪个选项，这台 Mac 和 iCloud 中的笔记都会保留。"
+          }
+        }
+      }
+    },
+    "Your existing notes were not changed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus notas existentes no se han modificado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos notes existantes n’ont pas été modifiées."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "现有备忘录未被更改。"
           }
         }
       }

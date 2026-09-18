@@ -78,6 +78,7 @@ struct Desktop: View {
     @State private var isFocusFilterTextBlurred = false
     @State private var focusFilterAllowsBackgroundNotes = false
     @State private var completedTaskRetentionTask: Swift.Task<Void, Never>?
+    @State private var noteCreationErrorMessage: String?
     @Binding var foregroundNoteID: NoteID? {
         didSet { cleanUnfocusedNotes() }
     }
@@ -115,6 +116,14 @@ struct Desktop: View {
 
     var body: some View {
         desktopView
+            .alert("Couldn’t create a note", isPresented: Binding(
+                get: { noteCreationErrorMessage != nil },
+                set: { if !$0 { noteCreationErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { noteCreationErrorMessage = nil }
+            } message: {
+                Text(noteCreationErrorMessage ?? "")
+            }
     }
 
     private var desktopView: some View {
@@ -611,7 +620,9 @@ private extension Desktop {
                 let note = try await store.createNote(color: color)
                 openWindow(for: note, position: position)
             } catch {
-                fatalError("Could not create a note: \(error)")
+                noteCreationErrorMessage = String(
+                    localized: "Your existing notes were not changed."
+                )
             }
         }
     }
