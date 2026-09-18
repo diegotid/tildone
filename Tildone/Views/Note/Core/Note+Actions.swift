@@ -143,9 +143,14 @@ extension Note {
         focusedTaskID = nil
         if kind == .singleTask,
            let task = try? store.stageEmptySingleMemo(for: noteID) {
+            // The title field can remain AppKit's first responder for one
+            // run-loop turn after this view switches. Clear it now so a fast
+            // paste cannot send a list into the note title.
+            noteWindow?.makeFirstResponder(nil)
             stagedSingleMemoTaskID = task.id
             singleTaskDraftID = task.id
             singleTaskDraft = task.richText
+            focusTaskUsingKeyboard(task.id)
             Swift.Task {
                 do {
                     try await store.setKind(.singleTask, for: noteID, memoTask: task)
@@ -178,7 +183,9 @@ extension Note {
         guard noteKind == .singleTask,
               memo.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !list.items.isEmpty else { return false }
+        isImportingPastedList = true
         Swift.Task {
+            defer { isImportingPastedList = false }
             do {
                 try await store.setKind(.checklist, for: noteID)
                 if let title = list.title {
@@ -192,6 +199,40 @@ extension Note {
                         indentLevel: item.indentLevel
                     )
                     try await store.editTask(task.id, richText: item.richText)
+                }
+            } catch {
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error pasting tasks",
+                    error: error
+                )
+            }
+        }
+        return true
+    }
+
+    func importPastedList(_ list: MouseSafeTaskTextField.PastedList) -> Bool {
+        guard noteKind == .checklist,
+              note?.title == nil,
+              tasks.isEmpty,
+              !list.items.isEmpty else { return false }
+        noteWindow?.makeFirstResponder(nil)
+        isImportingPastedList = true
+        Swift.Task {
+            defer { isImportingPastedList = false }
+            do {
+                if let title = list.title {
+                    try await store.renameNote(noteID, to: title)
+                }
+                for item in list.items {
+                    let task = try await store.addTask(
+                        to: noteID,
+                        text: item.richText.text,
+                        indentLevel: item.indentLevel
+                    )
+                    try await store.editTask(task.id, richText: item.richText)
+                }
+                if let firstTaskID = store.note(noteID)?.tasks.first?.id {
+                    focusTaskUsingKeyboard(firstTaskID)
                 }
             } catch {
                 mutationErrorMessage = Self.mutationFailureMessage(
@@ -331,6 +372,12 @@ extension Note {
             if (event.keyCode == Keyboard.arrowUp || event.keyCode == Keyboard.arrowDown),
                isEditingNativeTaskField() {
                 return event
+            }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers?.lowercased() == "v",
+               let list = MouseSafeTaskTextField.pastedList(),
+               importPastedList(list) {
+                return nil
             }
             if event.keyCode == Keyboard.tabKey {
                 // A held Tab key should not turn one deliberate hierarchy action into

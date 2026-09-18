@@ -109,6 +109,7 @@
 		D10000000000000000000205 /* CompletionFadeLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000105 /* CompletionFadeLifecycle.swift */; };
 		D10000000000000000000206 /* Note+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000106 /* Note+Actions.swift */; };
 		D10000000000000000000207 /* Note+Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000107 /* Note+Content.swift */; };
+		D10000000000000000000213 /* NoteTitleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000113 /* NoteTitleTextField.swift */; };
 		D10000000000000000000208 /* MacNoteSyncIndicatorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */; };
 		D10000000000000000000209 /* MacNoteSyncTitlebarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */; };
 		D1000000000000000000020A /* MacNoteSyncTitlebarIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000010A /* MacNoteSyncTitlebarIcon.swift */; };
@@ -297,6 +298,7 @@
 		D10000000000000000000105 /* CompletionFadeLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionFadeLifecycle.swift; sourceTree = "<group>"; };
 		D10000000000000000000106 /* Note+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Note+Actions.swift"; sourceTree = "<group>"; };
 		D10000000000000000000107 /* Note+Content.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Note+Content.swift"; sourceTree = "<group>"; };
+		D10000000000000000000113 /* NoteTitleTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTitleTextField.swift; sourceTree = "<group>"; };
 		D10000000000000000000108 /* MacNoteSyncIndicatorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSyncIndicatorState.swift; sourceTree = "<group>"; };
 		D10000000000000000000109 /* MacNoteSyncTitlebarControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSyncTitlebarControl.swift; sourceTree = "<group>"; };
 		D1000000000000000000010A /* MacNoteSyncTitlebarIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteSyncTitlebarIcon.swift; sourceTree = "<group>"; };
@@ -827,6 +829,7 @@
 				F16670482AF711EC000B76A5 /* Note.swift */,
 				D10000000000000000000106 /* Note+Actions.swift */,
 				D10000000000000000000107 /* Note+Content.swift */,
+				D10000000000000000000113 /* NoteTitleTextField.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -1400,6 +1403,7 @@
 				D10000000000000000000205 /* CompletionFadeLifecycle.swift in Sources */,
 				D10000000000000000000206 /* Note+Actions.swift in Sources */,
 				D10000000000000000000207 /* Note+Content.swift in Sources */,
+				D10000000000000000000213 /* NoteTitleTextField.swift in Sources */,
 				D10000000000000000000208 /* MacNoteSyncIndicatorState.swift in Sources */,
 				D10000000000000000000209 /* MacNoteSyncTitlebarControl.swift in Sources */,
 				D1000000000000000000020A /* MacNoteSyncTitlebarIcon.swift in Sources */,

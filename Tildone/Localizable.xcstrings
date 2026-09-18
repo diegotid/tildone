@@ -716,6 +716,28 @@
         }
       }
     },
+    "Creating task list…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creando lista de tareas…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Création de la liste de tâches…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在创建任务列表…"
+          }
+        }
+      }
+    },
     "Close Note" : {
       "localizations" : {
         "en" : {

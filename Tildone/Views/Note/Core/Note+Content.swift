@@ -81,6 +81,15 @@ extension Note {
         }
         .frame(minWidth: Layout.minNoteWidth, idealWidth: Layout.defaultNoteWidth, maxWidth: .infinity,
                minHeight: Layout.minNoteHeight, idealHeight: Layout.defaultNoteHeight, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            if isImportingPastedList {
+                pastedListImportHint()
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: isImportingPastedList)
         .background(WindowAccessor(note: self, window: $noteWindow))
         .onAppear {
             handleKeyboard()
@@ -225,13 +234,19 @@ extension Note {
         // content proposal, which the scroll viewport must be allowed to fill.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
-            if shouldShowEmptySingleMemoHint {
+            if isImportingPastedList {
+                pastedListImportHint()
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if shouldShowEmptySingleMemoHint {
                 emptySingleMemoHint()
                     .padding(.horizontal, 20)
                     .padding(.bottom, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeOut(duration: 0.18), value: isImportingPastedList)
         .animation(.easeOut(duration: 0.18), value: shouldShowEmptySingleMemoHint)
         .background(MacNoteStickyTitlebar(content:
             scrollingHeader()
@@ -415,19 +430,25 @@ extension Note {
                         .foregroundColor(noteForeground)
                         .padding(.top, 5)
                 } else {
-                    TextField("Topic", text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit))
-                .textFieldStyle(.plain).truncationMode(.tail).font(.system(size: size, weight: .bold, design: .rounded))
-                .foregroundColor(noteForeground).background(Color.clear).padding(.top, 5)
-                .tint(noteForeground)
-                .focused($focusedField, equals: .topic)
-                .onChange(of: focusedField) { _, field in
-                    if let title = note?.title, field == .topic { placeCursor(forText: title) }
-                    updateTopicVisibility()
-                }
-                .onSubmit { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() }
-                .onHover { hovering in
-                    if hovering { isTopicHidden = false }
-                }
+                    NoteTitleTextField(
+                        text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit),
+                        placeholder: String(localized: "Topic"),
+                        isFocused: focusedField == .topic,
+                        font: .systemFont(ofSize: size, weight: .bold),
+                        textColor: NSColor(noteForeground),
+                        onFocus: {
+                            focusedField = .topic
+                            if let title = note?.title { placeCursor(forText: title) }
+                            updateTopicVisibility()
+                        },
+                        onBlur: { updateTopicVisibility() },
+                        onSubmit: { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() },
+                        onPastedList: importPastedList
+                    )
+                    .padding(.top, 5)
+                    .onHover { hovering in
+                        if hovering { isTopicHidden = false }
+                    }
                 }
             }
             .background {
@@ -509,6 +530,34 @@ extension Note {
             .foregroundStyle(noteForeground.opacity(0.72))
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
+
+        if #available(macOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: Capsule())
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+                .allowsHitTesting(false)
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule().stroke(.white.opacity(0.2), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+                .allowsHitTesting(false)
+        }
+    }
+
+    @ViewBuilder
+    func pastedListImportHint() -> some View {
+        let content = HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Creating task list…")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+        }
+        .foregroundStyle(noteForeground.opacity(0.72))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
 
         if #available(macOS 26.0, *) {
             content

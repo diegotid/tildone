@@ -54,6 +54,7 @@ final class MouseSafeTaskFieldEditor: NSTextView {
 
     override func paste(_ sender: Any?) {
         let pasteboard = NSPasteboard.general
+        var fallback: NSAttributedString?
         for type in [NSPasteboard.PasteboardType.rtf, .html] {
             guard let data = pasteboard.data(forType: type),
                   let attributed = try? NSAttributedString(
@@ -62,7 +63,10 @@ final class MouseSafeTaskFieldEditor: NSTextView {
                       documentAttributes: nil
                   ) else { continue }
             if onPastedList?(attributed) == true { return }
-            insertText(attributed, replacementRange: selectedRange())
+            if fallback == nil { fallback = attributed }
+        }
+        if let fallback {
+            insertText(fallback, replacementRange: selectedRange())
             return
         }
         if let text = pasteboard.string(forType: .string),

@@ -111,6 +111,7 @@ struct Note: View {
     @State var collapsedTaskIDs: Set<TaskID> = []
     @State var keyboardMonitor: Any?
     @State var isEmptySingleMemoHintDismissed = false
+    @State var isImportingPastedList = false
     @State var findQuery = ""
 
     var shouldShowEmptySingleMemoHint: Bool {

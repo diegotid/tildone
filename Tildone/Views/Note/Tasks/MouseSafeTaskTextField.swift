@@ -698,7 +698,23 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         return RichText(text: attributed.string, spans: spans)
     }
 
-    private static func pastedListItems(
+    static func pastedList(from pasteboard: NSPasteboard = .general) -> PastedList? {
+        for type in [NSPasteboard.PasteboardType.rtf, .html] {
+            let documentType: NSAttributedString.DocumentType = type == .rtf ? .rtf : .html
+            guard let data = pasteboard.data(forType: type),
+                  let attributed = try? NSAttributedString(
+                      data: data,
+                      options: [.documentType: documentType],
+                      documentAttributes: nil
+                  ) else { continue }
+            if let list = pastedListItems(from: attributed) { return list }
+        }
+        return pasteboard.string(forType: .string).flatMap {
+            pastedListItems(from: NSAttributedString(string: $0))
+        }
+    }
+
+    static func pastedListItems(
         from attributed: NSAttributedString
     ) -> PastedList? {
         let string = attributed.string as NSString
