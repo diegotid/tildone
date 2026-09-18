@@ -24,10 +24,13 @@ struct NoteTitleTextField: NSViewRepresentable {
     func makeNSView(context: Context) -> MouseSafeTaskNSTextField {
         let field = MouseSafeTaskNSTextField()
         field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isNoteTitleField = true
         field.delegate = context.coordinator
         field.placeholderString = placeholder
         field.font = font
         field.textColor = textColor
+        field.isEditable = true
+        field.isSelectable = true
         field.focusRingType = .none
         field.isBordered = false
         field.drawsBackground = false

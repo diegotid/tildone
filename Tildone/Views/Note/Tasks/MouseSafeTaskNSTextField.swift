@@ -8,6 +8,7 @@ import TildoneDomain
 
 final class MouseSafeTaskNSTextField: NSTextField {
     var taskID: TaskID?
+    var isNoteTitleField = false
     var placesCaretAtStartOnFocus = false
     var cursorColor = NSColor.textColor
     var onEditorFocus: (() -> Void)?

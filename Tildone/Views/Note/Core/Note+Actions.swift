@@ -901,7 +901,24 @@ extension Note {
         }
     }
 
-    func focusOnTopic() { nativeFocusedTaskID = nil; keyboardFocusedTaskID = nil; focusedTaskID = nil; focusedField = .topic }
+    func focusOnTopic() {
+        nativeFocusedTaskID = nil
+        keyboardFocusedTaskID = nil
+        focusedTaskID = nil
+        focusedField = .topic
+
+        // The paste-aware title is an AppKit-backed field. During creation the
+        // SwiftUI focus state can arrive before that field joins the window,
+        // which otherwise lets the new-task placeholder win first responder.
+        DispatchQueue.main.async {
+            guard focusedField == .topic,
+                  let titleField = noteWindow?.contentView?.getNestedSubviews()
+                    .compactMap({ $0 as? MouseSafeTaskNSTextField })
+                    .first(where: \.isNoteTitleField) else { return }
+            titleField.hasPendingFocusRequest = true
+            titleField.applyPendingFocusRequest()
+        }
+    }
     func focusOnNewTask() {
         nativeFocusedTaskID = nil
         keyboardFocusedTaskID = nil
