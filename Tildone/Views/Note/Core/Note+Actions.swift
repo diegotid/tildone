@@ -141,7 +141,66 @@ extension Note {
         guard noteKind != kind else { return }
         focusedField = nil
         focusedTaskID = nil
+        if kind == .singleTask,
+           let task = try? store.stageEmptySingleMemo(for: noteID) {
+            stagedSingleMemoTaskID = task.id
+            singleTaskDraftID = task.id
+            singleTaskDraft = task.richText
+            Swift.Task {
+                do {
+                    try await store.setKind(.singleTask, for: noteID, memoTask: task)
+                    let draft = singleTaskDraftID == task.id ? singleTaskDraft : task.richText
+                    stagedSingleMemoTaskID = nil
+                    guard draft != task.richText else { return }
+                    _ = store.queueTaskTextEdit(task.id, richText: draft) { error in
+                        mutationErrorMessage = Self.mutationFailureMessage(
+                            operation: "Error on task edit",
+                            error: error
+                        )
+                    }
+                } catch {
+                    stagedSingleMemoTaskID = nil
+                    mutationErrorMessage = Self.mutationFailureMessage(
+                        operation: "Error changing note type",
+                        error: error
+                    )
+                }
+            }
+            return
+        }
         mutate({ try await store.setKind(kind, for: noteID) }, message: "Error changing note type")
+    }
+
+    func importPastedList(
+        _ list: MouseSafeTaskTextField.PastedList,
+        replacing memo: TildoneDomain.Task
+    ) -> Bool {
+        guard noteKind == .singleTask,
+              memo.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !list.items.isEmpty else { return false }
+        Swift.Task {
+            do {
+                try await store.setKind(.checklist, for: noteID)
+                if let title = list.title {
+                    try await store.renameNote(noteID, to: title)
+                }
+                try await store.editTask(memo.id, richText: list.items[0].richText)
+                for item in list.items.dropFirst() {
+                    let task = try await store.addTask(
+                        to: noteID,
+                        text: item.richText.text,
+                        indentLevel: item.indentLevel
+                    )
+                    try await store.editTask(task.id, richText: item.richText)
+                }
+            } catch {
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error pasting tasks",
+                    error: error
+                )
+            }
+        }
+        return true
     }
 
     func handleNewTaskTab(outdent: Bool) {

@@ -2017,6 +2017,93 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(style.allowsDefaultTighteningForTruncation)
     }
 
+    func testPastedMemoParagraphAlignmentOverridesTheCenteredMemoDefault() throws {
+        let left = NSMutableParagraphStyle()
+        left.alignment = .left
+        let pasted = NSAttributedString(
+            string: "A left-aligned memo",
+            attributes: [
+                .font: NSFont.boldSystemFont(ofSize: 16),
+                .paragraphStyle: left
+            ]
+        )
+
+        let richText = MouseSafeTaskTextField.richText(
+            from: pasted,
+            defaultAlignment: .center
+        )
+        let displayed = MouseSafeTaskTextField.attributedString(
+            from: richText,
+            fontSize: 36,
+            baseColor: .textColor,
+            truncation: .multiple,
+            alignment: .center,
+            lineHeightMultiple: SingleMemoTypography.lineHeightMultiple
+        )
+        let paragraph = try XCTUnwrap(
+            displayed.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        )
+
+        XCTAssertEqual(paragraph.alignment, .left)
+        XCTAssertTrue(richText.attributes(atUTF16Offset: 0).contains(.bold))
+    }
+
+    func testPastingBulletListIntoMemoReportsSeparateTaskItems() {
+        var receivedList: MouseSafeTaskTextField.PastedList?
+        let field = MouseSafeTaskTextField(
+            richText: .constant(RichText(text: "")),
+            taskID: TaskID(),
+            isFocused: false,
+            placesCaretAtStartOnFocus: false,
+            fontSize: 14,
+            textColor: .primary,
+            cursorColor: .primary,
+            truncation: .multiple,
+            onFocus: {},
+            onBlur: {},
+            onEnter: { _ in },
+            onMoveUp: {},
+            onMoveDown: {},
+            onPastedList: { list in
+                receivedList = list
+                return true
+            }
+        )
+        let coordinator = field.makeCoordinator()
+        let pasted = NSAttributedString(string: "• First task\n• Second task")
+
+        XCTAssertTrue(coordinator.handlePastedList(pasted))
+        XCTAssertNil(receivedList?.title)
+        XCTAssertEqual(receivedList?.items.map(\.richText.text), ["First task", "Second task"])
+        XCTAssertEqual(receivedList?.items.map(\.indentLevel), [0, 0])
+    }
+
+    func testPastingListWithLeadingPlainLineUsesItAsTheNoteTitle() {
+        var receivedList: MouseSafeTaskTextField.PastedList?
+        let field = MouseSafeTaskTextField(
+            richText: .constant(RichText(text: "")),
+            taskID: TaskID(),
+            isFocused: false,
+            placesCaretAtStartOnFocus: false,
+            fontSize: 14,
+            textColor: .primary,
+            cursorColor: .primary,
+            truncation: .multiple,
+            onFocus: {}, onBlur: {}, onEnter: { _ in }, onMoveUp: {}, onMoveDown: {},
+            onPastedList: { list in
+                receivedList = list
+                return true
+            }
+        )
+        let coordinator = field.makeCoordinator()
+
+        XCTAssertTrue(coordinator.handlePastedList(
+            NSAttributedString(string: "Project kickoff\n• Confirm scope\n• Book room")
+        ))
+        XCTAssertEqual(receivedList?.title, "Project kickoff")
+        XCTAssertEqual(receivedList?.items.map(\.richText.text), ["Confirm scope", "Book room"])
+    }
+
     @MainActor
     func testPrimarySceneUsesSingleUniqueCoordinatorWindow() {
         let scene = TildonePrimaryScene { EmptyView() }
@@ -2679,6 +2766,22 @@ final class TildoneTests: XCTestCase {
 
         let persistedMemo = try await repository.task(id: memo.id)
         XCTAssertEqual(persistedMemo.text, "First character")
+    }
+
+    @MainActor
+    func testEmptyNoteCanStageEditableMemoBeforeItsTaskIsPersisted() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 121))
+
+        let stagedTask = try XCTUnwrap(store.stageEmptySingleMemo(for: note.id))
+        XCTAssertEqual(store.note(note.id)?.kind, .singleTask)
+        XCTAssertEqual(store.note(note.id)?.singleTask?.id, stagedTask.id)
+        let persistedTasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertTrue(persistedTasks.isEmpty)
+
+        try await store.setKind(.singleTask, for: note.id, memoTask: stagedTask)
+        XCTAssertEqual(store.note(note.id)?.singleTask?.id, stagedTask.id)
     }
 
     func testLegacyMacColorLookupPrefersPerNoteValueAndPreservesGlobalFallback() throws {

@@ -660,8 +660,13 @@ private extension Desktop {
     func setWindowOptions() {
         UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
         Swift.Task {
-            let filterIntent = try await FocusFilter.current
-            _ = try await filterIntent.perform()
+            do {
+                let filterIntent = try await FocusFilter.current
+                _ = try await filterIntent.perform()
+            } catch {
+                // Focus Filter state is optional at launch. Leave the normal
+                // note presentation untouched if the system state is unavailable.
+            }
         }
     }
 

@@ -26,6 +26,17 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let onEnter: (Int) -> Void
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
+    var onPastedList: ((PastedList) -> Bool)? = nil
+
+    struct PastedListItem {
+        let richText: RichText
+        let indentLevel: Int
+    }
+
+    struct PastedList {
+        let title: String?
+        let items: [PastedListItem]
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -59,6 +70,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.onEditorFocus = { [weak coordinator = context.coordinator] in
             coordinator?.editorDidAcquireFocus()
         }
+        field.onPastedList = { [weak coordinator = context.coordinator] attributed in
+            coordinator?.handlePastedList(attributed) ?? false
+        }
         context.coordinator.field = field
         return field
     }
@@ -69,9 +83,15 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         field.taskID = taskID
         field.placesCaretAtStartOnFocus = placesCaretAtStartOnFocus
         field.cursorColor = NSColor(cursorColor)
+        field.onPastedList = { [weak coordinator = context.coordinator] attributed in
+            coordinator?.handlePastedList(attributed) ?? false
+        }
         let editor = field.currentEditor()
         let isActivelyEditing = editor != nil && field.window?.firstResponder === editor
-        let fieldRichText = Self.richText(from: field.attributedStringValue)
+        let fieldRichText = Self.richText(
+            from: field.attributedStringValue,
+            defaultAlignment: alignment
+        )
         let preservingCanonicalAfterBlur = context.coordinator.shouldPreserveCanonicalAfterBlur(model: richText)
         if !isActivelyEditing, !preservingCanonicalAfterBlur {
             context.coordinator.canonicalRichText = richText
@@ -101,7 +121,10 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
            presentationChanged,
            let editor = editor as? NSTextView {
             let selection = editor.selectedRange()
-            let nativeRichText = Self.richText(from: editor.attributedString())
+            let nativeRichText = Self.richText(
+                from: editor.attributedString(),
+                defaultAlignment: alignment
+            )
             let displayedRichText = nativeRichText.text == richText.text ? richText : nativeRichText
             let attributed = Self.highlightedAttributedString(
                 from: displayedRichText,
@@ -257,11 +280,17 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                     lastEditor = editor
                     lastSelection = editor.selectedRange()
                     finalRichText = preservingCanonicalSpans(
-                        in: MouseSafeTaskTextField.richText(from: editor.attributedString())
+                        in: MouseSafeTaskTextField.richText(
+                            from: editor.attributedString(),
+                            defaultAlignment: parent.alignment
+                        )
                     )
                 } else if let editedField {
                     finalRichText = preservingCanonicalSpans(
-                        in: MouseSafeTaskTextField.richText(from: editedField.attributedStringValue)
+                        in: MouseSafeTaskTextField.richText(
+                            from: editedField.attributedStringValue,
+                            defaultAlignment: parent.alignment
+                        )
                     )
                 } else {
                     finalRichText = canonicalRichText
@@ -363,12 +392,22 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             lastEditor = editor
             lastSelection = editor.selectedRange()
             let editedRichText = preservingCanonicalSpans(
-                in: MouseSafeTaskTextField.richText(from: editor.attributedString())
+                in: MouseSafeTaskTextField.richText(
+                    from: editor.attributedString(),
+                    defaultAlignment: parent.alignment
+                )
             )
             hasLocalEdits = true
             canonicalRichText = editedRichText
             parent.richText = editedRichText
             (editor as? MouseSafeTaskFieldEditor)?.refreshEmptyInsertionPoint()
+        }
+
+        func handlePastedList(_ attributed: NSAttributedString) -> Bool {
+            guard let list = MouseSafeTaskTextField.pastedListItems(from: attributed) else {
+                return false
+            }
+            return parent.onPastedList?(list) ?? false
         }
 
         private func apply(_ format: RichTextFormat) {
@@ -380,9 +419,15 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             // editor from a previous selection must not receive this command.
             guard isEditing || (parent.isFocused && lastEditor != nil) else { return }
             let editor = (field.currentEditor() as? NSTextView) ?? lastEditor
-            let fieldRichText = MouseSafeTaskTextField.richText(from: field.attributedStringValue)
+            let fieldRichText = MouseSafeTaskTextField.richText(
+                from: field.attributedStringValue,
+                defaultAlignment: parent.alignment
+            )
             let editorRichText = editor.map {
-                MouseSafeTaskTextField.richText(from: $0.attributedString())
+                MouseSafeTaskTextField.richText(
+                    from: $0.attributedString(),
+                    defaultAlignment: parent.alignment
+                )
             }
             // AppKit can leave a retained field editor with an empty or
             // flattened string for one turn after it resigns first responder.
@@ -530,6 +575,12 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                let encodedString = String(data: encoded, encoding: .utf8) {
                 attributes[extensionsKey] = encodedString
             }
+            if let paragraphAlignment = paragraphAlignment(in: span.attributes.extensions) {
+                let style = (paragraphStyle?.mutableCopy() as? NSMutableParagraphStyle)
+                    ?? NSMutableParagraphStyle()
+                style.alignment = paragraphAlignment
+                attributes[.paragraphStyle] = style
+            }
             var traits: NSFontTraitMask = []
             if span.attributes.contains(.bold) { traits.insert(.boldFontMask) }
             if span.attributes.contains(.italic) { traits.insert(.italicFontMask) }
@@ -600,19 +651,37 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         return result
     }
 
-    static func richText(from attributed: NSAttributedString) -> RichText {
+    static func richText(
+        from attributed: NSAttributedString,
+        defaultAlignment: NSTextAlignment? = nil
+    ) -> RichText {
         var spans: [RichTextSpan] = []
         let fullRange = NSRange(location: 0, length: attributed.length)
         attributed.enumerateAttributes(in: fullRange) { attributes, range, _ in
-            let styleNames = (attributes[styleNamesKey] as? String)?
+            var styleNames = (attributes[styleNamesKey] as? String)?
                 .split(separator: ",").map(String.init) ?? []
-            let extensions: [String: String]
+            var extensions: [String: String]
             if let encodedString = attributes[extensionsKey] as? String,
                let data = encodedString.data(using: .utf8),
                let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
                 extensions = decoded
             } else {
                 extensions = [:]
+            }
+            if let font = attributes[.font] as? NSFont {
+                let traits = font.fontDescriptor.symbolicTraits
+                if traits.contains(.bold) { styleNames.append(RichTextStyle.bold.rawValue) }
+                if traits.contains(.italic) { styleNames.append(RichTextStyle.italic.rawValue) }
+            }
+            if (attributes[.underlineStyle] as? Int ?? 0) != 0 {
+                styleNames.append(RichTextStyle.underline.rawValue)
+            }
+            if (attributes[.strikethroughStyle] as? Int ?? 0) != 0 {
+                styleNames.append(RichTextStyle.strikethrough.rawValue)
+            }
+            if let paragraph = attributes[.paragraphStyle] as? NSParagraphStyle,
+               paragraph.alignment != defaultAlignment {
+                extensions[paragraphAlignmentKey] = String(paragraph.alignment.rawValue)
             }
             let richAttributes = RichTextAttributes(
                 styleNames: styleNames,
@@ -627,6 +696,75 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             ))
         }
         return RichText(text: attributed.string, spans: spans)
+    }
+
+    private static func pastedListItems(
+        from attributed: NSAttributedString
+    ) -> PastedList? {
+        let string = attributed.string as NSString
+        guard string.length > 0 else { return nil }
+        var paragraphs: [(richText: RichText, indentation: CGFloat, isList: Bool)] = []
+        var location = 0
+        while location < string.length {
+            let lineRange = string.lineRange(for: NSRange(location: location, length: 0))
+            let value = NSMutableAttributedString(
+                attributedString: attributed.attributedSubstring(from: lineRange)
+            )
+            value.mutableString.replaceOccurrences(
+                of: "\\n",
+                with: "",
+                options: [],
+                range: NSRange(location: 0, length: value.length)
+            )
+            let content = value.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !content.isEmpty {
+                let style = attributed.attribute(
+                    .paragraphStyle,
+                    at: min(location, attributed.length - 1),
+                    effectiveRange: nil
+                ) as? NSParagraphStyle
+                let hasBulletPrefix = bulletPrefixRange(in: value.string) != nil
+                let isList = style?.textLists.isEmpty == false || hasBulletPrefix
+                if let bulletRange = bulletPrefixRange(in: value.string) {
+                    value.deleteCharacters(in: bulletRange)
+                }
+                let richText = richText(from: value, defaultAlignment: .left)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !richText.text.isEmpty {
+                    paragraphs.append((
+                        richText,
+                        max(style?.headIndent ?? 0, style?.firstLineHeadIndent ?? 0),
+                        isList
+                    ))
+                }
+            }
+            location = NSMaxRange(lineRange)
+        }
+        guard paragraphs.contains(where: \.isList) else { return nil }
+        let hasTitle = paragraphs.first?.isList == false
+        let taskParagraphs = hasTitle ? Array(paragraphs.dropFirst()) : paragraphs
+        let indents = Array(Set(taskParagraphs.map(\.indentation))).sorted()
+        let items = taskParagraphs.map { paragraph in
+            PastedListItem(
+                richText: paragraph.richText,
+                indentLevel: indents.firstIndex(of: paragraph.indentation) ?? 0
+            )
+        }
+        guard !items.isEmpty else { return nil }
+        return PastedList(
+            title: hasTitle ? paragraphs[0].richText.text : nil,
+            items: items
+        )
+    }
+
+    private static func bulletPrefixRange(in text: String) -> NSRange? {
+        let pattern = "^\\s*(?:[-*+•◦▪‣]|\\d+[.)])\\s+"
+        guard let expression = try? NSRegularExpression(pattern: pattern),
+              let match = expression.firstMatch(
+                in: text,
+                range: NSRange(location: 0, length: text.utf16.count)
+              ) else { return nil }
+        return match.range
     }
 
     static func displayAttributedString(
@@ -696,4 +834,13 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     private static let foregroundNameKey = NSAttributedString.Key("TildoneRichTextForeground")
     private static let highlightNameKey = NSAttributedString.Key("TildoneRichTextHighlight")
     private static let extensionsKey = NSAttributedString.Key("TildoneRichTextExtensions")
+    private static let paragraphAlignmentKey = "paragraphAlignment"
+
+    private static func paragraphAlignment(
+        in extensions: [String: String]
+    ) -> NSTextAlignment? {
+        guard let rawValue = extensions[paragraphAlignmentKey],
+              let value = Int(rawValue) else { return nil }
+        return NSTextAlignment(rawValue: value)
+    }
 }

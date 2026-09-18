@@ -23,6 +23,7 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
             taskFieldEditor.onBecomeFirstResponder = { [weak field] in
                 field?.onEditorFocus?()
             }
+            taskFieldEditor.onPastedList = field.onPastedList
         }
         return taskFieldEditor
     }

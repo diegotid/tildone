@@ -250,15 +250,38 @@ final class MacSharedStore: ObservableObject {
         scheduleSyncNotification()
     }
 
-    func setKind(_ kind: NoteKind, for id: NoteID) async throws {
+    func setKind(
+        _ kind: NoteKind,
+        for id: NoteID,
+        memoTask: Task? = nil
+    ) async throws {
         guard let original = note(id) else { throw PersistenceError.missing(.note, id.stringValue) }
         do {
-            if kind == .singleTask, original.tasks.isEmpty {
+            let isStagedMemo = memoTask.map { task in
+                original.kind == .singleTask && original.tasks.map(\.id) == [task.id]
+            } ?? false
+            if kind == .singleTask, original.tasks.isEmpty || isStagedMemo {
+                let task: Task
+                if let memoTask {
+                    task = memoTask
+                } else {
+                    task = Task(
+                        id: TaskID(),
+                        noteID: id,
+                        createdAt: Date(),
+                        text: "",
+                        textVersion: original.note.lastMeaningfulEditVersion,
+                        completionVersion: original.note.lastMeaningfulEditVersion,
+                        orderToken: try OrderToken.between(nil, nil),
+                        orderVersion: original.note.lastMeaningfulEditVersion,
+                        lifecycleVersion: original.note.lastMeaningfulEditVersion
+                    )
+                }
                 _ = try await repository.convertEmptyNoteToSingleTask(
                     id: id,
-                    taskID: TaskID(),
-                    createdAt: Date(),
-                    orderToken: try OrderToken.between(nil, nil)
+                    taskID: task.id,
+                    createdAt: task.createdAt,
+                    orderToken: task.orderToken
                 )
             } else if original.kind != kind {
                 _ = try await repository.setNoteKind(id: id, kind: kind)
@@ -269,6 +292,46 @@ final class MacSharedStore: ObservableObject {
             try? await reload(id)
             throw error
         }
+    }
+
+    /// Stages an editable memo in presentation state so its editor can receive
+    /// focus while the same task is being durably created in the background.
+    func stageEmptySingleMemo(for id: NoteID) throws -> Task? {
+        guard let snapshot = note(id),
+              snapshot.kind == .checklist,
+              snapshot.tasks.isEmpty else { return nil }
+        let note = snapshot.note
+        let stamp = note.lastMeaningfulEditVersion
+        let task = Task(
+            id: TaskID(),
+            noteID: id,
+            createdAt: Date(),
+            text: "",
+            textVersion: stamp,
+            completionVersion: stamp,
+            orderToken: try OrderToken.between(nil, nil),
+            orderVersion: stamp,
+            lifecycleVersion: stamp
+        )
+        let memo = TildoneDomain.Note(
+            id: note.id,
+            createdAt: note.createdAt,
+            title: note.title,
+            titleVersion: note.titleVersion,
+            color: note.color,
+            colorVersion: note.colorVersion,
+            kind: .singleTask,
+            kindVersion: note.kindVersion,
+            singleMemoFont: note.singleMemoFont,
+            singleMemoFontVersion: note.singleMemoFontVersion,
+            lifecycle: note.lifecycle,
+            lifecycleVersion: note.lifecycleVersion,
+            lastMeaningfulEditAt: note.lastMeaningfulEditAt,
+            lastMeaningfulEditVersion: note.lastMeaningfulEditVersion,
+            schemaVersion: note.schemaVersion
+        )
+        publish(MacNoteSnapshot(note: memo, tasks: [task]))
+        return task
     }
 
     func addTask(
@@ -901,7 +964,10 @@ final class MacSharedStore: ObservableObject {
         in noteID: NoteID,
         preserving preservedTaskID: TaskID? = nil
     ) async throws {
-        if note(noteID)?.kind == .singleTask { return }
+        guard let snapshot = note(noteID), snapshot.kind != .singleTask,
+              snapshot.tasks.contains(where: {
+                  $0.text.isEmpty && $0.id != preservedTaskID
+              }) else { return }
         for taskID in notes.first(where: { $0.id == noteID })?.tasks.map(\.id) ?? [] {
             await waitForPendingTaskTextEdit(for: taskID)
         }

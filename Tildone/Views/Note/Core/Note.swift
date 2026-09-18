@@ -3,6 +3,7 @@
 //  Tildone
 //
 
+import Combine
 import SwiftUI
 import TildoneDomain
 
@@ -139,6 +140,7 @@ struct Note: View {
     @State var nativeFocusedTaskID: TaskID?
     @State var singleTaskDraft = RichText(text: "")
     @State var singleTaskDraftID: TaskID?
+    @State var stagedSingleMemoTaskID: TaskID?
     @FocusState var focusedField: Field?
     @FocusState var focusedTaskID: TaskID?
 

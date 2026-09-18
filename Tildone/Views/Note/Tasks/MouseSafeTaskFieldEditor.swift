@@ -14,6 +14,7 @@ final class MouseSafeTaskFieldEditor: NSTextView {
     var emptyInsertionPointFont: NSFont? {
         didSet { updateEmptyInsertionPoint() }
     }
+    var onPastedList: ((NSAttributedString) -> Bool)?
     private weak var observedClipView: NSClipView?
     private var clipViewObservers: [NSObjectProtocol] = []
     private var isRestoringTextGeometry = false
@@ -49,6 +50,26 @@ final class MouseSafeTaskFieldEditor: NSTextView {
         let didResignFirstResponder = super.resignFirstResponder()
         updateEmptyInsertionPoint()
         return didResignFirstResponder
+    }
+
+    override func paste(_ sender: Any?) {
+        let pasteboard = NSPasteboard.general
+        for type in [NSPasteboard.PasteboardType.rtf, .html] {
+            guard let data = pasteboard.data(forType: type),
+                  let attributed = try? NSAttributedString(
+                      data: data,
+                      options: [.documentType: documentType(for: type)],
+                      documentAttributes: nil
+                  ) else { continue }
+            if onPastedList?(attributed) == true { return }
+            insertText(attributed, replacementRange: selectedRange())
+            return
+        }
+        if let text = pasteboard.string(forType: .string),
+           onPastedList?(NSAttributedString(string: text)) == true {
+            return
+        }
+        super.paste(sender)
     }
 
     deinit {
@@ -241,4 +262,10 @@ final class MouseSafeTaskFieldEditor: NSTextView {
 
     private static let overflowLeadingCompensation: CGFloat = 2
     private static let emptyCaretBlinkAnimationKey = "TildoneEmptyMemoCaretBlink"
+
+    private func documentType(
+        for pasteboardType: NSPasteboard.PasteboardType
+    ) -> NSAttributedString.DocumentType {
+        pasteboardType == .rtf ? .rtf : .html
+    }
 }

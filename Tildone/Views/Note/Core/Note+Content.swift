@@ -31,7 +31,9 @@ extension Note {
                                 let value = value.capitalizingFirstLetter()
                                 singleTaskDraftID = task.id
                                 singleTaskDraft = value
-                                handleTaskEdit(task, to: value)
+                                if stagedSingleMemoTaskID != task.id {
+                                    handleTaskEdit(task, to: value)
+                                }
                             }
                         ),
                         taskID: task.id,
@@ -53,7 +55,10 @@ extension Note {
                         onBlur: { handleNativeTaskBlur(task.id) },
                         onEnter: { _ in },
                         onMoveUp: {},
-                        onMoveDown: {}
+                        onMoveDown: {},
+                        onPastedList: { items in
+                            importPastedList(items, replacing: task)
+                        }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .strikethrough(task.isCompleted, color: .accentColor)
@@ -80,6 +85,9 @@ extension Note {
         .onAppear {
             handleKeyboard()
             if let task = note.singleTask { focusTaskUsingKeyboard(task.id) }
+        }
+        .onChange(of: note.singleTask?.id) { _, taskID in
+            if let taskID { focusTaskUsingKeyboard(taskID) }
         }
         .onDisappear { stopHandlingKeyboard() }
         .onChange(of: note.isCloseButtonEnabled) { _, _ in updateWindowClosability() }
