@@ -442,6 +442,7 @@ extension Note {
                             updateTopicVisibility()
                         },
                         onBlur: { updateTopicVisibility() },
+                        onTextChange: { updateTopicVisibility() },
                         onSubmit: { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() },
                         onPastedList: importPastedList
                     )

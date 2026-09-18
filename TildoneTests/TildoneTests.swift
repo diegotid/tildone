@@ -1560,6 +1560,30 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(repairedFrame.maxY, compactFrame.maxY)
     }
 
+    func testScreenParameterChangeKeepsAVisibleNoteInPlace() {
+        let frame = NSRect(x: 140, y: 120, width: 250, height: 300)
+
+        let recoveredOrigin = MacDesktopPlacement.recoveredOrigin(
+            for: frame,
+            availableScreenFrames: [NSRect(x: 0, y: 0, width: 1440, height: 900)],
+            fallbackVisibleFrame: NSRect(x: 0, y: 40, width: 1440, height: 820)
+        )
+
+        XCTAssertNil(recoveredOrigin)
+    }
+
+    func testScreenParameterChangeRecoversANoteFromADisconnectedDisplay() {
+        let frame = NSRect(x: 1600, y: 200, width: 250, height: 300)
+
+        let recoveredOrigin = MacDesktopPlacement.recoveredOrigin(
+            for: frame,
+            availableScreenFrames: [NSRect(x: 0, y: 0, width: 1440, height: 900)],
+            fallbackVisibleFrame: NSRect(x: 0, y: 40, width: 1440, height: 820)
+        )
+
+        XCTAssertEqual(recoveredOrigin, NSPoint(x: 1190, y: 200))
+    }
+
     @MainActor
     func testQuittingWhileMinimizedLeavesTheNormalFrameForRelaunch() throws {
         let autosaveName = "TildoneTests.NoteWindowFrame.\(UUID().uuidString)"

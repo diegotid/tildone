@@ -48,6 +48,22 @@ enum MacDesktopPlacement {
                 : screenFrame.minY + offsetY
         )
     }
+
+    static func recoveredOrigin(
+        for windowFrame: NSRect,
+        availableScreenFrames: [NSRect],
+        fallbackVisibleFrame: NSRect
+    ) -> NSPoint? {
+        guard !availableScreenFrames.contains(where: { $0.intersects(windowFrame) }) else {
+            return nil
+        }
+        let maxX = max(fallbackVisibleFrame.minX, fallbackVisibleFrame.maxX - windowFrame.width)
+        let maxY = max(fallbackVisibleFrame.minY, fallbackVisibleFrame.maxY - windowFrame.height)
+        return NSPoint(
+            x: min(max(windowFrame.minX, fallbackVisibleFrame.minX), maxX),
+            y: min(max(windowFrame.minY, fallbackVisibleFrame.minY), maxY)
+        )
+    }
 }
 
 /// macOS-only window coordinator. It renders repository snapshots but owns no
@@ -202,7 +218,7 @@ struct Desktop: View {
     private func withUserEvents<V: View>(_ view: V) -> some View {
         view
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
-                arrangeNotes()
+                recoverWindowsFromDisconnectedScreens()
             }
             .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in arrangeNotes() }
             .onReceive(NotificationCenter.default.publisher(for: .noteColorFilterChanged)) { _ in
@@ -1258,6 +1274,20 @@ private extension Desktop {
                 }
             }
             positionOnScreen(sorted, animated: animated)
+        }
+    }
+
+    func recoverWindowsFromDisconnectedScreens() {
+        guard let fallbackScreen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let screenFrames = NSScreen.screens.map(\.frame)
+        let managedWindows = Array(noteWindows.values) + colorFolderWindows.values.map { $0 as NSWindow }
+        for window in managedWindows {
+            guard let origin = MacDesktopPlacement.recoveredOrigin(
+                for: window.frame,
+                availableScreenFrames: screenFrames,
+                fallbackVisibleFrame: fallbackScreen.visibleFrame
+            ) else { continue }
+            window.setFrameOrigin(origin)
         }
     }
 

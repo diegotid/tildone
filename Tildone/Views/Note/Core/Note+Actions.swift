@@ -835,7 +835,15 @@ extension Note {
     }
 
     func updateTopicVisibility() {
-        withAnimation { isTopicHidden = (note?.title == nil) && (isDone || focusedField != .topic) }
+        let hasLocalTitleText = noteWindow?.contentView?.getNestedSubviews()
+            .compactMap { $0 as? MouseSafeTaskNSTextField }
+            .first(where: \.isNoteTitleField)?
+            .stringValue.isEmpty == false
+        withAnimation {
+            isTopicHidden = !hasLocalTitleText
+                && (note?.title == nil)
+                && (isDone || focusedField != .topic)
+        }
     }
 
     func applyCurrentNoteBackground() {

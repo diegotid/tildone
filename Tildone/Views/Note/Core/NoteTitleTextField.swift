@@ -16,6 +16,7 @@ struct NoteTitleTextField: NSViewRepresentable {
     let textColor: NSColor
     let onFocus: () -> Void
     let onBlur: () -> Void
+    let onTextChange: () -> Void
     let onSubmit: () -> Void
     let onPastedList: (MouseSafeTaskTextField.PastedList) -> Bool
 
@@ -59,7 +60,8 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.onPasteboardList = { [weak coordinator = context.coordinator] list in
             coordinator?.parent.onPastedList(list) ?? false
         }
-        let isEditing = field.window?.firstResponder === field.currentEditor()
+        let isEditing = context.coordinator.isEditing
+            || field.window?.firstResponder === field.currentEditor()
         if !isEditing, field.stringValue != text {
             field.stringValue = text
         }
@@ -72,21 +74,25 @@ struct NoteTitleTextField: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: NoteTitleTextField
         weak var field: MouseSafeTaskNSTextField?
+        var isEditing = false
 
         init(parent: NoteTitleTextField) {
             self.parent = parent
         }
 
         func controlTextDidBeginEditing(_ notification: Notification) {
+            isEditing = true
             parent.onFocus()
         }
 
         func controlTextDidChange(_ notification: Notification) {
             guard let field = notification.object as? NSTextField else { return }
             parent.text = field.stringValue
+            parent.onTextChange()
         }
 
         func controlTextDidEndEditing(_ notification: Notification) {
+            isEditing = false
             parent.onBlur()
         }
 
