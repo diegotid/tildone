@@ -263,11 +263,13 @@ extension Note {
                     importedIDs.append(task.id)
                 }
                 try await applyPastedCompletion(list, taskIDs: importedIDs)
-                if let firstTaskID = importedIDs.first {
+                if let firstEditableTaskID = zip(importedIDs, list.items)
+                    .first(where: { !$0.1.isCompleted })?.0 {
                     // Let SwiftUI install every imported field with its final
                     // rich value before AppKit attaches the shared editor.
+                    // Completed rows render as text and cannot receive a caret.
                     DispatchQueue.main.async {
-                        focusTaskUsingKeyboard(firstTaskID)
+                        focusTaskUsingKeyboard(firstEditableTaskID)
                     }
                 }
             } catch {
@@ -921,12 +923,14 @@ extension Note {
     }
 
     func focusTaskUsingKeyboard(_ taskID: TaskID) {
+        focusedField = nil
         nativeFocusedTaskID = taskID
         keyboardFocusedTaskID = taskID
         focusedTaskID = taskID
     }
 
     func activateNativeTask(_ taskID: TaskID) {
+        focusedField = nil
         nativeFocusedTaskID = taskID
         focusedTaskID = taskID
     }

@@ -29,7 +29,6 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.isNoteTitleField = isNoteTitleField
         field.isNewTaskField = !isNoteTitleField
         field.onEditorFocus = { [weak coordinator = context.coordinator] in
-            guard coordinator?.parent.isNoteTitleField == false else { return }
             coordinator?.parent.onFocus()
         }
         field.delegate = context.coordinator
@@ -73,16 +72,21 @@ struct NoteTitleTextField: NSViewRepresentable {
         if !isEditing, field.stringValue != text {
             field.stringValue = text
         }
-        if isFocused, !isEditing {
+        // A model refresh must not reclaim focus after the user clicks a row.
+        if isFocused, !context.coordinator.lastRequestedFocus {
             field.hasPendingFocusRequest = true
-            field.applyPendingFocusRequest()
+        } else if !isFocused {
+            field.hasPendingFocusRequest = false
         }
+        context.coordinator.lastRequestedFocus = isFocused
+        field.applyPendingFocusRequest()
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: NoteTitleTextField
         weak var field: MouseSafeTaskNSTextField?
         var isEditing = false
+        var lastRequestedFocus = false
 
         init(parent: NoteTitleTextField) {
             self.parent = parent
@@ -109,7 +113,12 @@ struct NoteTitleTextField: NSViewRepresentable {
             textView: NSTextView,
             doCommandBy commandSelector: Selector
         ) -> Bool {
-            guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+            let advancesFromTitle = parent.isNoteTitleField && (
+                commandSelector == #selector(NSResponder.moveDown(_:))
+                    || commandSelector == #selector(NSResponder.insertTab(_:))
+            )
+            guard commandSelector == #selector(NSResponder.insertNewline(_:))
+                    || advancesFromTitle else {
                 return false
             }
             parent.onSubmit()

@@ -437,13 +437,22 @@ extension Note {
                         font: .systemFont(ofSize: size, weight: .bold),
                         textColor: NSColor(noteForeground),
                         onFocus: {
+                            nativeFocusedTaskID = nil
+                            keyboardFocusedTaskID = nil
+                            focusedTaskID = nil
                             focusedField = .topic
                             if let title = note?.title { placeCursor(forText: title) }
                             updateTopicVisibility()
                         },
                         onBlur: { updateTopicVisibility() },
                         onTextChange: { updateTopicVisibility() },
-                        onSubmit: { tasks.isEmpty ? focusOnNewTask() : handleMoveDown() },
+                        onSubmit: {
+                            if let task = pendingTasks.first {
+                                focusTaskUsingKeyboard(task.id)
+                            } else {
+                                focusOnNewTask()
+                            }
+                        },
                         onPastedList: importPastedList
                     )
                     .padding(.top, 5)

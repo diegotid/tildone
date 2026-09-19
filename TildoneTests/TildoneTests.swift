@@ -2180,7 +2180,81 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
-    private func verifyNativeListPaste(truncation: TaskLineTruncation, intoTitle: Bool) async throws {
+    func testNativeNewTaskPasteStillImportsChecklist() async throws {
+        try await verifyNativeListPaste(truncation: .single, intoTitle: false, intoNewTask: true)
+    }
+
+    @MainActor
+    func testTitleReturnThenNewTaskPasteImportsChecklist() async throws {
+        try await verifyNativeListPaste(truncation: .single, intoTitle: false,
+                                        intoNewTask: true, navigateFromTitle: true)
+    }
+
+    @MainActor
+    func testTitleNavigationTransfersCaretToTaskOrDraft() async throws {
+        for title in ["", "Hola"] {
+            for hasTask in [false, true] {
+                for (keyCode, characters) in [(36, "\r"), (125, "\u{F701}"), (48, "\t")] {
+                    try await verifyTitleNavigation(title: title, hasTask: hasTask,
+                                                    keyCode: keyCode, characters: characters)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func verifyTitleNavigation(title: String, hasTask: Bool,
+                                       keyCode: Int, characters: String) async throws {
+        let store = MacSharedStore(repository: try TildoneRepository(descriptor: .inMemory()))
+        let note = try await store.createNote()
+        let taskID = hasTask ? try await store.addTask(to: note.id, text: "First task").id : nil
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 360, height: 500),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: note.id))
+        window.setNoteHostingContentView(host)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
+            (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
+        }
+        try await Swift.Task.sleep(for: .milliseconds(200))
+        host.layoutSubtreeIfNeeded()
+        let titleField = try XCTUnwrap(fields(host).first(where: \.isNoteTitleField))
+        XCTAssertTrue(window.makeFirstResponder(titleField))
+        let editor = try XCTUnwrap(titleField.currentEditor() as? NSTextView)
+        if !title.isEmpty { editor.insertText(title, replacementRange: NSRange(location: 0, length: 0)) }
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: window.windowNumber, context: nil,
+            characters: characters, charactersIgnoringModifiers: characters,
+            isARepeat: false, keyCode: UInt16(keyCode)
+        ))
+        window.sendEvent(event)
+        try await Swift.Task.sleep(for: .milliseconds(300))
+        let destination = try XCTUnwrap(fields(host).first {
+            if let taskID { return $0.taskID == taskID }
+            return $0.isNewTaskField
+        })
+        guard let destinationEditor = destination.currentEditor() as? NSTextView,
+              window.firstResponder === destinationEditor else {
+            XCTFail("Title '\(title)', hasTask=\(hasTask), key=\(keyCode) did not transfer the caret")
+            return
+        }
+        destinationEditor.insertText("Destination", replacementRange: destinationEditor.selectedRange())
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(store.note(note.id)?.title ?? "", title)
+        XCTAssertTrue(destinationEditor.string.contains("Destination"))
+    }
+
+    @MainActor
+    private func verifyNativeListPaste(truncation: TaskLineTruncation, intoTitle: Bool,
+                                      intoNewTask: Bool = false,
+                                      navigateFromTitle: Bool = false) async throws {
         let defaults = UserDefaults.standard
         let previous = defaults.object(forKey: TaskLineTruncation.storageKey)
         defaults.set(truncation.rawValue, forKey: TaskLineTruncation.storageKey)
@@ -2206,6 +2280,8 @@ final class TildoneTests: XCTestCase {
         var originalID: TaskID?
         if !intoTitle {
             try await store.renameNote(note.id, to: "Existing title")
+        }
+        if !intoTitle && !intoNewTask {
             originalID = try await store.addTask(to: note.id, text: "Original").id
             let after = try await store.addTask(to: note.id, text: "Following")
             _ = try await store.setTaskCompletion(after.id, completed: true)
@@ -2228,13 +2304,33 @@ final class TildoneTests: XCTestCase {
         func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
             (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
         }
+        func isTarget(_ field: MouseSafeTaskNSTextField) -> Bool {
+            if intoNewTask { return field.isNewTaskField }
+            return intoTitle ? field.isNoteTitleField : field.taskID == originalID
+        }
         for _ in 0..<20 {
             host.layoutSubtreeIfNeeded()
-            if fields(host).contains(where: { intoTitle ? $0.isNoteTitleField : $0.taskID == originalID }) { break }
+            if fields(host).contains(where: isTarget) { break }
             try await Swift.Task.sleep(for: .milliseconds(50))
         }
-        let field = try XCTUnwrap(fields(host).first { intoTitle ? $0.isNoteTitleField : $0.taskID == originalID })
-        XCTAssertTrue(window.makeFirstResponder(field))
+        let field = try XCTUnwrap(fields(host).first(where: isTarget))
+        if navigateFromTitle {
+            let titleField = try XCTUnwrap(fields(host).first(where: \.isNoteTitleField))
+            XCTAssertTrue(window.makeFirstResponder(titleField))
+            let titleEditor = try XCTUnwrap(titleField.currentEditor() as? NSTextView)
+            let event = try XCTUnwrap(NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: window.windowNumber, context: nil,
+                characters: "\r", charactersIgnoringModifiers: "\r",
+                isARepeat: false, keyCode: 36
+            ))
+            window.sendEvent(event)
+            try await Swift.Task.sleep(for: .milliseconds(300))
+            XCTAssertFalse(window.firstResponder === titleEditor)
+            XCTAssertTrue(window.firstResponder === field.currentEditor())
+        } else {
+            XCTAssertTrue(window.makeFirstResponder(field))
+        }
         let editor = try XCTUnwrap(field.currentEditor() as? MouseSafeTaskFieldEditor)
         if !intoTitle {
             editor.setSelectedRange(NSRange(location: 0, length: editor.string.utf16.count))
@@ -2248,16 +2344,29 @@ final class TildoneTests: XCTestCase {
         editor.paste(nil)
         for _ in 0..<100 {
             let items = store.note(note.id)?.tasks ?? []
-            if items.count == (intoTitle ? 3 : 4), items.prefix(2).allSatisfy(\.isCompleted) { break }
+            if items.count == (originalID == nil ? 3 : 4), items.prefix(2).allSatisfy(\.isCompleted) { break }
             try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        if intoNewTask {
+            let pendingID = try XCTUnwrap(store.note(note.id)?.tasks.first(where: { !$0.isCompleted })?.id)
+            for _ in 0..<20 {
+                host.layoutSubtreeIfNeeded()
+                if window.firstResponder === fields(host).first(where: { $0.taskID == pendingID })?.currentEditor() {
+                    break
+                }
+                try await Swift.Task.sleep(for: .milliseconds(20))
+            }
+            let pendingField = try XCTUnwrap(fields(host).first(where: { $0.taskID == pendingID }))
+            XCTAssertTrue(window.firstResponder === pendingField.currentEditor(),
+                          "After importing completed items, the caret should move to the first editable task")
         }
         window.makeFirstResponder(nil)
         try await Swift.Task.sleep(for: .milliseconds(100))
         let result = try XCTUnwrap(store.note(note.id))
-        XCTAssertEqual(result.tasks.map(\.text), intoTitle
+        XCTAssertEqual(result.tasks.map(\.text), originalID == nil
             ? ["Done", "Nested done", "Pending"] : ["Done", "Nested done", "Pending", "Following"])
-        XCTAssertEqual(result.tasks.map(\.indentLevel), intoTitle ? [0, 1, 0] : [0, 1, 0, 0])
-        XCTAssertEqual(result.tasks.map(\.isCompleted), intoTitle ? [true, true, false] : [true, true, false, true])
+        XCTAssertEqual(result.tasks.map(\.indentLevel), originalID == nil ? [0, 1, 0] : [0, 1, 0, 0])
+        XCTAssertEqual(result.tasks.map(\.isCompleted), originalID == nil ? [true, true, false] : [true, true, false, true])
         if let originalID { XCTAssertEqual(result.tasks.first?.id, originalID) }
         XCTAssertEqual(result.title, intoTitle ? nil : "Existing title")
         XCTAssertFalse(sawCompletion, "Import must not publish a transient completed note")

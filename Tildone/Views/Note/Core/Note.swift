@@ -142,7 +142,9 @@ struct Note: View {
     @State var singleTaskDraft = RichText(text: "")
     @State var singleTaskDraftID: TaskID?
     @State var stagedSingleMemoTaskID: TaskID?
-    @FocusState var focusedField: Field?
+    // Both capture fields are AppKit-backed; there is no SwiftUI .focused
+    // binding to retain a FocusState value or carry a focus request to them.
+    @State var focusedField: Field?
     @FocusState var focusedTaskID: TaskID?
 
     let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
