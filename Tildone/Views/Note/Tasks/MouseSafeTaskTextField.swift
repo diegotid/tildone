@@ -31,6 +31,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     struct PastedListItem {
         let richText: RichText
         let indentLevel: Int
+        var isCompleted = false
     }
 
     struct PastedList {
@@ -746,6 +747,9 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                     richText: item.richText,
                     indentLevel: compatibleAlternatives.reduce(item.indentLevel) {
                         max($0, $1.items[index].indentLevel)
+                    },
+                    isCompleted: item.isCompleted || compatibleAlternatives.contains {
+                        $0.items[index].isCompleted
                     }
                 )
             }
@@ -757,7 +761,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     ) -> PastedList? {
         let string = attributed.string as NSString
         guard string.length > 0 else { return nil }
-        var paragraphs: [(richText: RichText, indentation: CGFloat, isList: Bool)] = []
+        var paragraphs: [(richText: RichText, indentation: CGFloat, isList: Bool, isCompleted: Bool)] = []
         var location = 0
         while location < string.length {
             let lineRange = string.lineRange(for: NSRange(location: location, length: 0))
@@ -779,6 +783,10 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 ) as? NSParagraphStyle
                 let hasBulletPrefix = bulletPrefixRange(in: value.string) != nil
                 let isList = style?.textLists.isEmpty == false || hasBulletPrefix
+                let isCompleted = value.string.range(
+                    of: "^\\s*[-*+•◦▪‣]\\s+\\[[xX]\\]\\s+",
+                    options: .regularExpression
+                ) != nil
                 let sourceIndentation = leadingWhitespaceIndentation(in: value.string)
                 if let bulletRange = bulletPrefixRange(in: value.string) {
                     value.deleteCharacters(in: bulletRange)
@@ -796,7 +804,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                         // Markdown lists have no paragraph style, so preserve their
                         // leading whitespace as the hierarchy signal instead.
                         richIndentation + sourceIndentation,
-                        isList
+                        isList,
+                        isCompleted
                     ))
                 }
             }
@@ -809,7 +818,8 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         let items = taskParagraphs.map { paragraph in
             PastedListItem(
                 richText: paragraph.richText,
-                indentLevel: indents.firstIndex(of: paragraph.indentation) ?? 0
+                indentLevel: indents.firstIndex(of: paragraph.indentation) ?? 0,
+                isCompleted: paragraph.isCompleted
             )
         }
         guard !items.isEmpty else { return nil }

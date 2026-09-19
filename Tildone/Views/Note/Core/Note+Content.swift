@@ -504,8 +504,19 @@ extension Note {
                 .padding(.vertical, taskControlVerticalPadding)
             ZStack(alignment: .leading) {
                 if newTaskText.isEmpty { Text("New task").font(.system(size: CGFloat(fontSize))).foregroundColor(minimizedForeground).opacity(0.35).allowsHitTesting(false) }
-                TextField("", text: $newTaskText).textFieldStyle(.plain).font(.system(size: CGFloat(fontSize))).foregroundColor(noteForeground).tint(noteForeground)
-                    .onSubmit { handleNewTaskCommit() }.focused($focusedField, equals: .newTask)
+                NoteTitleTextField(
+                    text: $newTaskText,
+                    placeholder: "",
+                    isFocused: focusedField == .newTask,
+                    isNoteTitleField: false,
+                    font: .systemFont(ofSize: CGFloat(fontSize)),
+                    textColor: NSColor(noteForeground),
+                    onFocus: { focusedField = .newTask },
+                    onBlur: { handleNewTaskCommit() },
+                    onTextChange: {},
+                    onSubmit: { handleNewTaskCommit() },
+                    onPastedList: importPastedListIntoNewTask
+                )
                     .onChange(of: focusedField) { _, field in
                         guard field != .newTask else { return }
                         if newTaskText.isEmpty {
@@ -617,6 +628,7 @@ extension Note {
             onEnter: { handleEnter(for: task, cursor: $0) },
             onCopy: { Copier.copy(task.text, forType: .string) },
             onPaste: { paste(into: task) },
+            onPastedList: { importPastedList($0, replacing: task) },
             onMoveUp: { handleMoveUp(from: task.id) },
             onSubmit: { handleMoveDown(from: task.id) },
             onInsertAbove: { insertEmptyTask(at: index, indentLevel: task.indentLevel) },

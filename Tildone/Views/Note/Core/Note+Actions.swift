@@ -180,26 +180,40 @@ extension Note {
         _ list: MouseSafeTaskTextField.PastedList,
         replacing memo: TildoneDomain.Task
     ) -> Bool {
-        guard noteKind == .singleTask,
-              memo.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !list.items.isEmpty else { return false }
+        guard !list.items.isEmpty,
+              let index = tasks.firstIndex(where: { $0.id == memo.id }),
+              noteKind == .checklist || (noteKind == .singleTask
+                && memo.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        else { return false }
+        // Finish the old editor before replacing its model value, otherwise a
+        // later blur can write its stale text back over the imported first item.
+        noteWindow?.makeFirstResponder(nil)
         isImportingPastedList = true
         Swift.Task {
             defer { isImportingPastedList = false }
             do {
-                try await store.setKind(.checklist, for: noteID)
-                if let title = list.title {
-                    try await store.renameNote(noteID, to: title)
+                if noteKind == .singleTask {
+                    try await store.setKind(.checklist, for: noteID)
+                    if let title = list.title {
+                        try await store.renameNote(noteID, to: title)
+                    }
                 }
                 try await store.editTask(memo.id, richText: list.items[0].richText)
-                for item in list.items.dropFirst() {
+                try await store.setTaskIndentLevels([
+                    (id: memo.id, level: memo.indentLevel + list.items[0].indentLevel)
+                ])
+                var importedIDs = [memo.id]
+                for (offset, item) in list.items.dropFirst().enumerated() {
                     let task = try await store.addTask(
                         to: noteID,
                         text: item.richText.text,
-                        indentLevel: item.indentLevel
+                        insertingAt: index + offset + 1,
+                        indentLevel: memo.indentLevel + item.indentLevel
                     )
                     try await store.editTask(task.id, richText: item.richText)
+                    importedIDs.append(task.id)
                 }
+                try await applyPastedCompletion(list, taskIDs: importedIDs)
             } catch {
                 mutationErrorMessage = Self.mutationFailureMessage(
                     operation: "Error pasting tasks",
@@ -215,23 +229,41 @@ extension Note {
               note?.title == nil,
               tasks.isEmpty,
               !list.items.isEmpty else { return false }
+        return importCapturedList(list, usesTitle: true)
+    }
+
+    func importPastedListIntoNewTask(_ list: MouseSafeTaskTextField.PastedList) -> Bool {
+        guard noteKind == .checklist, !list.items.isEmpty else { return false }
+        return importCapturedList(list, usesTitle: false)
+    }
+
+    private func importCapturedList(
+        _ list: MouseSafeTaskTextField.PastedList,
+        usesTitle: Bool
+    ) -> Bool {
+        let baseIndentLevel = usesTitle ? 0 : (newTaskIndentLevel ?? 0)
+        // Replace the draft rather than committing it again when the editor blurs.
+        newTaskText = ""
         noteWindow?.makeFirstResponder(nil)
         isImportingPastedList = true
         Swift.Task {
             defer { isImportingPastedList = false }
             do {
-                if let title = list.title {
+                if usesTitle, let title = list.title {
                     try await store.renameNote(noteID, to: title)
                 }
+                var importedIDs: [TaskID] = []
                 for item in list.items {
                     let task = try await store.addTask(
                         to: noteID,
                         text: item.richText.text,
-                        indentLevel: item.indentLevel
+                        indentLevel: baseIndentLevel + item.indentLevel
                     )
                     try await store.editTask(task.id, richText: item.richText)
+                    importedIDs.append(task.id)
                 }
-                if let firstTaskID = store.note(noteID)?.tasks.first?.id {
+                try await applyPastedCompletion(list, taskIDs: importedIDs)
+                if let firstTaskID = importedIDs.first {
                     // Let SwiftUI install every imported field with its final
                     // rich value before AppKit attaches the shared editor.
                     DispatchQueue.main.async {
@@ -246,6 +278,20 @@ extension Note {
             }
         }
         return true
+    }
+
+    private func applyPastedCompletion(
+        _ list: MouseSafeTaskTextField.PastedList,
+        taskIDs: [TaskID]
+    ) async throws {
+        // All rows must exist before completing any of them. Apply unchecked
+        // items first so a checked first item cannot briefly complete the note.
+        let items = Array(zip(taskIDs, list.items))
+        for completed in [false, true] {
+            for (id, item) in items where item.isCompleted == completed {
+                _ = try await store.setTaskCompletion(id, completed: completed)
+            }
+        }
     }
 
     func handleNewTaskTab(outdent: Bool) {
@@ -457,7 +503,8 @@ extension Note {
     func isEditingNativeTaskField() -> Bool {
         guard let firstResponder = noteWindow?.firstResponder else { return false }
         return noteWindow?.contentView?.getNestedSubviews().contains { field in
-            guard let taskField = field as? MouseSafeTaskNSTextField else { return false }
+            guard let taskField = field as? MouseSafeTaskNSTextField,
+                  !taskField.isNewTaskField else { return false }
             return taskField.currentEditor() === firstResponder
         } ?? false
     }
@@ -631,6 +678,8 @@ extension Note {
     }
 
     func paste(into task: TildoneDomain.Task) {
+        if let list = MouseSafeTaskTextField.pastedList(),
+           importPastedList(list, replacing: task) { return }
         guard let clipboard = pastedText() else { return }
         let lines = clipboard.components(separatedBy: "\n").map {
             $0.trimmingCharacters(in: .whitespaces)
@@ -650,6 +699,8 @@ extension Note {
     }
 
     func pasteIntoNewTask() {
+        if let list = MouseSafeTaskTextField.pastedList(),
+           importPastedListIntoNewTask(list) { return }
         guard let clipboard = pastedText() else { return }
         newTaskText = clipboard
     }

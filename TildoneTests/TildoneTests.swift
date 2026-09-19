@@ -2151,6 +2151,118 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(list?.items.map(\.indentLevel), [0, 0, 1, 0, 0])
     }
 
+    func testMarkdownChecklistPreservesCheckedStateAndIndentation() throws {
+        let list = try XCTUnwrap(MouseSafeTaskTextField.pastedListItems(from:
+            NSAttributedString(string: "- [x] Done\n  - [X] Nested done\n- [ ] Pending")
+        ))
+        XCTAssertEqual(list.items.map(\.richText.text), ["Done", "Nested done", "Pending"])
+        XCTAssertEqual(list.items.map(\.isCompleted), [true, true, false])
+        XCTAssertEqual(list.items.map(\.indentLevel), [0, 1, 0])
+        let flat = MouseSafeTaskTextField.PastedList(title: nil, items: list.items.map {
+            .init(richText: $0.richText, indentLevel: 0)
+        })
+        let merged = MouseSafeTaskTextField.mergedListIndentation(primary: flat, alternatives: [list])
+        XCTAssertEqual(merged.items.map(\.isCompleted), [true, true, false])
+        XCTAssertEqual(merged.items.map(\.indentLevel), [0, 1, 0])
+        XCTAssertNil(MouseSafeTaskTextField.pastedListItems(from: NSAttributedString(string: "Plain text")))
+    }
+
+    @MainActor
+    func testNativeTaskPasteImportsListInBothRowLayouts() async throws {
+        for truncation in [TaskLineTruncation.single, .multiple] {
+            try await verifyNativeListPaste(truncation: truncation, intoTitle: false)
+        }
+    }
+
+    @MainActor
+    func testNativeTitlePasteStillImportsChecklist() async throws {
+        try await verifyNativeListPaste(truncation: .single, intoTitle: true)
+    }
+
+    @MainActor
+    private func verifyNativeListPaste(truncation: TaskLineTruncation, intoTitle: Bool) async throws {
+        let defaults = UserDefaults.standard
+        let previous = defaults.object(forKey: TaskLineTruncation.storageKey)
+        defaults.set(truncation.rawValue, forKey: TaskLineTruncation.storageKey)
+        defer {
+            if let previous { defaults.set(previous, forKey: TaskLineTruncation.storageKey) }
+            else { defaults.removeObject(forKey: TaskLineTruncation.storageKey) }
+        }
+        let pasteboard = NSPasteboard.general
+        let savedItems = pasteboard.pasteboardItems?.map { item in
+            item.types.compactMap { type in item.data(forType: type).map { (type, $0) } }
+        } ?? []
+        defer {
+            pasteboard.clearContents()
+            pasteboard.writeObjects(savedItems.map { values in
+                let item = NSPasteboardItem()
+                for (type, data) in values { item.setData(data, forType: type) }
+                return item
+            })
+        }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        var originalID: TaskID?
+        if !intoTitle {
+            try await store.renameNote(note.id, to: "Existing title")
+            originalID = try await store.addTask(to: note.id, text: "Original").id
+            let after = try await store.addTask(to: note.id, text: "Following")
+            _ = try await store.setTaskCompletion(after.id, completed: true)
+        }
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        var sawCompletion = false
+        let observation = presentation.$snapshot.sink { snapshot in
+            sawCompletion = sawCompletion || snapshot.completedAt != nil
+        }
+        defer { observation.cancel() }
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 360, height: 500),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: note.id))
+        window.setNoteHostingContentView(host)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
+            (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
+        }
+        for _ in 0..<20 {
+            host.layoutSubtreeIfNeeded()
+            if fields(host).contains(where: { intoTitle ? $0.isNoteTitleField : $0.taskID == originalID }) { break }
+            try await Swift.Task.sleep(for: .milliseconds(50))
+        }
+        let field = try XCTUnwrap(fields(host).first { intoTitle ? $0.isNoteTitleField : $0.taskID == originalID })
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? MouseSafeTaskFieldEditor)
+        if !intoTitle {
+            editor.setSelectedRange(NSRange(location: 0, length: editor.string.utf16.count))
+            pasteboard.clearContents()
+            pasteboard.setString("Plain replacement", forType: .string)
+            editor.paste(nil)
+            XCTAssertEqual(editor.string, "Plain replacement")
+        }
+        pasteboard.clearContents()
+        pasteboard.setString("- [x] Done\n  - [X] Nested done\n- [ ] Pending", forType: .string)
+        editor.paste(nil)
+        for _ in 0..<100 {
+            let items = store.note(note.id)?.tasks ?? []
+            if items.count == (intoTitle ? 3 : 4), items.prefix(2).allSatisfy(\.isCompleted) { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        window.makeFirstResponder(nil)
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        let result = try XCTUnwrap(store.note(note.id))
+        XCTAssertEqual(result.tasks.map(\.text), intoTitle
+            ? ["Done", "Nested done", "Pending"] : ["Done", "Nested done", "Pending", "Following"])
+        XCTAssertEqual(result.tasks.map(\.indentLevel), intoTitle ? [0, 1, 0] : [0, 1, 0, 0])
+        XCTAssertEqual(result.tasks.map(\.isCompleted), intoTitle ? [true, true, false] : [true, true, false, true])
+        if let originalID { XCTAssertEqual(result.tasks.first?.id, originalID) }
+        XCTAssertEqual(result.title, intoTitle ? nil : "Existing title")
+        XCTAssertFalse(sawCompletion, "Import must not publish a transient completed note")
+    }
+
     func testRichListKeepsPlainTextClipboardIndentationWhenTheRichListIsFlat() {
         let texts = ["First", "Second", "Nested", "Fourth"]
         let rich = MouseSafeTaskTextField.PastedList(

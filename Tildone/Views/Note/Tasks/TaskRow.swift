@@ -41,6 +41,7 @@ struct TaskRow: View {
     let onEnter: (Int?) -> Void
     let onCopy: () -> Void
     let onPaste: () -> Void
+    let onPastedList: (MouseSafeTaskTextField.PastedList) -> Bool
     let onMoveUp: () -> Void
     let onSubmit: () -> Void
     let onInsertAbove: () -> Void
@@ -179,7 +180,8 @@ struct TaskRow: View {
                             onBlur: onNativeBlur,
                             onEnter: { onEnter($0) },
                             onMoveUp: onMoveUp,
-                            onMoveDown: onSubmit
+                            onMoveDown: onSubmit,
+                            onPastedList: onPastedList
                         )
                         .frame(maxWidth: .infinity, minHeight: taskLineHeight, maxHeight: taskLineHeight, alignment: .leading)
                         .offset(x: 0, y: taskTextVerticalOffset)
@@ -204,7 +206,8 @@ struct TaskRow: View {
                             onBlur: onNativeBlur,
                             onEnter: { onEnter($0) },
                             onMoveUp: onMoveUp,
-                            onMoveDown: onSubmit
+                            onMoveDown: onSubmit,
+                            onPastedList: onPastedList
                         )
                         .padding(.trailing, isShowingRowControls && !isActive
                             ? (hasSubtasks ? 86 : 66) : 0)

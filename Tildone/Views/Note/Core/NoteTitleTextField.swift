@@ -6,12 +6,13 @@
 import AppKit
 import SwiftUI
 
-/// A native title editor that can route a pasted task list back to its note
+/// A native title/new-task editor that routes a pasted task list back to its note
 /// before AppKit inserts that list into the title field.
 struct NoteTitleTextField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
     let isFocused: Bool
+    var isNoteTitleField = true
     let font: NSFont
     let textColor: NSColor
     let onFocus: () -> Void
@@ -25,11 +26,17 @@ struct NoteTitleTextField: NSViewRepresentable {
     func makeNSView(context: Context) -> MouseSafeTaskNSTextField {
         let field = MouseSafeTaskNSTextField()
         field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
-        field.isNoteTitleField = true
+        field.isNoteTitleField = isNoteTitleField
+        field.isNewTaskField = !isNoteTitleField
+        field.onEditorFocus = { [weak coordinator = context.coordinator] in
+            guard coordinator?.parent.isNoteTitleField == false else { return }
+            coordinator?.parent.onFocus()
+        }
         field.delegate = context.coordinator
         field.placeholderString = placeholder
         field.font = font
         field.textColor = textColor
+        field.cursorColor = textColor
         field.isEditable = true
         field.isSelectable = true
         field.focusRingType = .none
@@ -54,6 +61,7 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.placeholderString = placeholder
         field.font = font
         field.textColor = textColor
+        field.cursorColor = textColor
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false
         }
@@ -105,6 +113,12 @@ struct NoteTitleTextField: NSViewRepresentable {
                 return false
             }
             parent.onSubmit()
+            if !parent.isNoteTitleField {
+                // Return keeps the draft editor active; reflect the cleared
+                // binding without waiting for an end-editing notification.
+                field?.stringValue = parent.text
+                textView.string = parent.text
+            }
             return true
         }
 
