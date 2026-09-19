@@ -21,6 +21,8 @@ struct ScrollGesturesHelp: View {
     private var selectedArrangementCorner: ArrangementCorner = .bottomLeft
     @AppStorage(ArrangementSpacing.cornerStorageKey)
     private var selectedArrangementCornerMargin: ArrangementSpacing = .medium
+    @AppStorage(ArrangementDockSpace.storageKey)
+    private var preservesDockSpace = false
     @AppStorage(AppShortcuts.opacityModifiersStorageKey)
     private var opacityModifiersRawValue = Int(AppShortcuts.defaultOpacity.modifiers.rawValue)
     @AppStorage(AppShortcuts.gatherModifiersStorageKey)
@@ -76,6 +78,7 @@ struct ScrollGesturesHelp: View {
                 GatherPreview(
                     corner: selectedArrangementCorner,
                     margin: selectedArrangementCornerMargin,
+                    reservesDockSpace: preservesDockSpace,
                     noteColor: noteColor,
                     backgroundOpacity: noteBackgroundOpacity
                 )

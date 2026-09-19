@@ -166,7 +166,7 @@ struct SettingsForm: View {
     static let generalPaneHeight: CGFloat = 148
     static let tasksPaneHeight: CGFloat = 244
     static let appearancePaneHeight: CGFloat = 720
-    static let positioningPaneHeight: CGFloat = 474
+    static let positioningPaneHeight: CGFloat = 516
 
     let store: MacSharedStore?
 
@@ -200,6 +200,9 @@ struct SettingsForm: View {
     
     @AppStorage(ArrangementSpacing.sideStorageKey)
     private var selectedArrangementSpacing: ArrangementSpacing = .minimum
+
+    @AppStorage(ArrangementDockSpace.storageKey)
+    private var preservesDockSpace = false
     
     @AppStorage(NoteColor.storageKey)
     private var noteColorRawValue = NoteColor.yellow.legacyRawValue
@@ -618,15 +621,18 @@ private extension SettingsForm {
                     .labelsHidden()
                 }
             }
-            LineUpPreview(
-                corner: selectedArrangementCorner,
-                margin: selectedArrangementCornerMargin,
-                alignment: selectedArrangementAlignment,
-                spacing: selectedArrangementSpacing,
-                noteColor: noteColor,
-                backgroundOpacity: noteBackgroundOpacity,
-                shortcut: lineUpShortcutBinding.wrappedValue
-            )
+            VStack(alignment: .leading, spacing: 10) {
+                LineUpPreview(
+                    corner: selectedArrangementCorner,
+                    margin: selectedArrangementCornerMargin,
+                    alignment: selectedArrangementAlignment,
+                    spacing: selectedArrangementSpacing,
+                    reservesDockSpace: preservesDockSpace,
+                    noteColor: noteColor,
+                    backgroundOpacity: noteBackgroundOpacity
+                )
+                dockSpaceSetting()
+            }
         }
 
         Divider()
@@ -653,10 +659,24 @@ private extension SettingsForm {
             GatherPreview(
                 corner: selectedArrangementCorner,
                 margin: selectedArrangementCornerMargin,
+                reservesDockSpace: preservesDockSpace,
                 noteColor: noteColor,
                 backgroundOpacity: noteBackgroundOpacity
             )
         }
+    }
+
+    @ViewBuilder
+    func dockSpaceSetting() -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle("Keep space for the Dock", isOn: $preservesDockSpace)
+            Text("Keeps the Dock clear when lining up notes or minimized notes.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(width: 240, alignment: .leading)
     }
 
     @ViewBuilder
@@ -1094,29 +1114,45 @@ private struct MockMinimizedNote: View {
 }
 
 private struct DockSizeReference: View {
+    let position: MacDockPosition
+
     private let icons: [(String, Color)] = [
         ("folder.fill", .blue),
         ("safari", .cyan),
+        ("message.fill", .green),
+        ("gearshape.fill", .gray),
         ("folder.fill", .indigo)
     ]
 
-    var body: some View {
-        HStack(spacing: 12) {
-            ForEach(Array(icons.enumerated()), id: \.offset) { _, icon in
-                Image(systemName: icon.0)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .background(icon.1.gradient, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            }
+    init(position: MacDockPosition = .bottom) {
+        self.position = position
+    }
+
+    var body: AnyView {
+        let dock = position == .bottom
+            ? AnyView(HStack(spacing: 8) { iconsView })
+            : AnyView(VStack(spacing: 8) { iconsView })
+        return AnyView(
+            dock
+                .padding(12)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(.white.opacity(0.42), lineWidth: 0.7)
+                }
+                .accessibilityHidden(true)
+        )
+    }
+
+    @ViewBuilder
+    private var iconsView: some View {
+        ForEach(Array(icons.enumerated()), id: \.offset) { _, icon in
+            Image(systemName: icon.0)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(icon.1.gradient, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
-        .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.white.opacity(0.42), lineWidth: 0.7)
-        }
-        .accessibilityHidden(true)
     }
 }
 
@@ -1352,12 +1388,13 @@ private struct LineUpPreview: View {
     let margin: ArrangementSpacing
     let alignment: ArrangementAlignment
     let spacing: ArrangementSpacing
+    let reservesDockSpace: Bool
     let noteColor: NoteColor
     let backgroundOpacity: Double
-    let shortcut: MacAppShortcut
 
     @State private var progress: CGFloat = 0
     @State private var hasAnimated = false
+    @State private var isReplayControlVisible = false
 
     private let starts = [
         CGPoint(x: 42, y: 39),
@@ -1365,9 +1402,11 @@ private struct LineUpPreview: View {
         CGPoint(x: 193, y: 48)
     ]
     private let noteSize = CGSize(width: 24, height: 30)
+    private let dockPosition = MacDockPosition.current
 
     var body: some View {
         SettingsPreviewCanvas {
+            PositioningDockPreview(position: dockPosition)
             ForEach(starts.indices, id: \.self) { index in
                 let target = targetCenter(
                     for: LineUpPreviewLayout.position(
@@ -1391,37 +1430,22 @@ private struct LineUpPreview: View {
                     y: starts[index].y + (target.y - starts[index].y) * progress
                 )
             }
-            VStack {
-                Spacer()
-                HStack {
-                    if corner != .bottomRight {
-                        Spacer()
-                    }
-                    Button(action: replay) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text(shortcut.displayName)
-                                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                                .tracking(1)
-                        }
-                        .foregroundStyle(.white.opacity(0.94))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            if isReplayControlVisible {
+                Button(action: replay) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 28, height: 26)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .stroke(.white.opacity(0.18))
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .stroke(.white.opacity(0.26), lineWidth: 0.7)
                         }
-                    }
-                    .buttonStyle(.plain)
-                    .help("Replay Line Up preview")
-                    if corner == .bottomRight {
-                        Spacer()
-                    }
                 }
+                .buttonStyle(.plain)
+                .help("Replay Line Up preview")
+                .position(x: 120, y: 80)
             }
-            .padding(8)
         }
         .onAppear {
             guard !hasAnimated else { return }
@@ -1431,6 +1455,7 @@ private struct LineUpPreview: View {
     }
 
     private func replay() {
+        isReplayControlVisible = false
         var resetTransaction = Transaction()
         resetTransaction.disablesAnimations = true
         withTransaction(resetTransaction) {
@@ -1440,12 +1465,20 @@ private struct LineUpPreview: View {
             withAnimation(.easeInOut(duration: 1.4)) {
                 progress = 1
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.9) {
+                guard progress >= 0.999 else { return }
+                isReplayControlVisible = true
+            }
         }
     }
 
     private func targetCenter(for position: Int) -> CGPoint {
         let previewMargin = CGFloat(margin.rawValue) / 4
         let previewSpacing = CGFloat(spacing.rawValue) / 8
+        let bounds = DockPreviewLayout.noteBounds(
+            reservingDockSpace: reservesDockSpace,
+            dockPosition: dockPosition
+        )
         let targetsRight = corner == .bottomRight || corner == .topRight
         let targetsTop = corner == .topLeft || corner == .topRight
         let stepX = noteSize.width + previewSpacing
@@ -1454,20 +1487,20 @@ private struct LineUpPreview: View {
         case .horizontal:
             return CGPoint(
                 x: targetsRight
-                    ? 240 - previewMargin - noteSize.width / 2 - CGFloat(position) * stepX
-                    : previewMargin + noteSize.width / 2 + CGFloat(position) * stepX,
+                    ? bounds.maxX - previewMargin - noteSize.width / 2 - CGFloat(position) * stepX
+                    : bounds.minX + previewMargin + noteSize.width / 2 + CGFloat(position) * stepX,
                 y: targetsTop
-                    ? previewMargin + noteSize.height / 2
-                    : 160 - previewMargin - noteSize.height / 2
+                    ? bounds.minY + previewMargin + noteSize.height / 2
+                    : bounds.maxY - previewMargin - noteSize.height / 2
             )
         case .vertical:
             return CGPoint(
                 x: targetsRight
-                    ? 240 - previewMargin - noteSize.width / 2
-                    : previewMargin + noteSize.width / 2,
+                    ? bounds.maxX - previewMargin - noteSize.width / 2
+                    : bounds.minX + previewMargin + noteSize.width / 2,
                 y: targetsTop
-                    ? previewMargin + noteSize.height / 2 + CGFloat(position) * stepY
-                    : 160 - previewMargin - noteSize.height / 2 - CGFloat(position) * stepY
+                    ? bounds.minY + previewMargin + noteSize.height / 2 + CGFloat(position) * stepY
+                    : bounds.maxY - previewMargin - noteSize.height / 2 - CGFloat(position) * stepY
             )
         }
     }
@@ -1510,6 +1543,7 @@ enum LineUpPreviewLayout {
 struct GatherPreview: View {
     let corner: ArrangementCorner
     let margin: ArrangementSpacing
+    let reservesDockSpace: Bool
     let noteColor: NoteColor
     let backgroundOpacity: Double
 
@@ -1523,11 +1557,13 @@ struct GatherPreview: View {
         CGSize(width: 35, height: 45),
         CGSize(width: 23, height: 31)
     ]
+    private let dockPosition = MacDockPosition.current
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
             let progress = SettingsForm.gatherPreviewProgress(at: context.date)
             SettingsPreviewCanvas {
+                PositioningDockPreview(position: dockPosition)
                 ForEach(starts.indices, id: \.self) { index in
                     let target = targetCenter(for: index)
                     SampleSettingsNote(
@@ -1560,16 +1596,57 @@ struct GatherPreview: View {
         let previewMargin = CGFloat(margin.rawValue) / 4
         let stagger = CGFloat(index) * 5
         let size = sizes[index]
+        let bounds = DockPreviewLayout.noteBounds(
+            reservingDockSpace: reservesDockSpace,
+            dockPosition: dockPosition
+        )
         let targetsRight = corner == .bottomRight || corner == .topRight
         let targetsTop = corner == .topLeft || corner == .topRight
         return CGPoint(
             x: targetsRight
-                ? 240 - previewMargin - size.width / 2 - stagger
-                : previewMargin + size.width / 2 + stagger,
+                ? bounds.maxX - previewMargin - size.width / 2 - stagger
+                : bounds.minX + previewMargin + size.width / 2 + stagger,
             y: targetsTop
-                ? previewMargin + size.height / 2 + stagger
-                : 160 - previewMargin - size.height / 2 - stagger
+                ? bounds.minY + previewMargin + size.height / 2 + stagger
+                : bounds.maxY - previewMargin - size.height / 2 - stagger
         )
+    }
+}
+
+private struct PositioningDockPreview: View {
+    let position: MacDockPosition
+
+    var body: some View {
+        DockSizeReference(position: position)
+            .scaleEffect(0.42)
+            .frame(
+                width: position == .bottom ? 112 : 32,
+                height: position == .bottom ? 32 : 112
+            )
+            .position(DockPreviewLayout.center(for: position))
+            .zIndex(10)
+    }
+}
+
+private enum DockPreviewLayout {
+    static func center(for position: MacDockPosition) -> CGPoint {
+        switch position {
+        case .bottom: CGPoint(x: 120, y: 142)
+        case .left: CGPoint(x: 18, y: 80)
+        case .right: CGPoint(x: 222, y: 80)
+        }
+    }
+
+    static func noteBounds(
+        reservingDockSpace: Bool,
+        dockPosition: MacDockPosition
+    ) -> CGRect {
+        guard reservingDockSpace else { return CGRect(x: 0, y: 0, width: 240, height: 160) }
+        switch dockPosition {
+        case .bottom: return CGRect(x: 0, y: 0, width: 240, height: 129)
+        case .left: return CGRect(x: 31, y: 0, width: 209, height: 160)
+        case .right: return CGRect(x: 0, y: 0, width: 209, height: 160)
+        }
     }
 }
 
@@ -2073,6 +2150,31 @@ enum ArrangementAlignment: Int {
     case vertical
     
     static let storageKey = "selectedArrangementAlignment"
+}
+
+enum ArrangementDockSpace {
+    static let storageKey = "arrangementReservesDockSpace"
+}
+
+enum MacDockPosition: Equatable {
+    case bottom
+    case left
+    case right
+
+    static var current: MacDockPosition {
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return .bottom }
+        return position(for: screen.frame, visibleFrame: screen.visibleFrame)
+    }
+
+    static func position(for screenFrame: NSRect, visibleFrame: NSRect) -> MacDockPosition {
+        let leftInset = max(0, visibleFrame.minX - screenFrame.minX)
+        let rightInset = max(0, screenFrame.maxX - visibleFrame.maxX)
+        let bottomInset = max(0, visibleFrame.minY - screenFrame.minY)
+
+        if leftInset > bottomInset, leftInset >= rightInset { return .left }
+        if rightInset > bottomInset { return .right }
+        return .bottom
+    }
 }
 
 enum ArrangementSpacing: Int {

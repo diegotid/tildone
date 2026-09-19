@@ -1013,6 +1013,32 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    func testDockPositionUsesTheInsetEdgeOfTheVisibleFrame() {
+        let screen = NSRect(x: 0, y: 0, width: 1_000, height: 800)
+
+        XCTAssertEqual(
+            MacDockPosition.position(
+                for: screen,
+                visibleFrame: NSRect(x: 0, y: 80, width: 1_000, height: 696)
+            ),
+            .bottom
+        )
+        XCTAssertEqual(
+            MacDockPosition.position(
+                for: screen,
+                visibleFrame: NSRect(x: 80, y: 0, width: 920, height: 776)
+            ),
+            .left
+        )
+        XCTAssertEqual(
+            MacDockPosition.position(
+                for: screen,
+                visibleFrame: NSRect(x: 0, y: 0, width: 920, height: 776)
+            ),
+            .right
+        )
+    }
+
     func testCompactNoteSpacingUsesTheRenderedScale() {
         XCTAssertEqual(CompactNoteScale.spacing(20, for: 0.5), 10)
         XCTAssertEqual(CompactNoteScale.spacing(20, for: 1), 20)

@@ -107,6 +107,8 @@ struct Desktop: View {
     private var selectedArrangementCornerMargin: ArrangementSpacing = .medium
     @AppStorage(ArrangementSpacing.sideStorageKey)
     private var selectedArrangementSpacing: ArrangementSpacing = .minimum
+    @AppStorage(ArrangementDockSpace.storageKey)
+    private var preservesDockSpace = false
     @AppStorage(NoteWindowClickThrough.storageKey)
     private var clickThroughNotes = false
     @AppStorage(AppShortcuts.opacityModifiersStorageKey)
@@ -207,6 +209,12 @@ struct Desktop: View {
                 retargetCornerConvergence(
                     previousCorner: selectedArrangementCorner,
                     previousMargin: previousMargin
+                )
+            }
+            .onChange(of: preservesDockSpace) { _, _ in
+                retargetCornerConvergence(
+                    previousCorner: selectedArrangementCorner,
+                    previousMargin: selectedArrangementCornerMargin
                 )
             }
             .onChange(of: clickThroughNotes) { _, _ in
@@ -1060,10 +1068,10 @@ private extension Desktop {
             result.merge(
                 NoteCornerConvergence.targetFrames(
                     for: items,
-                    in: group.key.frame,
+                    in: arrangementScreenFrame(for: group.key),
                     corner: corner,
                     margin: CGFloat(margin.rawValue),
-                    topReservedHeight: menuBarHeight(on: group.key)
+                    topReservedHeight: preservesDockSpace ? 0 : menuBarHeight(on: group.key)
                 ),
                 uniquingKeysWith: { _, new in new }
             )
@@ -1321,12 +1329,12 @@ private extension Desktop {
         let horizontal = selectedArrangementAlignment == .horizontal
         let placedOrigin = MacDesktopPlacement.origin(
             for: window.frame.size,
-            on: screen.frame,
+            on: arrangementScreenFrame(for: screen),
             corner: selectedArrangementCorner,
             horizontal: horizontal,
             position: newPosition,
             cornerMargin: selectedArrangementCornerMargin.rawValue,
-            topReservedHeight: menuBarHeight(on: screen)
+            topReservedHeight: preservesDockSpace ? 0 : menuBarHeight(on: screen)
         )
         let frame = NSRect(origin: placedOrigin, size: window.frame.size)
         if animated {
@@ -1375,6 +1383,10 @@ private extension Desktop {
 
     func menuBarHeight(on screen: NSScreen) -> CGFloat {
         max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+    }
+
+    func arrangementScreenFrame(for screen: NSScreen) -> NSRect {
+        preservesDockSpace ? screen.visibleFrame : screen.frame
     }
 
     func foregroundWindowUpperRightCorner() -> CGPoint {
