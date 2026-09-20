@@ -167,7 +167,6 @@ struct RichTaskTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             hasLocalEdits = true
-            parent.richText = RichTaskTextEditor.richText(from: textView.attributedText)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {

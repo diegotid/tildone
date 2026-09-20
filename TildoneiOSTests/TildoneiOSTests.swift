@@ -146,6 +146,39 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(commits.isEmpty)
     }
 
+    func testIPhoneTaskEditorPublishesTypingOnlyAfterEditingEnds() {
+        let taskID = TaskID()
+        var draft = RichText(text: "Before")
+        var committed: RichText?
+        var focusState = FocusState<TaskID?>()
+        let editor = RichTaskTextEditor(
+            richText: Binding(
+                get: { draft },
+                set: { draft = $0 }
+            ),
+            modelRichText: draft,
+            taskID: taskID,
+            focusedTask: focusState.projectedValue,
+            isCompleted: false,
+            onCommit: { committed = $0 }
+        )
+        let coordinator = RichTaskTextEditor.Coordinator(parent: editor)
+        let textView = UITextView()
+        textView.attributedText = NSAttributedString(string: "Before")
+
+        coordinator.textViewDidBeginEditing(textView)
+        textView.attributedText = NSAttributedString(string: "Before typing")
+        coordinator.textViewDidChange(textView)
+
+        XCTAssertEqual(draft, RichText(text: "Before"))
+        XCTAssertNil(committed)
+
+        coordinator.textViewDidEndEditing(textView)
+
+        XCTAssertEqual(draft, RichText(text: "Before typing"))
+        XCTAssertEqual(committed, RichText(text: "Before typing"))
+    }
+
     func testIPhoneTransportIsDisabledUnderTests() {
         XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
     }
