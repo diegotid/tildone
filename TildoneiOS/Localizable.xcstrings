@@ -1039,7 +1039,7 @@
       }
     },
     "Done" : {
-      "comment" : "The accessibility label for the note detail toolbar button that exits edit mode.",
+      "comment" : "The accessibility label for the note detail toolbar button that finishes renaming.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1091,6 +1091,7 @@
     },
     "Edit" : {
       "comment" : "The accessibility label for the note detail toolbar button that enters edit mode.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

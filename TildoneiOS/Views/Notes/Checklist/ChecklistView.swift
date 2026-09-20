@@ -15,12 +15,11 @@ struct ChecklistView: View {
     @ObservedObject private var presentation: TildoneiOSNotePresentation
     let noteID: NoteID
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.editMode) private var editMode
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
     @State private var hasInitializedTitleDraft = false
-    @State private var keepsTitleInputVisible = false
+    @State private var isRenamingTitle = false
     @State private var collapsedTaskIDs: Set<TaskID> = []
     @State private var taskInsertionTargetID: TaskID?
     @State private var taskInsertionText = ""
@@ -41,10 +40,6 @@ struct ChecklistView: View {
     private var note: Note? { presentation.snapshot.note }
     private var tasks: [Task] { presentation.snapshot.tasks }
 
-    private var isInEditMode: Bool {
-        editMode?.wrappedValue.isEditing == true
-    }
-
     private var isUntitled: Bool {
         note?.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
     }
@@ -53,12 +48,16 @@ struct ChecklistView: View {
         Self.normalizedTitle(title) != nil || !tasks.isEmpty
     }
 
+    private var needsTitleInput: Bool {
+        isUntitled && titleBaseline == nil
+    }
+
     private var showsTitleInput: Bool {
-        isInEditMode || isEditingTitle || isUntitled || keepsTitleInputVisible
+        isRenamingTitle || needsTitleInput
     }
 
     private var usesInlineNavigationTitle: Bool {
-        showsTitleInput
+        isRenamingTitle
     }
 
     var body: some View {
@@ -76,15 +75,15 @@ struct ChecklistView: View {
                             .font(.title2.weight(.semibold))
                             .submitLabel(.done)
                             .onSubmit {
-                                saveTitle()
-                                if Self.normalizedTitle(title) == nil {
-                                    isEditingTitle = false
-                                    isAddingTask = true
-                                }
+                                isEditingTitle = false
                             }
                             .onChange(of: isEditingTitle) { wasEditing, isEditing in
                                 guard wasEditing, !isEditing else { return }
                                 finishTitleEditing()
+                                isRenamingTitle = false
+                                if Self.normalizedTitle(title) == nil {
+                                    isAddingTask = true
+                                }
                             }
                     }
 
@@ -181,7 +180,7 @@ struct ChecklistView: View {
                         .onDelete(perform: deleteTasks)
                         .onMove(perform: move)
 
-                        if !isInEditMode && (taskInsertionTargetID == nil || !taskInsertionText.isEmpty) {
+                        if taskInsertionTargetID == nil || !taskInsertionText.isEmpty {
                             TextField("New task", text: $newTaskText)
                                 .focused($isAddingTask)
                                 .submitLabel(.next)
@@ -197,11 +196,16 @@ struct ChecklistView: View {
                         }
                     }
                 }
-                .navigationTitle(usesInlineNavigationTitle ? "" : note.title!)
+                // Removing the title field must reset the list's scroll position so
+                // the navigation bar expands its large title again.
+                .id(isRenamingTitle)
+                .navigationTitle(
+                    usesInlineNavigationTitle ? "" : (Self.normalizedTitle(note.title) ?? title)
+                )
                 .navigationBarTitleDisplayMode(usesInlineNavigationTitle ? .inline : .large)
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
-                        if canEditTasks && !isInEditMode {
+                        if canEditTasks && !isRenamingTitle {
                             Button {
                                 addTaskFromHeader(scrollProxy: scrollProxy)
                             } label: {
@@ -209,19 +213,15 @@ struct ChecklistView: View {
                             }
                             .accessibilityLabel("Add task")
                         }
-                        if canEditTasks {
-                            Button {
-                                withAnimation {
-                                    editMode?.wrappedValue = isInEditMode ? .inactive : .active
-                                }
-                            } label: {
-                                Image(systemName: isInEditMode ? "checkmark" : "pencil")
-                            }
-                            .accessibilityLabel(isInEditMode ? "Done" : "Edit")
+                        Button {
+                            toggleTitleEditing()
+                        } label: {
+                            Image(systemName: isRenamingTitle ? "checkmark" : "pencil")
                         }
+                        .accessibilityLabel(isRenamingTitle ? "Done" : "Rename Note")
                     }
 
-                    if !isInEditMode {
+                    if !isRenamingTitle {
                         if #available(iOS 26.0, *) {
                             ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         }
@@ -277,8 +277,8 @@ struct ChecklistView: View {
         }
         .task {
             synchronizeWithPresentation()
-            keepsTitleInputVisible = isUntitled
-            isEditingTitle = isUntitled
+            isRenamingTitle = isUntitled
+            if isUntitled { isEditingTitle = true }
             isAddingTask = !isUntitled && tasks.isEmpty
         }
         .onChange(of: presentation.snapshot) { oldSnapshot, newSnapshot in
@@ -404,14 +404,23 @@ struct ChecklistView: View {
     }
 
     private func finishTitleEditing() {
-        if Self.normalizedTitle(title) == titleBaseline {
-            title = note?.title ?? ""
-            titleBaseline = Self.normalizedTitle(note?.title)
+        guard Self.normalizedTitle(title) != titleBaseline else { return }
+        saveTitle()
+    }
+
+    private func toggleTitleEditing() {
+        if isRenamingTitle {
+            finishTitleEditing()
+            isRenamingTitle = false
+            isEditingTitle = false
         } else {
-            saveTitle()
-        }
-        if keepsTitleInputVisible, Self.normalizedTitle(title) != nil {
-            isAddingTask = true
+            focusedTask = nil
+            isAddingTask = false
+            isAddingTaskAbove = false
+            isRenamingTitle = true
+            DispatchQueue.main.async {
+                isEditingTitle = true
+            }
         }
     }
 
