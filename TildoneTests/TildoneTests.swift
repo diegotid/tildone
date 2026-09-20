@@ -2869,6 +2869,47 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testFocusedTaskEditorRetainsRichAttributes() throws {
+        let richText = RichText(
+            text: "Formatted",
+            spans: [RichTextSpan(
+                range: RichTextRange(location: 0, length: 9),
+                attributes: RichTextAttributes(
+                    styles: [.bold, .underline],
+                    foregroundColor: .red,
+                    highlightColor: .yellow
+                )
+            )]
+        )
+        let field = MouseSafeTaskNSTextField(frame: NSRect(x: 0, y: 0, width: 180, height: 24))
+        field.cell = MouseSafeTaskNSTextFieldCell(textCell: "")
+        field.isEditable = true
+        field.allowsEditingTextAttributes = true
+        field.attributedStringValue = MouseSafeTaskTextField.attributedString(
+            from: richText, fontSize: 14, baseColor: .black
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 80),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        window.contentView?.addSubview(field)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        let attributes = editor.attributedString().attributes(at: 0, effectiveRange: nil)
+        let font = try XCTUnwrap(attributes[.font] as? NSFont)
+        let foregroundColor = try XCTUnwrap(attributes[.foregroundColor] as? NSColor)
+        let highlightColor = try XCTUnwrap(attributes[.backgroundColor] as? NSColor)
+
+        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.bold))
+        XCTAssertEqual(attributes[.underlineStyle] as? Int, NSUnderlineStyle.single.rawValue)
+        XCTAssertTrue(foregroundColor.isEqual(NSColor.systemRed))
+        XCTAssertTrue(highlightColor.isEqual(NSColor.systemYellow.withAlphaComponent(0.34)))
+    }
+
+    @MainActor
     func testFormatNotificationUsesLastSelectionWhenMenuTemporarilyEndsEditing() throws {
         let plainText = RichText(text: "Formatted")
         var modelValue = plainText
