@@ -39,6 +39,9 @@ struct ChecklistView: View {
 
     private var note: Note? { presentation.snapshot.note }
     private var tasks: [Task] { presentation.snapshot.tasks }
+    private var singleMemoUnavailable: Bool {
+        note?.kind == .checklist && tasks.count > 1
+    }
 
     private var isUntitled: Bool {
         note?.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
@@ -363,8 +366,14 @@ struct ChecklistView: View {
             Button {
                 Swift.Task { try? await appModel.setKind(noteID: noteID, kind: .singleTask) }
             } label: {
-                Label("Single memo", systemImage: "text.aligncenter")
+                Label {
+                    Text("Single memo")
+                } icon: {
+                    Image(systemName: singleMemoUnavailable ? "nosign" : "text.aligncenter")
+                        .opacity(singleMemoUnavailable ? 0.5 : 1)
+                }
             }
+            .disabled(singleMemoUnavailable)
         } label: {
             Image(systemName: note.kind == .checklist ? "checklist" : "text.aligncenter")
         }

@@ -56,6 +56,33 @@ final class TildonePersistenceTests: XCTestCase {
         })
     }
 
+    func testTaskListWithMultipleTasksCannotBecomeSingleMemo() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        _ = try await repository.addTask(
+            id: taskID,
+            to: noteID,
+            createdAt: createdAt,
+            text: "First",
+            orderToken: try OrderToken.between(nil, nil),
+            indentLevel: 0
+        )
+        _ = try await repository.addTask(
+            id: TaskID(),
+            to: noteID,
+            createdAt: createdAt,
+            text: "Second",
+            orderToken: try OrderToken.between(nil, nil),
+            indentLevel: 0
+        )
+
+        await XCTAssertThrowsPersistenceError(.domainInvariant) {
+            _ = try await repository.setNoteKind(id: self.noteID, kind: .singleTask)
+        }
+        let note = try await repository.note(id: noteID)
+        XCTAssertEqual(note.kind, .checklist)
+    }
+
     func testEmptyNoteConversionPersistsMemoTaskAndOutboxAtomically() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)

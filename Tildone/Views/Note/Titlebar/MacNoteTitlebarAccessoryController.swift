@@ -363,14 +363,29 @@ private struct MacNoteKindMenu: View {
     let noteID: NoteID
     var foreground: Color = .primary
 
+    private var singleMemoUnavailable: Bool {
+        presentation.snapshot.kind == .checklist
+            && presentation.snapshot.tasks.count > 1
+    }
+
     var body: some View {
         Menu {
             Button { setKind(.checklist) } label: {
                 Label("Task list", systemImage: "checklist")
             }
             Button { setKind(.singleTask) } label: {
-                Label("Single memo", systemImage: "text.aligncenter")
+                if singleMemoUnavailable {
+                    Label {
+                        Text("Single memo")
+                    } icon: {
+                        Image(systemName: "nosign")
+                            .opacity(0.5)
+                    }
+                } else {
+                    Label("Single memo", systemImage: "text.aligncenter")
+                }
             }
+            .disabled(singleMemoUnavailable)
         } label: {
             Image(systemName: presentation.snapshot.kind == .checklist ? "checklist" : "text.aligncenter")
                 .font(.system(size: 12, weight: .semibold))

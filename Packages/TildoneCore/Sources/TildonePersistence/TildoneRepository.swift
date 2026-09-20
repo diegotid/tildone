@@ -360,6 +360,11 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         var note = try mappedNote(from: stored, in: context)
         guard note.lifecycle == .active else { throw PersistenceError.domainInvariant }
         if note.kind == kind, try storedNoteKind(noteID: id, in: context) != nil { return note }
+        let activeTaskCount = try mappedUniqueTasks(noteID: id, in: context)
+            .filter { $0.lifecycle == .active }.count
+        guard kind != .singleTask || activeTaskCount <= 1 else {
+            throw PersistenceError.domainInvariant
+        }
         let metadata = try workspaceMetadata(in: context)
         let stamp = try nextStamp(metadata, observing: maxVersion(in: note))
         do { try note.setKind(kind, version: stamp) }
