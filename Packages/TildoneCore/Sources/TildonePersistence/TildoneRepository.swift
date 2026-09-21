@@ -360,8 +360,9 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         var note = try mappedNote(from: stored, in: context)
         guard note.lifecycle == .active else { throw PersistenceError.domainInvariant }
         if note.kind == kind, try storedNoteKind(noteID: id, in: context) != nil { return note }
-        let activeTaskCount = try mappedUniqueTasks(noteID: id, in: context)
-            .filter { $0.lifecycle == .active }.count
+        let activeTasks = try mappedUniqueTasks(noteID: id, in: context)
+            .filter { $0.lifecycle == .active }
+        let activeTaskCount = activeTasks.count
         guard kind != .singleTask || activeTaskCount <= 1 else {
             throw PersistenceError.domainInvariant
         }
@@ -378,9 +379,57 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             context.insert(try StoredDomainMapping.storedSingleMemoFont(from: note))
         }
         stored.recordSchemaVersion = Note.currentSchemaVersion
-        try enqueue(.note, id: id.stringValue, sequence: stamp.logicalCounter, in: context)
+        var noteSequence = stamp.logicalCounter
+        if kind == .singleTask,
+           let task = activeTasks.first,
+           let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !title.isEmpty {
+            let taskStored = try requireStoredTask(id: task.id, in: context)
+            var prefixedTask = task
+            let taskStamp = try nextStamp(
+                metadata,
+                observing: max(stamp, maxVersion(in: task))
+            )
+            do {
+                try prefixedTask.editRichText(
+                    singleMemoRichText(from: task.richText, prefixedBy: title),
+                    version: taskStamp
+                )
+                try promoteTaskToCurrentSchema(&prefixedTask, version: taskStamp)
+            } catch {
+                throw PersistenceError.domainInvariant
+            }
+            let meaningfulEditStamp = try nextStamp(
+                metadata,
+                observing: max(note.lastMeaningfulEditVersion, taskStamp)
+            )
+            do { try note.recordMeaningfulEdit(at: now(), version: meaningfulEditStamp) }
+            catch { throw PersistenceError.domainInvariant }
+            try StoredDomainMapping.update(stored, from: note)
+            try StoredDomainMapping.update(taskStored, from: prefixedTask)
+            try upsertTaskIndentation(for: prefixedTask, in: context)
+            try upsertTaskRichText(for: prefixedTask, in: context)
+            try enqueue(.task, id: prefixedTask.id.stringValue, sequence: taskStamp.logicalCounter, in: context)
+            noteSequence = meaningfulEditStamp.logicalCounter
+        }
+        try enqueue(.note, id: id.stringValue, sequence: noteSequence, in: context)
         try saveMutation(context)
         return try mappedNote(from: stored, in: context)
+    }
+
+    private func singleMemoRichText(from richText: RichText, prefixedBy title: String) -> RichText {
+        let prefix = richText.text.isEmpty ? "\(title):" : "\(title): "
+        let offset = prefix.utf16.count
+        return RichText(
+            text: prefix + richText.text,
+            spans: richText.spans.map { span in
+                RichTextSpan(
+                    range: RichTextRange(location: span.range.location + offset, length: span.range.length),
+                    attributes: span.attributes
+                )
+            },
+            representationVersion: richText.representationVersion
+        )
     }
 
     /// Converts an empty checklist into a single memo and creates the memo's
