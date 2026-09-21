@@ -72,6 +72,7 @@ struct MacTaskTextFormatMenu: View {
             }
         } label: {
             Label("Font", systemImage: "textformat.size")
+                .labelStyle(.titleAndIcon)
         }
         .tint(.primary)
     }
@@ -93,6 +94,7 @@ struct MacTaskTextFormatMenu: View {
             NotificationCenter.default.post(name: .formatTaskText, object: format)
         } label: {
             Label(title, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
         }
         .tint(.primary)
     }
@@ -115,10 +117,12 @@ struct MacTaskTextFormatMenu: View {
                         Image(nsImage: color.menuPreviewImage(isHighlight: isHighlight))
                             .renderingMode(.original)
                     }
+                    .labelStyle(.titleAndIcon)
                 }
             }
         } label: {
             Label(title, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
         }
         .tint(.primary)
     }

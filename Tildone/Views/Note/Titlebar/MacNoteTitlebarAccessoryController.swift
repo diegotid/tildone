@@ -213,6 +213,7 @@ private struct MacNoteFocusPrivacyMenu: View {
                     "Blur Content",
                     systemImage: "drop"
                 )
+                .labelStyle(.titleAndIcon)
             }
             Toggle(isOn: Binding(
                 get: { state.staysInBackground },
@@ -222,6 +223,7 @@ private struct MacNoteFocusPrivacyMenu: View {
                     "Stay in Background",
                     systemImage: "macwindow.on.rectangle"
                 )
+                .labelStyle(.titleAndIcon)
             }
             Divider()
             Button(action: resetToFocusFilterDefaults) {
@@ -234,12 +236,14 @@ private struct MacNoteFocusPrivacyMenu: View {
                 } icon: {
                     focusFilterDefaultsMenuIcon
                 }
+                .labelStyle(.titleAndIcon)
             }
             .disabled(usesFocusFilterDefaults)
             Button {
                 NotificationCenter.default.post(name: .openFocusFilterHelp, object: nil)
             } label: {
                 Label("Focus Filter Help", systemImage: "info.circle")
+                    .labelStyle(.titleAndIcon)
             }
         } label: {
             Image(systemName: usesFocusFilterDefaults ? "moon" : "moon.fill")
@@ -372,6 +376,7 @@ private struct MacNoteKindMenu: View {
         Menu {
             Button { setKind(.checklist) } label: {
                 Label("Task list", systemImage: "checklist")
+                    .labelStyle(.titleAndIcon)
             }
             Button { setKind(.singleTask) } label: {
                 if singleMemoUnavailable {
@@ -381,8 +386,10 @@ private struct MacNoteKindMenu: View {
                         Image(systemName: "nosign")
                             .opacity(0.5)
                     }
+                    .labelStyle(.titleAndIcon)
                 } else {
                     Label("Single memo", systemImage: "text.aligncenter")
+                        .labelStyle(.titleAndIcon)
                 }
             }
             .disabled(singleMemoUnavailable)
