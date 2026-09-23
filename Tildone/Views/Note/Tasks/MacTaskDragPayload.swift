@@ -8,6 +8,9 @@ import TildoneDomain
 import UniformTypeIdentifiers
 
 struct MacTaskDragPayload: Codable, Hashable, Transferable {
+    // A text editor can accept public.json and intercept a task drop.
+    static let contentType = UTType(exportedAs: "studio.cuatro.tildone.task-drag", conformingTo: .data)
+
     let noteID: NoteID
     let taskID: TaskID
 
@@ -16,6 +19,6 @@ struct MacTaskDragPayload: Codable, Hashable, Transferable {
     }
 
     static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .json)
+        CodableRepresentation(contentType: contentType)
     }
 }

@@ -66,6 +66,21 @@ enum MacDesktopPlacement {
     }
 }
 
+enum NoteWindowLineUpSelection {
+    static func windows(
+        notes: [NSWindow],
+        folders: [NSWindow],
+        onlyMinimized: Bool
+    ) -> [NSWindow] {
+        let visibleNotes = notes.filter {
+            $0.isVisible && $0.isOnActiveSpace
+                && (!onlyMinimized || $0.title.starts(with: "_"))
+        }
+        let visibleFolders = folders.filter { $0.isVisible && $0.isOnActiveSpace }
+        return visibleNotes + visibleFolders
+    }
+}
+
 /// macOS-only window coordinator. It renders repository snapshots but owns no
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
@@ -1260,7 +1275,8 @@ private extension Desktop {
 
     func arrangeNotes(onlyMinimized: Bool = false, animated: Bool = true) {
         resetCornerConvergence()
-        for (noteID, window) in noteWindows where !onlyMinimized || window.title.starts(with: "_") {
+        for (noteID, window) in noteWindows where window.isVisible && window.isOnActiveSpace
+            && (!onlyMinimized || window.title.starts(with: "_")) {
             NoteWindowManualPosition.setIsWheelPosition(false, for: noteID)
         }
         let horizontal = selectedArrangementAlignment == .horizontal
@@ -1300,10 +1316,13 @@ private extension Desktop {
     }
 
     func noteWindowScreenMap(onlyMinimized: Bool) -> [NSScreen: [NSWindow]] {
-        let regularNotes = noteWindows.values.filter { !onlyMinimized || $0.title.starts(with: "_") }
-        let folders = colorFolderWindows.values.map { $0 as NSWindow }
+        let windows = NoteWindowLineUpSelection.windows(
+            notes: Array(noteWindows.values),
+            folders: colorFolderWindows.values.map { $0 as NSWindow },
+            onlyMinimized: onlyMinimized
+        )
         return Dictionary(
-            grouping: (regularNotes + folders).compactMap { $0.screen == nil ? nil : $0 },
+            grouping: windows.compactMap { $0.screen == nil ? nil : $0 },
             by: { $0.screen! }
         )
     }

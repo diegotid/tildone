@@ -6,10 +6,31 @@
 import CloudKit
 import SwiftUI
 import XCTest
+import UniformTypeIdentifiers
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
 @testable import Tildone
+
+private final class LineUpWindowStub: NSWindow {
+    var appearsVisible = true
+    var appearsOnActiveSpace = true
+
+    override var isVisible: Bool { appearsVisible }
+    override var isOnActiveSpace: Bool { appearsOnActiveSpace }
+
+    init(title: String, visible: Bool = true, onActiveSpace: Bool = true) {
+        super.init(
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
+            styleMask: [],
+            backing: .buffered,
+            defer: false
+        )
+        self.title = title
+        appearsVisible = visible
+        appearsOnActiveSpace = onActiveSpace
+    }
+}
 
 final class TildoneTests: XCTestCase {
     @MainActor
@@ -321,6 +342,33 @@ final class TildoneTests: XCTestCase {
                 corner: .topLeft
             ),
             [0, 2, 1]
+        )
+    }
+
+    func testLineUpSelectsOnlyVisibleWindowsOnActiveSpace() {
+        let minimized = LineUpWindowStub(title: "_Visible minimized")
+        let hiddenMinimized = LineUpWindowStub(title: "_Hidden minimized", visible: false)
+        let otherSpaceMinimized = LineUpWindowStub(
+            title: "_Other Space minimized", onActiveSpace: false
+        )
+        let regular = LineUpWindowStub(title: "Visible regular")
+        let folder = LineUpWindowStub(title: "Visible folder")
+        let hiddenFolder = LineUpWindowStub(title: "Hidden folder", visible: false)
+
+        let notes: [NSWindow] = [minimized, hiddenMinimized, otherSpaceMinimized, regular]
+        let folders: [NSWindow] = [folder, hiddenFolder]
+
+        XCTAssertEqual(
+            NoteWindowLineUpSelection.windows(
+                notes: notes, folders: folders, onlyMinimized: true
+            ).map(\.title),
+            ["_Visible minimized", "Visible folder"]
+        )
+        XCTAssertEqual(
+            NoteWindowLineUpSelection.windows(
+                notes: notes, folders: folders, onlyMinimized: false
+            ).map(\.title),
+            ["_Visible minimized", "Visible regular", "Visible folder"]
         )
     }
 
@@ -3830,6 +3878,7 @@ final class TildoneTests: XCTestCase {
         let taskID = TaskID()
         let payload = MacTaskDragPayload(noteID: noteID, taskID: taskID)
 
+        XCTAssertFalse(MacTaskDragPayload.contentType.conforms(to: .text))
         XCTAssertTrue(payload.isValid(for: noteID, taskIDs: [taskID]))
         XCTAssertFalse(payload.isValid(for: NoteID(), taskIDs: [taskID]))
         XCTAssertFalse(payload.isValid(for: noteID, taskIDs: [TaskID()]))
@@ -3837,6 +3886,21 @@ final class TildoneTests: XCTestCase {
             MacTaskDragPayload.self,
             from: Data(#"{"noteID":"invalid","taskID":"invalid"}"#.utf8)
         ))
+    }
+
+    func testMacTaskDragProviderCarriesOnlyTheTaskType() async throws {
+        let payload = MacTaskDragPayload(noteID: NoteID(), taskID: TaskID())
+        let provider = NSItemProvider()
+        provider.register(payload)
+
+        XCTAssertTrue(provider.hasItemConformingToTypeIdentifier(MacTaskDragPayload.contentType.identifier))
+        XCTAssertFalse(provider.hasItemConformingToTypeIdentifier(UTType.text.identifier))
+        let loaded = try await withCheckedThrowingContinuation { continuation in
+            _ = provider.loadTransferable(type: MacTaskDragPayload.self) { result in
+                continuation.resume(with: result)
+            }
+        }
+        XCTAssertEqual(loaded, payload)
     }
 
     func testMacTaskRowsExposeDedicatedDragHandlesAndDropTargets() throws {
@@ -3855,22 +3919,16 @@ final class TildoneTests: XCTestCase {
         }.joined(separator: "\n")
 
         XCTAssertTrue(source.contains("TaskReorderHandle("))
-        XCTAssertTrue(source.contains(".draggable(payload)"))
-        XCTAssertTrue(source.contains("CodableRepresentation(contentType: .json)"))
+        XCTAssertTrue(source.contains("CodableRepresentation(contentType: contentType)"))
+        XCTAssertTrue(source.contains("beginDraggingSession(with:"))
         XCTAssertTrue(source.contains("TaskReorderPreview("))
-        XCTAssertTrue(source.contains("Checkbox(checked: isCompleted)"))
-        XCTAssertTrue(source.contains(
-            "Text(taskText.isEmpty ? String(localized: \"Untitled task\") : taskText)"
-        ))
-        XCTAssertTrue(source.contains(".padding(.top, dropPlacement == .before"))
-        XCTAssertTrue(source.contains(".padding(.bottom, dropPlacement == .after"))
         XCTAssertTrue(source.contains("? TaskReorderFeedback.expandedHeight"))
         XCTAssertTrue(source.contains("TaskReorderInsertionLine()"))
         XCTAssertTrue(source.contains(".onChange(of: feedbackResetToken)"))
         XCTAssertTrue(source.contains(".padding(.trailing, 8)"))
         XCTAssertFalse(source.contains(".stroke(Color.accentColor"))
         XCTAssertTrue(source.contains(".dropDestination(for: MacTaskDragPayload.self)"))
-        XCTAssertTrue(source.contains(".accessibilityLabel(\"Reorder task\")"))
+        XCTAssertTrue(source.contains("accessibilityLabel() -> String? { \"Reorder task\" }"))
         XCTAssertTrue(source.contains("onInsertAbove"))
         XCTAssertTrue(source.contains("Image(systemName: \"plus\")"))
         XCTAssertTrue(source.contains("Insert task above"))

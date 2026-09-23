@@ -27,7 +27,6 @@ struct TaskRow: View {
     let subtaskProgress: TaskSubtaskProgress?
     let checkboxChecked: Bool
     let isTaskCompletionPending: Bool
-    let feedbackResetToken: UUID
     @FocusState.Binding var focusedTaskID: TaskID?
     let isActive: Bool
     let placesCaretAtStartOnFocus: Bool
@@ -35,7 +34,7 @@ struct TaskRow: View {
     let onNativeBlur: () -> Void
     let onEditLink: () -> Void
     @State private var rowHeight: CGFloat = 0
-    @State private var dropPlacement: TaskRowDropPlacement?
+    @State private var isDropTargeted = false
     let onToggle: () -> Void
     let onEdit: (RichText) -> Void
     let onEnter: (Int?) -> Void
@@ -306,12 +305,12 @@ struct TaskRow: View {
             .allowsHitTesting(showsHoverControls)
             .padding(.trailing, 8)
             .frame(
-                width: truncation == .single && showsHoverControls ? (hasSubtasks ? 86 : 66) : 0,
+                width: showsHoverControls ? (hasSubtasks ? 86 : 66) : 0,
                 height: showsHoverControls ? taskActionControlSize : 0,
                 alignment: .trailing
             )
             .offset(y: truncation == .multiple ? 1 : 0)
-            .if(truncation == .single) { $0.clipped() }
+            .clipped()
         }
         .padding(.leading, 2 + CGFloat(task.indentLevel) * (Layout.checkboxSize + 8))
         .padding(.top, followsDeeperTask ? hierarchyTransitionTopSpacing : 0)
@@ -326,30 +325,14 @@ struct TaskRow: View {
                     .onChange(of: geometry.size.height) { _, height in rowHeight = height }
             }
         }
-        .padding(.top, dropPlacement == .before ? TaskReorderFeedback.insertionSpacing : 0)
-        .padding(.bottom, dropPlacement == .after ? TaskReorderFeedback.insertionSpacing : 0)
-        .background(alignment: dropPlacement == .before ? .top : .bottom) {
-            TaskReorderInsertionLine()
-                .opacity(dropPlacement == nil ? 0 : 1)
-                .offset(
-                    y: dropPlacement == .before
-                        ? TaskReorderFeedback.insertionSpacing / 2
-                        : -TaskReorderFeedback.insertionSpacing / 2
-                )
+        .background(Color.accentColor.opacity(isDropTargeted ? 0.1 : 0))
+        .dropDestination(for: MacTaskDragPayload.self) { payloads, location in
+            guard payloads.count == 1, let payload = payloads.first else { return false }
+            let destination = location.y < rowHeight / 2 ? rowIndex : rowIndex + 1
+            return onDrop(payload, destination)
+        } isTargeted: { targeted in
+            isDropTargeted = targeted
         }
-        .animation(TaskReorderFeedback.animation, value: dropPlacement)
-        .onChange(of: feedbackResetToken) { _, _ in
-            dropPlacement = nil
-        }
-        .onDrop(
-            of: [.json],
-            delegate: TaskRowDropDelegate(
-                rowIndex: rowIndex,
-                rowHeight: rowHeight,
-                placement: $dropPlacement,
-                onDrop: onDrop
-            )
-        )
     }
 
 }

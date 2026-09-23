@@ -120,6 +120,22 @@ final class TildoneUITests: XCTestCase {
     }
 
     func testDraggingTaskHandleReordersVisibleRows() throws {
+        try exerciseTaskReorderUI(multiline: false, dropIntoGap: false)
+    }
+
+    func testMultilineTaskShowsUsableDragHandle() throws {
+        try exerciseTaskReorderUI(multiline: true, checkHandleOnly: true)
+    }
+
+    func testDraggingTaskHandleIntoGapReordersRows() throws {
+        try exerciseTaskReorderUI(multiline: false, dropIntoGap: true)
+    }
+
+    private func exerciseTaskReorderUI(
+        multiline: Bool,
+        dropIntoGap: Bool = false,
+        checkHandleOnly: Bool = false
+    ) throws {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
         app.launchArguments.append("--tildone-ui-test")
@@ -127,6 +143,15 @@ final class TildoneUITests: XCTestCase {
 
         let topic = app.textFields["Topic"]
         XCTAssertTrue(topic.waitForExistence(timeout: 5))
+        app.typeKey(",", modifierFlags: .command)
+        let appearanceTab = app.buttons["Appearance"].firstMatch
+        XCTAssertTrue(appearanceTab.waitForExistence(timeout: 5))
+        appearanceTab.click()
+        let wrappingOption = app.radioButtons[
+            multiline ? "Wrap to multiple lines" : "Single line (ellipsis)"
+        ]
+        XCTAssertTrue(wrappingOption.waitForExistence(timeout: 5))
+        wrappingOption.click()
         topic.click()
         topic.typeText("Drag test")
         topic.typeKey(.return, modifierFlags: [])
@@ -142,17 +167,25 @@ final class TildoneUITests: XCTestCase {
         XCTAssertTrue(second.waitForExistence(timeout: 5))
         let initialRowDistance = second.frame.minY - first.frame.minY
 
+        first.hover()
         let handles = app.images.matching(identifier: "Reorder task")
-        XCTAssertEqual(handles.count, 2)
-        let firstHandle = try XCTUnwrap(
-            handles.allElementsBoundByIndex.min {
-                abs($0.frame.midY - first.frame.midY) < abs($1.frame.midY - first.frame.midY)
-            }
+        let firstHandle = try XCTUnwrap(handles.allElementsBoundByIndex.min {
+            abs($0.frame.midY - first.frame.midY) < abs($1.frame.midY - first.frame.midY)
+        })
+        let firstFrame = first.frame
+        let handleFrame = firstHandle.frame
+        XCTAssertLessThan(abs(handleFrame.midY - firstFrame.midY), 12)
+        XCTAssertGreaterThan(handleFrame.width, 10)
+        if checkHandleOnly { return }
+        let source = first.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(
+            dx: handleFrame.midX - firstFrame.minX,
+            dy: handleFrame.midY - firstFrame.minY
+        ))
+        source.hover()
+        let destination = second.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: dropIntoGap ? 1.12 : 0.9)
         )
-        let source = firstHandle
-            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let destination = second.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
-        source.press(forDuration: 0.5, thenDragTo: destination)
+        source.click(forDuration: 0.5, thenDragTo: destination)
 
         let reordered = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in second.frame.minY < first.frame.minY },

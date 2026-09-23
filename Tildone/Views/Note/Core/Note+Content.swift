@@ -625,7 +625,6 @@ extension Note {
             subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
             checkboxChecked: optimisticTaskCompletions[task.id] ?? task.isCompleted,
             isTaskCompletionPending: optimisticTaskCompletions[task.id] != nil,
-            feedbackResetToken: taskDropFeedbackResetToken,
             focusedTaskID: $focusedTaskID,
             isActive: activeFocusedTaskID == task.id,
             placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,

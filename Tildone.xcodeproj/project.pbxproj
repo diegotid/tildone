@@ -171,7 +171,6 @@
 		D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000101 /* NoteCornerConvergence.swift */; };
 		D80000000000000000000202 /* NoteWindowManualPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80000000000000000000102 /* NoteWindowManualPosition.swift */; };
 		D90000000000000000000002 /* SubtaskProgressGauge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90000000000000000000012 /* SubtaskProgressGauge.swift */; };
-		F107B17D2F0DE77800D20216 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F107B17C2F0DE77800D20216 /* Info.plist */; };
 		F13428122B5353070045343D /* Copier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13428112B5353070045343D /* Copier.swift */; };
 		F13428142B535EA40045343D /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F13428132B535EA40045343D /* Localizable.xcstrings */; };
 		F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = F15A835D2F5200B600231A3F /* TildoneIcon.icon */; };
@@ -1243,7 +1242,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F107B17D2F0DE77800D20216 /* Info.plist in Resources */,
 				F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */,
 				F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */,
 				F13428142B535EA40045343D /* Localizable.xcstrings in Resources */,
@@ -1770,6 +1768,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Tildone/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -1803,6 +1802,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Tildone/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Tildone;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
