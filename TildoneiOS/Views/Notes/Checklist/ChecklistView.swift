@@ -104,6 +104,7 @@ struct ChecklistView: View {
                             }
                             TaskRow(
                                 task: task,
+                                noteColor: note.color,
                                 subtaskProgress: subtaskProgresses[task.id],
                                 subtasksExpanded: hasSubtasks
                                     ? !collapsedTaskIDs.contains(task.id)

@@ -3,6 +3,7 @@
 //  Tildone
 //
 
+import AppKit
 import Foundation
 import SwiftUI
 import TildoneDomain
@@ -14,6 +15,7 @@ struct TaskRow: View {
     let fontSize: Double
     let isDark: Bool
     let noteBackgroundColor: Color
+    let noteBackgroundOpacity: Double
     let contentColor: Color
     let cursorColor: Color
     let searchQuery: String
@@ -87,14 +89,6 @@ struct TaskRow: View {
         (isDark ? Color(.primaryFontWhite) : Color(.primaryFontColor)).opacity(0.7)
     }
 
-    private var linkedTaskText: TaskTextLinkPresentation? {
-        TaskTextLinks.presentation(
-            for: task.richText,
-            fontSize: CGFloat(fontSize),
-            baseColor: NSColor(contentColor)
-        )
-    }
-
     private var showsCompletedAppearance: Bool {
         task.isCompleted || subtaskProgress?.fraction == 1
     }
@@ -121,33 +115,19 @@ struct TaskRow: View {
             }
             .padding(.vertical, taskControlVerticalPadding)
 
-            if let linkedTaskText, showsCompletedAppearance || !isActive {
-                TaskTextLinksView(
-                    text: linkedTaskText.attributedText,
-                    isCompleted: showsCompletedAppearance,
-                    truncation: truncation,
-                    onEdit: showsCompletedAppearance ? nil : onEditLink,
-                    onPaste: showsCompletedAppearance || !isShowingRowControls ? nil : onPaste
-                )
-                .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
-                .transaction { $0.animation = nil }
-                .if(truncation == .single) {
-                    $0.modifier(TaskTextTruncationTooltip(
-                        text: linkedTaskText.plainText,
-                        fontSize: CGFloat(fontSize)
-                    ))
-                }
-            } else if showsCompletedAppearance {
-                Text(MouseSafeTaskTextField.displayAttributedString(
-                    from: task.richText,
+            if !isActive && !task.text.isEmpty {
+                WordTagsView(
+                    richText: task.richText,
                     fontSize: CGFloat(fontSize),
-                    baseColor: NSColor(contentColor)
-                ))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .allowsTightening(false)
-                .opacity(0.6)
-                .strikethrough(true, color: .accentColor)
+                    foregroundColor: contentColor,
+                    tagColor: tagBackgroundColor(
+                        from: noteBackgroundColor,
+                        noteOpacity: noteBackgroundOpacity
+                    ),
+                    truncation: truncation,
+                    isCompleted: showsCompletedAppearance,
+                    onSelect: showsCompletedAppearance ? nil : onEditLink
+                )
                 .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
                 .transaction { $0.animation = nil }
                 .if(truncation == .single) {
@@ -335,98 +315,201 @@ struct TaskRow: View {
         }
     }
 
-}
+    private func tagBackgroundColor(from color: Color, noteOpacity: Double) -> Color {
+        let nsColor = NSColor(color).usingColorSpace(.deviceRGB) ?? NSColor(color)
+        let saturation = min(nsColor.saturationComponent * 2, 1)
+        let opacity = min(max(noteOpacity * 2, 0), 1)
+        return Color(nsColor: NSColor(
+            calibratedHue: nsColor.hueComponent,
+            saturation: saturation,
+            brightness: nsColor.brightnessComponent,
+            alpha: opacity
+        ))
+    }
 
-private enum TaskTextLinks {
-    private static let detector = try? NSDataDetector(
-        types: NSTextCheckingResult.CheckingType.link.rawValue
-    )
+    private struct WordTagsView: View {
+        let richText: RichText
+        let fontSize: CGFloat
+        let foregroundColor: Color
+        let tagColor: Color
+        let truncation: TaskLineTruncation
+        let isCompleted: Bool
+        let onSelect: (() -> Void)?
 
-    static func presentation(
-        for richText: RichText,
-        fontSize: CGFloat,
-        baseColor: NSColor
-    ) -> TaskTextLinkPresentation? {
-        guard let detector else { return nil }
-        let text = richText.text
-        let matches = detector.matches(
-            in: text,
-            range: NSRange(text.startIndex..., in: text)
-        )
-        let foundURL = matches.contains { match in
-            guard let destination = match.url,
-                  let scheme = destination.scheme?.lowercased(),
-                  ["http", "https"].contains(scheme),
-                  let host = destination.host,
-                  !host.isEmpty else { return false }
-            return true
+        private struct Part: Identifiable {
+            let id: Int
+            let text: AttributedString
+            let trailingWhitespace: String
+            let isTagged: Bool
         }
-        guard foundURL else { return nil }
-        return TaskTextLinkPresentation(
-            attributedText: MouseSafeTaskTextField.displayAttributedString(
+
+        private var tagTextColor: Color {
+            let color = NSColor(tagColor).usingColorSpace(.deviceRGB) ?? NSColor(tagColor)
+            func linear(_ component: CGFloat) -> CGFloat {
+                component <= 0.04045
+                    ? component / 12.92
+                    : pow((component + 0.055) / 1.055, 2.4)
+            }
+            let luminance = 0.2126 * linear(color.redComponent)
+                + 0.7152 * linear(color.greenComponent)
+                + 0.0722 * linear(color.blueComponent)
+            let blackContrast = (luminance + 0.05) / 0.05
+            let whiteContrast = 1.05 / (luminance + 0.05)
+            return blackContrast >= whiteContrast ? .black : .white
+        }
+
+        private var parts: [Part] {
+            let attributed = MouseSafeTaskTextField.attributedString(
                 from: richText,
                 fontSize: fontSize,
-                baseColor: baseColor,
-                shortenLinks: true
-            ),
-            plainText: shortenedLinkText(text, matches: matches)
-        )
-    }
-
-    private static func shortenedLinkText(
-        _ text: String,
-        matches: [NSTextCheckingResult]
-    ) -> String {
-        let result = NSMutableString(string: text)
-        for match in matches.reversed() {
-            guard let destination = match.url,
-                  let scheme = destination.scheme?.lowercased(),
-                  ["http", "https"].contains(scheme),
-                  let host = destination.host,
-                  !host.isEmpty else { continue }
-            let displayHost = host.lowercased().hasPrefix("www.")
-                ? String(host.dropFirst(4))
-                : host
-            result.replaceCharacters(in: match.range, with: displayHost)
+                baseColor: NSColor(foregroundColor)
+            )
+            guard let expression = try? NSRegularExpression(pattern: "\\[[^\\[\\]]+\\]|[^\\s\\[\\]]+|[\\[\\]]") else {
+                return []
+            }
+            let matches = expression.matches(
+                in: attributed.string,
+                range: NSRange(location: 0, length: attributed.length)
+            )
+            let source = attributed.string as NSString
+            return matches.enumerated().compactMap { index, match in
+                let token = attributed.attributedSubstring(from: match.range)
+                let innerText = token.string.count >= 2
+                    ? String(token.string.dropFirst().dropLast())
+                    : ""
+                let isTagged = token.string.count >= 3
+                    && token.string.first == "["
+                    && token.string.last == "]"
+                    && innerText.contains(where: { !$0.isWhitespace })
+                    && (match.range.location == 0 || source.character(at: match.range.location - 1) != 91)
+                    && (NSMaxRange(match.range) == source.length || source.character(at: NSMaxRange(match.range)) != 93)
+                let displayRange = isTagged
+                    ? NSRange(location: 1, length: match.range.length - 2)
+                    : NSRange(location: 0, length: match.range.length)
+                let displayText = NSMutableAttributedString(
+                    attributedString: token.attributedSubstring(from: displayRange)
+                )
+                if isTagged {
+                    let range = NSRange(location: 0, length: displayText.length)
+                    displayText.addAttribute(.foregroundColor, value: NSColor(tagTextColor), range: range)
+                    displayText.removeAttribute(.backgroundColor, range: range)
+                }
+                guard let styledText = try? AttributedString(displayText, including: \.appKit) else {
+                    return nil
+                }
+                let whitespaceStart = NSMaxRange(match.range)
+                let whitespaceEnd = index + 1 < matches.count
+                    ? matches[index + 1].range.location
+                    : attributed.length
+                let whitespace = source.substring(with: NSRange(
+                    location: whitespaceStart,
+                    length: max(0, whitespaceEnd - whitespaceStart)
+                ))
+                return Part(
+                    id: match.range.location,
+                    text: styledText,
+                    trailingWhitespace: whitespace,
+                    isTagged: isTagged
+                )
+            }
         }
-        return result as String
-    }
-}
 
-private struct TaskTextLinkPresentation {
-    let attributedText: AttributedString
-    let plainText: String
-}
-
-private struct TaskTextLinksView: View {
-    let text: AttributedString
-    let isCompleted: Bool
-    let truncation: TaskLineTruncation
-    let onEdit: (() -> Void)?
-    let onPaste: (() -> Void)?
-
-    var body: some View {
-        // Keep font and foreground styling in the attributed value; applying
-        // them here would flatten the task's rich spans when it leaves edit mode.
-        Text(text)
-            .lineLimit(truncation == .single ? 1 : nil)
-            .truncationMode(.tail)
-            .allowsTightening(false)
+        var body: some View {
+            AnyLayout(WordFlowLayout(
+                horizontalSpacing: 0,
+                verticalSpacing: 4,
+                singleLine: truncation == .single
+            )) {
+                ForEach(parts) { part in
+                    if part.isTagged {
+                        HStack(spacing: 0) {
+                            Text(part.text)
+                                .font(.system(size: fontSize))
+                                .foregroundStyle(tagTextColor)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                        .fill(tagColor)
+                                        .padding(.horizontal, -2)
+                                        .padding(.vertical, -1)
+                                }
+                            Text(part.trailingWhitespace)
+                                .font(.system(size: fontSize))
+                                .foregroundStyle(foregroundColor)
+                        }
+                    } else {
+                        Text(part.text + AttributedString(part.trailingWhitespace))
+                            .font(.system(size: fontSize))
+                            .foregroundStyle(foregroundColor)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
             .opacity(isCompleted ? 0.6 : 1)
             .strikethrough(isCompleted, color: .accentColor)
             .contentShape(Rectangle())
-        .if(onEdit != nil) {
-            $0.highPriorityGesture(
-                TapGesture(count: 2)
-                    .onEnded { onEdit?() }
-            )
-        }
-        .if(onPaste != nil) {
-            $0.onReceive(NotificationCenter.default.publisher(for: .paste)) { _ in
-                onPaste?()
+            .if(onSelect != nil) { view in
+                view.onTapGesture { onSelect?() }
             }
         }
     }
+
+    private struct WordFlowLayout: SwiftUI.Layout {
+        let horizontalSpacing: CGFloat
+        let verticalSpacing: CGFloat
+        let singleLine: Bool
+
+        func sizeThatFits(proposal: ProposedViewSize, subviews: SwiftUI.Layout.Subviews, cache: inout ()) -> CGSize {
+            let availableWidth = proposal.width ?? .greatestFiniteMagnitude
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var rowHeight: CGFloat = 0
+            var contentWidth: CGFloat = 0
+
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+                if !singleLine, x > 0, x + size.width > availableWidth {
+                    y += rowHeight + verticalSpacing
+                    x = 0
+                    rowHeight = 0
+                }
+                if x > 0 { x += horizontalSpacing }
+                x += size.width
+                rowHeight = max(rowHeight, size.height)
+                contentWidth = max(contentWidth, x)
+            }
+
+            return CGSize(width: min(contentWidth, availableWidth), height: y + rowHeight)
+        }
+
+        func placeSubviews(
+            in bounds: CGRect,
+            proposal: ProposedViewSize,
+            subviews: SwiftUI.Layout.Subviews,
+            cache: inout ()
+        ) {
+            var x = bounds.minX
+            var y = bounds.minY
+            var rowHeight: CGFloat = 0
+
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+                if !singleLine, x > bounds.minX, x + size.width > bounds.maxX {
+                    y += rowHeight + verticalSpacing
+                    x = bounds.minX
+                    rowHeight = 0
+                }
+                if x > bounds.minX { x += horizontalSpacing }
+                subview.place(
+                    at: CGPoint(x: x, y: y),
+                    proposal: ProposedViewSize(size)
+                )
+                x += size.width
+                rowHeight = max(rowHeight, size.height)
+            }
+        }
+    }
+
 }
 
 private struct TaskTextTruncationTooltip: ViewModifier {

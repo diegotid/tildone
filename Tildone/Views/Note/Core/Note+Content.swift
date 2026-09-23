@@ -612,6 +612,7 @@ extension Note {
             fontSize: fontSize,
             isDark: isDark,
             noteBackgroundColor: Color(nsColor: noteColor.nsColor),
+            noteBackgroundOpacity: noteBackgroundOpacity,
             contentColor: noteForeground,
             cursorColor: noteForeground,
             searchQuery: findQuery,

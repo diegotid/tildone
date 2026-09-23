@@ -49,4 +49,29 @@ final class TildoneiOSUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 3))
         XCTAssertGreaterThan(title.frame.minY, renameButton.frame.minY)
     }
+
+    func testTappingExistingTaskTextEntersEditing() {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_UI_TESTING"] = "1"
+        app.launch()
+        app.buttons["Create note"].tap()
+
+        let titleField = app.textFields["Note title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 3))
+        titleField.typeText("Tap to edit")
+        app.navigationBars.buttons["Done"].tap()
+
+        let newTaskField = app.textFields["New task"]
+        XCTAssertTrue(newTaskField.waitForExistence(timeout: 3))
+        newTaskField.tap()
+        newTaskField.typeText("Existing task")
+        newTaskField.typeText("\n")
+
+        let taskText = app.staticTexts["Existing"].firstMatch
+        XCTAssertTrue(taskText.waitForExistence(timeout: 3))
+        taskText.tap()
+
+        XCTAssertTrue(app.textViews["Task"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+    }
 }
