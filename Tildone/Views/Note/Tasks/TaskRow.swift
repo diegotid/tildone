@@ -318,7 +318,7 @@ struct TaskRow: View {
     private func tagBackgroundColor(from color: Color, noteOpacity: Double) -> Color {
         let nsColor = NSColor(color).usingColorSpace(.deviceRGB) ?? NSColor(color)
         let saturation = min(nsColor.saturationComponent * 2, 1)
-        let opacity = min(max(noteOpacity * 2, 0), 1)
+        let opacity = min(max(noteOpacity * 2, 0.35), 1)
         return Color(nsColor: NSColor(
             calibratedHue: nsColor.hueComponent,
             saturation: saturation,
@@ -498,8 +498,16 @@ struct TaskRow: View {
                                 .background {
                                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                                         .fill(tagColor)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                                .fill(LinearGradient(
+                                                    colors: [.clear, .black.opacity(0.14)],
+                                                    startPoint: .top,
+                                                    endPoint: .bottom
+                                                ))
+                                        }
+                                        .shadow(color: .black.opacity(0.14), radius: 1.25, x: 0, y: -0.5)
                                         .padding(.horizontal, -2)
-                                        .padding(.vertical, -1)
                                 }
                             Text(part.trailingWhitespace)
                                 .font(.system(size: fontSize))

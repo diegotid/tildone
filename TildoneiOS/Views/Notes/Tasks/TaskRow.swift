@@ -270,6 +270,15 @@ struct TaskRow: View {
                             .background {
                                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .fill(Color(uiColor: tagColor))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                            .fill(LinearGradient(
+                                                colors: [.clear, .black.opacity(0.14)],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            ))
+                                    }
+                                    .shadow(color: .black.opacity(0.14), radius: 1.25, x: 0, y: -0.5)
                                     .padding(.horizontal, -2)
                             }
                     } else {
