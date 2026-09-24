@@ -523,7 +523,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                         try await Self.migrateSharedNoteColors(in: repository)
                     },
                     reloadSnapshots: {
-                        try await store?.reload()
+                        try await store?.reloadAfterRemoteChange()
                     }
                 )
             }

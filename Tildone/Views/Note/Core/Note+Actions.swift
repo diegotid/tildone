@@ -181,9 +181,9 @@ extension Note {
         replacing memo: TildoneDomain.Task
     ) -> Bool {
         guard !list.items.isEmpty,
-              let index = tasks.firstIndex(where: { $0.id == memo.id }),
+              let currentTask = tasks.first(where: { $0.id == memo.id }),
               noteKind == .checklist || (noteKind == .singleTask
-                && memo.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                && currentTask.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         else { return false }
         // Finish the old editor before replacing its model value, otherwise a
         // later blur can write its stale text back over the imported first item.
@@ -200,18 +200,20 @@ extension Note {
                 }
                 try await store.editTask(memo.id, richText: list.items[0].richText)
                 try await store.setTaskIndentLevels([
-                    (id: memo.id, level: memo.indentLevel + list.items[0].indentLevel)
+                    (id: memo.id, level: currentTask.indentLevel + list.items[0].indentLevel)
                 ])
                 var importedIDs = [memo.id]
-                for (offset, item) in list.items.dropFirst().enumerated() {
+                var precedingTaskID = memo.id
+                for item in list.items.dropFirst() {
                     let task = try await store.addTask(
                         to: noteID,
                         text: item.richText.text,
-                        insertingAt: index + offset + 1,
-                        indentLevel: memo.indentLevel + item.indentLevel
+                        insertingAfter: precedingTaskID,
+                        indentLevel: currentTask.indentLevel + item.indentLevel
                     )
                     try await store.editTask(task.id, richText: item.richText)
                     importedIDs.append(task.id)
+                    precedingTaskID = task.id
                 }
                 try await applyPastedCompletion(list, taskIDs: importedIDs)
             } catch {
@@ -686,16 +688,19 @@ extension Note {
         let lines = clipboard.components(separatedBy: "\n").map {
             $0.trimmingCharacters(in: .whitespaces)
         }.filter { !$0.isEmpty }
-        guard let first = lines.first, let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        guard let first = lines.first,
+              let currentTask = tasks.first(where: { $0.id == task.id }) else { return }
         mutate({
             try await store.editTask(task.id, text: first)
-            for line in lines.dropFirst().reversed() {
-                _ = try await store.addTask(
+            var precedingTaskID = task.id
+            for line in lines.dropFirst() {
+                let inserted = try await store.addTask(
                     to: noteID,
                     text: line.capitalizingFirstLetter(),
-                    insertingAt: index + 1,
-                    indentLevel: task.indentLevel
+                    insertingAfter: precedingTaskID,
+                    indentLevel: currentTask.indentLevel
                 )
+                precedingTaskID = inserted.id
             }
         }, message: "Error pasting tasks")
     }

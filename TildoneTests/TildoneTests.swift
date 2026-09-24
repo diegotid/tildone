@@ -2249,6 +2249,43 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testPastingIntoNestedTaskKeepsListTogetherAtItsDepth() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let slot = try await store.addTask(to: note.id, text: "Slot")
+        let existingSibling = try await store.addTask(to: note.id, text: "Existing sibling")
+        let nextRoot = try await store.addTask(to: note.id, text: "Next root")
+        try await store.setTaskIndentLevels([(id: slot.id, level: 1)])
+        try await store.setTaskIndentLevels([(id: existingSibling.id, level: 1)])
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.indentLevel), [0, 1, 1, 0])
+
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        let view = Note(store: store, presentation: presentation, noteID: note.id)
+        let pasted = MouseSafeTaskTextField.PastedList(title: nil, items: [
+            .init(richText: RichText(text: "First"), indentLevel: 0),
+            .init(richText: RichText(text: "Nested"), indentLevel: 1),
+            .init(richText: RichText(text: "Second"), indentLevel: 0)
+        ])
+        XCTAssertTrue(view.importPastedList(pasted, replacing: slot))
+
+        for _ in 0..<100 {
+            if store.note(note.id)?.tasks.count == 6 { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.text), [
+            "Parent", "First", "Nested", "Second", "Existing sibling", "Next root"
+        ])
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 2, 1, 1, 0])
+        XCTAssertEqual(tasks.first?.id, parent.id)
+        XCTAssertEqual(tasks.dropFirst().first?.id, slot.id)
+        XCTAssertEqual(tasks.dropLast().last?.id, existingSibling.id)
+        XCTAssertEqual(tasks.last?.id, nextRoot.id)
+    }
+
+    @MainActor
     func testNativeTitlePasteStillImportsChecklist() async throws {
         try await verifyNativeListPaste(truncation: .single, intoTitle: true)
     }
@@ -3434,6 +3471,42 @@ final class TildoneTests: XCTestCase {
             Set(durablePending.map(\.targetStableID)),
             [noteID.stringValue, taskIDs[0].stringValue, taskIDs[3].stringValue]
         )
+    }
+
+    @MainActor
+    func testMacRemoteCompletionRespectsCompletedTaskOrdering() async throws {
+        let key = AppAppearance.moveCheckedTasksToEndStorageKey
+        let previous = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(true, forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        defer { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+
+        _ = try await repository.setTaskCompletion(
+            id: first.id,
+            completion: .completed(at: Date(timeIntervalSince1970: 200))
+        )
+        try await store.reloadAfterRemoteChange()
+        let completedOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(completedOrder.map(\.id), [second.id, third.id, first.id])
+
+        _ = try await repository.setTaskCompletion(id: first.id, completion: .incomplete)
+        try await store.reloadAfterRemoteChange()
+        let restoredOrder = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(restoredOrder.map(\.id), [first.id, second.id, third.id])
     }
 
     func testMacSharedStoreMovesNewlyCompletedTaskToEndWhenEnabled() async throws {

@@ -98,6 +98,15 @@ final class MacSharedStore: ObservableObject {
         }
     }
 
+    func reloadAfterRemoteChange() async throws {
+        if UserDefaults.standard.bool(
+            forKey: AppAppearance.moveCheckedTasksToEndStorageKey
+        ) {
+            try await applyCompletedTaskOrdering(enabled: true)
+        }
+        try await reload()
+    }
+
     /// Removes empty windows left behind by an interrupted or forced quit before
     /// the desktop reconciles persisted notes. Completed notes are intentionally
     /// retained here so their visible grace period is owned by `Note`.
@@ -343,11 +352,20 @@ final class MacSharedStore: ObservableObject {
         to noteID: NoteID,
         text: String,
         insertingAt position: Int? = nil,
+        insertingAfter precedingTaskID: TaskID? = nil,
         indentLevel: Int = 0,
         createdAt: Date = Date()
     ) async throws -> Task {
         let tasks = try await repository.orderedTasks(in: noteID)
-        let insertionIndex = min(max(position ?? tasks.count, 0), tasks.count)
+        let insertionIndex: Int
+        if let precedingTaskID {
+            guard let precedingIndex = tasks.firstIndex(where: { $0.id == precedingTaskID }) else {
+                throw PersistenceError.missing(.task, precedingTaskID.stringValue)
+            }
+            insertionIndex = precedingIndex + 1
+        } else {
+            insertionIndex = min(max(position ?? tasks.count, 0), tasks.count)
+        }
         let lower = insertionIndex > 0 ? tasks[insertionIndex - 1].orderToken : nil
         let upper = insertionIndex < tasks.count ? tasks[insertionIndex].orderToken : nil
         let task = try await repository.addTask(
