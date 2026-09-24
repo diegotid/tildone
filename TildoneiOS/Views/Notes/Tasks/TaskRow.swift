@@ -140,6 +140,12 @@ struct TaskRow: View {
         let linkedText: AttributedString?
         @Environment(\.colorScheme) private var colorScheme
 
+        private var ellipsisWidth: CGFloat {
+            ("…" as NSString).size(withAttributes: [
+                .font: UIFont.preferredFont(forTextStyle: .body)
+            ]).width
+        }
+
         private var tagColor: UIColor {
             UIColor(noteColor.swiftUIColor).withAlphaComponent(0.5)
         }
@@ -229,6 +235,33 @@ struct TaskRow: View {
         }
 
         var body: some View {
+            GeometryReader { geometry in
+                let displaySegments = segments
+                let textWidth = displaySegments.reduce(CGFloat.zero) { width, segment in
+                    width + NSAttributedString(segment.leading).size().width
+                        + NSAttributedString(segment.text).size().width
+                        + NSAttributedString(segment.trailing).size().width
+                }
+                let isTruncated = textWidth > geometry.size.width + 0.5
+                content(displaySegments)
+                    .frame(
+                        width: max(0, geometry.size.width - (isTruncated ? ellipsisWidth + 2 : 0)),
+                        alignment: .leading
+                    )
+                    .clipped()
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
+                    .overlay(alignment: .trailing) {
+                        if isTruncated {
+                            Text(verbatim: "…")
+                                .fixedSize(horizontal: true, vertical: false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+            }
+            .frame(height: 33)
+        }
+
+        private func content(_ segments: [DisplaySegment]) -> some View {
             HStack(spacing: 0) {
                 ForEach(segments) { segment in
                     Text(segment.leading)
@@ -245,8 +278,7 @@ struct TaskRow: View {
                     Text(segment.trailing)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33, alignment: .leading)
-            .clipped()
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 

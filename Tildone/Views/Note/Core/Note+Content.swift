@@ -843,7 +843,7 @@ private struct SearchHighlightedText: View {
 
     private var highlightedText: Text {
         guard !query.isEmpty else { return Text(text) }
-        var result = Text("")
+        var result = Text(verbatim: "")
         var cursor = text.startIndex
         while let range = text.range(
             of: query,

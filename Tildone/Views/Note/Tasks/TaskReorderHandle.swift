@@ -75,7 +75,7 @@ private final class TaskReorderHandleNSView: NSView, NSDraggingSource {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .image }
-    override func accessibilityLabel() -> String? { "Reorder task" }
+    override func accessibilityLabel() -> String? { String(localized: "Reorder task") }
 
     override func mouseDragged(with event: NSEvent) {
         guard !isDragging, let payload,

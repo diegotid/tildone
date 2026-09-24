@@ -3946,7 +3946,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(source.contains(".padding(.trailing, 8)"))
         XCTAssertFalse(source.contains(".stroke(Color.accentColor"))
         XCTAssertTrue(source.contains(".dropDestination(for: MacTaskDragPayload.self)"))
-        XCTAssertTrue(source.contains("accessibilityLabel() -> String? { \"Reorder task\" }"))
+        XCTAssertTrue(source.contains("accessibilityLabel() -> String? { String(localized: \"Reorder task\") }"))
         XCTAssertTrue(source.contains("onInsertAbove"))
         XCTAssertTrue(source.contains("Image(systemName: \"plus\")"))
         XCTAssertTrue(source.contains("Insert task above"))

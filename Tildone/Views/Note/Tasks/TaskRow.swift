@@ -348,6 +348,7 @@ struct TaskRow: View {
         let truncation: TaskLineTruncation
         let isCompleted: Bool
         let onSelect: (() -> Void)?
+        @State private var availableWidth: CGFloat = 0
 
         private struct Part: Identifiable {
             let id: Int
@@ -427,7 +428,62 @@ struct TaskRow: View {
             }
         }
 
+        private var ellipsisWidth: CGFloat {
+            ("…" as NSString).size(withAttributes: [
+                .font: NSFont.systemFont(ofSize: fontSize)
+            ]).width
+        }
+
         var body: some View {
+            let displayParts = parts
+            let textWidth = displayParts.reduce(CGFloat.zero) { width, part in
+                width + NSAttributedString(part.text).size().width
+                    + (part.trailingWhitespace as NSString).size(withAttributes: [
+                        .font: NSFont.systemFont(ofSize: fontSize)
+                    ]).width
+            }
+            let isTruncated = truncation == .single
+                && availableWidth > 0
+                && textWidth > availableWidth + 0.5
+
+            Group {
+                if isTruncated {
+                    words(displayParts)
+                        .frame(width: max(0, availableWidth - ellipsisWidth - 2), alignment: .leading)
+                        .clipped()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(alignment: .trailing) {
+                            Text("…")
+                                .font(.system(size: fontSize))
+                                .fixedSize(horizontal: true, vertical: false)
+                                .accessibilityHidden(true)
+                        }
+                } else {
+                    words(displayParts)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .clipped()
+                }
+            }
+            .background {
+                GeometryReader { geometry in
+                    Color.clear
+                        .onAppear { availableWidth = geometry.size.width }
+                        .onChange(of: geometry.size.width) { _, width in
+                            availableWidth = width
+                        }
+                }
+            }
+            .opacity(isCompleted ? 0.6 : 1)
+            .strikethrough(isCompleted, color: .accentColor)
+            .contentShape(Rectangle())
+            .if(onSelect != nil) { view in
+                view.highPriorityGesture(
+                    TapGesture(count: 2).onEnded { onSelect?() }
+                )
+            }
+        }
+
+        private func words(_ parts: [Part]) -> some View {
             AnyLayout(WordFlowLayout(
                 horizontalSpacing: 0,
                 verticalSpacing: 4,
@@ -454,16 +510,6 @@ struct TaskRow: View {
                             .font(.system(size: fontSize))
                     }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .clipped()
-            .opacity(isCompleted ? 0.6 : 1)
-            .strikethrough(isCompleted, color: .accentColor)
-            .contentShape(Rectangle())
-            .if(onSelect != nil) { view in
-                view.highPriorityGesture(
-                    TapGesture(count: 2).onEnded { onSelect?() }
-                )
             }
         }
     }
