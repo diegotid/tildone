@@ -2100,6 +2100,49 @@ final class TildoneTests: XCTestCase {
         )
     }
 
+    func testCheckboxAcceptsFirstMouseAndTogglesOncePerClick() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 40, height: 40),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        let control = Checkbox.ClickControl(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+        window.contentView?.addSubview(control)
+        var toggleCount = 0
+        control.isEnabled = true
+        control.onToggle = { toggleCount += 1 }
+
+        func mouseEvent(_ type: NSEvent.EventType, at point: NSPoint) throws -> NSEvent {
+            try XCTUnwrap(NSEvent.mouseEvent(
+                with: type,
+                location: point,
+                modifierFlags: [],
+                timestamp: 0,
+                windowNumber: window.windowNumber,
+                context: nil,
+                eventNumber: 0,
+                clickCount: 1,
+                pressure: 1
+            ))
+        }
+
+        XCTAssertTrue(control.acceptsFirstMouse(for: nil))
+        XCTAssertFalse(control.mouseDownCanMoveWindow)
+        XCTAssertEqual(control.accessibilityRole(), .checkBox)
+        XCTAssertEqual(control.accessibilityValue() as? Int, 0)
+        control.mouseDown(with: try mouseEvent(.leftMouseDown, at: NSPoint(x: 10, y: 10)))
+        control.mouseUp(with: try mouseEvent(.leftMouseUp, at: NSPoint(x: 10, y: 10)))
+        XCTAssertEqual(toggleCount, 1)
+
+        control.mouseDown(with: try mouseEvent(.leftMouseDown, at: NSPoint(x: 10, y: 10)))
+        control.mouseUp(with: try mouseEvent(.leftMouseUp, at: NSPoint(x: 30, y: 30)))
+        control.isEnabled = false
+        control.mouseDown(with: try mouseEvent(.leftMouseDown, at: NSPoint(x: 10, y: 10)))
+        control.mouseUp(with: try mouseEvent(.leftMouseUp, at: NSPoint(x: 10, y: 10)))
+        XCTAssertEqual(toggleCount, 1)
+    }
+
     func testSingleLineNativeTaskTextCarriesTailTruncationStyle() throws {
         let attributed = MouseSafeTaskTextField.attributedString(
             from: RichText(text: "A deliberately long task"),
