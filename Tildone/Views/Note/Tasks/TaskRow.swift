@@ -355,6 +355,7 @@ struct TaskRow: View {
             let text: AttributedString
             let trailingWhitespace: String
             let isTagged: Bool
+            let isEllipsis: Bool
         }
 
         private var tagTextColor: Color {
@@ -423,7 +424,8 @@ struct TaskRow: View {
                     id: match.range.location,
                     text: styledText,
                     trailingWhitespace: whitespace,
-                    isTagged: isTagged
+                    isTagged: isTagged,
+                    isEllipsis: false
                 )
             }
         }
@@ -434,6 +436,99 @@ struct TaskRow: View {
             ]).width
         }
 
+        private var ellipsisPart: Part {
+            let attributed = NSAttributedString(
+                string: "…",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: fontSize),
+                    .foregroundColor: NSColor(foregroundColor)
+                ]
+            )
+            let text = (try? AttributedString(attributed, including: \.appKit)) ?? AttributedString("…")
+            return Part(id: Int.max, text: text, trailingWhitespace: "", isTagged: false, isEllipsis: true)
+        }
+
+        private func truncatedParts(_ parts: [Part], to width: CGFloat) -> [Part] {
+            let contentWidth = max(0, width - ellipsisWidth)
+            var usedWidth: CGFloat = 0
+            var visible: [Part] = []
+
+            for part in parts {
+                let textWidth = NSAttributedString(part.text).size().width
+                let whitespaceWidth = (part.trailingWhitespace as NSString).size(withAttributes: [
+                    .font: NSFont.systemFont(ofSize: fontSize)
+                ]).width
+                let partWidth = textWidth + whitespaceWidth + (part.isTagged ? 4 : 0)
+                let remainingWidth = contentWidth - usedWidth
+
+                if partWidth <= remainingWidth {
+                    visible.append(part)
+                    usedWidth += partWidth
+                    continue
+                }
+
+                let textLimit = max(0, remainingWidth - (part.isTagged ? 4 : 0))
+                let prefix = prefix(of: part.text, fitting: textLimit)
+                if !prefix.characters.isEmpty {
+                    visible.append(Part(
+                        id: part.id,
+                        text: prefix,
+                        trailingWhitespace: "",
+                        isTagged: part.isTagged,
+                        isEllipsis: false
+                    ))
+                }
+                break
+            }
+
+            if let last = visible.indices.last {
+                let part = visible[last]
+                visible[last] = Part(
+                    id: part.id,
+                    text: part.text,
+                    trailingWhitespace: "",
+                    isTagged: part.isTagged,
+                    isEllipsis: false
+                )
+            }
+            visible.append(ellipsisPart)
+            return visible
+        }
+
+        private func prefix(of text: AttributedString, fitting width: CGFloat) -> AttributedString {
+            let attributed = NSAttributedString(text)
+            let source = attributed.string as NSString
+            guard source.length > 0, width > 0 else { return AttributedString("") }
+
+            var ranges: [NSRange] = []
+            var location = 0
+            while location < source.length {
+                let range = source.rangeOfComposedCharacterSequence(at: location)
+                ranges.append(range)
+                location = NSMaxRange(range)
+            }
+
+            var lower = 0
+            var upper = ranges.count
+            while lower < upper {
+                let middle = (lower + upper + 1) / 2
+                let end = NSMaxRange(ranges[middle - 1])
+                let candidate = attributed.attributedSubstring(from: NSRange(location: 0, length: end))
+                if candidate.size().width <= width {
+                    lower = middle
+                } else {
+                    upper = middle - 1
+                }
+            }
+
+            guard lower > 0 else { return AttributedString("") }
+            let end = NSMaxRange(ranges[lower - 1])
+            return (try? AttributedString(
+                attributed.attributedSubstring(from: NSRange(location: 0, length: end)),
+                including: \.appKit
+            )) ?? AttributedString("")
+        }
+
         var body: some View {
             let displayParts = parts
             let textWidth = displayParts.reduce(CGFloat.zero) { width, part in
@@ -441,6 +536,7 @@ struct TaskRow: View {
                     + (part.trailingWhitespace as NSString).size(withAttributes: [
                         .font: NSFont.systemFont(ofSize: fontSize)
                     ]).width
+                    + (part.isTagged ? 4 : 0)
             }
             let isTruncated = truncation == .single
                 && availableWidth > 0
@@ -448,16 +544,8 @@ struct TaskRow: View {
 
             Group {
                 if isTruncated {
-                    words(displayParts)
-                        .frame(width: max(0, availableWidth - ellipsisWidth - 2), alignment: .leading)
-                        .clipped()
+                    words(truncatedParts(displayParts, to: availableWidth))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay(alignment: .trailing) {
-                            Text("…")
-                                .font(.system(size: fontSize))
-                                .fixedSize(horizontal: true, vertical: false)
-                                .accessibilityHidden(true)
-                        }
                 } else {
                     words(displayParts)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -514,8 +602,15 @@ struct TaskRow: View {
                                 .foregroundStyle(foregroundColor)
                         }
                     } else {
-                        Text(part.text + AttributedString(part.trailingWhitespace))
-                            .font(.system(size: fontSize))
+                        if part.isEllipsis {
+                            Text(part.text)
+                                .font(.system(size: fontSize))
+                                .foregroundStyle(foregroundColor)
+                                .accessibilityHidden(true)
+                        } else {
+                            Text(part.text + AttributedString(part.trailingWhitespace))
+                                .font(.system(size: fontSize))
+                        }
                     }
                 }
             }

@@ -580,7 +580,7 @@ private extension SettingsForm {
                     Text("Corner")
                         .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
-                    Picker("", selection: $selectedArrangementCorner) {
+                    Picker("Corner", selection: $selectedArrangementCorner) {
                         Text("Bottom left").tag(ArrangementCorner.bottomLeft)
                         Text("Bottom right").tag(ArrangementCorner.bottomRight)
                         Text("Top right").tag(ArrangementCorner.topRight)
@@ -592,7 +592,7 @@ private extension SettingsForm {
                     Text("Margin")
                         .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
-                    Picker("", selection: $selectedArrangementCornerMargin) {
+                    Picker("Margin", selection: $selectedArrangementCornerMargin) {
                         Text("Minimum").tag(ArrangementSpacing.minimum)
                         Text("Medium").tag(ArrangementSpacing.medium)
                         Text("Maximum").tag(ArrangementSpacing.maximum)
@@ -603,7 +603,7 @@ private extension SettingsForm {
                     Text("Direction")
                         .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
-                    Picker("", selection: $selectedArrangementAlignment) {
+                    Picker("Direction", selection: $selectedArrangementAlignment) {
                         Text("Horizontal").tag(ArrangementAlignment.horizontal)
                         Text("Vertical").tag(ArrangementAlignment.vertical)
                     }
@@ -613,7 +613,7 @@ private extension SettingsForm {
                     Text("Spacing")
                         .frame(width: 120, alignment: .leading)
                     Spacer(minLength: 16)
-                    Picker("", selection: $selectedArrangementSpacing) {
+                    Picker("Spacing", selection: $selectedArrangementSpacing) {
                         Text("Minimum").tag(ArrangementSpacing.minimum)
                         Text("Medium").tag(ArrangementSpacing.medium)
                         Text("Maximum").tag(ArrangementSpacing.maximum)
@@ -733,13 +733,14 @@ private extension SettingsForm {
         Text("Task wrapping")
             .foregroundColor(.secondary)
             .padding(.top, 3)
-        Picker("", selection: $taskLineTruncation) {
+        Picker("Task wrapping", selection: $taskLineTruncation) {
             SettingsForm.taskAppearanceText(with: .single)
                 .tag(TaskLineTruncation.single)
             SettingsForm.taskAppearanceText(with: .multiple)
                 .tag(TaskLineTruncation.multiple)
         }
         .pickerStyle(.radioGroup)
+        .labelsHidden()
         .padding(.vertical, 1)
     }
     
