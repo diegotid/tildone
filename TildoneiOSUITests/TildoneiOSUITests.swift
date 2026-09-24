@@ -67,7 +67,9 @@ final class TildoneiOSUITests: XCTestCase {
         newTaskField.typeText("Existing task")
         newTaskField.typeText("\n")
 
-        let taskText = app.staticTexts["Existing"].firstMatch
+        let taskText = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Existing")
+        ).firstMatch
         XCTAssertTrue(taskText.waitForExistence(timeout: 3))
         taskText.tap()
 

@@ -2917,6 +2917,24 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testInactiveTaskDisplayShowsLinksAsClickableHostsAlongsideTags() throws {
+        let text = RichText(text: "Read [today] https://www.example.com/path?q=1")
+        let displayed = TaskRow.inactiveDisplayText(
+            from: text,
+            fontSize: 14,
+            foregroundColor: .black
+        )
+        let linkRange = (displayed.string as NSString).range(of: "example.com")
+
+        XCTAssertEqual(displayed.string, "Read [today] example.com")
+        XCTAssertNotEqual(linkRange.location, NSNotFound)
+        XCTAssertEqual(
+            displayed.attribute(.link, at: linkRange.location, effectiveRange: nil) as? URL,
+            URL(string: "https://www.example.com/path?q=1")
+        )
+    }
+
+    @MainActor
     func testFocusedTaskEditorRetainsRichAttributes() throws {
         let richText = RichText(
             text: "Formatted",

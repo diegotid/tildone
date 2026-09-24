@@ -17,6 +17,7 @@ struct TaskRow: View {
     let canIndent: Bool
     let canOutdent: Bool
     var focusedTask: FocusState<TaskID?>.Binding
+    let onBeginEditing: () -> Void
     let onCommit: (RichText) async -> Void
     let onToggle: () async -> Void
     let onToggleSubtasks: () -> Void
@@ -25,6 +26,7 @@ struct TaskRow: View {
     let onMoveUp: () async -> Void
     let onMoveDown: () async -> Void
     @State private var draft = RichText(text: "")
+    @State private var isEditingTask = false
 
     private var isVisuallyCompleted: Bool {
         task.isCompleted || subtaskProgress?.fraction == 1
@@ -47,15 +49,23 @@ struct TaskRow: View {
             }
             .frame(width: 32, height: 33)
 
-            if focusedTask.wrappedValue != task.id {
+            if focusedTask.wrappedValue != task.id && !isEditingTask {
                 if linkedTaskText == nil {
-                    taskDisplayText
-                        .onTapGesture { focusedTask.wrappedValue = task.id }
+                    Button {
+                        isEditingTask = true
+                        onBeginEditing()
+                    } label: {
+                        taskDisplayText
+                    }
+                    .buttonStyle(.plain)
                 } else {
                     taskDisplayText
                         .simultaneousGesture(
                             TapGesture(count: 2)
-                                .onEnded { focusedTask.wrappedValue = task.id }
+                                .onEnded {
+                                    isEditingTask = true
+                                    onBeginEditing()
+                                }
                         )
                 }
             } else {
@@ -65,6 +75,7 @@ struct TaskRow: View {
                     taskID: task.id,
                     focusedTask: focusedTask,
                     isCompleted: isVisuallyCompleted,
+                    forceFocus: isEditingTask,
                     onCommit: commit
                 )
                 .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33, alignment: .leading)
@@ -87,6 +98,9 @@ struct TaskRow: View {
         .onAppear { draft = task.richText }
         .onChange(of: task.richText) { _, remoteText in
             if focusedTask.wrappedValue != task.id { draft = remoteText }
+        }
+        .onChange(of: focusedTask.wrappedValue) { _, focusedID in
+            if focusedID != task.id { isEditingTask = false }
         }
         .accessibilityElement(children: .contain)
         .accessibilityActions {

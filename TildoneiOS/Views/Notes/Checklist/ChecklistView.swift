@@ -112,6 +112,11 @@ struct ChecklistView: View {
                                 canIndent: canIndent,
                                 canOutdent: canOutdent,
                                 focusedTask: $focusedTask,
+                                onBeginEditing: {
+                                    isAddingTask = false
+                                    isAddingTaskAbove = false
+                                    focusedTask = task.id
+                                },
                                 onCommit: { value in
                                     try? await appModel.edit(taskID: task.id, richText: value)
                                 },
@@ -451,6 +456,7 @@ struct ChecklistView: View {
         newTaskText = ""
         Swift.Task {
             _ = try? await appModel.addTask(noteID: noteID, text: text, after: tasks)
+            guard isAddingTask else { return }
             isAddingTask = true
         }
     }

@@ -327,6 +327,19 @@ struct TaskRow: View {
         ))
     }
 
+    static func inactiveDisplayText(
+        from richText: RichText,
+        fontSize: CGFloat,
+        foregroundColor: NSColor
+    ) -> NSAttributedString {
+        NSAttributedString(MouseSafeTaskTextField.displayAttributedString(
+            from: richText,
+            fontSize: fontSize,
+            baseColor: foregroundColor,
+            shortenLinks: true
+        ))
+    }
+
     private struct WordTagsView: View {
         let richText: RichText
         let fontSize: CGFloat
@@ -359,10 +372,10 @@ struct TaskRow: View {
         }
 
         private var parts: [Part] {
-            let attributed = MouseSafeTaskTextField.attributedString(
+            let attributed = TaskRow.inactiveDisplayText(
                 from: richText,
                 fontSize: fontSize,
-                baseColor: NSColor(foregroundColor)
+                foregroundColor: NSColor(foregroundColor)
             )
             guard let expression = try? NSRegularExpression(pattern: "\\[[^\\[\\]]+\\]|[^\\s\\[\\]]+|[\\[\\]]") else {
                 return []
@@ -439,7 +452,6 @@ struct TaskRow: View {
                     } else {
                         Text(part.text + AttributedString(part.trailingWhitespace))
                             .font(.system(size: fontSize))
-                            .foregroundStyle(foregroundColor)
                     }
                 }
             }
@@ -449,7 +461,9 @@ struct TaskRow: View {
             .strikethrough(isCompleted, color: .accentColor)
             .contentShape(Rectangle())
             .if(onSelect != nil) { view in
-                view.onTapGesture { onSelect?() }
+                view.highPriorityGesture(
+                    TapGesture(count: 2).onEnded { onSelect?() }
+                )
             }
         }
     }

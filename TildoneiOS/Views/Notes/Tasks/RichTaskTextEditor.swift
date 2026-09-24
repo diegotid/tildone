@@ -20,6 +20,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
     let isCompleted: Bool
     var allowsMultipleLines = false
     var fontName: String? = nil
+    var forceFocus = false
     var textStyle: UIFont.TextStyle = .body
     var textAlignment: NSTextAlignment = .natural
     var lineHeightMultiple: CGFloat? = nil
@@ -90,7 +91,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         context.coordinator.lastTextStyle = textStyle
         context.coordinator.lastTextAlignment = textAlignment
         context.coordinator.lastLineHeightMultiple = lineHeightMultiple
-        if focusedTask.wrappedValue == taskID {
+        if focusedTask.wrappedValue == taskID || forceFocus {
             if !view.isFirstResponder { view.becomeFirstResponder() }
         } else if view.isFirstResponder {
             view.resignFirstResponder()
