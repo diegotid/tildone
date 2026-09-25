@@ -115,7 +115,7 @@ struct TaskRow: View {
             }
             .padding(.vertical, taskControlVerticalPadding)
 
-            if !isActive && !task.text.isEmpty {
+            if showsCompletedAppearance && !isActive && !task.text.isEmpty {
                 WordTagsView(
                     richText: task.richText,
                     fontSize: CGFloat(fontSize),
