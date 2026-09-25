@@ -173,11 +173,6 @@ struct Desktop: View {
                 }
                 openNoteWindows()
                 createWhatsNewNoteIfNeeded()
-                updateCompletedTaskOrdering(
-                    isEnabled: UserDefaults.standard.bool(
-                        forKey: AppAppearance.moveCheckedTasksToEndStorageKey
-                    )
-                )
                 scheduleCompletedTaskRetention()
                 installScrollMonitor()
                 updateClickThroughMonitoring()

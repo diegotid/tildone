@@ -37,6 +37,8 @@ final class MacSharedStore: ObservableObject {
     private var nextPresentationEditRevision: UInt64 = 0
     private var pendingTaskTextEdits: [TaskID: PendingTaskTextEdit] = [:]
     private var taskTextEditWorkers: [TaskID: Swift.Task<Void, Never>] = [:]
+    private var stagedTaskInsertions: [TaskID: StagedTaskInsertion] = [:]
+    private var stagedTaskInsertionWaiters: [TaskID: [CheckedContinuation<Void, Never>]] = [:]
     private var pendingNoteTitleEdits: [NoteID: PendingNoteTitleEdit] = [:]
     private var noteTitleEditWorkers: [NoteID: Swift.Task<Void, Never>] = [:]
     private var notePresentations: [NoteID: MacNotePresentation] = [:]
@@ -45,6 +47,11 @@ final class MacSharedStore: ObservableObject {
         let revision: UInt64
         let richText: RichText
         let onFailure: (Error) -> Void
+    }
+
+    private struct StagedTaskInsertion {
+        let task: Task
+        let deletingEmptyTaskIDs: Set<TaskID>
     }
 
     private struct PendingNoteTitleEdit {
@@ -99,10 +106,45 @@ final class MacSharedStore: ObservableObject {
     }
 
     func reloadAfterRemoteChange() async throws {
-        if UserDefaults.standard.bool(
-            forKey: AppAppearance.moveCheckedTasksToEndStorageKey
-        ) {
-            try await applyCompletedTaskOrdering(enabled: true)
+        for note in try await repository.visibleNotes() {
+            // Finish a local insert before interpreting remote order or completion for this note.
+            guard !stagedTaskInsertions.values.contains(where: { $0.task.noteID == note.id })
+            else { continue }
+            guard let previousTasks = self.note(note.id)?.tasks else { continue }
+            let currentTasks = try await repository.orderedTasks(in: note.id)
+            let previousByID = Dictionary(uniqueKeysWithValues: previousTasks.map { ($0.id, $0) })
+            let structureChanged = currentTasks.map(\.id) != previousTasks.map(\.id)
+                || currentTasks.contains { task in
+                    guard let previous = previousByID[task.id] else { return true }
+                    return task.orderToken != previous.orderToken
+                        || task.indentLevel != previous.indentLevel
+                }
+            if structureChanged {
+                CompletedTaskOrderPreference.removeOriginalOrderTokens(
+                    for: previousTasks.map(\.id)
+                )
+                // A remote move supplies the order to show, even if it also completes a task.
+                continue
+            }
+
+            guard UserDefaults.standard.bool(
+                forKey: AppAppearance.moveCheckedTasksToEndStorageKey
+            ) else { continue }
+
+            for task in currentTasks where previousByID[task.id]?.isCompleted == true
+                && !task.isCompleted {
+                let ordered = try await repository.orderedTasks(in: note.id)
+                try await restoreGroup(topLevelGroup(containing: task.id, in: ordered))
+            }
+            for task in currentTasks where previousByID[task.id]?.isCompleted == false
+                && task.isCompleted {
+                let ordered = try await repository.orderedTasks(in: note.id)
+                let group = topLevelGroup(containing: task.id, in: ordered)
+                if groupIsComplete(group),
+                   ordered.suffix(group.count).map(\.id) != group.map(\.id) {
+                    try await moveCompletedGroupAfterIncompleteGroups(group)
+                }
+            }
         }
         try await reload()
     }
@@ -362,7 +404,9 @@ final class MacSharedStore: ObservableObject {
             guard let precedingIndex = tasks.firstIndex(where: { $0.id == precedingTaskID }) else {
                 throw PersistenceError.missing(.task, precedingTaskID.stringValue)
             }
-            insertionIndex = precedingIndex + 1
+            insertionIndex = TaskHierarchy.insertionIndexAfterSubtree(
+                startingAt: precedingIndex, in: tasks
+            )
         } else {
             insertionIndex = min(max(position ?? tasks.count, 0), tasks.count)
         }
@@ -412,6 +456,10 @@ final class MacSharedStore: ObservableObject {
             lifecycleVersion: stamp
         )
         remaining.insert(task, at: insertionIndex)
+        stagedTaskInsertions[task.id] = StagedTaskInsertion(
+            task: task,
+            deletingEmptyTaskIDs: emptyTaskIDs
+        )
         publish(MacNoteSnapshot(note: snapshot.note, tasks: remaining))
         return task
     }
@@ -433,9 +481,12 @@ final class MacSharedStore: ObservableObject {
                 orderToken: task.orderToken,
                 indentLevel: task.indentLevel
             )
+            CompletedTaskOrderPreference.removeOriginalOrderTokens(for: emptyTaskIDs)
+            finishStagedTaskInsertion(task.id)
             try await reload(task.noteID)
             scheduleSyncNotification()
         } catch {
+            finishStagedTaskInsertion(task.id)
             try? await reload(task.noteID)
             throw error
         }
@@ -579,11 +630,13 @@ final class MacSharedStore: ObservableObject {
         moveCompletedGroupsToEnd: Bool,
         undoDirection: MacTaskIndentationUndoDirection? = nil
     ) async throws {
-        let before = undoDirection == nil ? [] : try await repository.orderedTasks(in: noteID)
-        let taskIDs = Set(before.map(\.id))
+        let existingTasks = try await repository.orderedTasks(in: noteID)
+        let before = undoDirection == nil ? [] : existingTasks
+        let taskIDs = Set(existingTasks.map(\.id))
         let originalPreferenceTokens = CompletedTaskOrderPreference.snapshot(for: taskIDs)
         do {
             _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
+            CompletedTaskOrderPreference.removeOriginalOrderTokens(for: taskIDs)
             try await reconcileTaskHierarchy(
                 in: noteID,
                 moveCompletedGroupsToEnd: moveCompletedGroupsToEnd
@@ -681,6 +734,25 @@ final class MacSharedStore: ObservableObject {
         guard group.first?.indentLevel == 0 else { return false }
         let leaves = TaskHierarchy.leafTasks(in: group)
         return !leaves.isEmpty && leaves.allSatisfy(\.isCompleted)
+    }
+
+    private func preservesTaskParents(
+        in tasks: [Task], applying updates: [TaskStructureUpdate]
+    ) -> Bool {
+        // Parent identity is derived from order and depth, so validate both together.
+        let updatesByID = Dictionary(uniqueKeysWithValues: updates.map { ($0.id, $0) })
+        let proposed = tasks.map { task in
+            updatesByID[task.id].map { presentationTask(task, applying: $0) } ?? task
+        }.sorted(by: Task.orderedBefore)
+        guard TaskHierarchy.isValidPreorder(proposed) else { return false }
+
+        let originalParents = Dictionary(uniqueKeysWithValues: tasks.enumerated().map {
+            ($0.element.id, TaskHierarchy.parentID(at: $0.offset, in: tasks))
+        })
+        return proposed.indices.allSatisfy { index in
+            TaskHierarchy.parentID(at: index, in: proposed)
+                == (originalParents[proposed[index].id] ?? nil)
+        }
     }
 
     private func reconcileTaskHierarchy(
@@ -794,6 +866,11 @@ final class MacSharedStore: ObservableObject {
             return TaskStructureUpdate(id: task.id, orderToken: token)
         }
         if let noteID = group.first?.noteID, !updates.isEmpty {
+            let tasks = try await repository.orderedTasks(in: noteID)
+            guard preservesTaskParents(in: tasks, applying: updates) else {
+                CompletedTaskOrderPreference.removeOriginalOrderTokens(for: group.map(\.id))
+                return
+            }
             _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
         }
         for task in group where CompletedTaskOrderPreference.originalOrderToken(for: task.id) != nil {
@@ -824,13 +901,18 @@ final class MacSharedStore: ObservableObject {
                 if currentTasks.map(\.id) != desiredTasks.map(\.id) {
                     // Older versions moved completed descendants independently. Restore all
                     // remembered positions first so their real parent/subtree is reconstructed.
-                    for task in currentTasks {
+                    let restorationUpdates = currentTasks.compactMap { task -> TaskStructureUpdate? in
                         guard let originalToken = CompletedTaskOrderPreference.originalOrderToken(
                             for: task.id
                         ), originalToken != task.orderToken else {
-                            continue
+                            return nil
                         }
-                        _ = try await repository.moveTask(id: task.id, to: originalToken)
+                        return TaskStructureUpdate(id: task.id, orderToken: originalToken)
+                    }
+                    if !restorationUpdates.isEmpty {
+                        _ = try await repository.applyTaskStructureUpdates(
+                            in: note.id, updates: restorationUpdates
+                        )
                         hasChanges = true
                     }
 
@@ -862,13 +944,16 @@ final class MacSharedStore: ObservableObject {
         } else {
             for note in notes {
                 let tasks = try await repository.orderedTasks(in: note.id)
-                for task in tasks {
-                    guard let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(
-                        for: task.id
-                    ), originalOrderToken != task.orderToken else {
-                        continue
-                    }
-                    _ = try await repository.moveTask(id: task.id, to: originalOrderToken)
+                let updates = tasks.compactMap { task -> TaskStructureUpdate? in
+                    guard let token = CompletedTaskOrderPreference.originalOrderToken(for: task.id),
+                          token != task.orderToken else { return nil }
+                    return TaskStructureUpdate(id: task.id, orderToken: token)
+                }
+                guard !updates.isEmpty else { continue }
+                if preservesTaskParents(in: tasks, applying: updates) {
+                    _ = try await repository.applyTaskStructureUpdates(
+                        in: note.id, updates: updates
+                    )
                     hasChanges = true
                 }
             }
@@ -905,6 +990,20 @@ final class MacSharedStore: ObservableObject {
             : destination
         guard (0...reordered.count).contains(adjustedDestination) else { return false }
 
+        var candidate = reordered
+        candidate.insert(contentsOf: movedSubtree, at: adjustedDestination)
+        guard TaskHierarchy.isValidPreorder(candidate) else { return false }
+        let movedIDs = Set(movedSubtree.map(\.id))
+        let originalParents = Dictionary(uniqueKeysWithValues: ordered.enumerated().map {
+            ($0.element.id, TaskHierarchy.parentID(at: $0.offset, in: ordered))
+        })
+        for index in candidate.indices where !movedIDs.contains(candidate[index].id) {
+            guard TaskHierarchy.parentID(at: index, in: candidate)
+                    == (originalParents[candidate[index].id] ?? nil) else {
+                return false
+            }
+        }
+
         let lower = adjustedDestination > 0 ? reordered[adjustedDestination - 1].orderToken : nil
         let upper = adjustedDestination < reordered.count ? reordered[adjustedDestination].orderToken : nil
         var previous = lower
@@ -915,6 +1014,7 @@ final class MacSharedStore: ObservableObject {
         }
         presentTaskStructureUpdates(updates, in: noteID)
         _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
+        CompletedTaskOrderPreference.removeOriginalOrderTokens(for: ordered.map(\.id))
         undoController.recordTaskReorder(
             before: ordered,
             after: try await repository.orderedTasks(in: noteID)
@@ -931,6 +1031,7 @@ final class MacSharedStore: ObservableObject {
         let noteID = task.noteID
         await waitForPendingTaskTextEdit(for: id)
         try await repository.deleteTask(id: id)
+        CompletedTaskOrderPreference.removeOriginalOrderToken(for: id)
         undoController.recordTaskDeletion(noteID: noteID, tasks: [task])
         refreshUndoAction()
         try await reload(noteID)
@@ -998,6 +1099,9 @@ final class MacSharedStore: ObservableObject {
         where task.text.isEmpty && task.id != preservedTaskID {
             try await repository.deleteTask(id: task.id)
         }
+        CompletedTaskOrderPreference.removeOriginalOrderTokens(
+            for: snapshot.tasks.filter { $0.text.isEmpty && $0.id != preservedTaskID }.map(\.id)
+        )
         try await reload(noteID)
         scheduleSyncNotification()
     }
@@ -1044,6 +1148,8 @@ private extension MacSharedStore {
     func drainTaskTextEdits(for id: TaskID) async {
         let editedNoteID = noteID(containing: id)
         while let edit = pendingTaskTextEdits[id] {
+            await waitForStagedTaskInsertion(id)
+            guard pendingTaskTextEdits[id]?.revision == edit.revision else { continue }
             do {
                 _ = try await repository.editTask(id: id, richText: edit.richText)
             } catch {
@@ -1068,6 +1174,24 @@ private extension MacSharedStore {
             scheduleSyncNotification()
         }
         taskTextEditWorkers[id] = nil
+    }
+
+    func waitForStagedTaskInsertion(_ id: TaskID) async {
+        guard stagedTaskInsertions[id] != nil else { return }
+        await withCheckedContinuation { continuation in
+            if stagedTaskInsertions[id] != nil {
+                stagedTaskInsertionWaiters[id, default: []].append(continuation)
+            } else {
+                continuation.resume()
+            }
+        }
+    }
+
+    func finishStagedTaskInsertion(_ id: TaskID) {
+        stagedTaskInsertions[id] = nil
+        for waiter in stagedTaskInsertionWaiters.removeValue(forKey: id) ?? [] {
+            waiter.resume()
+        }
     }
 
     func drainNoteTitleEdits(for id: NoteID) async {
@@ -1105,7 +1229,15 @@ private extension MacSharedStore {
             let note = pendingNoteTitleEdits[snapshot.id].map {
                 presentationNote(snapshot.note, title: $0.title)
             } ?? snapshot.note
-            let tasks = snapshot.tasks.map { task in
+            let staged = stagedTaskInsertions.values.filter { $0.task.noteID == snapshot.id }
+            let hiddenTaskIDs = staged.reduce(into: Set<TaskID>()) {
+                $0.formUnion($1.deletingEmptyTaskIDs)
+            }
+            var visibleTasks = snapshot.tasks.filter { !hiddenTaskIDs.contains($0.id) }
+            let persistedIDs = Set(visibleTasks.map(\.id))
+            visibleTasks.append(contentsOf: staged.map(\.task).filter { !persistedIDs.contains($0.id) })
+            visibleTasks.sort(by: Task.orderedBefore)
+            let tasks = visibleTasks.map { task in
                 pendingTaskTextEdits[task.id].map {
                     presentationTask(task, richText: $0.richText)
                 } ?? task

@@ -569,7 +569,9 @@ extension Note {
     func handleEnter(for task: TildoneDomain.Task, cursor: Int?) {
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
         let cursor = cursor ?? task.text.count
-        let insertion = cursor == 0 ? index : index + 1
+        let insertion = cursor == 0
+            ? index
+            : TaskHierarchy.insertionIndexAfterSubtree(startingAt: index, in: tasks)
         insertEmptyTask(
             at: insertion,
             focusing: cursor == 0 ? task.id : nil,

@@ -92,6 +92,10 @@ public enum TaskHierarchy {
         return index..<end
     }
 
+    public static func insertionIndexAfterSubtree(startingAt index: Int, in tasks: [Task]) -> Int {
+        subtreeRange(startingAt: index, in: tasks).upperBound
+    }
+
     public static func parentID(at index: Int, in tasks: [Task]) -> TaskID? {
         guard tasks.indices.contains(index), tasks[index].indentLevel > 0 else { return nil }
         let parentLevel = tasks[index].indentLevel - 1

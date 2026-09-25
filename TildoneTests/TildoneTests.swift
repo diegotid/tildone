@@ -3192,6 +3192,46 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(tasksAfterInsertCommit[1].text, "Staged")
     }
 
+    @MainActor
+    func testRemoteRefreshKeepsStagedTasksAndEditsVisibleUntilTheirInsertsCommit() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let existing = try await store.addTask(to: note.id, text: "Existing")
+        let first = try store.stageEmptyTaskInsertion(
+            in: note.id, at: 1, deleting: [], indentLevel: 0, text: "First new task"
+        )
+        let second = try store.stageEmptyTaskInsertion(
+            in: note.id, at: 2, deleting: [], indentLevel: 0
+        )
+        var editFailure: Error?
+        let worker = store.queueTaskTextEdit(second.id, text: "Second new task") {
+            editFailure = $0
+        }
+
+        _ = try await repository.editTask(id: existing.id, text: "Changed remotely")
+        try await store.reloadAfterRemoteChange()
+        XCTAssertEqual(
+            store.note(note.id)?.tasks.map(\.text),
+            ["Changed remotely", "First new task", "Second new task"]
+        )
+        let beforeCommit = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(beforeCommit.map(\.id), [existing.id])
+
+        try await store.commitStagedTaskInsertion(first, deleting: [])
+        XCTAssertEqual(
+            store.note(note.id)?.tasks.map(\.text),
+            ["Changed remotely", "First new task", "Second new task"]
+        )
+        try await store.commitStagedTaskInsertion(second, deleting: [])
+        await worker.value
+
+        let persisted = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(persisted.map(\.text),
+                       ["Changed remotely", "First new task", "Second new task"])
+        XCTAssertNil(editFailure)
+    }
+
     func testMacSharedStoreRoutesCRUDThroughDomainRepository() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),
@@ -3550,6 +3590,237 @@ final class TildoneTests: XCTestCase {
         try await store.reloadAfterRemoteChange()
         let restoredOrder = try await repository.orderedTasks(in: note.id)
         XCTAssertEqual(restoredOrder.map(\.id), [first.id, second.id, third.id])
+    }
+
+    @MainActor
+    func testManualCompletedTaskReorderSurvivesLaunchAndRemoteTextEdit() async throws {
+        let key = AppAppearance.moveCheckedTasksToEndStorageKey
+        let previous = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(true, forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        defer { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+
+        _ = try await store.setTaskCompletion(
+            second.id, completed: true, moveToEndWhenCompleted: true
+        )
+        XCTAssertNotNil(CompletedTaskOrderPreference.originalOrderToken(for: second.id))
+
+        let moved = try await store.moveTask(second.id, in: note.id, to: 0)
+        XCTAssertTrue(moved)
+        XCTAssertNil(CompletedTaskOrderPreference.originalOrderToken(for: second.id))
+        let relaunchedStore = MacSharedStore(repository: repository)
+        try await relaunchedStore.prepareForPresentation()
+        let orderAfterLaunch = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            orderAfterLaunch.map(\.id),
+            [second.id, first.id, third.id]
+        )
+
+        _ = try await repository.editTask(id: first.id, text: "Edited remotely")
+        try await store.reloadAfterRemoteChange()
+        let orderAfterRemoteEdit = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            orderAfterRemoteEdit.map(\.id),
+            [second.id, first.id, third.id]
+        )
+
+        try await store.applyCompletedTaskOrdering(enabled: false)
+        let orderAfterDisabling = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            orderAfterDisabling.map(\.id),
+            [second.id, first.id, third.id]
+        )
+    }
+
+    @MainActor
+    func testRemoteTaskReorderIsNotOverwrittenByCompletedTaskOrdering() async throws {
+        let key = AppAppearance.moveCheckedTasksToEndStorageKey
+        let previous = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(true, forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        defer { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+        _ = try await store.setTaskCompletion(
+            second.id, completed: true, moveToEndWhenCompleted: true
+        )
+        XCTAssertNotNil(CompletedTaskOrderPreference.originalOrderToken(for: second.id))
+
+        let current = try await repository.orderedTasks(in: note.id)
+        _ = try await repository.moveTask(
+            id: second.id,
+            to: OrderToken.before(current[0].orderToken)
+        )
+        try await store.reloadAfterRemoteChange()
+
+        let refreshed = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(refreshed.map(\.id), [second.id, first.id, third.id])
+        XCTAssertNil(CompletedTaskOrderPreference.originalOrderToken(for: second.id))
+    }
+
+    @MainActor
+    func testRemoteCompletionWithOrderChangeKeepsRemoteOrder() async throws {
+        let key = AppAppearance.moveCheckedTasksToEndStorageKey
+        let previous = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(true, forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let third = try await store.addTask(to: note.id, text: "Third")
+
+        _ = try await repository.setTaskCompletion(
+            id: first.id, completion: .completed(at: Date(timeIntervalSince1970: 200))
+        )
+        let tasks = try await repository.orderedTasks(in: note.id)
+        _ = try await repository.moveTask(
+            id: first.id,
+            to: try OrderToken.between(tasks[1].orderToken, tasks[2].orderToken)
+        )
+        try await store.reloadAfterRemoteChange()
+
+        let refreshed = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(refreshed.map(\.id), [second.id, first.id, third.id])
+    }
+
+    @MainActor
+    func testInsertingSiblingAfterParentPreservesExistingChildren() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        let otherRoot = try await store.addTask(to: note.id, text: "Other root")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+
+        let sibling = try await store.addTask(
+            to: note.id, text: "Pasted sibling", insertingAfter: parent.id
+        )
+        var tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [parent.id, child.id, sibling.id, otherRoot.id])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), parent.id)
+
+        let insertion = TaskHierarchy.insertionIndexAfterSubtree(startingAt: 0, in: tasks)
+        let staged = try store.stageEmptyTaskInsertion(
+            in: note.id, at: insertion, deleting: [], indentLevel: parent.indentLevel
+        )
+        try await store.commitStagedTaskInsertion(staged, deleting: [])
+        try await store.editTask(staged.id, text: "Return sibling")
+        tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(
+            tasks.map(\.id), [parent.id, child.id, staged.id, sibling.id, otherRoot.id]
+        )
+        XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), parent.id)
+    }
+
+    @MainActor
+    func testDraggingRootCannotTakeAnotherRootsChildren() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        let otherRoot = try await store.addTask(to: note.id, text: "Other root")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+
+        let moved = try await store.moveTask(otherRoot.id, in: note.id, to: 1)
+
+        XCTAssertFalse(moved)
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [parent.id, child.id, otherRoot.id])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), parent.id)
+    }
+
+    @MainActor
+    func testCompletedOrderingDoesNotReparentAfterAddingSibling() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        defer { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        let otherRoot = try await store.addTask(to: note.id, text: "Other root")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+        _ = try await store.setTaskCompletion(
+            child.id, completed: true, moveToEndWhenCompleted: true
+        )
+
+        let sibling = try await store.addTask(
+            to: note.id, text: "Sibling", insertingAfter: parent.id
+        )
+        try await store.applyCompletedTaskOrdering(enabled: false)
+
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [parent.id, child.id, otherRoot.id, sibling.id])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), parent.id)
+    }
+
+    @MainActor
+    func testRestoringCompletedOrderCannotDetachNewChild() async throws {
+        CompletedTaskOrderPreference.clearOriginalOrderTokens()
+        defer { CompletedTaskOrderPreference.clearOriginalOrderTokens() }
+
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        let otherRoot = try await store.addTask(to: note.id, text: "Other root")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+        _ = try await store.setTaskCompletion(
+            child.id, completed: true, moveToEndWhenCompleted: true
+        )
+
+        let current = try await repository.orderedTasks(in: note.id)
+        let insertion = current.firstIndex(where: { $0.id == parent.id })! + 1
+        let staged = try store.stageEmptyTaskInsertion(
+            in: note.id, at: insertion, deleting: [], indentLevel: 1
+        )
+        try await store.commitStagedTaskInsertion(staged, deleting: [])
+        try await store.editTask(staged.id, text: "New child")
+        try await store.applyCompletedTaskOrdering(enabled: false)
+
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [otherRoot.id, parent.id, staged.id, child.id])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 2, in: tasks), parent.id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 3, in: tasks), parent.id)
     }
 
     func testMacSharedStoreMovesNewlyCompletedTaskToEndWhenEnabled() async throws {
