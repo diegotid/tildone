@@ -24,6 +24,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
     var textStyle: UIFont.TextStyle = .body
     var textAlignment: NSTextAlignment = .natural
     var lineHeightMultiple: CGFloat? = nil
+    var onSubmit: () -> Void = {}
     let onCommit: (RichText) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -183,6 +184,9 @@ struct RichTaskTextEditor: UIViewRepresentable {
         ) -> Bool {
             guard text == "\n", !parent.allowsMultipleLines else { return true }
             textView.resignFirstResponder()
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.onSubmit()
+            }
             return false
         }
 

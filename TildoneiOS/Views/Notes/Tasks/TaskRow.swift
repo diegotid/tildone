@@ -19,6 +19,7 @@ struct TaskRow: View {
     var focusedTask: FocusState<TaskID?>.Binding
     let onBeginEditing: () -> Void
     let onCommit: (RichText) async -> Void
+    let onSubmit: () -> Void
     let onToggle: () async -> Void
     let onToggleSubtasks: () -> Void
     let onIndent: () async -> Void
@@ -76,6 +77,7 @@ struct TaskRow: View {
                     focusedTask: focusedTask,
                     isCompleted: isVisuallyCompleted,
                     forceFocus: isEditingTask,
+                    onSubmit: onSubmit,
                     onCommit: commit
                 )
                 .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33, alignment: .leading)

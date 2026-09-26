@@ -6,6 +6,7 @@ struct NoteCardTaskList: View {
     let tasks: [NoteTaskPreview]
     let style: NoteCard.Style
     let contentScale: CGFloat
+    var allowsTwoLineTasks = false
     @ScaledMetric(relativeTo: .caption) private var baseTaskSize: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var baseCheckboxSize: CGFloat = 17
 
@@ -39,7 +40,7 @@ struct NoteCardTaskList: View {
                                 shortenLinks: true
                             ))
                                 .strikethrough(task.isCompleted || task.subtaskProgress?.fraction == 1)
-                                .lineLimit(style == .deck ? 2 : 1)
+                                .lineLimit(style == .deck || allowsTwoLineTasks ? 2 : 1)
                         }
                         .font(.system(size: baseTaskSize * contentScale))
                         .padding(.leading, 1 + CGFloat(task.indentLevel) * baseCheckboxSize * contentScale)

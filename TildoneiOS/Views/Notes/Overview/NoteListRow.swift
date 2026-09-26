@@ -13,10 +13,11 @@ struct NoteListRow: View {
     let taskListText: String?
     let taskPreview: NoteTaskPreview?
 
-    private var title: String {
-        note.title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-            ? note.title!
-            : String(localized: "Untitled Note")
+    private var title: String? {
+        guard let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
+            return nil
+        }
+        return title
     }
 
     var body: some View {
@@ -28,7 +29,7 @@ struct NoteListRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(note.kind == .singleTask ? (taskListText ?? String(localized: "New task")) : title)
+        .accessibilityLabel(note.kind == .singleTask ? (taskListText ?? String(localized: "New task")) : (title ?? taskListText ?? String(localized: "No tasks")))
         .accessibilityValue(accessibilityDescription)
     }
 
@@ -43,14 +44,16 @@ struct NoteListRow: View {
                     .scaleEffect(0.8, anchor: .center)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.body.weight(.medium))
-                        .lineLimit(1)
+                    if let title {
+                        Text(title)
+                            .font(.body.weight(.medium))
+                            .lineLimit(1)
+                    }
                     if let taskListText, !taskListText.isEmpty {
                         Text(taskListText)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .lineLimit(title == nil ? 2 : 1)
                             .truncationMode(.tail)
                     }
                 }

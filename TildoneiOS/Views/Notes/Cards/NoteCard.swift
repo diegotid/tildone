@@ -15,9 +15,9 @@ struct NoteCard: View {
     @ScaledMetric(relativeTo: .headline) private var baseTitleSize: CGFloat = 17
     @ScaledMetric(relativeTo: .caption) private var baseChevronSize: CGFloat = 12
 
-    private var title: String {
+    private var title: String? {
         guard let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
-            return String(localized: "Untitled Note")
+            return nil
         }
         return title
     }
@@ -27,35 +27,40 @@ struct NoteCard: View {
         let cornerRadius = 16 * contentScale
 
         VStack(alignment: note.kind == .singleTask ? .center : .leading, spacing: 12 * contentScale) {
-            if note.kind == .checklist {
+            if note.kind == .checklist, let title {
                 HStack(alignment: .center, spacing: 8 * contentScale) {
-                Text(title)
-                    .font(.system(size: baseTitleSize * contentScale, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
-                    .frame(minHeight: 46)
-                Spacer(minLength: 0)
-                HStack(alignment: .center, spacing: 14 * contentScale) {
-                    NoteCompletionGauge(summary: summary, labelColor: .black)
+                    Text(title)
+                        .font(.system(size: baseTitleSize * contentScale, weight: .semibold))
                         .foregroundStyle(.black)
-                        .scaleEffect(gaugeSize / 30)
-                        .frame(width: gaugeSize, height: gaugeSize)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: baseChevronSize * contentScale, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .accessibilityHidden(true)
-                }
-                .fixedSize()
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
+                        .frame(minHeight: 46)
+                    Spacer(minLength: 0)
+                    HStack(alignment: .center, spacing: 14 * contentScale) {
+                        NoteCompletionGauge(summary: summary, labelColor: .black)
+                            .foregroundStyle(.black)
+                            .scaleEffect(gaugeSize / 30)
+                            .frame(width: gaugeSize, height: gaugeSize)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: baseChevronSize * contentScale, weight: .semibold))
+                            .foregroundStyle(.black)
+                            .accessibilityHidden(true)
+                    }
+                    .fixedSize()
                 }
             }
 
             if note.kind == .singleTask {
                 singleTaskPreview
             } else {
-                NoteCardTaskList(tasks: tasks, style: style, contentScale: contentScale)
+                NoteCardTaskList(
+                    tasks: tasks,
+                    style: style,
+                    contentScale: contentScale,
+                    allowsTwoLineTasks: title == nil
+                )
             }
         }
         .padding(.horizontal, 14 * contentScale)
@@ -81,7 +86,7 @@ struct NoteCard: View {
                 Button("Delete", role: .destructive, action: delete)
             }
         }
-        .accessibilityLabel(note.kind == .singleTask ? (tasks.first?.text ?? String(localized: "New task")) : title)
+        .accessibilityLabel(note.kind == .singleTask ? (tasks.first?.text ?? String(localized: "New task")) : (title ?? tasks.first?.text ?? String(localized: "No tasks")))
         .accessibilityValue(summary?.accessibilityDescription ?? String(localized: "No tasks"))
         .accessibilityHint("Double tap to open the note")
     }

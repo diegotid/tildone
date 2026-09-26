@@ -18,6 +18,7 @@ struct NotesListView: View {
     @ObservedObject private var overviewPresentation: TildoneiOSOverviewPresentation
     @AppStorage("notesOverviewLayout") private var layoutRawValue = NotesOverviewLayout.list.rawValue
     @State private var presentedNoteID: NoteID?
+    @State private var isPresentingNewNote = false
     @State private var noteToRename: Note?
     @State private var renamedTitle = ""
     @State private var noteToDelete: Note?
@@ -134,7 +135,7 @@ struct NotesListView: View {
                 }
             }
             .navigationDestination(item: $presentedNoteID) { noteID in
-                ChecklistView(appModel: appModel, noteID: noteID)
+                ChecklistView(appModel: appModel, noteID: noteID, isCreatingNote: isPresentingNewNote)
             }
             .navigationDestination(isPresented: $showsAbout) {
                 TildoneiOSAboutView()
@@ -193,6 +194,7 @@ struct NotesListView: View {
     }
 
     private func createNote() {
+        isPresentingNewNote = true
         presentedNoteID = appModel.createNoteAndPresent()
     }
 
@@ -251,6 +253,7 @@ struct NotesListView: View {
     }
 
     private func open(_ note: Note) {
+        isPresentingNewNote = false
         presentedNoteID = note.id
     }
 

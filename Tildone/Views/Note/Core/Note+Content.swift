@@ -732,24 +732,100 @@ extension Note {
         VStack {
             Spacer()
             if noteKind == .checklist {
-                Image(systemName: "checkmark").padding(.top, 12).padding(.leading, 12).font(.system(size: 90, weight: .bold)).foregroundColor(.accentColor).symbolEffect(.bounce, value: completionFade.isFading)
-                Text("Done!").padding(.leading, 6).padding(.bottom, completionFade.isFading ? 30 : 60).font(.system(size: 30, weight: .bold)).foregroundColor(.accentColor)
-            }
-            Spacer()
-            if completionFade.isFading {
-                ZStack {
-                    ProgressView("Fading out...", value: fadeAwayProgress, total: Timeout.noteFadeOutSeconds).foregroundColor(.accentColor).padding(.horizontal, 20).padding(.bottom, 12)
-                    HStack {
-                        Spacer()
-                        Button("Cancel", action: cancelCompletionFade)
-                            .buttonStyle(.plain)
-                            .foregroundStyle(minimizedForeground)
-                            .padding(.trailing, 20)
-                            .padding(.bottom, 30)
+                completionGlass {
+                    VStack(spacing: 8) {
+                        MacCompletionCheckmark(color: noteForeground)
+                            .frame(width: 116, height: 116)
+                        Text("Done!")
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundStyle(noteForeground)
                     }
                 }
             }
-        }.opacity(0.9)
+            Spacer()
+            if completionFade.isFading {
+                completionGlass {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Fading out…")
+                                .foregroundStyle(noteForeground)
+                            Spacer(minLength: 8)
+                            Button("Cancel", action: cancelCompletionFade)
+                                .buttonStyle(.plain)
+                                .foregroundStyle(noteForeground)
+                        }
+
+                        ProgressView(
+                            value: fadeAwayProgress,
+                            total: Timeout.noteFadeOutSeconds
+                        )
+                        .tint(noteForeground)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func completionGlass<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let capsuleContent = content()
+            .padding(.horizontal, 18)
+            .padding(.vertical, 11)
+
+        if #available(macOS 26.0, *) {
+            capsuleContent
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+        } else {
+            capsuleContent
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.2), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+        }
+    }
+}
+
+private struct MacCompletionCheckmark: View {
+    let color: Color
+    @State private var progress: CGFloat = 0
+    @State private var opacity = 0.0
+    @State private var horizontalOffset: CGFloat = -20
+
+    var body: some View {
+        MacCompletionCheckmarkShape()
+            .trim(from: 0, to: progress)
+            .stroke(color, style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
+            .padding(16)
+            .opacity(opacity)
+            .offset(x: horizontalOffset)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.24)) {
+                    opacity = 1
+                    horizontalOffset = 0
+                }
+                withAnimation(.easeInOut(duration: 0.58).delay(0.16)) {
+                    progress = 1
+                }
+            }
+    }
+}
+
+private struct MacCompletionCheckmarkShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + rect.width * 0.12, y: rect.minY + rect.height * 0.53))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.40, y: rect.minY + rect.height * 0.80))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.90, y: rect.minY + rect.height * 0.20))
+        return path
     }
 }
 
