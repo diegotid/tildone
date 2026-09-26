@@ -91,7 +91,9 @@ enum NoteContentForeground {
         backgroundOpacity: Double,
         windowOpacity: CGFloat = 1
     ) -> Bool {
-        colorScheme == .dark
+        // Pastel note backgrounds need dark text even in Dark Mode. Only
+        // sufficiently transparent notes use the dark appearance's light text.
+        colorScheme == .dark && backgroundOpacity < 0.5
     }
 
     static func color(

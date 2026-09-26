@@ -11,6 +11,7 @@ import TildoneSync
 
 struct TildoneiOSRootView: View {
     @ObservedObject var appModel: TildoneiOSApplicationModel
+    @ObservedObject private var pro = ProEntitlement.shared
 
     var body: some View {
         Group {
@@ -24,6 +25,9 @@ struct TildoneiOSRootView: View {
             TildoneiOSUndoOverlay(presentation: appModel.undoPresentation) {
                 try await appModel.undoLatestAction()
             }
+        }
+        .sheet(item: $pro.requestedFeature) { feature in
+            ProPaywallView(feature: feature)
         }
     }
 }

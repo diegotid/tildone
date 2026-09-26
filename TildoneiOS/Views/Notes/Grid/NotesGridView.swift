@@ -3,6 +3,8 @@ import TildoneDomain
 
 struct NotesGridView: View {
     let notes: [Note]
+    let departingNoteID: NoteID?
+    let isDepartingNoteFading: Bool
     let summaries: [NoteID: NoteTaskSummary]
     let taskPreviews: [NoteID: [NoteTaskPreview]]
     let open: (Note) -> Void
@@ -30,6 +32,9 @@ struct NotesGridView: View {
                             rename: { rename(note) },
                             delete: { delete(note) }
                         )
+                        .opacity(note.id == departingNoteID && isDepartingNoteFading ? 0 : 1)
+                        .scaleEffect(note.id == departingNoteID && isDepartingNoteFading ? 0.98 : 1)
+                        .allowsHitTesting(note.id != departingNoteID)
                         .onTapGesture { open(note) }
                     }
                 }

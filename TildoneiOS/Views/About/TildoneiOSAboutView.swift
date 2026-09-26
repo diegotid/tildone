@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TildoneiOSAboutView: View {
+    @State private var showsPro = false
     private var version: String? {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
     }
@@ -23,6 +24,14 @@ struct TildoneiOSAboutView: View {
             }
 
             Section {
+                Button("Tildone Pro") { showsPro = true }
+                Button("Restore Purchases") {
+                    showsPro = true
+                    Task { await ProEntitlement.shared.restore() }
+                }
+            }
+
+            Section {
                 NavigationLink("Font Attributions") {
                     FontAttributionsView()
                 }
@@ -30,5 +39,8 @@ struct TildoneiOSAboutView: View {
         }
         .navigationTitle("About Tildone")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsPro) {
+            ProPaywallView(feature: nil)
+        }
     }
 }

@@ -7,6 +7,28 @@
 import XCTest
 
 final class TildoneiOSUITests: XCTestCase {
+    func testProFeaturePaywallStartsAtTriggerAndReturnsToIndex() {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_UI_TESTING"] = "1"
+        app.launch()
+        app.buttons["Create note"].tap()
+        XCTAssertTrue(app.textFields["Note title"].waitForExistence(timeout: 5))
+        app.textFields["Note title"].typeText("Pro navigation\n")
+        app.buttons["Note type"].tap()
+        app.buttons["Single memo"].tap()
+        let discover = app.buttons["pro-discover-all"]
+        XCTAssertTrue(discover.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Single memos"].exists)
+        discover.tap()
+        let styling = app.buttons["pro-feature-textStyling"]
+        XCTAssertTrue(styling.waitForExistence(timeout: 5))
+        styling.tap()
+        XCTAssertTrue(discover.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars.buttons["Pro features"].exists)
+        discover.tap()
+        XCTAssertTrue(styling.waitForExistence(timeout: 5))
+    }
+
     func testLaunch() {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_UI_TESTING"] = "1"
@@ -75,5 +97,31 @@ final class TildoneiOSUITests: XCTestCase {
 
         XCTAssertTrue(app.textViews["Task"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+    }
+
+    func testFinalTaskShowsDoneThenFadesFromNotesWithUndo() {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_UI_TESTING"] = "1"
+        app.launch()
+        app.buttons["Create note"].tap()
+
+        let titleField = app.textFields["Note title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 3))
+        titleField.typeText("Finish me")
+        app.navigationBars.buttons["Done"].tap()
+
+        let newTaskField = app.textFields["New task"]
+        XCTAssertTrue(newTaskField.waitForExistence(timeout: 3))
+        newTaskField.tap()
+        newTaskField.typeText("Last task\n")
+        XCTAssertTrue(app.buttons["Complete task"].waitForExistence(timeout: 3))
+        app.buttons["Complete task"].tap()
+
+        XCTAssertTrue(app.staticTexts["Done!"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["No Notes Yet"].waitForExistence(timeout: 8))
+        let undo = app.buttons["Undo Complete Task"].firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 3))
+        undo.tap()
+        XCTAssertTrue(app.staticTexts["Finish me"].waitForExistence(timeout: 5))
     }
 }

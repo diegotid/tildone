@@ -16,6 +16,87 @@ import TildoneSync
 
 @MainActor
 final class TildoneiOSTests: XCTestCase {
+    func testProFeaturePreviewsRenderNativeCardsInBothAppearances() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/ios")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let englishMemo = ProPreviewContent(feature: .singleMemo, locale: Locale(identifier: "en")).tasks.first?.text
+        for language in ["en", "es", "fr", "zh-Hans"] {
+            if language != "en" {
+                XCTAssertNotEqual(ProPreviewContent(feature: .singleMemo, locale: Locale(identifier: language)).tasks.first?.text,
+                                  englishMemo, "Preview examples must follow the paywall language.")
+            }
+            for appearance in [ColorScheme.light, .dark] {
+                var distinctImages = Set<Data>()
+                for feature in [ProFeature.singleMemo, .textStyling, .subtasks] {
+                    let image = try XCTUnwrap(ProFeaturePreview.rasterImage(
+                        feature: feature, locale: Locale(identifier: language), colorScheme: appearance
+                    ))
+                    XCTAssertEqual(image.size, CGSize(width: 360, height: 360))
+                    let png = try XCTUnwrap(image.pngData())
+                    XCTAssertGreaterThan(png.count, 2_000, "The preview must contain rendered note content.")
+                    distinctImages.insert(png)
+                    let attachment = XCTAttachment(image: image)
+                    attachment.name = "\(feature.rawValue)-\(language)-\(appearance)"
+                    attachment.lifetime = .keepAlways
+                    add(attachment)
+                    try png.write(to: directory.appendingPathComponent("\(attachment.name).png"))
+                }
+                XCTAssertEqual(distinctImages.count, 3, "Each feature must have its own visual explanation.")
+            }
+        }
+    }
+
+    func testProPreviewFormatsOnlyOneWordPerTaskInEveryLanguage() {
+        for language in ["en", "es", "fr", "zh-Hans"] {
+            let content = ProPreviewContent(feature: .textStyling, locale: Locale(identifier: language))
+            XCTAssertEqual(content.tasks.count, 3)
+            for task in content.tasks {
+                XCTAssertEqual(task.richText.spans.count, 1)
+                guard let span = task.richText.spans.first else { continue }
+                XCTAssertGreaterThan(span.range.length, 0)
+                XCTAssertLessThan(span.range.length, task.text.utf16.count)
+            }
+        }
+    }
+
+    func testProEntitlementRestoresAndRevokesFromVerifiedCurrentSet() {
+        var state = ProEntitlementState()
+        state.replaceCurrent([100])
+        XCTAssertTrue(state.isPro)
+        state.apply(transactionID: 100, revoked: true)
+        XCTAssertFalse(state.isPro)
+        XCTAssertFalse(ProFeatureAccess.allows(.singleMemo, isPro: state.isPro))
+        XCTAssertFalse(ProFeatureAccess.allows(.textStyling, isPro: state.isPro))
+        XCTAssertFalse(ProFeatureAccess.allows(.subtasks, isPro: state.isPro))
+    }
+
+    func testFreeIPhoneModelRejectsMemoConversionWithoutChangingNote() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(false)
+        defer { pro.setTestOverride(nil) }
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Safe checklist")
+        let createdTask = try await model.addTask(noteID: note.id, text: "Keep styling safe", after: [])
+        let task = try XCTUnwrap(createdTask)
+        let styled = task.richText.applying(
+            .toggle(.bold), to: RichTextRange(location: 0, length: task.text.utf16.count)
+        )
+        do {
+            try await model.edit(taskID: task.id, richText: styled)
+            XCTFail("Free text styling must be rejected")
+        } catch ProAccessError.requiresPro {}
+        XCTAssertTrue(try XCTUnwrap(model.presentation(for: note.id).snapshot.tasks.first).richText.isPlain)
+        do {
+            try await model.setKind(noteID: note.id, kind: .singleTask)
+            XCTFail("Free conversion must be rejected")
+        } catch ProAccessError.requiresPro {}
+        XCTAssertEqual(model.presentation(for: note.id).snapshot.note?.kind, .checklist)
+
+        pro.setTestOverride(true)
+        try await model.setKind(noteID: note.id, kind: .singleTask)
+        XCTAssertEqual(model.presentation(for: note.id).snapshot.note?.kind, .singleTask)
+    }
+
     func testUntitledNoteSyncDoesNotReplaceAnInitializedTitleDraftWhileEditing() {
         XCTAssertTrue(ChecklistView.shouldSynchronizeTitleDraft(
             isEditingTitle: true,
@@ -398,6 +479,7 @@ final class TildoneiOSTests: XCTestCase {
 
         try await model.setCompletion(taskID: task.id, completed: true)
         XCTAssertEqual(model.undoPresentation.action, .completeTask)
+        XCTAssertTrue(model.undoPresentation.isControlVisible)
         try await model.undoLatestAction()
         let restoredTasks = try await model.tasks(in: note.id)
         XCTAssertFalse(restoredTasks[0].isCompleted)
@@ -430,6 +512,29 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(model.undoPresentation.action, .changeNoteColor)
         try await model.openForTesting(workspaceID: UUID())
         XCTAssertNil(model.undoPresentation.action)
+    }
+
+    func testOnlyFinalTaskCompletionShowsTheExtendedUndoControl() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Finish")
+        let createdFirst = try await model.addTask(noteID: note.id, text: "First", after: [])
+        let first = try XCTUnwrap(createdFirst)
+        let createdSecond = try await model.addTask(noteID: note.id, text: "Second", after: [first])
+        let second = try XCTUnwrap(createdSecond)
+
+        try await model.setCompletion(taskID: first.id, completed: true)
+        XCTAssertFalse(model.undoPresentation.isControlVisible)
+
+        try await model.setCompletion(taskID: second.id, completed: true)
+        XCTAssertTrue(model.undoPresentation.isControlVisible)
+        model.undoPresentation.suppressControl()
+        XCTAssertTrue(model.undoPresentation.isControlSuppressed)
+        model.undoPresentation.resumeControl()
+        XCTAssertFalse(model.undoPresentation.isControlSuppressed)
+
+        try await model.undoLatestAction()
+        XCTAssertFalse(try XCTUnwrap(model.taskSummaries[note.id]).isComplete)
+        XCTAssertFalse(model.undoPresentation.isControlVisible)
     }
 
     func testIPhoneUndoCoversEveryScopedActionAndOnlyDeletionShowsThePill() async throws {

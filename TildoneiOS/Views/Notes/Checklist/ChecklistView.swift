@@ -15,7 +15,10 @@ struct ChecklistView: View {
     @ObservedObject private var presentation: TildoneiOSNotePresentation
     let noteID: NoteID
     let isCreatingNote: Bool
+    let onCompletionStarted: (NoteID) -> Void
+    let onCompletionExited: (NoteID) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
@@ -28,6 +31,9 @@ struct ChecklistView: View {
     @State private var pendingTaskInsertionID: TaskID?
     @State private var showsInsertionHint = false
     @State private var singleTaskDraft = RichText(text: "")
+    @State private var isShowingCompletion = false
+    @State private var completionExitTask: Swift.Task<Void, Never>?
+    @State private var hasLeftDetail = false
     @FocusState private var focusedTask: TaskID?
     @FocusState private var isAddingTask: Bool
     @FocusState private var isAddingTaskAbove: Bool
@@ -36,11 +42,15 @@ struct ChecklistView: View {
     init(
         appModel: TildoneiOSApplicationModel,
         noteID: NoteID,
-        isCreatingNote: Bool = false
+        isCreatingNote: Bool = false,
+        onCompletionStarted: @escaping (NoteID) -> Void = { _ in },
+        onCompletionExited: @escaping (NoteID) -> Void = { _ in }
     ) {
         self.appModel = appModel
         self.noteID = noteID
         self.isCreatingNote = isCreatingNote
+        self.onCompletionStarted = onCompletionStarted
+        self.onCompletionExited = onCompletionExited
         _presentation = ObservedObject(wrappedValue: appModel.presentation(for: noteID))
     }
 
@@ -124,7 +134,7 @@ struct ChecklistView: View {
                                 },
                                 onSubmit: { advanceFocus(after: task.id) },
                                 onToggle: {
-                                    try? await appModel.setCompletion(taskID: task.id, completed: !task.isCompleted)
+                                    await toggleCompletion(for: task)
                                 },
                                 onToggleSubtasks: {
                                     toggleSubtasks(at: index)
@@ -287,9 +297,19 @@ struct ChecklistView: View {
                 ContentUnavailableView("This note was deleted", systemImage: "trash")
             }
         }
+        .blur(radius: isShowingCompletion ? 2 : 0)
+        .accessibilityHidden(isShowingCompletion)
+        .overlay {
+            if isShowingCompletion, let note {
+                completionOverlay(color: note.color)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97)))
+            }
+        }
         .task {
+            hasLeftDetail = false
             synchronizeWithPresentation()
-            // Initial title entry for a newly created note is independent from rename mode.
+            // New-note title entry is separate from the rename state so the
+            // regular toolbar stays available while the initial title is focused.
             isRenamingTitle = false
             isEnteringNewNoteTitle = isCreatingNote && isUntitled
             if isEnteringNewNoteTitle { isEditingTitle = true }
@@ -297,13 +317,131 @@ struct ChecklistView: View {
         }
         .onChange(of: presentation.snapshot) { oldSnapshot, newSnapshot in
             if oldSnapshot.note != nil, newSnapshot.note == nil { dismiss() }
-            else { synchronizeWithPresentation() }
+            else {
+                synchronizeWithPresentation()
+                if isShowingCompletion, appModel.taskSummaries[noteID]?.isComplete != true {
+                    cancelCompletionMoment()
+                }
+            }
         }
         .onChange(of: newTaskText) { _, text in
             if !text.isEmpty {
                 showsInsertionHint = false
             }
         }
+        .onDisappear {
+            hasLeftDetail = true
+            completionExitTask?.cancel()
+            if isShowingCompletion { onCompletionExited(noteID) }
+            appModel.undoPresentation.resumeControl()
+        }
+    }
+
+    @MainActor
+    private func toggleCompletion(for task: TildoneDomain.Task) async {
+        guard !isShowingCompletion else { return }
+        let completing = !task.isCompleted
+        if completing { appModel.undoPresentation.suppressControl() }
+        do {
+            try await appModel.setCompletion(taskID: task.id, completed: completing)
+            let hasDraftTask = !newTaskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || !taskInsertionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            guard completing,
+                  !hasDraftTask,
+                  !isShowingCompletion,
+                  appModel.taskSummaries[noteID]?.isComplete == true else {
+                appModel.undoPresentation.resumeControl()
+                return
+            }
+
+            if hasLeftDetail {
+                onCompletionStarted(noteID)
+                appModel.undoPresentation.resumeControl()
+                onCompletionExited(noteID)
+                return
+            }
+
+            focusedTask = nil
+            isAddingTask = false
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.35)) {
+                isShowingCompletion = true
+            }
+            onCompletionStarted(noteID)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            UIAccessibility.post(notification: .announcement, argument: String(localized: "Note completed"))
+
+            guard !UIAccessibility.isVoiceOverRunning else { return }
+            completionExitTask?.cancel()
+            completionExitTask = Swift.Task {
+                try? await Swift.Task.sleep(for: .seconds(reduceMotion ? 0.6 : 1.5))
+                guard !Swift.Task.isCancelled,
+                      isShowingCompletion,
+                      !UIAccessibility.isVoiceOverRunning,
+                      appModel.taskSummaries[noteID]?.isComplete == true else { return }
+                dismiss()
+            }
+        } catch {
+            appModel.undoPresentation.resumeControl()
+        }
+    }
+
+    private func cancelCompletionMoment() {
+        completionExitTask?.cancel()
+        completionExitTask = nil
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+            isShowingCompletion = false
+        }
+        appModel.undoPresentation.resumeControl()
+    }
+
+    private func completionOverlay(color: NoteColor) -> some View {
+        ZStack {
+            Color.black.opacity(0.12)
+                .ignoresSafeArea()
+            ZStack {
+                Circle()
+                    .fill(color.swiftUIColor.opacity(0.55))
+                    .frame(width: 150, height: 150)
+                    .blur(radius: 42)
+
+                VStack(spacing: 14) {
+                    CompletionCheckmark(color: color.swiftUIColor)
+                        .frame(width: 76, height: 76)
+                    Text("Done!")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.primary)
+
+                    if appModel.undoPresentation.action == .completeTask {
+                        Button("Undo") {
+                            completionExitTask?.cancel()
+                            Swift.Task {
+                                do {
+                                    try await appModel.undoLatestAction()
+                                    cancelCompletionMoment()
+                                } catch {
+                                    appModel.undoPresentation.reportUndoFailure()
+                                }
+                            }
+                        }
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 22)
+                        .frame(minHeight: 44)
+                        .background(Color.white, in: Capsule())
+                        .padding(.top, 2)
+                    }
+                }
+                .padding(.horizontal, 34)
+                .padding(.vertical, 28)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(.white.opacity(0.24), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.16), radius: 24, y: 10)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func singleTaskEditor(_ note: Note) -> some View {
@@ -343,7 +481,11 @@ struct ChecklistView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 noteTypeMenu(note)
-                TaskTextFormatMenu(isEnabled: focusedTask != nil)
+                TaskTextFormatMenu(isEnabled: focusedTask != nil,
+                    selectedFont: note.singleMemoFont,
+                    onFontChange: { font in
+                        Swift.Task { try? await appModel.setSingleMemoFont(noteID: noteID, font: font) }
+                    })
                 Menu {
                     Picker("Note color", selection: Binding(
                         get: { note.color },
@@ -693,6 +835,42 @@ struct ChecklistView: View {
         }
     }
 
+}
+
+private struct CompletionCheckmark: View {
+    let color: Color
+    @State private var progress: CGFloat = 0
+    @State private var opacity = 0.0
+    @State private var horizontalOffset: CGFloat = -24
+
+    var body: some View {
+        CompletionCheckmarkShape()
+            .trim(from: 0, to: progress)
+            .stroke(color, style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+            .padding(9)
+            .opacity(opacity)
+            .offset(x: horizontalOffset)
+            .accessibilityHidden(true)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.24)) {
+                    opacity = 1
+                    horizontalOffset = 0
+                }
+                withAnimation(.easeInOut(duration: 0.58).delay(0.16)) {
+                    progress = 1
+                }
+            }
+    }
+}
+
+private struct CompletionCheckmarkShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + rect.width * 0.12, y: rect.minY + rect.height * 0.53))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.40, y: rect.minY + rect.height * 0.80))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.90, y: rect.minY + rect.height * 0.20))
+        return path
+    }
 }
 
 #Preview("Checklist") {

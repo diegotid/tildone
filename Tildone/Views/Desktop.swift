@@ -966,6 +966,7 @@ private extension Desktop {
               let hovered = hoveredNoteWindow() else {
             return false
         }
+        if delta < 0 && !ProEntitlement.shared.require(.dimming) { return true }
 
         if modifiers.contains(.shift) {
             adjustAllNoteWindowOpacities(by: delta)
@@ -997,6 +998,8 @@ private extension Desktop {
               ) else {
             return false
         }
+
+        if delta < 0 && !ProEntitlement.shared.require(.gathering) { return true }
 
         if cornerConvergence == nil {
             let recoversWheelPosition = delta > 0
@@ -1192,6 +1195,7 @@ private extension Desktop {
 
     func setOpacity(_ alpha: CGFloat, for noteID: NoteID, window: NSWindow) {
         guard alpha != window.alphaValue else { return }
+        if alpha < window.alphaValue && !ProEntitlement.shared.require(.dimming) { return }
         window.alphaValue = alpha
         NoteWindowOpacity.setAlpha(alpha, for: noteID)
         NotificationCenter.default.post(name: .noteWindowOpacityChanged, object: window)

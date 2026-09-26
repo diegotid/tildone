@@ -1,0 +1,53 @@
+{
+  "identifier" : "B1690BC9-0D43-49BD-86E9-DA85DCA05701",
+  "nonRenewingSubscriptions" : [
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "9FE79824-98D6-4219-96C5-68B307365C88",
+      "localizations" : [
+        {
+          "description" : "Unlock single memos, text styling, subtasks, and Mac note controls.",
+          "displayName" : "Tildone Pro",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Desbloquea notas individuales, estilos de texto, subtareas y controles de notas en Mac.",
+          "displayName" : "Tildone Pro",
+          "locale" : "es_ES"
+        },
+        {
+          "description" : "Débloque les mémos individuels, la mise en forme, les sous-tâches et les commandes de notes sur Mac.",
+          "displayName" : "Tildone Pro",
+          "locale" : "fr_FR"
+        },
+        {
+          "description" : "解锁单条备忘录、文本样式、子任务和 Mac 笔记控制功能。",
+          "displayName" : "Tildone Pro",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "studio.cuatro.tildone.pro",
+      "referenceName" : "Tildone Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6473126292",
+    "_developerTeamID" : "F6HFAVTS49",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+    ]
+  },
+  "subscriptionGroups" : [
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

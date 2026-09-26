@@ -32,6 +32,55 @@ final class TildoneUITests: XCTestCase {
         // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
+    func testProFeatureIndexNavigation() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments += ["--tildone-ui-test", "-showDockIcon", "YES"]
+        app.launch()
+        app.menuBars.menuBarItems["Tildone"].click()
+        app.menuItems["Tildone Pro"].click()
+        let memo = app.buttons["pro-feature-singleMemo"]
+        XCTAssertTrue(memo.waitForExistence(timeout: 5))
+        let window = app.windows["Tildone Pro"]
+        XCTAssertTrue(window.exists)
+        for button in [app.buttons["pro-purchase"], app.buttons["Restore Purchases"]] {
+            XCTAssertTrue(button.exists)
+            XCTAssertGreaterThan(button.frame.height, 0)
+            XCTAssertLessThanOrEqual(button.frame.maxY, window.frame.maxY)
+            XCTAssertGreaterThanOrEqual(button.frame.minY, window.frame.minY)
+        }
+        func assertBottomPadding() {
+            let status = app.staticTexts["pro-status"]
+            let lastControl = status.exists ? status : app.buttons["Restore Purchases"]
+            let bottom = window.frame.maxY - lastControl.frame.maxY
+            let side = lastControl.frame.minX - window.frame.minX
+            XCTAssertEqual(bottom, 24, accuracy: 2)
+            if !status.exists { XCTAssertEqual(bottom, side, accuracy: 2) }
+        }
+        assertBottomPadding()
+        let initialSize = window.frame.size
+        for feature in ["singleMemo", "textStyling", "subtasks", "blur", "background", "dimming", "gathering"] {
+            let row = app.buttons["pro-feature-\(feature)"]
+            XCTAssertTrue(row.exists)
+            row.click()
+            let discover = app.buttons["pro-discover-all"]
+            XCTAssertTrue(discover.waitForExistence(timeout: 5))
+            XCTAssertFalse(app.buttons["pro-feature-index-back"].exists)
+            XCTAssertEqual(window.frame.size, initialSize)
+            XCTAssertEqual(window.scrollViews.count, 0)
+            assertBottomPadding()
+            for button in [discover, app.buttons["pro-purchase"], app.buttons["Restore Purchases"]] {
+                XCTAssertTrue(button.exists)
+                XCTAssertGreaterThan(button.frame.height, 0)
+                XCTAssertLessThanOrEqual(button.frame.maxY, window.frame.maxY)
+                XCTAssertGreaterThanOrEqual(button.frame.minY, window.frame.minY)
+            }
+            discover.click()
+            XCTAssertTrue(memo.waitForExistence(timeout: 5))
+            XCTAssertEqual(window.frame.size, initialSize)
+        }
+    }
+
     func testDockModeExposesStandardAppMenus() throws {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"

@@ -1,6 +1,276 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Remember to call the electrician on Monday about the kitchen lights. Ask for a morning appointment and a quote.": {
+      "comment": "Realistic mock single memo for the Pro preview; never user content.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remember to call the electrician on Monday about the kitchen lights. Ask for a morning appointment and a quote."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordar llamar al electricista el lunes por las luces de la cocina. Pedir una cita por la mañana y un presupuesto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Penser à appeler l’électricien lundi au sujet des lumières de la cuisine. Demander un rendez-vous le matin et un devis."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记得周一给电工打电话，询问厨房照明的问题。请他安排上午上门，并提供报价。"
+          }
+        }
+      }
+    },
+    "Keep a Mac note’s text private by blurring it until you hover over the note.": {
+      "comment": "Pro feature explanation or mock foreground window title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep a Mac note’s text private by blurring it until you hover over the note."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén privado el texto de una nota del Mac difuminándolo hasta que pases el cursor sobre ella."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préservez la confidentialité d’une note sur Mac en floutant son texte jusqu’au survol du pointeur."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模糊 Mac 便笺的文字以保护隐私，将鼠标移到便笺上即可看清。"
+          }
+        }
+      }
+    },
+    "Let other windows stay in front of a Mac note while keeping it on your desktop.": {
+      "comment": "Pro feature explanation or mock foreground window title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let other windows stay in front of a Mac note while keeping it on your desktop."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deja que otras ventanas queden delante de una nota del Mac sin quitarla del escritorio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laissez les autres fenêtres passer devant une note sur Mac tout en la gardant sur votre bureau."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让其他窗口显示在 Mac 便笺前方，同时将便笺保留在桌面上。"
+          }
+        }
+      }
+    },
+    "Another window": {
+      "comment": "Pro feature explanation or mock foreground window title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another window"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra ventana"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une autre fenêtre"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一个窗口"
+          }
+        }
+      }
+    },
+    "ideas": {
+      "comment": "A single styled word in the Pro preview. Must be a substring of the corresponding translated example: Make room for ideas",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ideas"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ideas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "idées"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵感"
+          }
+        }
+      }
+    },
+    "matters": {
+      "comment": "A single styled word in the Pro preview. Must be a substring of the corresponding translated example: Keep what matters in sight",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "matters"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "importante"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "essentiel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重要"
+          }
+        }
+      }
+    },
+    "quiet": {
+      "comment": "A single styled word in the Pro preview. Must be a substring of the corresponding translated example: Take a quiet moment",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quiet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "calma"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "calme"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宁静"
+          }
+        }
+      }
+    },
+    "Blur Content": {
+      "comment": "Pro feature explanation or mock foreground window title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blur Content"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Difuminar contenido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flouter le contenu"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模糊内容"
+          }
+        }
+      }
+    },
+    "Stay in Background": {
+      "comment": "Pro feature explanation or mock foreground window title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay in Background"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener en segundo plano"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rester en arrière-plan"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持在后台"
+          }
+        }
+      }
+    },
     "%@. Tasks: %@" : {
       "localizations" : {
         "es" : {
@@ -414,6 +684,36 @@
         }
       }
     },
+    "A little space to think" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A little space to think"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un espacio para pensar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un espace pour réfléchir"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "留点空间思考"
+          }
+        }
+      }
+    },
     "About Tildone" : {
       "localizations" : {
         "en" : {
@@ -550,6 +850,96 @@
         }
       }
     },
+    "Book the trip" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book the trip"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reservar el viaje"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réserver le voyage"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预订行程"
+          }
+        }
+      }
+    },
+    "Break a task into smaller steps and keep them together in a clear hierarchy." : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Break a task into smaller steps and keep them together in a clear hierarchy."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide una tarea en pasos más pequeños y agrúpalos en una jerarquía clara."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décomposez une tâche en petites étapes et regroupez-les dans une hiérarchie claire."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将任务拆分成小步骤，并用清晰的层级将它们归为一组。"
+          }
+        }
+      }
+    },
+    "Bring Mac notes together in a corner, then return them to their previous positions." : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring Mac notes together in a corner, then return them to their previous positions."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reúne las notas del Mac en una esquina y devuélvelas después a sus posiciones anteriores."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rassemblez les notes sur Mac dans un coin, puis remettez-les à leurs positions précédentes."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 Mac 便笺聚拢到角落，再恢复到之前的位置。"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "comment" : "A button that cancels a rename operation for a note.",
       "isCommentAutoGenerated" : true,
@@ -618,6 +1008,36 @@
         }
       }
     },
+    "Choose a place" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a place"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir un lugar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un lieu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择目的地"
+          }
+        }
+      }
+    },
     "Choose layout" : {
       "comment" : "A label that describes a button that lets the user choose the layout of notes.",
       "isCommentAutoGenerated" : true,
@@ -662,6 +1082,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择笔记布局"
+          }
+        }
+      }
+    },
+    "Choose when each Mac note blurs its text or stays behind other windows." : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose when each Mac note blurs its text or stays behind other windows."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige cuándo cada nota del Mac difumina su texto o queda detrás de otras ventanas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez quand chaque note sur Mac floute son texte ou reste derrière les autres fenêtres."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择每张 Mac 便笺何时模糊文字，或置于其他窗口后方。"
           }
         }
       }
@@ -1038,6 +1488,28 @@
         }
       }
     },
+    "Dim notes" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenuar notas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atténuer les notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调暗笔记"
+          }
+        }
+      }
+    },
     "Done" : {
       "comment" : "The accessibility label for the note detail toolbar button that finishes renaming.",
       "localizations" : {
@@ -1063,6 +1535,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "完成"
+          }
+        }
+      }
+    },
+    "Done!" : {
+      "comment" : "The celebratory message shown when the final task completes a note.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done!"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Hecho!"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé !"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成！"
           }
         }
       }
@@ -1107,6 +1608,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "展开子任务"
+          }
+        }
+      }
+    },
+    "Focus & Privacy" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concentración y privacidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concentration et confidentialité"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注与隐私"
           }
         }
       }
@@ -1213,6 +1736,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置任务文本格式"
+          }
+        }
+      }
+    },
+    "Gather notes" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrupar notas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rassembler les notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聚拢笔记"
           }
         }
       }
@@ -1523,6 +2068,36 @@
         }
       }
     },
+    "Keep what matters in sight" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep what matters in sight"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tener lo importante a la vista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder l’essentiel en vue"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让重要的事常在眼前"
+          }
+        }
+      }
+    },
     "Layout" : {
       "comment" : "A label for a menu that lets the user choose the layout of the notes.",
       "isCommentAutoGenerated" : true,
@@ -1594,6 +2169,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在加载备忘录…"
+          }
+        }
+      }
+    },
+    "Lower the opacity of one or all Mac notes to keep your desktop less distracting." : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lower the opacity of one or all Mac notes to keep your desktop less distracting."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduce la opacidad de una o todas las notas del Mac para tener un escritorio con menos distracciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduisez l’opacité d’une ou de toutes les notes sur Mac pour limiter les distractions sur votre bureau."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "降低一张或所有 Mac 便笺的不透明度，减少桌面干扰。"
+          }
+        }
+      }
+    },
+    "Make important words stand out with emphasis, text colors, highlights, and memo fonts." : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make important words stand out with emphasis, text colors, highlights, and memo fonts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destaca lo importante con énfasis, colores de texto, resaltados y fuentes para tus notas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites ressortir les mots importants avec des styles, des couleurs, du surlignage et des polices pour vos mémos."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过强调、文字颜色、高亮和备忘录字体，让重要内容更醒目。"
+          }
+        }
+      }
+    },
+    "Make room for ideas" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make room for ideas"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar espacio a las ideas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faire place aux idées"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为灵感留出空间"
           }
         }
       }
@@ -1818,6 +2483,28 @@
         }
       }
     },
+    "No Tildone Pro purchase was found for this Apple Account." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha encontrado ninguna compra de Tildone Pro para esta cuenta de Apple."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun achat de Tildone Pro n’a été trouvé pour ce compte Apple."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到此 Apple 账户的 Tildone Pro 购买记录。"
+          }
+        }
+      }
+    },
     "Note color" : {
       "localizations" : {
         "es" : {
@@ -1836,6 +2523,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "笔记颜色"
+          }
+        }
+      }
+    },
+    "Note completed" : {
+      "comment" : "VoiceOver announcement after the last task completes a note.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note completed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nota completada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note terminée"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记已完成"
           }
         }
       }
@@ -1956,6 +2672,58 @@
         }
       }
     },
+    "One purchase unlocks Pro on Mac and iPhone." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una compra desbloquea Pro en Mac y iPhone."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un seul achat débloque Pro sur Mac et iPhone."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次购买即可在 Mac 和 iPhone 上解锁 Pro。"
+          }
+        }
+      }
+    },
+    "One thing at a time" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One thing at a time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una cosa a la vez"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une chose à la fois"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次专注一件事"
+          }
+        }
+      }
+    },
     "Orange" : {
       "localizations" : {
         "es" : {
@@ -2044,6 +2812,36 @@
         }
       }
     },
+    "Plan a weekend away" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan a weekend away"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planear una escapada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Préparer une escapade"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "计划周末出游"
+          }
+        }
+      }
+    },
     "Promote task" : {
       "comment" : "An action that moves a task up one hierarchy level.",
       "isCommentAutoGenerated" : true,
@@ -2070,6 +2868,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "提升任务层级"
+          }
+        }
+      }
+    },
+    "Purchase could not be completed. Please try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido completar la compra. Inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’achat n’a pas pu être effectué. Réessayez."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法完成购买。请重试。"
+          }
+        }
+      }
+    },
+    "Purchase could not be verified. Please try Restore Purchases." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido verificar la compra. Prueba a restaurar las compras."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’achat n’a pas pu être vérifié. Essayez de restaurer les achats."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法验证购买。请尝试恢复购买。"
+          }
+        }
+      }
+    },
+    "Purchase pending approval." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compra pendiente de aprobación."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Achat en attente d’approbation."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "购买正在等待批准。"
           }
         }
       }
@@ -2190,6 +3054,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新排序任务"
+          }
+        }
+      }
+    },
+    "Restore Purchases" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar compras"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurer les achats"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复购买"
+          }
+        }
+      }
+    },
+    "Restore Purchases could not be completed. Please try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se han podido restaurar las compras. Inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La restauration des achats a échoué. Réessayez."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法恢复购买。请重试。"
           }
         }
       }
@@ -2352,6 +3260,28 @@
         }
       }
     },
+    "Single memos" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notas individuales"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mémos individuels"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单条备忘录"
+          }
+        }
+      }
+    },
     "Some notes from iCloud could not be read. You can keep editing." : {
       "localizations" : {
         "es" : {
@@ -2450,6 +3380,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "子任务进度"
+          }
+        }
+      }
+    },
+    "Subtasks" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subtareas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sous-tâches"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "子任务"
           }
         }
       }
@@ -2588,6 +3540,36 @@
         }
       }
     },
+    "Take a quiet moment" : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a quiet moment"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomarse un momento de calma"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prendre un moment de calme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "享受片刻宁静"
+          }
+        }
+      }
+    },
     "Task" : {
       "comment" : "A label for a task.",
       "isCommentAutoGenerated" : true,
@@ -2658,6 +3640,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "文本颜色"
+          }
+        }
+      }
+    },
+    "Text styling" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilos de texto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise en forme du texte"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文本样式"
           }
         }
       }
@@ -2996,6 +4000,94 @@
         }
       }
     },
+    "Tildone Pro" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro"
+          }
+        }
+      }
+    },
+    "Tildone Pro is currently unavailable. Please try again later." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro no está disponible en este momento. Inténtalo de nuevo más tarde."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro est actuellement indisponible. Réessayez plus tard."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro 暂时不可用。请稍后重试。"
+          }
+        }
+      }
+    },
+    "Tildone Pro is unlocked." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro está desbloqueado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro est débloqué."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro 已解锁。"
+          }
+        }
+      }
+    },
+    "Tildone Pro restored." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro restaurado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro a été restauré."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已恢复 Tildone Pro。"
+          }
+        }
+      }
+    },
     "Tildone’s storage in iCloud needs attention before syncing can continue." : {
       "localizations" : {
         "es" : {
@@ -3120,6 +4212,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重试"
+          }
+        }
+      }
+    },
+    "Try loading price again" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a cargar el precio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer de charger le prix"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新加载价格"
+          }
+        }
+      }
+    },
+    "Turn a checklist into one focused memo, with your message filling the note." : {
+      "comment" : "Pro feature explanation or mock note content used only in paywall previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn a checklist into one focused memo, with your message filling the note."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte una lista en una sola nota centrada en tu mensaje."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformez une liste en un mémo unique qui met votre message au premier plan."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将清单变成单条备忘录，让内容铺满便笺。"
           }
         }
       }
@@ -3372,7 +4516,53 @@
         }
       }
     },
+    "Unlock this feature with Tildone Pro." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquea esta función con Tildone Pro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Débloquez cette fonctionnalité avec Tildone Pro."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 Tildone Pro 解锁此功能。"
+          }
+        }
+      }
+    },
+    "Unlock Tildone Pro" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear Tildone Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Débloquer Tildone Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解锁 Tildone Pro"
+          }
+        }
+      }
+    },
     "Untitled Note" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -3704,6 +4894,325 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的笔记会安全保留在此 iPhone 上。iCloud 可用后请重试。"
+          }
+        }
+      }
+    },
+    "Pro features" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro features"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciones Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonctionnalités Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro 功能"
+          }
+        }
+      }
+    },
+    "Discover all Pro features" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discover all Pro features"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descubrir todas las funciones Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découvrir toutes les fonctionnalités Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "探索所有 Pro 功能"
+          }
+        }
+      }
+    },
+    "Mac only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac only"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo en Mac"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur Mac uniquement"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅限 Mac"
+          }
+        }
+      }
+    },
+    "One note, one focused message." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One note, one focused message."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una nota, un mensaje claro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une note, un message essentiel."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一张便笺，专注一件事。"
+          }
+        }
+      }
+    },
+    "Emphasis, colors, highlights, and fonts." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emphasis, colors, highlights, and fonts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Énfasis, colores, resaltado y fuentes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Styles, couleurs, surlignage et polices."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "强调、颜色、高亮和字体。"
+          }
+        }
+      }
+    },
+    "Organize tasks into smaller steps." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organize tasks into smaller steps."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organiza tareas en pequeños pasos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organiser les tâches en étapes."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将任务拆分为小步骤。"
+          }
+        }
+      }
+    },
+    "Reveal private text on hover." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reveal private text on hover."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra el texto al pasar el cursor."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le texte au survol."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "悬停时显示私密文字。"
+          }
+        }
+      }
+    },
+    "Keep notes behind other windows." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep notes behind other windows."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén las notas detrás de ventanas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garder les notes derrière les fenêtres."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让便笺保持在其他窗口后方。"
+          }
+        }
+      }
+    },
+    "Control note visibility and privacy." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Control note visibility and privacy."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controla la visibilidad y privacidad."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contrôler la visibilité et la confidentialité."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制便笺可见性和隐私。"
+          }
+        }
+      }
+    },
+    "Make one or all notes less visible." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make one or all notes less visible."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenúa una nota o todas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atténuer une note ou toutes les notes."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "淡化一张或所有便笺。"
+          }
+        }
+      }
+    },
+    "Gather in a corner, then restore." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gather in a corner, then restore."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reúne en una esquina y restaura."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regrouper dans un coin, puis restaurer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聚拢到角落，再恢复位置。"
           }
         }
       }

@@ -978,14 +978,20 @@ private extension SettingsForm {
     var opacityShortcutBinding: Binding<MacAppShortcut> {
         Binding(
             get: { AppShortcuts.opacity(from: opacityModifiersRawValue) },
-            set: { opacityModifiersRawValue = Int($0.modifiers.rawValue) }
+            set: {
+                guard ProEntitlement.shared.require(.dimming) else { return }
+                opacityModifiersRawValue = Int($0.modifiers.rawValue)
+            }
         )
     }
 
     var gatherShortcutBinding: Binding<MacAppShortcut> {
         Binding(
             get: { AppShortcuts.gather(from: gatherModifiersRawValue) },
-            set: { gatherModifiersRawValue = Int($0.modifiers.rawValue) }
+            set: {
+                guard ProEntitlement.shared.require(.gathering) else { return }
+                gatherModifiersRawValue = Int($0.modifiers.rawValue)
+            }
         )
     }
 
@@ -1035,17 +1041,19 @@ private extension SettingsForm {
 
 private struct SettingsPreviewCanvas<Content: View>: View {
     let content: Content
+    let size: CGSize
 
-    init(@ViewBuilder content: () -> Content) {
+    init(size: CGSize = CGSize(width: 240, height: 160), @ViewBuilder content: () -> Content) {
         self.content = content()
+        self.size = size
     }
 
     var body: some View {
         ZStack {
-            SettingsPreviewBackground()
+            SettingsPreviewBackground(size: size)
             content
         }
-        .frame(width: 240, height: 160)
+        .frame(width: size.width, height: size.height)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
@@ -1218,12 +1226,14 @@ private struct SliderTrackMarker: View {
     }
 }
 
-private struct SettingsPreviewBackground: View {
+struct SettingsPreviewBackground: View {
+    var size = CGSize(width: 240, height: 160)
+
     var body: some View {
         Image("desktop")
             .resizable()
             .scaledToFill()
-            .frame(width: 240, height: 160)
+            .frame(width: size.width, height: size.height)
             .clipped()
     }
 }
@@ -1235,6 +1245,8 @@ private struct SampleSettingsNote: View {
     let taskLineTruncation: TaskLineTruncation
     let showsContent: Bool
     var cornerRadius: CGFloat = 10
+    var windowButtonSize: CGFloat = 8
+    var showsWindowControls = false
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1246,37 +1258,41 @@ private struct SampleSettingsNote: View {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color(nsColor: noteColor.nsColor).opacity(backgroundOpacity))
                 .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 3)
-            if showsContent {
+            if showsContent || showsWindowControls {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 5) {
+                    HStack(spacing: windowButtonSize * 0.625) {
                         ForEach(0..<3) { index in
                             Circle()
-                                .frame(width: 8, height: 8)
+                                .frame(width: windowButtonSize, height: windowButtonSize)
                                 .foregroundStyle(index == 1 ? Color.yellow : .gray.opacity(0.4))
                         }
                     }
-                    .padding(.top, 8)
-                    .padding(.horizontal, 10)
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Weekend plans")
-                            .font(.system(size: CGFloat(fontSize) * 1.25, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                        sampleTask("Book a table", isDone: true)
-                        sampleTask("Pick up fresh flowers", isDone: false)
-                        sampleTask("Choose a longer scenic route home", isDone: false)
-                    }
-                    .font(.system(size: CGFloat(fontSize)))
-                    .foregroundStyle(
-                        NoteContentForeground.color(
-                            colorScheme: colorScheme,
-                            backgroundOpacity: backgroundOpacity
+                    .padding(.top, windowButtonSize)
+                    .padding(.horizontal, windowButtonSize * 1.25)
+                    if showsContent {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Weekend plans")
+                                .font(.system(size: CGFloat(fontSize) * 1.25, weight: .bold, design: .rounded))
+                                .lineLimit(1)
+                            sampleTask("Book a table", isDone: true)
+                            sampleTask("Pick up fresh flowers", isDone: false)
+                            sampleTask("Choose a longer scenic route home", isDone: false)
+                        }
+                        .font(.system(size: CGFloat(fontSize)))
+                        .foregroundStyle(
+                            NoteContentForeground.color(
+                                colorScheme: colorScheme,
+                                backgroundOpacity: backgroundOpacity
+                            )
                         )
-                    )
-                    .padding(.horizontal, 12)
-                    .padding(.top, 7)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .allowsHitTesting(false)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 7)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .allowsHitTesting(false)
+                    } else {
+                        Spacer(minLength: 0)
+                    }
                 }
             }
         }
@@ -1362,24 +1378,52 @@ struct DimmingPreview: View {
     let backgroundOpacity: Double
     let fontSize: Double
     let taskLineTruncation: TaskLineTruncation
+    var canvasSize = CGSize(width: 240, height: 160)
+    var previewDate: Date? = nil
+    var reduceMotion = false
+    var windowButtonSize: CGFloat = 8
+    var corner: ArrangementCorner? = nil
+    var noteSize: CGSize? = nil
+    var noteScale: CGFloat = 1
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-            SettingsPreviewCanvas {
-                SampleSettingsNote(
-                    noteColor: noteColor,
-                    backgroundOpacity: backgroundOpacity,
-                    fontSize: fontSize,
-                    taskLineTruncation: taskLineTruncation,
-                    showsContent: true
-                )
-                .frame(width: 190, height: 142)
-                .opacity(SettingsForm.opacityPreviewValue(at: context.date))
-                ScrollChevronIndicator(
-                    state: SettingsForm.opacityChevronState(at: context.date)
-                )
-                .position(x: ScrollChevronLayout.previewCenterX, y: 80)
+        if let previewDate {
+            scene(at: previewDate)
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { context in
+                scene(at: reduceMotion ? Date(timeIntervalSinceReferenceDate: 0) : context.date)
             }
+        }
+    }
+
+    private func scene(at date: Date) -> some View {
+        let isSquare = canvasSize.width == canvasSize.height
+        let size = noteSize ?? CGSize(width: isSquare ? canvasSize.width * 0.6 : 190,
+                                      height: isSquare ? canvasSize.height * 0.8 : 142)
+        return SettingsPreviewCanvas(size: canvasSize) {
+            SampleSettingsNote(
+                noteColor: noteColor, backgroundOpacity: backgroundOpacity,
+                fontSize: fontSize, taskLineTruncation: taskLineTruncation,
+                showsContent: true, windowButtonSize: windowButtonSize
+            )
+            .frame(width: size.width, height: size.height)
+            .scaleEffect(noteScale)
+            .frame(width: size.width * noteScale, height: size.height * noteScale)
+            .opacity(SettingsForm.opacityPreviewValue(at: date))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: noteAlignment)
+            .padding(corner == nil ? 0 : min(24, max(0, (canvasSize.height - size.height * noteScale) / 2)))
+            ScrollChevronIndicator(state: SettingsForm.opacityChevronState(at: date))
+                .position(x: corner == .topRight || corner == .bottomRight ? 12 : canvasSize.width - 12,
+                          y: canvasSize.height / 2)
+        }
+    }
+    private var noteAlignment: Alignment {
+        switch corner {
+        case .topLeft: .topLeading
+        case .topRight: .topTrailing
+        case .bottomLeft: .bottomLeading
+        case .bottomRight: .bottomTrailing
+        case nil: .center
         }
     }
 }
@@ -1548,6 +1592,12 @@ struct GatherPreview: View {
     let noteColor: NoteColor
     let backgroundOpacity: Double
 
+    var canvasSize = CGSize(width: 240, height: 160)
+    var previewDate: Date? = nil
+    var reduceMotion = false
+    var showsWindowControls = false
+    var dockEdgeInset: CGFloat? = nil
+
     private let starts = [
         CGPoint(x: 36, y: 37),
         CGPoint(x: 119, y: 81),
@@ -1561,35 +1611,40 @@ struct GatherPreview: View {
     private let dockPosition = MacDockPosition.current
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-            let progress = SettingsForm.gatherPreviewProgress(at: context.date)
-            SettingsPreviewCanvas {
-                PositioningDockPreview(position: dockPosition)
-                ForEach(starts.indices, id: \.self) { index in
-                    let target = targetCenter(for: index)
-                    SampleSettingsNote(
-                        noteColor: noteColor,
-                        backgroundOpacity: backgroundOpacity,
-                        fontSize: Double(FontSize.small.rawValue),
-                        taskLineTruncation: .single,
-                        showsContent: false,
-                        cornerRadius: 4
-                    )
-                    .frame(width: sizes[index].width, height: sizes[index].height)
-                    .position(
-                        x: starts[index].x + (target.x - starts[index].x) * progress,
-                        y: starts[index].y + (target.y - starts[index].y) * progress
-                    )
-                    .zIndex(Double(sizes.count - index))
-                }
-                ScrollChevronIndicator(
-                    state: SettingsForm.gatherChevronState(at: context.date)
-                )
-                .position(
-                    x: ScrollChevronLayout.previewCenterX(for: corner),
-                    y: 80
-                )
+        if let previewDate {
+            scene(at: previewDate)
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { context in
+                scene(at: reduceMotion ? Date(timeIntervalSinceReferenceDate: 0) : context.date)
             }
+        }
+    }
+
+    private func scene(at date: Date) -> some View {
+        let progress = SettingsForm.gatherPreviewProgress(at: date)
+        let scale = min(canvasSize.width / 240, canvasSize.height / 160)
+        return SettingsPreviewCanvas(size: canvasSize) {
+            PositioningDockPreview(position: dockPosition, canvasSize: canvasSize, edgeInset: dockEdgeInset)
+            ForEach(starts.indices, id: \.self) { index in
+                let target = targetCenter(for: index)
+                let size = sizes[index]
+                SampleSettingsNote(
+                    noteColor: noteColor, backgroundOpacity: backgroundOpacity,
+                    fontSize: Double(FontSize.small.rawValue), taskLineTruncation: .single,
+                    showsContent: false, cornerRadius: 4,
+                    windowButtonSize: 12 * size.width * scale / 216,
+                    showsWindowControls: showsWindowControls
+                )
+                .frame(width: size.width * scale, height: size.height * scale)
+                .position(
+                    x: (starts[index].x + (target.x - starts[index].x) * progress) * canvasSize.width / 240,
+                    y: (starts[index].y + (target.y - starts[index].y) * progress) * canvasSize.height / 160
+                )
+                .zIndex(Double(sizes.count - index))
+            }
+            ScrollChevronIndicator(state: SettingsForm.gatherChevronState(at: date))
+                .position(x: ScrollChevronLayout.previewCenterX(for: corner) * canvasSize.width / 240,
+                          y: canvasSize.height / 2)
         }
     }
 
@@ -1616,16 +1671,33 @@ struct GatherPreview: View {
 
 private struct PositioningDockPreview: View {
     let position: MacDockPosition
+    var canvasSize = CGSize(width: 240, height: 160)
+    var edgeInset: CGFloat? = nil
 
     var body: some View {
+        let scale = min(canvasSize.width / 240, canvasSize.height / 160)
+        let center = dockCenter(scale: scale)
         DockSizeReference(position: position)
-            .scaleEffect(0.42)
+            .scaleEffect(0.42 * scale)
             .frame(
-                width: position == .bottom ? 112 : 32,
-                height: position == .bottom ? 32 : 112
+                width: (position == .bottom ? 112 : 32) * scale,
+                height: (position == .bottom ? 32 : 112) * scale
             )
-            .position(DockPreviewLayout.center(for: position))
+            .position(center)
             .zIndex(10)
+    }
+
+    private func dockCenter(scale: CGFloat) -> CGPoint {
+        if let edgeInset {
+            let halfThickness = 16 * scale
+            switch position {
+            case .bottom: return CGPoint(x: canvasSize.width / 2, y: canvasSize.height - halfThickness - edgeInset)
+            case .left: return CGPoint(x: halfThickness + edgeInset, y: canvasSize.height / 2)
+            case .right: return CGPoint(x: canvasSize.width - halfThickness - edgeInset, y: canvasSize.height / 2)
+            }
+        }
+        let center = DockPreviewLayout.center(for: position)
+        return CGPoint(x: center.x * canvasSize.width / 240, y: center.y * canvasSize.height / 160)
     }
 }
 

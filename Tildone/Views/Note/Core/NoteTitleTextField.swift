@@ -79,7 +79,7 @@ struct NoteTitleTextField: NSViewRepresentable {
             field.hasPendingFocusRequest = false
         }
         context.coordinator.lastRequestedFocus = isFocused
-        field.applyPendingFocusRequest()
+        field.schedulePendingFocusRequest()
     }
 
     final class Coordinator: NSObject, NSTextFieldDelegate {

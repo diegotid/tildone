@@ -30,6 +30,12 @@ final class MouseSafeTaskNSTextField: NSTextField {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        schedulePendingFocusRequest()
+    }
+
+    func schedulePendingFocusRequest() {
+        // makeFirstResponder can synchronously call editor delegates that
+        // mutate SwiftUI state. Never invoke it inside updateNSView.
         DispatchQueue.main.async { [weak self] in self?.applyPendingFocusRequest() }
     }
 

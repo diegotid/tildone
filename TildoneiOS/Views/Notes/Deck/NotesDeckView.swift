@@ -3,6 +3,8 @@ import TildoneDomain
 
 struct NotesDeckView: View {
     let notes: [Note]
+    let departingNoteID: NoteID?
+    let isDepartingNoteFading: Bool
     let summaries: [NoteID: NoteTaskSummary]
     let taskPreviews: [NoteID: [NoteTaskPreview]]
     let open: (Note) -> Void
@@ -34,6 +36,8 @@ struct NotesDeckView: View {
                     ForEach(carouselGroups) { group in
                         DeckCarousel(
                             notes: group.notes,
+                            departingNoteID: departingNoteID,
+                            isDepartingNoteFading: isDepartingNoteFading,
                             summaries: summaries,
                             taskPreviews: taskPreviews,
                             cardHeight: cardHeight,

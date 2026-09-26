@@ -25,6 +25,10 @@ struct NotesListView: View {
     @State private var deckOrder: [NoteID] = []
     @State private var showsAbout = false
     @State private var searchText = ""
+    @State private var departingNote: Note?
+    @State private var isDepartingNoteFading = false
+    @State private var departureTask: Swift.Task<Void, Never>?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(appModel: TildoneiOSApplicationModel) {
         self.appModel = appModel
@@ -42,9 +46,16 @@ struct NotesListView: View {
         }
     }
 
+    private var overviewNotes: [Note] {
+        guard let departingNote,
+              appModel.taskSummaries[departingNote.id]?.isComplete == true,
+              !activeNotes.contains(where: { $0.id == departingNote.id }) else { return activeNotes }
+        return [departingNote] + activeNotes
+    }
+
     private var displayedNotes: [Note] {
-        guard !searchText.isEmpty else { return activeNotes }
-        return activeNotes.filter { note in
+        guard !searchText.isEmpty else { return overviewNotes }
+        return overviewNotes.filter { note in
             note.title?.matchesSearch(searchText) == true
                 || appModel.taskListTexts[note.id]?.matchesSearch(searchText) == true
         }
@@ -53,15 +64,15 @@ struct NotesListView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if activeNotes.isEmpty && appModel.isCheckingCloudForNotes {
+                if overviewNotes.isEmpty && appModel.isCheckingCloudForNotes {
                     ContentUnavailableView {
                         ProgressView()
                     } description: {
                         Text("Loading Notes…")
                     }
-                } else if activeNotes.isEmpty && !appModel.isEmptyStateConfirmed {
+                } else if overviewNotes.isEmpty && !appModel.isEmptyStateConfirmed {
                     UnconfirmedEmptyWorkspaceStatus(appModel: appModel)
-                } else if activeNotes.isEmpty {
+                } else if overviewNotes.isEmpty {
                     ContentUnavailableView {
                         Label("No Notes Yet", systemImage: "checklist")
                     } description: {
@@ -78,6 +89,8 @@ struct NotesListView: View {
                     case .grid:
                         NotesGridView(
                             notes: displayedNotes,
+                            departingNoteID: departingNote?.id,
+                            isDepartingNoteFading: isDepartingNoteFading,
                             summaries: appModel.taskSummaries,
                             taskPreviews: appModel.taskPreviews,
                             open: open,
@@ -87,6 +100,8 @@ struct NotesListView: View {
                     case .deck:
                         NotesDeckView(
                             notes: orderedDeckNotes,
+                            departingNoteID: departingNote?.id,
+                            isDepartingNoteFading: isDepartingNoteFading,
                             summaries: appModel.taskSummaries,
                             taskPreviews: appModel.taskPreviews,
                             open: open,
@@ -135,14 +150,28 @@ struct NotesListView: View {
                 }
             }
             .navigationDestination(item: $presentedNoteID) { noteID in
-                ChecklistView(appModel: appModel, noteID: noteID, isCreatingNote: isPresentingNewNote)
+                ChecklistView(
+                    appModel: appModel,
+                    noteID: noteID,
+                    isCreatingNote: isPresentingNewNote,
+                    onCompletionStarted: beginDeparture,
+                    onCompletionExited: finishDeparture
+                )
             }
             .navigationDestination(isPresented: $showsAbout) {
                 TildoneiOSAboutView()
             }
         }
         .onAppear { reconcileDeckOrder() }
-        .onChange(of: activeNotes.map(\.id)) { _, _ in reconcileDeckOrder() }
+        .onChange(of: overviewNotes.map(\.id)) { _, _ in
+            reconcileDeckOrder()
+        }
+        .onChange(of: departingNote.flatMap { appModel.taskSummaries[$0.id]?.isComplete }) { _, isComplete in
+            guard departingNote != nil, isComplete != true else { return }
+            departureTask?.cancel()
+            departingNote = nil
+            isDepartingNoteFading = false
+        }
         .alert("Use iCloud for Tildone?", isPresented: Binding(
             get: { appModel.shouldOfferCloudAdoption },
             set: { if !$0 { appModel.dismissCloudAdoptionOffer() } }
@@ -207,7 +236,12 @@ struct NotesListView: View {
         List {
             ForEach(displayedNotes, id: \.id) { note in
                 NavigationLink {
-                    ChecklistView(appModel: appModel, noteID: note.id)
+                    ChecklistView(
+                        appModel: appModel,
+                        noteID: note.id,
+                        onCompletionStarted: beginDeparture,
+                        onCompletionExited: finishDeparture
+                    )
                 } label: {
                     NoteListRow(
                         note: note,
@@ -216,6 +250,8 @@ struct NotesListView: View {
                         taskPreview: appModel.taskPreviews[note.id]?.first
                     )
                 }
+                .opacity(note.id == departingNote?.id && isDepartingNoteFading ? 0 : 1)
+                .disabled(note.id == departingNote?.id)
                 .contextMenu { noteActions(for: note) }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     if let summary = appModel.taskSummaries[note.id],
@@ -258,10 +294,42 @@ struct NotesListView: View {
     }
 
     private func reconcileDeckOrder() {
-        let activeIDs = Set(activeNotes.map(\.id))
-        let retainedIDs = deckOrder.filter(activeIDs.contains)
-        let newIDs = activeNotes.map(\.id).filter { !retainedIDs.contains($0) }
+        let existingIDs = Set(appModel.notes.map(\.id))
+        let retainedIDs = deckOrder.filter(existingIDs.contains)
+        let newIDs = overviewNotes.map(\.id).filter { !retainedIDs.contains($0) }
         deckOrder = retainedIDs + newIDs
+    }
+
+    private func beginDeparture(_ noteID: NoteID) {
+        departureTask?.cancel()
+        guard let note = appModel.notes.first(where: { $0.id == noteID }) else { return }
+        departingNote = note
+        isDepartingNoteFading = false
+        reconcileDeckOrder()
+    }
+
+    private func finishDeparture(_ noteID: NoteID) {
+        guard departingNote?.id == noteID else { return }
+        departureTask?.cancel()
+        departureTask = Swift.Task {
+            try? await Swift.Task.sleep(for: .milliseconds(reduceMotion ? 100 : 350))
+            guard !Swift.Task.isCancelled,
+                  departingNote?.id == noteID else { return }
+            if reduceMotion || UIAccessibility.isVoiceOverRunning {
+                departingNote = nil
+                return
+            }
+            withAnimation(.easeOut(duration: 0.55)) {
+                isDepartingNoteFading = true
+            }
+            try? await Swift.Task.sleep(for: .milliseconds(550))
+            guard !Swift.Task.isCancelled,
+                  departingNote?.id == noteID else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                departingNote = nil
+                isDepartingNoteFading = false
+            }
+        }
     }
 }
 

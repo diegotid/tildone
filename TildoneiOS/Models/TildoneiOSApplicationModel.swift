@@ -343,6 +343,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func setSingleMemoFont(noteID: NoteID, font: SingleMemoFont) async throws {
+        guard ProEntitlement.shared.require(.textStyling) else { throw ProAccessError.requiresPro }
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
         let revision = stage(TildoneiOSNoteSnapshot(
@@ -362,6 +363,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func setKind(noteID: NoteID, kind: NoteKind) async throws {
+        if kind == .singleTask && notePresentations[noteID]?.snapshot.note?.kind != .singleTask {
+            guard ProEntitlement.shared.require(.singleMemo) else { throw ProAccessError.requiresPro }
+        }
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { return }
         let revision = stage(TildoneiOSNoteSnapshot(
@@ -427,7 +431,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
         let presentedTasks = snapshot.tasks
         let lastToken = presentedTasks.last?.orderToken ?? OrderToken.before(initialUpperBound)
         let order = OrderToken.after(lastToken)
-        let resolvedIndentLevel = max(0, indentLevel ?? presentedTasks.last?.indentLevel ?? 0)
+        let resolvedIndentLevel = max(0, indentLevel ?? (ProEntitlement.shared.isPro ? presentedTasks.last?.indentLevel : 0) ?? 0)
+        if resolvedIndentLevel > 0 && !ProEntitlement.shared.require(.subtasks) {
+            throw ProAccessError.requiresPro
+        }
         let stagedTask = Self.presentationTask(
             id: TaskID(), noteID: noteID, createdAt: Date(), text: text,
             orderToken: order, indentLevel: resolvedIndentLevel, basedOn: snapshot.note!
@@ -466,6 +473,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
             return nil
         }
         let target = snapshot.tasks[targetIndex]
+        if target.indentLevel > 0 && !ProEntitlement.shared.require(.subtasks) {
+            throw ProAccessError.requiresPro
+        }
         let lowerBound = targetIndex > 0 ? snapshot.tasks[targetIndex - 1].orderToken : nil
         let order = try OrderToken.between(lowerBound, target.orderToken)
         let stagedTask = Self.presentationTask(
@@ -502,6 +512,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
     func edit(taskID: TaskID, richText: RichText) async throws {
         let richText = richText.trimmingCharacters(in: .whitespacesAndNewlines)
         let (snapshot, task) = try requireSnapshot(containing: taskID)
+        if task.richText.text == richText.text && task.richText.spans != richText.spans {
+            guard ProEntitlement.shared.require(.textStyling) else { throw ProAccessError.requiresPro }
+        }
         guard !richText.text.isEmpty || snapshot.note?.kind == .singleTask else { return }
         let revision = stageTaskUpdates(
             [TaskStructureUpdate(id: taskID)],
@@ -538,7 +551,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 after: after,
                 taskID: taskID
             )
-            publishUndoAvailability()
+            publishUndoAvailability(
+                showsCompletionControl: completed && taskSummaries[task.noteID]?.isComplete == true
+            )
             scheduleSyncNotification()
         } catch {
             await rollback(task.noteID, revision: revision)
@@ -576,6 +591,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         in orderedTasks: [Task],
         outdent: Bool
     ) async throws -> Bool {
+        guard ProEntitlement.shared.require(.subtasks) else { throw ProAccessError.requiresPro }
         guard let index = orderedTasks.firstIndex(where: { $0.id == taskID }) else { return false }
         let task = orderedTasks[index]
         if outdent {
@@ -1280,7 +1296,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }.value
     }
 
-    private func publishUndoAvailability() {
+    private func publishUndoAvailability(showsCompletionControl: Bool = false) {
         guard !Self.requiresUndoInvalidation(syncStatus) else {
             discardUndo()
             return
@@ -1289,7 +1305,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
             undoPresentation.clear()
             return
         }
-        undoPresentation.present(action)
+        undoPresentation.present(action, showsCompletionControl: showsCompletionControl)
     }
 
     private static func requiresUndoInvalidation(_ status: SyncStatus) -> Bool {

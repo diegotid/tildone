@@ -14,6 +14,7 @@ struct TildoneApp: App {
     @State private var showsSyncResolutionOptions = false
     @State private var undoErrorMessage: String?
     @StateObject private var sharedStoreBootstrapper = MacSharedStoreBootstrapper()
+    @ObservedObject private var pro = ProEntitlement.shared
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
@@ -75,6 +76,10 @@ struct TildoneApp: App {
 
     private var observedDesktopContent: some View {
         desktopContent
+            .task { pro.start() }
+            .onChange(of: pro.requestedFeature) { _, feature in
+                if feature != nil { openWindow(id: "tildonePro") }
+            }
             .onAppear {
                 appDelegate.setCoordinatorWindowVisible(
                     sharedStoreBootstrapper.error != nil
@@ -148,7 +153,6 @@ struct TildoneApp: App {
         TildonePrimaryScene(isVisible: sharedStoreBootstrapper.error != nil) {
             primarySceneContent
         }
-        .environment(\.license, .free)
         .windowStyle(HiddenTitleBarWindowStyle())
         .windowResizability(.contentSize)
         .commands {
@@ -170,6 +174,9 @@ struct TildoneApp: App {
                 Button("About Tildone") {
                     openWindow(id: Id.aboutWindow)
                 }
+                Divider()
+                Button("Tildone Pro") { openWindow(id: "tildonePro") }
+                Button("Restore Purchases") { Swift.Task { await pro.restore(); openWindow(id: "tildonePro") } }
             }
             CommandGroup(replacing: .appSettings) {
                 SettingsLink {
@@ -241,6 +248,11 @@ struct TildoneApp: App {
         }
         Window("About Tildone.window", id: Id.aboutWindow) {
             About()
+        }
+        .windowResizability(.contentSize)
+        .commandsRemoved()
+        Window("Tildone Pro", id: "tildonePro") {
+            ProPaywallView(feature: pro.requestedFeature)
         }
         .windowResizability(.contentSize)
         .commandsRemoved()

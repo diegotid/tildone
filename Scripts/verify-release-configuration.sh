@@ -54,7 +54,7 @@ assert_setting "$scratch/mac-settings.txt" 'PRODUCT_BUNDLE_IDENTIFIER = studio.c
 assert_setting "$scratch/mac-settings.txt" 'CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.entitlements'
 assert_setting "$scratch/mac-settings.txt" 'MACOSX_DEPLOYMENT_TARGET = 14.0'
 assert_setting "$scratch/ios-settings.txt" 'CONFIGURATION = Release'
-assert_setting "$scratch/ios-settings.txt" 'PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone.ios'
+assert_setting "$scratch/ios-settings.txt" 'PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone'
 assert_setting "$scratch/ios-settings.txt" 'CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements'
 assert_setting "$scratch/ios-settings.txt" 'IPHONEOS_DEPLOYMENT_TARGET = 17.0'
 

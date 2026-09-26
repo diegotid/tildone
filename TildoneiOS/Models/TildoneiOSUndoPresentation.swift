@@ -10,6 +10,7 @@ import TildoneDomain
 final class TildoneiOSUndoPresentation: ObservableObject {
     @Published private(set) var action: ConsequentialActionKind?
     @Published private(set) var isControlVisible = false
+    @Published private(set) var isControlSuppressed = false
     @Published private(set) var registrationRevision: UInt64 = 0
     @Published var errorMessage: String?
 
@@ -17,17 +18,17 @@ final class TildoneiOSUndoPresentation: ObservableObject {
 
     deinit { dismissalTask?.cancel() }
 
-    func present(_ action: ConsequentialActionKind) {
+    func present(_ action: ConsequentialActionKind, showsCompletionControl: Bool = false) {
         dismissalTask?.cancel()
         self.action = action
         registrationRevision &+= 1
-        isControlVisible = action.showsTransientUndoControl
+        isControlVisible = action.showsTransientUndoControl || showsCompletionControl
         guard isControlVisible else {
             dismissalTask = nil
             return
         }
         dismissalTask = Swift.Task { [weak self] in
-            try? await Swift.Task.sleep(for: .seconds(6))
+            try? await Swift.Task.sleep(for: .seconds(showsCompletionControl ? 20 : 6))
             guard !Swift.Task.isCancelled else { return }
             self?.isControlVisible = false
         }
@@ -38,7 +39,16 @@ final class TildoneiOSUndoPresentation: ObservableObject {
         dismissalTask = nil
         action = nil
         isControlVisible = false
+        isControlSuppressed = false
         registrationRevision &+= 1
+    }
+
+    func suppressControl() {
+        isControlSuppressed = true
+    }
+
+    func resumeControl() {
+        isControlSuppressed = false
     }
 
     func reportUndoFailure() {

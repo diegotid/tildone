@@ -104,11 +104,12 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - Other Apple frameworks: AppIntents, StoreKit, ServiceManagement, Foundation, and AppKit.
 - macOS deployment target: macOS 14.0 in project and target configurations, matching the App Store listing.
 - Targets: `Tildone`, `TildoneTests`, and `TildoneUITests` for macOS; separate `TildoneiOS`, `TildoneiOSTests`, and `TildoneiOSUITests` targets for iOS.
-- Bundle ID: `studio.cuatro.tildone`.
+- Mac and iOS application bundle ID: `studio.cuatro.tildone`, for one App Store app record and universal purchase. The test bundles remain distinct.
 - Version in the project: marketing version 1.6.0, build 24.
 - Signing: automatic signing with team `F6HFAVTS49`; hardened runtime enabled.
 - External dependencies: none. Do not add one when an Apple framework or small local implementation suffices; any dependency is a deliberate product/maintenance decision.
-- Future iOS minimum version: **Unresolved.** Do not infer it from the macOS 14 minimum.
+- iOS minimum version: iOS 17.0 in the current project.
+- Tildone Pro uses one StoreKit 2 non-consumable ID, `studio.cuatro.tildone.pro`. CloudKit content is never purchase evidence; see `docs/tildone-pro-purchase-setup.md` for owner setup and the previous iOS bundle ID's local-data consequence.
 
 ## Current architecture
 
@@ -377,7 +378,7 @@ The sync status surfaces and some controls have explicit accessibility modifiers
 
 `TildoneiOS/TildoneiOS.entitlements` declares the same Development CloudKit container and Development APNs environment. The iPhone plist declares `remote-notification`. These are Development source capabilities, not evidence of effective Production signing or runtime success.
 
-Do not remove or expand entitlements casually: compare Debug/Release signing, App Store provisioning, Focus Filters, launch at login, StoreKit receipts, and the intended sync design. A future iOS app needs its own bundle ID and target entitlements. If sharing a CloudKit container, explicitly configure both targets and production schema/deployment.
+Do not remove or expand entitlements casually: compare Debug/Release signing, App Store provisioning, Focus Filters, launch at login, StoreKit receipts, and the intended sync design. The iOS and Mac application targets now use the same bundle ID for the intended universal purchase, with separate target entitlements. Both use the Development CloudKit container; Production schema/deployment remains separately authorized.
 
 No privacy manifest is present, and no third-party SDK is linked. User task text should remain out of diagnostics and network payloads except the explicitly chosen private sync system. Several product/README links use plain HTTP; review transport/security before relying on them for new functionality.
 

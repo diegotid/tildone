@@ -195,7 +195,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             field.hasPendingFocusRequest = false
         }
         context.coordinator.lastRequestedFocus = isFocused
-        field.applyPendingFocusRequest()
+        field.schedulePendingFocusRequest()
     }
 
     static func shouldApplyModelText(
@@ -426,6 +426,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         }
 
         private func apply(_ format: RichTextFormat) {
+            guard MainActor.assumeIsolated({ ProEntitlement.shared.require(.textStyling) }) else { return }
             guard let field, let window = field.window,
                   NSApp.keyWindow == nil || window.isKeyWindow else { return }
             let activeEditor = field.currentEditor() as? NSTextView

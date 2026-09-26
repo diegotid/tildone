@@ -91,6 +91,7 @@ struct MacTaskTextFormatMenu: View {
         format: RichTextFormat
     ) -> some View {
         Button {
+            guard ProEntitlement.shared.require(.textStyling) else { return }
             NotificationCenter.default.post(name: .formatTaskText, object: format)
         } label: {
             Label(title, systemImage: systemImage)
@@ -128,6 +129,7 @@ struct MacTaskTextFormatMenu: View {
     }
 
     private func postColor(_ color: RichTextColor?, isHighlight: Bool) {
+        guard ProEntitlement.shared.require(.textStyling) else { return }
         NotificationCenter.default.post(
             name: .formatTaskText,
             object: isHighlight ? RichTextFormat.highlight(color) : .foreground(color)
@@ -179,6 +181,7 @@ struct MacTaskTextFormatCommands: Commands {
         modifiers: EventModifiers = .command
     ) -> some View {
         Button {
+            guard ProEntitlement.shared.require(.textStyling) else { return }
             NotificationCenter.default.post(name: .formatTaskText, object: format)
         } label: {
             Label(title, systemImage: systemImage)
@@ -214,6 +217,7 @@ struct MacTaskTextFormatCommands: Commands {
     }
 
     private func postColor(_ color: RichTextColor?, isHighlight: Bool) {
+        guard ProEntitlement.shared.require(.textStyling) else { return }
         NotificationCenter.default.post(
             name: .formatTaskText,
             object: isHighlight ? RichTextFormat.highlight(color) : .foreground(color)

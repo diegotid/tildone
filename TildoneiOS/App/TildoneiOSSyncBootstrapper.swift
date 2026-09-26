@@ -23,7 +23,7 @@ enum TildoneiOSSyncBootstrapper {
 #endif
     }
 
-    private static var isTestProcess: Bool {
+    static var isTestProcess: Bool {
 #if DEBUG
         let environment = ProcessInfo.processInfo.environment
         return environment["XCTestConfigurationFilePath"] != nil ||

@@ -5,6 +5,7 @@
 
 import CloudKit
 import SwiftUI
+import StoreKitTest
 import XCTest
 import UniformTypeIdentifiers
 import TildoneDomain
@@ -32,7 +33,347 @@ private final class LineUpWindowStub: NSWindow {
     }
 }
 
+private final class PendingFocusWindowStub: NSWindow {
+    var focusRequestCount = 0
+
+    override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+        if let field = responder as? MouseSafeTaskNSTextField {
+            focusRequestCount += 1
+            field.hasPendingFocusRequest = false
+        }
+        return true
+    }
+}
+
 final class TildoneTests: XCTestCase {
+    @MainActor
+    func testNativeFocusRequestIsDeferredAndHonorsCancellation() async {
+        let window = PendingFocusWindowStub(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
+            styleMask: [], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let field = MouseSafeTaskNSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        window.contentView?.addSubview(field)
+        defer { window.close() }
+        // Drain the attachment's independently scheduled request first.
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        field.hasPendingFocusRequest = true
+        field.schedulePendingFocusRequest()
+        XCTAssertEqual(window.focusRequestCount, 0, "Responder callbacks must not run during a view update")
+        field.hasPendingFocusRequest = false
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        XCTAssertEqual(window.focusRequestCount, 0, "An obsolete focus request must not steal focus")
+
+        field.hasPendingFocusRequest = true
+        field.schedulePendingFocusRequest()
+        XCTAssertEqual(window.focusRequestCount, 0)
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        XCTAssertEqual(window.focusRequestCount, 1)
+    }
+
+    @MainActor
+    func testProFeaturePreviewsRenderRealControlsInBothAppearances() throws {
+        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let englishMemo = ProPreviewContent(feature: .singleMemo, locale: Locale(identifier: "en")).tasks.first?.text
+        for language in ["en", "es", "fr", "zh-Hans"] {
+            if language != "en" {
+                XCTAssertNotEqual(ProPreviewContent(feature: .singleMemo, locale: Locale(identifier: language)).tasks.first?.text,
+                                  englishMemo, "Preview examples must follow the paywall language.")
+            }
+            for appearance in [ColorScheme.light, .dark] {
+                var distinctImages = Set<Data>()
+                for feature in [ProFeature.singleMemo, .textStyling, .subtasks, .blur, .background, .dimming, .gathering] {
+                    let image = try XCTUnwrap(ProFeaturePreview.rasterImage(
+                        feature: feature, locale: Locale(identifier: language), colorScheme: appearance
+                    ))
+                    XCTAssertEqual(image.size, CGSize(width: 360, height: 360))
+                    let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+                    let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                    XCTAssertGreaterThan(png.count, 2_000, "The preview must contain rendered note content.")
+                    distinctImages.insert(png)
+                    try png.write(to: directory.appendingPathComponent("\(feature.rawValue)-\(language)-\(appearance).png"))
+                }
+                XCTAssertEqual(distinctImages.count, 7, "Each feature must have its own visual explanation.")
+            }
+        }
+    }
+
+    @MainActor
+    func testActualGreenNoteTextContrastInDarkMode() async throws {
+        let suite = "NoteContrast-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = MacSharedStore(repository: try TildoneRepository(descriptor: .inMemory()))
+        let note = try await store.createNote()
+        try await store.renameNote(note.id, to: "Contrast check")
+        try await store.setColor(.green, for: note.id)
+        let task = try await store.addTask(to: note.id, text: "Readable task")
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        for opacity in [0.7, 1.0, 0.2] {
+            defaults.set(opacity, forKey: NoteWindowBackground.opacityStorageKey)
+            let window = MacNoteWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 360, height: 400),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false
+            )
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .darkAqua)
+            let host = NSHostingView(rootView:
+                Note(store: store, presentation: presentation, noteID: note.id)
+                    .defaultAppStorage(defaults).environment(\.colorScheme, .dark)
+            )
+            window.setNoteHostingContentView(host)
+            defer { window.close() }
+            host.layoutSubtreeIfNeeded()
+            try await Swift.Task.sleep(for: .milliseconds(100))
+            func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
+                (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
+            }
+            let field = try XCTUnwrap(fields(host).first(where: { $0.taskID == task.id }))
+            let color = try XCTUnwrap((field.attributedStringValue.attribute(
+                .foregroundColor, at: 0, effectiveRange: nil
+            ) as? NSColor)?.usingColorSpace(.deviceRGB))
+            let expected = opacity < 0.5 ? CGFloat(0.8039215803) : 0
+            XCTAssertEqual(color.redComponent, expected, accuracy: 0.01)
+            XCTAssertEqual(color.greenComponent, expected, accuracy: 0.01)
+            XCTAssertEqual(color.blueComponent, expected, accuracy: 0.01)
+            let title = try XCTUnwrap(fields(host).first(where: \.isNoteTitleField))
+            XCTAssertEqual(try XCTUnwrap(title.textColor?.usingColorSpace(.deviceRGB)).redComponent,
+                           expected, accuracy: 0.01)
+        }
+    }
+
+    @MainActor
+    func testProNativePreviewTextFollowsNoteAppearance() throws {
+        for feature in [ProFeature.singleMemo, .subtasks, .textStyling] {
+            for opacity in [0.2, 0.7, 1.0] {
+                for appearance in [ColorScheme.light, .dark] {
+                    let image = try XCTUnwrap(MacProPreviewNote.rasterImage(
+                        content: ProPreviewContent(feature: feature, locale: Locale(identifier: "en")),
+                        locale: Locale(identifier: "en"), colorScheme: appearance,
+                        backgroundOpacity: opacity
+                    ))
+                    let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+                    var darkPixels = 0
+                    var lightPixels = 0
+                    for y in 0..<bitmap.pixelsHigh {
+                        for x in 0..<bitmap.pixelsWide {
+                            guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                                  color.alphaComponent > 0.8 else { continue }
+                            let channels = [color.redComponent, color.greenComponent, color.blueComponent]
+                            if channels.allSatisfy({ $0 < 0.2 }) { darkPixels += 1 }
+                            if channels.allSatisfy({ $0 > 0.8 }) { lightPixels += 1 }
+                        }
+                    }
+                    let usesLightText = NoteContentForeground.usesLightText(
+                        colorScheme: appearance, backgroundOpacity: opacity
+                    )
+                    XCTAssertGreaterThan(usesLightText ? lightPixels : darkPixels,
+                                         usesLightText ? darkPixels : lightPixels,
+                                         "\(feature), \(appearance), opacity \(opacity) must match real note text")
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testProSettingsPreviewsFollowDefaultColorAndGatheringCorner() throws {
+        let suite = "ProPreviewSettings-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for feature in [ProFeature.dimming, .gathering] {
+            var images = [Data]()
+            for (color, corner) in [(NoteColor.pink, ArrangementCorner.topRight), (.blue, .bottomLeft)] {
+                defaults.set(color.legacyRawValue, forKey: NoteColor.storageKey)
+                defaults.set(corner.rawValue, forKey: ArrangementCorner.storageKey)
+                let image = try XCTUnwrap(ProFeaturePreview.rasterImage(
+                    feature: feature, locale: Locale(identifier: "en"), colorScheme: .light,
+                    elapsedTime: 4, defaults: defaults
+                ))
+                let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                images.append(png)
+                try png.write(to: directory.appendingPathComponent("\(feature.rawValue)-settings-\(color.rawValue)-\(corner.rawValue).png"))
+            }
+            XCTAssertNotEqual(images[0], images[1], "Settings previews must reflect the selected note color and corner.")
+        }
+    }
+
+    @MainActor
+    func testProBlurPreviewRevealsTextAsPointerArrivesAndHonorsReduceMotion() throws {
+        // Keep the native raster constant, just as the live TimelineView does.
+        let noteImage = try XCTUnwrap(MacProPreviewNote.rasterImage(
+            content: ProPreviewContent(feature: .blur, locale: Locale(identifier: "en")),
+            locale: Locale(identifier: "en")
+        ))
+        func png(at time: TimeInterval, reduceMotion: Bool = false) throws -> Data {
+            let renderer = ImageRenderer(content:
+                ProPreviewScene(feature: .blur, locale: Locale(identifier: "en"),
+                                noteImage: noteImage, elapsedTime: time, reduceMotion: reduceMotion)
+                    .environment(\.colorScheme, .light)
+                    .frame(width: 360, height: 360)
+            )
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.nsImage)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+            return try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        }
+        XCTAssertEqual(ProPreviewMotion.revealProgress(at: 0), 0)
+        XCTAssertEqual(ProPreviewMotion.revealProgress(at: 3), 1)
+        XCTAssertEqual(ProPreviewMotion.revealProgress(at: 7), 0)
+        XCTAssertNotEqual(try png(at: 0), try png(at: 3), "The pointer should reveal the blurred text.")
+        let stillStart = try XCTUnwrap(NSBitmapImageRep(data: try png(at: 0, reduceMotion: true)))
+        let stillLater = try XCTUnwrap(NSBitmapImageRep(data: try png(at: 3, reduceMotion: true)))
+        let startBytes = try XCTUnwrap(stillStart.bitmapData)
+        let laterBytes = try XCTUnwrap(stillLater.bitmapData)
+        XCTAssertEqual(stillStart.pixelsWide, stillLater.pixelsWide)
+        XCTAssertEqual(stillStart.pixelsHigh, stillLater.pixelsHigh)
+        XCTAssertEqual(stillStart.bitsPerPixel, stillLater.bitsPerPixel)
+        // Compare visible pixels, allowing sub-byte raster/dithering variation.
+        // PNG metadata and compressed bytes aren't a stable visual comparison.
+        let rowByteCount = stillStart.pixelsWide * stillStart.bitsPerPixel / 8
+        var totalDifference = 0.0
+        for row in 0..<stillStart.pixelsHigh {
+            for column in 0..<rowByteCount {
+                totalDifference += Double(abs(Int(startBytes[row * stillStart.bytesPerRow + column])
+                    - Int(laterBytes[row * stillLater.bytesPerRow + column])))
+            }
+        }
+        let meanDifference = totalDifference / Double(rowByteCount * stillStart.pixelsHigh)
+        XCTAssertLessThan(meanDifference, 0.5, "Reduce Motion must stop visible movement in the demonstration.")
+        XCTAssertEqual(ProFeature.focusPrivacy.previewFeatures, [.blur, .background])
+        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try png(at: 3).write(to: directory.appendingPathComponent("blur-hovering-en-light.png"))
+    }
+
+    @MainActor
+    func testProPaywallRendersLocalizedExplanationAndPreview() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(false)
+        defer { pro.setTestOverride(nil) }
+        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for language in ["en", "es", "fr", "zh-Hans"] {
+            var indexSize: CGSize?
+            for feature in [nil] + ProFeature.catalog.map(Optional.some) + [.focusPrivacy] {
+                var measuredHeight: CGFloat = 0
+                let content = ProPaywallView(feature: feature)
+                    .environment(\.locale, Locale(identifier: language))
+                    .environment(\.colorScheme, .dark)
+                    .onPreferenceChange(ProPaywallView.ContentHeightKey.self) { measuredHeight = $0 }
+                let host = NSHostingView(rootView: content)
+                let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 408, height: 620),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.appearance = NSAppearance(named: .darkAqua)
+                window.contentView = host
+                host.frame = NSRect(x: 0, y: 0, width: 408, height: 620)
+                host.layoutSubtreeIfNeeded()
+                // Let the preview's task publish its raster into the real paywall.
+                try await Swift.Task.sleep(for: .milliseconds(200))
+                host.layoutSubtreeIfNeeded()
+                let fitted = host.fittingSize
+                XCTAssertEqual(fitted.width, 408, accuracy: 1)
+                if feature == nil { indexSize = fitted }
+                XCTAssertEqual(fitted.height, try XCTUnwrap(indexSize).height, accuracy: 1)
+                XCTAssertGreaterThan(measuredHeight, 0)
+                XCTAssertLessThanOrEqual(measuredHeight, fitted.height, "All content must fit without scrolling: \(language), \(feature?.rawValue ?? "index")")
+                window.setContentSize(fitted)
+                host.frame = NSRect(origin: .zero, size: fitted)
+                host.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: directory.appendingPathComponent("\(feature?.rawValue ?? "index")-fixed-\(language).png"))
+                XCTAssertGreaterThan(png.count, 10_000)
+                window.close()
+            }
+        }
+    }
+
+    func testProPreviewFormatsOnlyOneWordPerTaskInEveryLanguage() {
+        for language in ["en", "es", "fr", "zh-Hans"] {
+            let content = ProPreviewContent(feature: .textStyling, locale: Locale(identifier: language))
+            XCTAssertEqual(content.tasks.count, 3)
+            for task in content.tasks {
+                XCTAssertEqual(task.richText.spans.count, 1)
+                guard let span = task.richText.spans.first else { continue }
+                XCTAssertGreaterThan(span.range.length, 0)
+                XCTAssertLessThan(span.range.length, task.text.utf16.count)
+            }
+        }
+    }
+
+    func testLocalStoreKitConfigurationLoads() throws {
+        let session = try SKTestSession(configurationFileNamed: "TildonePro")
+        XCTAssertNotNil(session)
+    }
+
+    func testProEntitlementRequiresVerifiedCurrentTransactionAndHandlesRevocation() {
+        var state = ProEntitlementState()
+        XCTAssertFalse(state.isPro)
+        XCTAssertEqual(ProEntitlementState.productID, "studio.cuatro.tildone.pro")
+        state.replaceCurrent([42])
+        XCTAssertTrue(state.isPro)
+        state.apply(transactionID: 42, revoked: true)
+        XCTAssertFalse(state.isPro)
+        state.apply(transactionID: 43, revoked: false)
+        XCTAssertTrue(state.isPro)
+        state.replaceCurrent([])
+        XCTAssertFalse(state.isPro)
+    }
+
+    func testEveryProFeatureRequiresEntitlementButExistingModeRemainsAccessible() {
+        for feature in [ProFeature.singleMemo, .textStyling, .subtasks,
+                        .blur, .background, .focusPrivacy, .dimming, .gathering] {
+            XCTAssertFalse(ProFeatureAccess.allows(feature, isPro: false))
+            XCTAssertTrue(ProFeatureAccess.allows(feature, isPro: true))
+            XCTAssertTrue(ProFeatureAccess.allows(feature, isPro: false, isAlreadyActive: true))
+        }
+    }
+
+    @MainActor
+    func testFreeMacStoreRejectsMemoConversionWithoutChangingExistingNote() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(false)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        let item = try await store.addTask(to: note.id, text: "Keep styling safe")
+        let styled = item.richText.applying(
+            .toggle(.bold), to: RichTextRange(location: 0, length: item.text.utf16.count)
+        )
+        do {
+            try await store.editTask(item.id, richText: styled)
+            XCTFail("Free text styling must be rejected")
+        } catch ProAccessError.requiresPro {}
+        let persistedTask = try await repository.task(id: item.id)
+        XCTAssertTrue(persistedTask.richText.isPlain)
+
+        do {
+            try await store.setKind(.singleTask, for: note.id)
+            XCTFail("Free conversion must be rejected")
+        } catch ProAccessError.requiresPro {}
+        XCTAssertEqual(store.note(note.id)?.kind, .checklist)
+        let persisted = try await repository.note(id: note.id)
+        XCTAssertEqual(persisted.kind, .checklist)
+
+        pro.setTestOverride(true)
+        try await store.setKind(.singleTask, for: note.id)
+        XCTAssertEqual(store.note(note.id)?.kind, .singleTask)
+    }
+
     @MainActor
     func testCreatedNoteCanInheritAnExplicitColor() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
@@ -139,7 +480,7 @@ final class TildoneTests: XCTestCase {
                 backgroundOpacity: 0
             )
         )
-        XCTAssertTrue(
+        XCTAssertFalse(
             NoteContentForeground.usesLightText(
                 colorScheme: .dark,
                 backgroundOpacity: 0.5
@@ -151,6 +492,18 @@ final class TildoneTests: XCTestCase {
                 backgroundOpacity: 0.49
             )
         )
+        for opacity in [0.5, 0.7, 1.0] {
+            for windowOpacity in [CGFloat(0.1), 0.5, 1] {
+                XCTAssertFalse(NoteContentForeground.usesLightText(
+                    colorScheme: .dark, backgroundOpacity: opacity, windowOpacity: windowOpacity
+                ), "Opaque pastel notes must retain dark text, including when dimmed")
+            }
+        }
+        for opacity in [0.0, 0.49, 0.5, 1.0] {
+            XCTAssertFalse(NoteContentForeground.usesLightText(
+                colorScheme: .light, backgroundOpacity: opacity
+            ))
+        }
     }
 
     func testSettingsHeightFollowsContentAndNeverExceedsItsFixedWidth() {

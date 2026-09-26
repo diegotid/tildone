@@ -191,6 +191,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         }
 
         private func apply(_ format: RichTextFormat) {
+            guard MainActor.assumeIsolated({ ProEntitlement.shared.require(.textStyling) }) else { return }
             guard let view,
                   Self.formattingTarget === self else { return }
             let selection = Self.validSelection(

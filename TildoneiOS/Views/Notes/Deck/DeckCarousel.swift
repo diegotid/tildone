@@ -4,6 +4,8 @@ import UIKit
 
 struct DeckCarousel: View {
     let notes: [Note]
+    let departingNoteID: NoteID?
+    let isDepartingNoteFading: Bool
     let summaries: [NoteID: NoteTaskSummary]
     let taskPreviews: [NoteID: [NoteTaskPreview]]
     let cardHeight: CGFloat
@@ -36,9 +38,9 @@ struct DeckCarousel: View {
                     .scaleEffect(transform.scale, anchor: .bottom)
                     .offset(x: transform.x, y: transform.y)
                     .rotationEffect(.degrees(transform.rotation), anchor: .bottom)
-                    .opacity(transform.opacity)
+                    .opacity(item.note.id == departingNoteID && isDepartingNoteFading ? 0 : transform.opacity)
                     .zIndex(100 - abs(effectivePosition))
-                    .allowsHitTesting(isCurrentCard)
+                    .allowsHitTesting(isCurrentCard && item.note.id != departingNoteID)
                     .onTapGesture {
                         if isCurrentCard { open(item.note) }
                     }

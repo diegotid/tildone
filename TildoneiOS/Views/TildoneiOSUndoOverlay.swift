@@ -10,6 +10,7 @@ import TildoneDomain
 struct TildoneiOSUndoOverlay: View {
     @ObservedObject var presentation: TildoneiOSUndoPresentation
     @Environment(\.undoManager) private var systemUndoManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var invocationTarget = TildoneiOSUndoInvocationTarget()
     let undo: () async throws -> Void
 
@@ -23,7 +24,9 @@ struct TildoneiOSUndoOverlay: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
 
-            if presentation.isControlVisible, let action = presentation.action {
+            if presentation.isControlVisible,
+               !presentation.isControlSuppressed,
+               let action = presentation.action {
                 Button {
                     presentation.performUndo(using: undo)
                 } label: {
@@ -39,10 +42,11 @@ struct TildoneiOSUndoOverlay: View {
                 .accessibilityHint("Reverses the latest local change")
                 .shadow(color: .black.opacity(0.14), radius: 8, y: 3)
                 .padding(.bottom, 12)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeOut(duration: 0.2), value: presentation.isControlVisible)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: presentation.isControlVisible)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: presentation.isControlSuppressed)
         .onAppear(perform: synchronizeSystemUndo)
         .onChange(of: presentation.registrationRevision) { _, _ in
             synchronizeSystemUndo()

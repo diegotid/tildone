@@ -139,6 +139,7 @@ extension Note {
 
     func handleNoteKindChange(_ kind: NoteKind) {
         guard noteKind != kind else { return }
+        if kind == .singleTask && !ProEntitlement.shared.require(.singleMemo) { return }
         focusedField = nil
         focusedTaskID = nil
         if kind == .singleTask,
@@ -326,6 +327,7 @@ extension Note {
     }
 
     func adjustNewTaskDraftIndent(outdent: Bool) {
+        guard ProEntitlement.shared.require(.subtasks) else { return }
         guard let precedingTask = tasks.last else { return }
         if outdent {
             newTaskIndentLevel = max(0, (newTaskIndentLevel ?? 0) - 1)
@@ -514,6 +516,7 @@ extension Note {
     }
 
     func handleTaskIndent(_ taskID: TaskID, outdent: Bool) {
+        guard ProEntitlement.shared.require(.subtasks) else { return }
         guard let index = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         let task = tasks[index]
         if outdent {

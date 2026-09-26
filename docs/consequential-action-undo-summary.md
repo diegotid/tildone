@@ -31,7 +31,7 @@ Remote merges report the stable identities they actually changed. Platform appli
 
 On macOS, the standard Edit undo command is replaced with a localized, action-specific title such as “Undo Delete Task”, “Undo Indent Task”, or “Undo Outdent Task”; Command-Z invokes it. The item disappears after a successful undo or required invalidation.
 
-On iPhone, the action is registered with the system undo manager for the standard three-finger swipe. An attached UIKit responder handles shake-to-undo and invokes the same model operation, while yielding first-responder status whenever the keyboard is visible. The notes overview and checklist overflow menus expose the current localized, action-specific Undo command. To avoid announcing routine reversible changes, the brief accessible Undo pill appears only after deleting a note or task; the item remains available from the gestures and menu after that pill disappears. Redo is not retained.
+On iPhone, the action is registered with the system undo manager for the standard three-finger swipe. An attached UIKit responder handles shake-to-undo and invokes the same model operation, while yielding first-responder status whenever the keyboard is visible. The notes overview and checklist overflow menus expose the current localized, action-specific Undo command. The brief accessible Undo pill appears after deleting a note or task. Completing the final task of a note also makes the pill available for up to 20 seconds from completion; it is suppressed while the Done overlay is visible and appears on return to the overview. Other task completions do not show it. The item remains available from the gestures and menu after the pill disappears. Redo is not retained.
 
 ## Verification
 

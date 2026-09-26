@@ -276,6 +276,7 @@ private struct MacNoteFocusPrivacyMenu: View {
     }
 
     private func setContentBlurred(_ isBlurred: Bool) {
+        guard ProEntitlement.shared.require(.blur) else { return }
         NoteFocusPrivacySettings.setBlurOverride(
             isBlurred == focusBlurred ? nil : isBlurred,
             for: noteID
@@ -284,6 +285,7 @@ private struct MacNoteFocusPrivacyMenu: View {
     }
 
     private func setStaysInBackground(_ staysInBackground: Bool) {
+        guard ProEntitlement.shared.require(.background) else { return }
         NoteFocusPrivacySettings.setBackgroundOverride(
             staysInBackground == focusAllowsBackground ? nil : staysInBackground,
             for: noteID
@@ -292,6 +294,7 @@ private struct MacNoteFocusPrivacyMenu: View {
     }
 
     private func resetToFocusFilterDefaults() {
+        guard ProEntitlement.shared.require(.focusPrivacy) else { return }
         NoteFocusPrivacySettings.setBlurOverride(nil, for: noteID)
         NoteFocusPrivacySettings.setBackgroundOverride(nil, for: noteID)
         refreshState()
@@ -410,6 +413,9 @@ private struct MacNoteKindMenu: View {
     }
 
     private func setKind(_ kind: NoteKind) {
+        if kind == .singleTask && !ProEntitlement.shared.require(.singleMemo,
+            isAlreadyActive: presentation.snapshot.kind == .singleTask
+        ) { return }
         Swift.Task { try? await store.setKind(kind, for: noteID) }
     }
 }
