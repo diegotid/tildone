@@ -13,6 +13,11 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
         editor.isFieldEditor = true
         editor.isRichText = true
         editor.importsGraphics = false
+        // AppKit flushes pending text checks when focus moves. Its Data
+        // Detectors scanner can wait on a lower-QoS thread during that flush.
+        // Task links are already detected by our inactive text renderer.
+        editor.isAutomaticDataDetectionEnabled = false
+        editor.isAutomaticLinkDetectionEnabled = false
         return editor
     }()
 
