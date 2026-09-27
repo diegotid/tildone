@@ -22,6 +22,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var copyNoteContentsItem: NSMenuItem?
     private var copyNoteTitle: String?
     private var hasCopyableNote = false
+    private var proStatusItem: NSMenuItem?
+    private var proUnlockItem: NSMenuItem?
+    private var proRestoreItem: NSMenuItem?
     private let findPopover = NSPopover()
 
     static let copyNoteTitleLengthLimit = 32
@@ -97,6 +100,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         copyNoteTitle = noteTitle
         hasCopyableNote = hasActiveNote
         applyCopyNotePresentation()
+    }
+
+    func updateProPresentation(isPro: Bool, status: String, isBusy: Bool, message: String?) {
+        proStatusItem?.title = status
+        proStatusItem?.toolTip = message
+        proStatusItem?.image = menuImage(named: isPro ? "checkmark.circle" : "lock")
+        proUnlockItem?.isHidden = isPro
+        proUnlockItem?.isEnabled = !isBusy
+        proRestoreItem?.isEnabled = !isBusy
     }
 
     static func copyNoteMenuPresentation(
@@ -234,6 +246,26 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         menu.addItem(item(String(localized: "Sync Status…"), action: #selector(openSyncStatus), symbolName: "arrow.trianglehead.2.clockwise.rotate.90.icloud"))
 
         menu.addItem(.separator())
+        let proStatus = NSMenuItem(title: String(localized: "Tildone Pro is locked."), action: nil, keyEquivalent: "")
+        proStatus.isEnabled = false
+        proStatusItem = proStatus
+        menu.addItem(proStatus)
+        let unlockPro = item(String(localized: "Unlock Tildone Pro…"), action: #selector(openPro), symbolName: "lock.open")
+        proUnlockItem = unlockPro
+        menu.addItem(unlockPro)
+        menu.addItem(item(String(localized: "Discover all Pro features"), action: #selector(openPro), symbolName: "rectangle.grid.1x2"))
+        let restorePro = item(String(localized: "Restore Purchases"), action: #selector(restoreProPurchases), symbolName: "arrow.clockwise")
+        proRestoreItem = restorePro
+        menu.addItem(restorePro)
+        let pro = ProEntitlement.shared
+        updateProPresentation(
+            isPro: pro.isPro,
+            status: pro.purchaseStatusText,
+            isBusy: pro.isPurchasing || pro.isRestoring,
+            message: pro.message
+        )
+
+        menu.addItem(.separator())
         let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",", symbolName: "gearshape")
         settings.keyEquivalentModifierMask = .command
         menu.addItem(settings)
@@ -303,6 +335,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     @objc private func lineUpNotes() { sendToActiveApp(.arrange) }
     @objc private func openSettings() { sendToActiveApp(.openSettings) }
     @objc private func openAbout() { sendToActiveApp(.openAbout) }
+    @objc private func openPro() { sendToActiveApp(.openPro) }
+    @objc private func restoreProPurchases() { sendToActiveApp(.restoreProPurchases) }
     @objc private func openFocusFilterHelp() { sendToActiveApp(.openFocusFilterHelp) }
     @objc private func openKeyboardShortcuts() { sendToActiveApp(.openKeyboardShortcuts) }
     @objc private func openScrollGesturesHelp() { sendToActiveApp(.openScrollGesturesHelp) }

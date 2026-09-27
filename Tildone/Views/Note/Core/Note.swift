@@ -112,6 +112,7 @@ struct Note: View {
     @State var keyboardMonitor: Any?
     @State var isEmptySingleMemoHintDismissed = false
     @State var isImportingPastedList = false
+    @State var proAccessToast: ProAccessRequest?
     @State var findQuery = ""
 
     var shouldShowEmptySingleMemoHint: Bool {
@@ -172,6 +173,24 @@ struct Note: View {
                     taskList(note)
                 }
             }
+        }
+        .overlay(alignment: .bottom) {
+            if let proAccessToast, !isMinimized {
+                proAccessHint(for: proAccessToast)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 14)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: proAccessToast?.id)
+        .onReceive(ProEntitlement.shared.$deniedRequest.dropFirst().compactMap { $0 }) { request in
+            guard request.noteID == noteID else { return }
+            proAccessToast = request
+        }
+        .task(id: proAccessToast?.id) {
+            guard let requestID = proAccessToast?.id else { return }
+            try? await Swift.Task.sleep(for: .seconds(7))
+            if proAccessToast?.id == requestID { proAccessToast = nil }
         }
         .onChange(of: note?.color) { _, _ in
             applyCurrentNoteBackground()

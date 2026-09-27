@@ -99,14 +99,6 @@ extension MacProPreviewNote {
     }
 
     @MainActor
-    static func backgroundRasterImage(noteColor: NoteColor, backgroundOpacity: Double,
-                                      colorScheme: ColorScheme) -> NSImage? {
-        capture(MacProPreviewNoteBackground(noteColor: noteColor, backgroundOpacity: backgroundOpacity)
-                    .environment(\.colorScheme, colorScheme),
-                size: CGSize(width: 216, height: 288), colorScheme: colorScheme)
-    }
-
-    @MainActor
     private static func capture<Content: View>(_ view: Content, size: CGSize, colorScheme: ColorScheme) -> NSImage? {
         let host = NSHostingView(rootView: view)
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),

@@ -8,6 +8,40 @@ import SwiftUI
 import TildoneDomain
 
 extension Note {
+    @ViewBuilder
+    func proAccessHint(for request: ProAccessRequest) -> some View {
+        let content = HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 11, weight: .semibold))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(request.feature.title)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                Text("Requires Pro. Note unchanged; Pro window opened.")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+            }
+        }
+        .foregroundStyle(noteForeground)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+        .allowsHitTesting(false)
+
+        if #available(macOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+        } else {
+            content
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(.white.opacity(0.2), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 3)
+        }
+    }
+
     func singleTaskNote(_ note: MacNoteSnapshot) -> some View {
         ZStack {
             GeometryReader { geometry in
@@ -740,7 +774,13 @@ extension Note {
                             .font(.system(size: 30, weight: .bold))
                             .foregroundStyle(noteForeground)
                     }
+                    .frame(maxWidth: .infinity)
                 }
+                .padding(.horizontal, 12)
+                .opacity(completionCardOpacity)
+                .animation(.easeOut(duration: 0.2), value: completionCardOpacity)
+                .accessibilityHidden(completionCardOpacity == 0)
+                .allowsHitTesting(completionCardOpacity > 0)
             }
             Spacer()
             if completionFade.isFading {
@@ -768,6 +808,13 @@ extension Note {
                 .padding(.bottom, 12)
             }
         }
+    }
+
+    private var completionCardOpacity: Double {
+        guard completionFade.isFading else { return 1 }
+        let fadeStart = Timeout.noteFadeOutSeconds / 3
+        let fadeDuration = 1.0
+        return 1 - min(max((fadeAwayProgress - fadeStart) / fadeDuration, 0), 1)
     }
 
     @ViewBuilder

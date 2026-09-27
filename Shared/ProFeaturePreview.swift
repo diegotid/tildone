@@ -13,7 +13,6 @@ struct ProFeaturePreview: View {
     @AppStorage(NoteWindowBackground.opacityStorageKey) private var backgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
     @AppStorage(NoteColor.storageKey) private var noteColorRawValue = NoteColor.yellow.legacyRawValue
     @State private var noteImage: NSImage?
-    @State private var noteBackgroundImage: NSImage?
     @State private var animationStart = Date()
     #else
     @State private var preview: Image?
@@ -25,7 +24,7 @@ struct ProFeaturePreview: View {
             GeometryReader { geometry in
                 TimelineView(.animation(minimumInterval: 1.0 / 30, paused: feature != .blur || reduceMotion)) { context in
                     ProPreviewScene(
-                        feature: feature, locale: locale, noteImage: noteImage, noteBackgroundImage: noteBackgroundImage,
+                        feature: feature, locale: locale, noteImage: noteImage,
                         elapsedTime: context.date.timeIntervalSince(animationStart),
                         reduceMotion: reduceMotion, canvasSize: canvasSize
                     )
@@ -53,10 +52,6 @@ struct ProFeaturePreview: View {
                                            noteColor: NoteColor(legacyRawValue: noteColorRawValue) ?? .yellow), locale: locale,
                 colorScheme: colorScheme, backgroundOpacity: backgroundOpacity,
                 noteColor: NoteColor(legacyRawValue: noteColorRawValue) ?? .yellow
-            )
-            noteBackgroundImage = MacProPreviewNote.backgroundRasterImage(
-                noteColor: NoteColor(legacyRawValue: noteColorRawValue) ?? .yellow,
-                backgroundOpacity: backgroundOpacity, colorScheme: colorScheme
             )
             animationStart = Date()
             #else
@@ -122,15 +117,23 @@ extension ProFeaturePreview {
         // blur, opacity, and layout. AppKit cacheDisplay omits those effects.
         let noteColor = NoteColor(legacyRawValue: defaults.integer(forKey: NoteColor.storageKey)) ?? .yellow
         let opacity = Double(NoteWindowBackground.currentAlpha(from: defaults))
-        let noteBackgroundImage = MacProPreviewNote.backgroundRasterImage(
-            noteColor: noteColor, backgroundOpacity: opacity, colorScheme: colorScheme
-        )
+        // Resolve a wallpaper-backed material for offscreen evidence. The live
+        // view uses native material; caching NSVisualEffectView bakes its solid
+        // fallback color even when its backdrop is in the same hosting surface.
+        let backdrop = ProPreviewScene(feature: feature, locale: locale,
+                                       rendersBackdropOnly: true, canvasSize: canvasSize)
+            .defaultAppStorage(defaults)
+            .environment(\.locale, locale)
+            .environment(\.colorScheme, colorScheme)
+        let backdropRenderer = ImageRenderer(content: backdrop)
+        backdropRenderer.scale = 2
+        guard let backdropImage = backdropRenderer.nsImage else { return nil }
         guard let noteImage = MacProPreviewNote.rasterImage(
             content: ProPreviewContent(feature: feature, locale: locale, noteColor: noteColor), locale: locale,
             colorScheme: colorScheme, backgroundOpacity: opacity, noteColor: noteColor
         ) else { return nil }
         let renderer = ImageRenderer(content:
-            ProPreviewScene(feature: feature, locale: locale, noteImage: noteImage, noteBackgroundImage: noteBackgroundImage,
+            ProPreviewScene(feature: feature, locale: locale, noteImage: noteImage, backdropImage: backdropImage,
                             elapsedTime: elapsedTime, reduceMotion: reduceMotion, usesFixedTime: true, canvasSize: canvasSize)
                 .defaultAppStorage(defaults)
                 .environment(\.locale, locale)

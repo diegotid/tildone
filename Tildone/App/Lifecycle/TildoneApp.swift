@@ -77,8 +77,8 @@ struct TildoneApp: App {
     private var observedDesktopContent: some View {
         desktopContent
             .task { pro.start() }
-            .onChange(of: pro.requestedFeature) { _, feature in
-                if feature != nil { openWindow(id: "tildonePro") }
+            .onChange(of: pro.deniedRequest?.id) { _, requestID in
+                if requestID != nil { openWindow(id: "tildonePro") }
             }
             .onAppear {
                 appDelegate.setCoordinatorWindowVisible(
@@ -90,6 +90,9 @@ struct TildoneApp: App {
             }
             .onAppear { updateMenuBarSyncPresentation() }
             .onAppear { updateMenuBarCopyPresentation() }
+            .onAppear { updateMenuBarProPresentation() }
+            .onChange(of: pro.purchaseStatusText) { _, _ in updateMenuBarProPresentation() }
+            .onChange(of: pro.message) { _, _ in updateMenuBarProPresentation() }
             .onChange(of: foregroundNoteID) { _, _ in
                 updateMenuBarCopyPresentation()
             }
@@ -126,6 +129,12 @@ struct TildoneApp: App {
             }
             .onReceive(NotificationCenter.default.publisher(for: .copyNoteContents)) { _ in
                 copyForegroundNoteContents()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openPro)) { _ in
+                openProIndex()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .restoreProPurchases)) { _ in
+                restoreProPurchases()
             }
             .onReceive(NotificationCenter.default.publisher(for: .openSyncStatus)) { _ in
                 showsSyncResolutionOptions = false
@@ -175,8 +184,15 @@ struct TildoneApp: App {
                     openWindow(id: Id.aboutWindow)
                 }
                 Divider()
-                Button("Tildone Pro") { openWindow(id: "tildonePro") }
-                Button("Restore Purchases") { Swift.Task { await pro.restore(); openWindow(id: "tildonePro") } }
+                Button(pro.purchaseStatusText) {}.disabled(true)
+                if !pro.isPro {
+                    Button("Unlock Tildone Pro…", action: openProIndex)
+                        .disabled(pro.isPurchasing || pro.isRestoring)
+                }
+                Button("Discover all Pro features", action: openProIndex)
+                Button("Restore Purchases", action: restoreProPurchases)
+                    .disabled(pro.isPurchasing || pro.isRestoring)
+                Divider()
             }
             CommandGroup(replacing: .appSettings) {
                 SettingsLink {
@@ -227,7 +243,7 @@ struct TildoneApp: App {
                 }
                 .keyboardShortcut("f", modifiers: .command)
             }
-            MacTaskTextFormatCommands(isEnabled: foregroundNoteID != nil)
+            MacTaskTextFormatCommands(isEnabled: foregroundNoteID != nil, noteID: foregroundNoteID)
             CommandGroup(after: .toolbar) {
                 Menu("Visible Note Colors") {
                     ForEach(NoteColor.allCases) { color in
@@ -306,6 +322,27 @@ struct TildoneApp: App {
             noteTitle: foregroundNoteTitle,
             hasActiveNote: foregroundNoteID != nil
         )
+    }
+
+    private func updateMenuBarProPresentation() {
+        MenuBarController.shared.updateProPresentation(
+            isPro: pro.isPro,
+            status: pro.purchaseStatusText,
+            isBusy: pro.isPurchasing || pro.isRestoring,
+            message: pro.message
+        )
+    }
+
+    private func openProIndex() {
+        pro.preparePaywall()
+        openWindow(id: "tildonePro")
+    }
+
+    private func restoreProPurchases() {
+        Swift.Task {
+            await pro.restore()
+            openProIndex()
+        }
     }
 
     private func noteColorVisibilityBinding(for color: NoteColor) -> Binding<Bool> {

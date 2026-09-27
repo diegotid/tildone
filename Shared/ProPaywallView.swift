@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 struct ProPaywallView: View {
     @ObservedObject private var entitlement = ProEntitlement.shared
@@ -33,6 +34,9 @@ struct ProPaywallView: View {
             }
             .frame(width: 408, height: indexHeight)
             .onChange(of: feature) { _, selected in selectedFeature = selected }
+            .onChange(of: entitlement.paywallPresentationID) { _, _ in
+                selectedFeature = entitlement.requestedFeature
+            }
         #else
         ScrollView {
             VStack(spacing: 12) {
@@ -58,6 +62,9 @@ struct ProPaywallView: View {
             .frame(maxWidth: .infinity)
         }
         .onChange(of: feature) { _, selected in selectedFeature = selected }
+        .onChange(of: entitlement.paywallPresentationID) { _, _ in
+            selectedFeature = entitlement.requestedFeature
+        }
         #endif
     }
 
@@ -91,6 +98,7 @@ struct ProPaywallView: View {
                     .padding(.vertical, 6)
             }
             .buttonStyle(.bordered)
+            .disabled(entitlement.isRestoring || entitlement.isPurchasing)
             if let message = entitlement.message {
                 Text(message).font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -210,12 +218,15 @@ struct ProPaywallView: View {
 /// Shared StoreKit action used by the feature paywall and General settings.
 struct ProPurchaseButton: View {
     @ObservedObject private var entitlement = ProEntitlement.shared
+    @Environment(\.purchase) private var purchase
     var accessibilityIdentifier = "pro-purchase"
 
     var body: some View {
         if let price = entitlement.localizedPrice {
             Button {
-                Task { await entitlement.purchase() }
+                Task {
+                    await entitlement.purchase(using: purchase)
+                }
             } label: {
                 HStack(spacing: 12) {
                     Text("Unlock Tildone Pro")
@@ -227,7 +238,7 @@ struct ProPurchaseButton: View {
             }
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier(accessibilityIdentifier)
-            .disabled(entitlement.isPurchasing)
+            .disabled(entitlement.isPurchasing || entitlement.isRestoring)
         } else {
             Button {
                 Task { await entitlement.loadProduct() }

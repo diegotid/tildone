@@ -209,6 +209,42 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testProNoteBackdropShowsWallpaperThroughTransparentBackground() throws {
+        let suite = "ProPreviewBackdrop-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(NoteColor.blue.legacyRawValue, forKey: NoteColor.storageKey)
+        func variation(opacity: Double) throws -> Double {
+            defaults.set(opacity, forKey: NoteWindowBackground.opacityStorageKey)
+            let renderer = ImageRenderer(content:
+                ProPreviewScene(feature: .singleMemo, locale: Locale(identifier: "en"), rendersBackdropOnly: true)
+                    .defaultAppStorage(defaults)
+                    .environment(\.colorScheme, .dark)
+            )
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.nsImage)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+            // Sample only the blank interior: no text, controls, rounded edges,
+            // or shadows. A solid tint has no wallpaper variation here.
+            var values = [Double]()
+            for y in stride(from: 100, through: 280, by: 30) {
+                for x in stride(from: 100, through: 260, by: 20) {
+                    let color = try XCTUnwrap(bitmap.colorAt(
+                        x: x * bitmap.pixelsWide / 360, y: y * bitmap.pixelsHigh / 360
+                    )?.usingColorSpace(.deviceRGB))
+                    values.append(Double(color.blueComponent))
+                }
+            }
+            return try XCTUnwrap(values.max()) - XCTUnwrap(values.min())
+        }
+        let opaqueVariation = try variation(opacity: 1)
+        let transparentVariation = try variation(opacity: 0.2)
+        XCTAssertLessThan(opaqueVariation, 0.02)
+        XCTAssertGreaterThan(transparentVariation, opaqueVariation + 0.05,
+                             "Wallpaper must remain visible through the resolved backdrop, rather than becoming a solid panel.")
+    }
+
+    @MainActor
     func testProSettingsPreviewsFollowDefaultColorAndGatheringCorner() throws {
         let suite = "ProPreviewSettings-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -240,13 +276,16 @@ final class TildoneTests: XCTestCase {
             content: ProPreviewContent(feature: .blur, locale: Locale(identifier: "en")),
             locale: Locale(identifier: "en")
         ))
-        let backgroundImage = try XCTUnwrap(MacProPreviewNote.backgroundRasterImage(
-            noteColor: .yellow, backgroundOpacity: 0.7, colorScheme: .light
-        ))
+        let backdropRenderer = ImageRenderer(content:
+            ProPreviewScene(feature: .blur, locale: Locale(identifier: "en"), rendersBackdropOnly: true)
+                .environment(\.colorScheme, .light)
+        )
+        backdropRenderer.scale = 2
+        let backgroundImage = try XCTUnwrap(backdropRenderer.nsImage)
         func png(at time: TimeInterval, reduceMotion: Bool = false) throws -> Data {
             let renderer = ImageRenderer(content:
                 ProPreviewScene(feature: .blur, locale: Locale(identifier: "en"),
-                                noteImage: noteImage, noteBackgroundImage: backgroundImage,
+                                noteImage: noteImage, backdropImage: backgroundImage,
                                 elapsedTime: time, reduceMotion: reduceMotion)
                     .environment(\.colorScheme, .light)
                     .frame(width: 360, height: 360)
@@ -369,6 +408,31 @@ final class TildoneTests: XCTestCase {
             XCTAssertTrue(ProFeatureAccess.allows(feature, isPro: true))
             XCTAssertTrue(ProFeatureAccess.allows(feature, isPro: false, isAlreadyActive: true))
         }
+    }
+
+    @MainActor
+    func testDeniedProRequestsIdentifyTheNoteAndRepeatForTheSameFeature() {
+        let pro = ProEntitlement.shared
+        let noteID = NoteID()
+        pro.setTestOverride(false)
+        defer {
+            pro.setTestOverride(nil)
+            pro.requestedFeature = nil
+        }
+
+        XCTAssertFalse(pro.require(.singleMemo, in: noteID))
+        let firstRequest = pro.deniedRequest
+        XCTAssertEqual(firstRequest?.feature, .singleMemo)
+        XCTAssertEqual(firstRequest?.noteID, noteID)
+
+        XCTAssertFalse(pro.require(.singleMemo, in: noteID))
+        XCTAssertNotEqual(pro.deniedRequest?.id, firstRequest?.id)
+        XCTAssertEqual(pro.deniedRequest?.noteID, noteID)
+
+        pro.setTestOverride(true)
+        let lastDeniedID = pro.deniedRequest?.id
+        XCTAssertTrue(pro.require(.singleMemo, in: noteID))
+        XCTAssertEqual(pro.deniedRequest?.id, lastDeniedID)
     }
 
     @MainActor

@@ -23,6 +23,8 @@ extension Notification.Name {
     static let noteFocusPrivacyChanged = Notification.Name("noteFocusPrivacyChanged")
     static let openSettings = Notification.Name("openSettings")
     static let openAbout = Notification.Name("openAbout")
+    static let openPro = Notification.Name("openPro")
+    static let restoreProPurchases = Notification.Name("restoreProPurchases")
     static let openFocusFilterHelp = Notification.Name("openFocusFilterHelp")
     static let openKeyboardShortcuts = Notification.Name("openKeyboardShortcuts")
     static let openScrollGesturesHelp = Notification.Name("openScrollGesturesHelp")

@@ -414,40 +414,55 @@ private extension SettingsForm {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         Divider()
-        if pro.isPro {
-            Text("Tildone Pro is unlocked.")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(Color.green.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.2), lineWidth: 1)
+        VStack(alignment: .leading, spacing: 12) {
+            if pro.isPro {
+                Text("Tildone Pro is unlocked.")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(Color.green.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.2), lineWidth: 1)
+                    }
+                    .accessibilityIdentifier("settings-pro-unlocked")
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Tildone Pro").font(.headline)
+                        Text("One purchase unlocks Pro on Mac and iPhone.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ProPurchaseButton(accessibilityIdentifier: "settings-purchase-pro")
+                    Button {
+                        pro.preparePaywall()
+                        openWindow(id: "tildonePro")
+                    } label: {
+                        Text("Discover all Pro features")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("settings-discover-pro")
                 }
-                .accessibilityIdentifier("settings-pro-unlocked")
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Tildone Pro").font(.headline)
-                    Text("One purchase unlocks Pro on Mac and iPhone.")
-                        .font(.caption).foregroundStyle(.secondary)
+            }
+            Button {
+                Swift.Task { await pro.restore() }
+            } label: {
+                HStack {
+                    if pro.isRestoring { ProgressView().controlSize(.small) }
+                    Text("Restore Purchases")
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                ProPurchaseButton(accessibilityIdentifier: "settings-purchase-pro")
-                Button {
-                    pro.requestedFeature = nil
-                    openWindow(id: "tildonePro")
-                } label: {
-                    Text("Discover all Pro features")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("settings-discover-pro")
-                if let message = pro.message {
-                    Text(message).font(.footnote).foregroundStyle(.secondary)
-                        .lineLimit(3).help(message)
-                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .disabled(pro.isRestoring || pro.isPurchasing)
+            .accessibilityIdentifier("settings-restore-pro")
+            if let message = pro.message {
+                Text(message).font(.footnote).foregroundStyle(.secondary)
+                    .lineLimit(3).help(message)
             }
         }
     }
@@ -598,8 +613,8 @@ private extension SettingsForm {
 
         HStack(alignment: .top, spacing: 28) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Note dimming:")
-                    .font(.headline)
+                proFeatureHeading("Note dimming:")
+                proFeatureLink(.dimming)
                 ShortcutSettingRow(
                     "Scroll shortcut",
                     shortcut: opacityShortcutBinding,
@@ -708,8 +723,8 @@ private extension SettingsForm {
 
         HStack(alignment: .top, spacing: 28) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Gather:")
-                    .font(.headline)
+                proFeatureHeading("Gather:")
+                proFeatureLink(.gathering)
                 Text("Hold the shortcut and scroll over a note to gather all notes. Scroll up to restore their positions.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -735,6 +750,31 @@ private extension SettingsForm {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Gather notes"))
             .accessibilityIdentifier("settings-gather-preview")
+        }
+    }
+
+    @ViewBuilder
+    func proFeatureLink(_ feature: ProFeature) -> some View {
+        Button("Explore this feature…") {
+            pro.preparePaywall(for: feature)
+            openWindow(id: "tildonePro")
+        }
+        .buttonStyle(.link)
+        .font(.caption)
+        .accessibilityIdentifier("settings-pro-\(feature.rawValue)")
+    }
+
+    @ViewBuilder
+    func proFeatureHeading(_ title: LocalizedStringKey) -> some View {
+        HStack(spacing: 7) {
+            if !pro.isPro {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Requires Pro")
+            }
+            Text(title)
+                .font(.headline)
         }
     }
 

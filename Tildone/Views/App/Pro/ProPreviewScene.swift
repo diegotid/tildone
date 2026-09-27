@@ -5,7 +5,8 @@ struct ProPreviewScene: View {
     let feature: ProFeature
     let locale: Locale
     var noteImage: NSImage? = nil
-    var noteBackgroundImage: NSImage? = nil
+    var backdropImage: NSImage? = nil
+    var rendersBackdropOnly = false
     var elapsedTime: TimeInterval = 0
     var reduceMotion = false
     var usesFixedTime = false
@@ -28,7 +29,11 @@ struct ProPreviewScene: View {
 
     var body: some View {
         ZStack {
-            SettingsPreviewBackground(size: canvasSize)
+            if let backdropImage {
+                Image(nsImage: backdropImage).resizable()
+            } else {
+                SettingsPreviewBackground(size: canvasSize)
+            }
             switch feature {
             case .gathering:
                 GatherPreview(
@@ -49,12 +54,14 @@ struct ProPreviewScene: View {
                 )
             case .background:
                 note.scaleEffect(0.72 * noteScale).position(x: canvasSize.width * 121 / 360, y: canvasSize.height * 149 / 360)
-                otherWindow.scaleEffect(noteScale).position(x: canvasSize.width * 211 / 360, y: canvasSize.height * 213 / 360)
+                if !rendersBackdropOnly {
+                    otherWindow.scaleEffect(noteScale).position(x: canvasSize.width * 211 / 360, y: canvasSize.height * 213 / 360)
+                }
             default:
                 note.scaleEffect(noteScale)
                     .onHover { isHoveringNote = $0 }
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isHoveringNote)
-                if feature == .blur && !reduceMotion && !isHoveringNote {
+                if feature == .blur && !rendersBackdropOnly && !reduceMotion && !isHoveringNote {
                     let progress = ProPreviewMotion.pointerProgress(at: elapsedTime)
                     Image(systemName: "cursorarrow")
                         .font(.system(size: 25 * noteScale, weight: .semibold))
@@ -68,7 +75,7 @@ struct ProPreviewScene: View {
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
         .overlay(alignment: .topTrailing) {
-            if feature == .blur || feature == .background {
+            if !rendersBackdropOnly && (feature == .blur || feature == .background) {
                 Image(systemName: "moon.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
@@ -91,8 +98,11 @@ struct ProPreviewScene: View {
             }
             .padding(.horizontal, 11)
             .frame(height: 26)
+            .opacity(backdropImage == nil ? 1 : 0)
             Group {
-                if let noteImage {
+                if rendersBackdropOnly {
+                    Color.clear
+                } else if let noteImage {
                     Image(nsImage: noteImage).resizable()
                 } else {
                     MacProPreviewNote(content: ProPreviewContent(feature: feature, locale: locale, noteColor: defaultNoteColor),
@@ -104,14 +114,31 @@ struct ProPreviewScene: View {
         }
         .frame(width: 216, height: 288)
         .background {
-            if let noteBackgroundImage {
-                Image(nsImage: noteBackgroundImage).resizable()
-            } else {
-                MacProPreviewNoteBackground(noteColor: defaultNoteColor, backgroundOpacity: backgroundOpacity)
+            if backdropImage == nil {
+                if rendersBackdropOnly {
+                    // Offscreen renderers cannot sample NSVisualEffectView's
+                    // backdrop. Resolve the same wallpaper and tint explicitly.
+                    let scale = noteScale * (feature == .background ? 0.72 : 1)
+                    let center = feature == .background
+                        ? CGPoint(x: canvasSize.width * 121 / 360, y: canvasSize.height * 149 / 360)
+                        : CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+                    ZStack {
+                        SettingsPreviewBackground(size: canvasSize)
+                            .blur(radius: 10)
+                            .scaleEffect(1 / scale)
+                            .offset(x: (canvasSize.width / 2 - center.x) / scale,
+                                    y: (canvasSize.height / 2 - center.y) / scale)
+                        Color(nsColor: defaultNoteColor.nsColor).opacity(backgroundOpacity)
+                    }
+                    .frame(width: 216, height: 288)
+                    .clipped()
+                } else {
+                    MacProPreviewNoteBackground(noteColor: defaultNoteColor, backgroundOpacity: backgroundOpacity)
+                }
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .shadow(color: .black.opacity(0.25), radius: 6, y: 4)
+        .shadow(color: .black.opacity(backdropImage == nil ? 0.25 : 0), radius: 6, y: 4)
     }
 
     private var otherWindow: some View {
