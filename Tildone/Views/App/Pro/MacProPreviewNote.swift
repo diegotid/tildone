@@ -5,6 +5,7 @@ import TildoneDomain
 /// no-op actions. Never constructs a live Note, repository, or WindowAccessor.
 struct MacProPreviewNote: View {
     let content: ProPreviewContent
+    var noteColor: NoteColor = .yellow
     var backgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
     @Environment(\.colorScheme) private var colorScheme
 
@@ -67,7 +68,7 @@ struct MacProPreviewNote: View {
             task: task, dragPayload: MacTaskDragPayload(noteID: task.noteID, taskID: task.id),
             rowIndex: index, fontSize: 14,
             isDark: NoteContentForeground.usesLightText(colorScheme: colorScheme, backgroundOpacity: backgroundOpacity),
-            noteBackgroundColor: Color(nsColor: content.note.color.nsColor), noteBackgroundOpacity: backgroundOpacity,
+            noteBackgroundColor: Color(nsColor: noteColor.nsColor), noteBackgroundOpacity: backgroundOpacity,
             contentColor: foreground, cursorColor: foreground, searchQuery: "", placeholderColor: foreground,
             truncation: .multiple, isFirst: index == 0, followsDeeperTask: false,
             isShowingRowControls: false,
@@ -88,18 +89,32 @@ struct MacProPreviewNote: View {
 extension MacProPreviewNote {
     @MainActor
     static func rasterImage(content: ProPreviewContent, locale: Locale, colorScheme: ColorScheme = .light,
-                            backgroundOpacity: Double = Double(NoteWindowBackground.defaultAlpha)) -> NSImage? {
-        let view = MacProPreviewNote(content: content, backgroundOpacity: backgroundOpacity)
+                            backgroundOpacity: Double = Double(NoteWindowBackground.defaultAlpha),
+                            noteColor: NoteColor = .yellow) -> NSImage? {
+        let view = MacProPreviewNote(content: content, noteColor: noteColor, backgroundOpacity: backgroundOpacity)
             .environment(\.locale, locale)
             .environment(\.colorScheme, colorScheme)
             .frame(width: 216, height: 262)
+        return capture(view, size: CGSize(width: 216, height: 262), colorScheme: colorScheme)
+    }
+
+    @MainActor
+    static func backgroundRasterImage(noteColor: NoteColor, backgroundOpacity: Double,
+                                      colorScheme: ColorScheme) -> NSImage? {
+        capture(MacProPreviewNoteBackground(noteColor: noteColor, backgroundOpacity: backgroundOpacity)
+                    .environment(\.colorScheme, colorScheme),
+                size: CGSize(width: 216, height: 288), colorScheme: colorScheme)
+    }
+
+    @MainActor
+    private static func capture<Content: View>(_ view: Content, size: CGSize, colorScheme: ColorScheme) -> NSImage? {
         let host = NSHostingView(rootView: view)
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 216, height: 262),
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                               styleMask: .borderless, backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         window.isReleasedWhenClosed = false
         window.contentView = host
-        host.frame = NSRect(x: 0, y: 0, width: 216, height: 262)
+        host.frame = NSRect(origin: .zero, size: size)
         host.layoutSubtreeIfNeeded()
         defer { window.close() }
         guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return nil }
@@ -107,5 +122,19 @@ extension MacProPreviewNote {
         let image = NSImage(size: host.bounds.size)
         image.addRepresentation(bitmap)
         return image
+    }
+}
+
+/// Matches the material and tint used by the Settings note previews.
+struct MacProPreviewNoteBackground: View {
+    let noteColor: NoteColor
+    let backgroundOpacity: Double
+
+    var body: some View {
+        ZStack {
+            VisualEffectBlurView(material: .hudWindow, blendingMode: .withinWindow)
+                .allowsHitTesting(false)
+            Color(nsColor: noteColor.nsColor).opacity(backgroundOpacity)
+        }
     }
 }

@@ -6,7 +6,7 @@ struct ProPreviewContent {
     let note: TildoneDomain.Note
     let tasks: [TildoneDomain.Task]
 
-    init(feature: ProFeature, locale: Locale) {
+    init(feature: ProFeature, locale: Locale, noteColor: NoteColor = .yellow) {
         // String(localized:locale:) uses locale for formatting, not language
         // selection. Select the matching catalog bundle for preview examples.
         let language: String
@@ -24,7 +24,7 @@ struct ProPreviewContent {
         note = TildoneDomain.Note(
             id: noteID, createdAt: date,
             title: feature == .singleMemo ? nil : String(localized: "A little space to think", bundle: bundle, locale: locale),
-            titleVersion: version, color: .yellow,
+            titleVersion: version, color: noteColor,
             kind: feature == .singleMemo ? .singleTask : .checklist,
             singleMemoFont: .overlock,
             lifecycleVersion: version, lastMeaningfulEditAt: date,
@@ -57,7 +57,7 @@ struct ProPreviewContent {
                 switch index {
                 case 0: attributes = RichTextAttributes(styles: [.bold])
                 case 1: attributes = RichTextAttributes(foregroundColor: .blue)
-                default: attributes = RichTextAttributes(styles: [.italic], highlightColor: .pink)
+                default: attributes = RichTextAttributes(styles: [.italic], highlightColor: noteColor == .pink ? .yellow : .pink)
                 }
                 let word: String
                 switch index {

@@ -184,6 +184,31 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testAllProNotePreviewsFollowColorAndTransparency() throws {
+        let suite = "AllProPreviewSettings-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for feature in [ProFeature.singleMemo, .textStyling, .subtasks, .blur, .background] {
+            var images = Set<Data>()
+            for (color, opacity) in [(NoteColor.pink, 1.0), (.blue, 1.0), (.blue, 0.2)] {
+                defaults.set(color.legacyRawValue, forKey: NoteColor.storageKey)
+                defaults.set(opacity, forKey: NoteWindowBackground.opacityStorageKey)
+                let image = try XCTUnwrap(ProFeaturePreview.rasterImage(
+                    feature: feature, locale: Locale(identifier: "en"), colorScheme: .dark,
+                    reduceMotion: true, defaults: defaults
+                ))
+                let bitmap = try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation)))
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                images.insert(png)
+                try png.write(to: directory.appendingPathComponent("\(feature.rawValue)-settings-\(color.rawValue)-\(opacity).png"))
+            }
+            XCTAssertEqual(images.count, 3, "\(feature) must visibly follow both color and transparency")
+        }
+    }
+
+    @MainActor
     func testProSettingsPreviewsFollowDefaultColorAndGatheringCorner() throws {
         let suite = "ProPreviewSettings-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -215,10 +240,14 @@ final class TildoneTests: XCTestCase {
             content: ProPreviewContent(feature: .blur, locale: Locale(identifier: "en")),
             locale: Locale(identifier: "en")
         ))
+        let backgroundImage = try XCTUnwrap(MacProPreviewNote.backgroundRasterImage(
+            noteColor: .yellow, backgroundOpacity: 0.7, colorScheme: .light
+        ))
         func png(at time: TimeInterval, reduceMotion: Bool = false) throws -> Data {
             let renderer = ImageRenderer(content:
                 ProPreviewScene(feature: .blur, locale: Locale(identifier: "en"),
-                                noteImage: noteImage, elapsedTime: time, reduceMotion: reduceMotion)
+                                noteImage: noteImage, noteBackgroundImage: backgroundImage,
+                                elapsedTime: time, reduceMotion: reduceMotion)
                     .environment(\.colorScheme, .light)
                     .frame(width: 360, height: 360)
             )

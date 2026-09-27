@@ -5,6 +5,7 @@ struct ProPreviewScene: View {
     let feature: ProFeature
     let locale: Locale
     var noteImage: NSImage? = nil
+    var noteBackgroundImage: NSImage? = nil
     var elapsedTime: TimeInterval = 0
     var reduceMotion = false
     var usesFixedTime = false
@@ -94,15 +95,21 @@ struct ProPreviewScene: View {
                 if let noteImage {
                     Image(nsImage: noteImage).resizable()
                 } else {
-                    MacProPreviewNote(content: ProPreviewContent(feature: feature, locale: locale),
-                                      backgroundOpacity: backgroundOpacity)
+                    MacProPreviewNote(content: ProPreviewContent(feature: feature, locale: locale, noteColor: defaultNoteColor),
+                                      noteColor: defaultNoteColor, backgroundOpacity: backgroundOpacity)
                 }
             }
             .frame(width: 216, height: 262)
             .blur(radius: feature == .blur ? 4 * (1 - revealProgress) : 0)
         }
         .frame(width: 216, height: 288)
-        .background(Color(nsColor: .noteBackground))
+        .background {
+            if let noteBackgroundImage {
+                Image(nsImage: noteBackgroundImage).resizable()
+            } else {
+                MacProPreviewNoteBackground(noteColor: defaultNoteColor, backgroundOpacity: backgroundOpacity)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: .black.opacity(0.25), radius: 6, y: 4)
     }

@@ -134,8 +134,20 @@ General's Pro section now has separate full-width purchase and discovery buttons
 
 Validation: Mac UI test confirms two distinct visible controls and that discovery opens the full index. Mac Debug compiled during the UI test; iOS Simulator Debug build passed after the shared-button extraction. No live purchase was made by this validation. Source signing, StoreKit configuration, data, and CloudKit settings were unchanged.
 
+### All Mac feature previews follow note settings (2026-09-27)
+
+Single memo, text styling, subtasks, blur, and background previews now observe the default note color as well as background opacity. Replaced their fixed opaque yellow backdrop with the same HUD material and color tint used by the Settings note previews. Shared the existing material wrapper with the Pro preview. Cached native text and background rasters refresh when color, opacity, or appearance changes; mock task rows also receive the selected note color. The text styling example uses a yellow highlight for pink notes so its single-word highlight remains distinct. Dimming and gathering retain their existing Settings-based rendering.
+
+Validation: four initial Mac checks passed for all settings-aware preview scenes, four-language/light-dark renders, and native text contrast. Three final checks passed after the adaptive highlight change, covering independent color/transparency changes for all five other features, blur/reveal and Reduce Motion, and localized single-word formatting. Pink opaque and blue transparent screenshots were visually inspected. Both Debug app targets built. Tests use isolated UserDefaults; no owner preferences or content were modified. No new UI text, purchase/signing configuration, or CloudKit changes.
+
 ### Unlocked Settings confirmation banner (2026-09-27)
 
 When the shared entitlement reports Pro unlocked, General replaces its purchase/discovery section with a full-width rounded banner reading “Tildone Pro is unlocked.” The banner uses a subdued green tint (14% opacity), a subtle green border, and standard primary text for appearance/accessibility contrast. It occupies the same section below the divider. The General pane uses 288 points for owners and retains 384 points for the paywall. The message reuses its English source and Spanish, French, and Simplified Chinese translations. The observed entitlement updates the banner automatically after purchase/restore or revocation.
 
 Validation: Mac Debug app compiled and the Settings sizing test passed with the hosted-test unlocked entitlement. `git diff --check` passed. No purchase, stored content, signing, or CloudKit configuration changes.
+
+### Fitted General and Positioning margins (2026-09-27)
+
+General and Positioning now measure their padded content and use that height for the Settings window, replacing fixed heights that left additional bottom space. Both have 28-point horizontal and bottom padding. Their content has no scroll container, eliminating unused scrollbar width that could make the visible right margin larger than the bottom margin. Other tabs retain their existing scroll layout. General automatically remeasures for entitlement/status changes and localized wrapping. Static pane sizes are only initial sizing fallbacks.
+
+Validation: Mac Debug compiled and the Settings UI test passed, checking visible bottom and right margins against each other and against 28 points in General and Positioning, then confirming discovery-index navigation. The initial check exposed reserved scrollbar width; removing the scroll container resolved it. The new preview accessibility label reuses the existing four-language “Gather notes” entry. Unrelated field-editor changes in the working tree were preserved. Source signing, purchases, content, and CloudKit configuration were unchanged.

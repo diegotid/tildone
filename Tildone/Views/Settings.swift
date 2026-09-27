@@ -352,10 +352,9 @@ private extension SettingsForm {
         fittingTab: SettingsTab? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                content()
-            }
+        let pane = VStack(alignment: .leading, spacing: 24) {
+            content()
+        }
             .padding(.horizontal, 28)
             .padding(.top, 22)
             .padding(.bottom, bottomPadding)
@@ -367,6 +366,12 @@ private extension SettingsForm {
                                                value: [fittingTab: geometry.size.height])
                     }
                 }
+            }
+        Group {
+            if fittingTab != nil {
+                pane.fixedSize(horizontal: false, vertical: true)
+            } else {
+                ScrollView { pane }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -2070,7 +2075,7 @@ private final class ShortcutCaptureNSView: NSView {
     }
 }
 
-private struct VisualEffectBlurView: NSViewRepresentable {
+struct VisualEffectBlurView: NSViewRepresentable {
     var material: NSVisualEffectView.Material
     var blendingMode: NSVisualEffectView.BlendingMode
     var state: NSVisualEffectView.State = .active
