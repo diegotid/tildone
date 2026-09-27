@@ -506,11 +506,11 @@ final class TildoneTests: XCTestCase {
         }
     }
 
-    func testSettingsHeightFollowsContentAndNeverExceedsItsFixedWidth() {
+    func testSettingsHeightFollowsContentAtItsFixedWidth() {
         let hostingView = NSHostingView(rootView: SettingsForm())
         XCTAssertEqual(
             hostingView.fittingSize,
-            CGSize(width: 600, height: SettingsForm.generalPaneHeight)
+            CGSize(width: 600, height: SettingsForm.generalUnlockedPaneHeight)
         )
 
         XCTAssertEqual(
@@ -532,7 +532,7 @@ final class TildoneTests: XCTestCase {
                 contentHeight: 700,
                 width: 600
             ),
-            600
+            700
         )
     }
 

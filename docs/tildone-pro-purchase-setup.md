@@ -121,3 +121,19 @@ Validation: three Mac tests passed, covering native text pixels in both appearan
 Identified the regression in commit `6e9af8397635bc4f59570423ba017a151b275d90` (“Fix Dark Mode task text color,” 2026-09-15): `NoteContentForeground.usesLightText` had changed from `colorScheme == .dark && backgroundOpacity < 0.5` to `colorScheme == .dark`, ignoring note opacity. Restored the previous opacity threshold. Pastel notes at 50% or greater background opacity use dark text in both appearances; more transparent notes use light text in Dark Mode. Actual notes, Settings examples, and Pro previews share this calculation. Explicit rich-text colors are preserved.
 
 Validation: the Mac Debug app compiled and four focused tests passed: opacity-threshold/light-appearance/dimming cases; native preview text pixels at three opacity settings in both appearances; localized feature renders; and an actual green Note hosted with an isolated in-memory repository in Dark Mode. The actual-note test checks both title and task field colors at opacity 0.7, 1.0, and 0.2. No new UI strings, stored-content changes, signing, or CloudKit changes.
+
+### General settings Pro discovery section (2026-09-27)
+
+Added a Tildone Pro section beneath the existing General content and a divider. It shows the universal-purchase caption (or unlocked status for owners) and a prominent “Discover all Pro features” button. The button clears the triggering-feature selection and opens the existing Pro window at its index. All displayed strings reuse English, Spanish, French, and Simplified Chinese catalog entries. General's pane height is 288 points to fit the added section.
+
+### Separate Settings purchase and discovery actions (2026-09-27)
+
+General's Pro section now has separate full-width purchase and discovery buttons. Extracted `ProPurchaseButton` from the feature paywall so Settings and paywalls share the same action, localized StoreKit price, leading action/trailing price layout, disabled state while purchasing, and product-loading retry behavior. The purchase button directly calls `ProEntitlement.purchase()`; it does not open the index. The secondary discovery button opens the index. Owners see unlocked status instead of a purchase button. Purchase/pending/failure messages are visible in Settings. General's height is now 384 points to accommodate the actions. All copy reuses the existing four-language translations.
+
+Validation: Mac UI test confirms two distinct visible controls and that discovery opens the full index. Mac Debug compiled during the UI test; iOS Simulator Debug build passed after the shared-button extraction. No live purchase was made by this validation. Source signing, StoreKit configuration, data, and CloudKit settings were unchanged.
+
+### Unlocked Settings confirmation banner (2026-09-27)
+
+When the shared entitlement reports Pro unlocked, General replaces its purchase/discovery section with a full-width rounded banner reading “Tildone Pro is unlocked.” The banner uses a subdued green tint (14% opacity), a subtle green border, and standard primary text for appearance/accessibility contrast. It occupies the same section below the divider. The General pane uses 288 points for owners and retains 384 points for the paywall. The message reuses its English source and Spanish, French, and Simplified Chinese translations. The observed entitlement updates the banner automatically after purchase/restore or revocation.
+
+Validation: Mac Debug app compiled and the Settings sizing test passed with the hosted-test unlocked entitlement. `git diff --check` passed. No purchase, stored content, signing, or CloudKit configuration changes.

@@ -80,33 +80,8 @@ struct ProPaywallView: View {
             if entitlement.isPro {
                 Text("Tildone Pro is unlocked.")
                     .foregroundStyle(.secondary)
-            } else if let price = entitlement.localizedPrice {
-                Button {
-                    Task { await entitlement.purchase() }
-                } label: {
-                    HStack(spacing: 12) {
-                        Text("Unlock Tildone Pro")
-                        Spacer(minLength: 8)
-                        Text(price)
-                            .fixedSize()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("pro-purchase")
-                .disabled(entitlement.isPurchasing)
             } else {
-                Button {
-                    Task { await entitlement.loadProduct() }
-                } label: {
-                    Text("Try loading price again")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("pro-purchase")
-                .disabled(entitlement.isLoadingProduct)
+                ProPurchaseButton()
             }
             Button {
                 Task { await entitlement.restore() }
@@ -230,4 +205,40 @@ struct ProPaywallView: View {
         }
     }
 
+}
+
+/// Shared StoreKit action used by the feature paywall and General settings.
+struct ProPurchaseButton: View {
+    @ObservedObject private var entitlement = ProEntitlement.shared
+    var accessibilityIdentifier = "pro-purchase"
+
+    var body: some View {
+        if let price = entitlement.localizedPrice {
+            Button {
+                Task { await entitlement.purchase() }
+            } label: {
+                HStack(spacing: 12) {
+                    Text("Unlock Tildone Pro")
+                    Spacer(minLength: 8)
+                    Text(price).fixedSize()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(accessibilityIdentifier)
+            .disabled(entitlement.isPurchasing)
+        } else {
+            Button {
+                Task { await entitlement.loadProduct() }
+            } label: {
+                Text("Try loading price again")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier(accessibilityIdentifier)
+            .disabled(entitlement.isLoadingProduct)
+        }
+    }
 }

@@ -163,12 +163,15 @@ private enum SettingsTab: Hashable {
 
 struct SettingsForm: View {
     private static let windowWidth: CGFloat = 600
-    static let generalPaneHeight: CGFloat = 148
+    static let generalPaneHeight: CGFloat = 323
+    static let generalUnlockedPaneHeight: CGFloat = 243
     static let tasksPaneHeight: CGFloat = 244
     static let appearancePaneHeight: CGFloat = 720
     static let positioningPaneHeight: CGFloat = 516
 
     let store: MacSharedStore?
+    @Environment(\.openWindow) private var openWindow
+    @ObservedObject private var pro = ProEntitlement.shared
 
     @State private var selectedTab: SettingsTab = .general
     @State private var opacityShortcutValidationMessage: LocalizedStringKey?
@@ -315,7 +318,7 @@ struct SettingsForm: View {
     private var preferredWindowHeight: CGFloat {
         let paneHeight: CGFloat
         switch selectedTab {
-        case .general: paneHeight = Self.generalPaneHeight
+        case .general: paneHeight = pro.isPro ? Self.generalUnlockedPaneHeight : Self.generalPaneHeight
         case .tasks: paneHeight = Self.tasksPaneHeight
         case .appearance: paneHeight = Self.appearancePaneHeight
         case .positioning: paneHeight = Self.positioningPaneHeight
@@ -325,6 +328,7 @@ struct SettingsForm: View {
             width: Self.windowWidth
         )
     }
+
 }
 
 // MARK: Form components
@@ -381,6 +385,43 @@ private extension SettingsForm {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        Divider()
+        if pro.isPro {
+            Text("Tildone Pro is unlocked.")
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(Color.green.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12).stroke(Color.green.opacity(0.2), lineWidth: 1)
+                }
+                .accessibilityIdentifier("settings-pro-unlocked")
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Tildone Pro").font(.headline)
+                    Text("One purchase unlocks Pro on Mac and iPhone.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                ProPurchaseButton(accessibilityIdentifier: "settings-purchase-pro")
+                Button {
+                    pro.requestedFeature = nil
+                    openWindow(id: "tildonePro")
+                } label: {
+                    Text("Discover all Pro features")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("settings-discover-pro")
+                if let message = pro.message {
+                    Text(message).font(.footnote).foregroundStyle(.secondary)
+                        .lineLimit(3).help(message)
+                }
+            }
+        }
     }
 
     @ViewBuilder

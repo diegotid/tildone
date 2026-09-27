@@ -81,6 +81,27 @@ final class TildoneUITests: XCTestCase {
         }
     }
 
+    func testGeneralSettingsOpensProDiscoveryIndex() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments += ["--tildone-ui-test", "-showDockIcon", "YES"]
+        app.launch()
+        app.menuBars.menuBarItems["Tildone"].click()
+        app.menuItems["Settings…"].firstMatch.click()
+        let discover = app.buttons["settings-discover-pro"]
+        XCTAssertTrue(discover.waitForExistence(timeout: 5))
+        let purchase = app.buttons["settings-purchase-pro"]
+        XCTAssertTrue(purchase.exists, "Purchase and discovery must be separate actions")
+        XCTAssertLessThan(purchase.frame.maxY, discover.frame.minY)
+        let settingsWindow = app.windows.containing(.button, identifier: "settings-discover-pro").firstMatch
+        XCTAssertGreaterThan(discover.frame.height, 0)
+        XCTAssertLessThanOrEqual(discover.frame.maxY, settingsWindow.frame.maxY)
+        discover.click()
+        XCTAssertTrue(app.buttons["pro-feature-singleMemo"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["pro-feature-gathering"].exists)
+        XCTAssertFalse(app.buttons["pro-discover-all"].exists, "Settings must start at the index")
+    }
+
     func testDockModeExposesStandardAppMenus() throws {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
