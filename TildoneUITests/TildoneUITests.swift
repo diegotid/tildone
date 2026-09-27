@@ -96,6 +96,20 @@ final class TildoneUITests: XCTestCase {
         let settingsWindow = app.windows.containing(.button, identifier: "settings-discover-pro").firstMatch
         XCTAssertGreaterThan(discover.frame.height, 0)
         XCTAssertLessThanOrEqual(discover.frame.maxY, settingsWindow.frame.maxY)
+        func assertMatchingBottomPadding(_ element: XCUIElement) {
+            let window = app.windows.containing(.any, identifier: element.identifier).firstMatch
+            let bottom = window.frame.maxY - element.frame.maxY
+            let right = window.frame.maxX - element.frame.maxX
+            XCTAssertEqual(bottom, 28, accuracy: 2)
+            XCTAssertEqual(bottom, right, accuracy: 2)
+        }
+        assertMatchingBottomPadding(discover)
+        app.descendants(matching: .any)["Positioning"].firstMatch.click()
+        let gatherPreview = app.descendants(matching: .any)["settings-gather-preview"].firstMatch
+        XCTAssertTrue(gatherPreview.waitForExistence(timeout: 5))
+        assertMatchingBottomPadding(gatherPreview)
+        app.descendants(matching: .any)["General"].firstMatch.click()
+        XCTAssertTrue(discover.waitForExistence(timeout: 5))
         discover.click()
         XCTAssertTrue(app.buttons["pro-feature-singleMemo"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["pro-feature-gathering"].exists)

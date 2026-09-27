@@ -167,13 +167,14 @@ struct SettingsForm: View {
     static let generalUnlockedPaneHeight: CGFloat = 243
     static let tasksPaneHeight: CGFloat = 244
     static let appearancePaneHeight: CGFloat = 720
-    static let positioningPaneHeight: CGFloat = 516
+    static let positioningPaneHeight: CGFloat = 474
 
     let store: MacSharedStore?
     @Environment(\.openWindow) private var openWindow
     @ObservedObject private var pro = ProEntitlement.shared
 
     @State private var selectedTab: SettingsTab = .general
+    @State private var fittedPaneHeights: [SettingsTab: CGFloat] = [:]
     @State private var opacityShortcutValidationMessage: LocalizedStringKey?
     @State private var gatherShortcutValidationMessage: LocalizedStringKey?
     @State private var lineUpShortcutValidationMessage: LocalizedStringKey?
@@ -294,7 +295,7 @@ struct SettingsForm: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            settingsPane { generalSettings() }
+            settingsPane(bottomPadding: 28, fittingTab: .general) { generalSettings() }
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .tag(SettingsTab.general)
             settingsPane { taskSettings() }
@@ -303,11 +304,16 @@ struct SettingsForm: View {
             settingsPane { appearanceSettings() }
                 .tabItem { Label("Appearance", systemImage: "paintpalette") }
                 .tag(SettingsTab.appearance)
-            settingsPane { positioningSettings() }
+            settingsPane(bottomPadding: 28, fittingTab: .positioning) { positioningSettings() }
                 .tabItem { Label("Positioning", systemImage: "rectangle.3.group") }
                 .tag(SettingsTab.positioning)
         }
         .frame(width: Self.windowWidth, height: preferredWindowHeight)
+        .onPreferenceChange(SettingsPaneHeightKey.self) { heights in
+            for (tab, height) in heights where height > 0 {
+                fittedPaneHeights[tab] = height
+            }
+        }
         .animation(.easeInOut(duration: 0.18), value: preferredWindowHeight)
         .onAppear(perform: enforceClickThroughAvailability)
         .onChange(of: noteBackgroundOpacity) { _, _ in
@@ -318,10 +324,10 @@ struct SettingsForm: View {
     private var preferredWindowHeight: CGFloat {
         let paneHeight: CGFloat
         switch selectedTab {
-        case .general: paneHeight = pro.isPro ? Self.generalUnlockedPaneHeight : Self.generalPaneHeight
+        case .general: paneHeight = fittedPaneHeights[.general] ?? (pro.isPro ? Self.generalUnlockedPaneHeight : Self.generalPaneHeight)
         case .tasks: paneHeight = Self.tasksPaneHeight
         case .appearance: paneHeight = Self.appearancePaneHeight
-        case .positioning: paneHeight = Self.positioningPaneHeight
+        case .positioning: paneHeight = fittedPaneHeights[.positioning] ?? Self.positioningPaneHeight
         }
         return Self.preferredWindowHeight(
             contentHeight: paneHeight,
@@ -329,6 +335,12 @@ struct SettingsForm: View {
         )
     }
 
+    private struct SettingsPaneHeightKey: PreferenceKey {
+        static let defaultValue: [SettingsTab: CGFloat] = [:]
+        static func reduce(value: inout [SettingsTab: CGFloat], nextValue: () -> [SettingsTab: CGFloat]) {
+            value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+        }
+    }
 }
 
 // MARK: Form components
@@ -336,6 +348,8 @@ struct SettingsForm: View {
 private extension SettingsForm {
     @ViewBuilder
     func settingsPane<Content: View>(
+        bottomPadding: CGFloat = 0,
+        fittingTab: SettingsTab? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         ScrollView {
@@ -344,7 +358,16 @@ private extension SettingsForm {
             }
             .padding(.horizontal, 28)
             .padding(.top, 22)
+            .padding(.bottom, bottomPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                if let fittingTab {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: SettingsPaneHeightKey.self,
+                                               value: [fittingTab: geometry.size.height])
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -704,6 +727,9 @@ private extension SettingsForm {
                 noteColor: noteColor,
                 backgroundOpacity: noteBackgroundOpacity
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("Gather notes"))
+            .accessibilityIdentifier("settings-gather-preview")
         }
     }
 
