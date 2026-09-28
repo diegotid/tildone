@@ -203,6 +203,38 @@ final class TildoneUITests: XCTestCase {
         )
     }
 
+    func testInactiveBracketTagRendersAndMouseClickPlacesCaretInSourceText() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments.append("--tildone-ui-test")
+        app.launch()
+
+        let topic = app.textFields["Topic"]
+        XCTAssertTrue(topic.waitForExistence(timeout: 5))
+        topic.click()
+        topic.typeText("Tag test")
+        topic.typeKey(.return, modifierFlags: [])
+        app.typeText("Alpha [OK] Omega")
+        app.typeKey(.return, modifierFlags: [])
+
+        let tag = app.staticTexts["OK"]
+        XCTAssertTrue(tag.waitForExistence(timeout: 5), "An inactive task should render bracket contents as a tag.")
+        let tagPoint = tag.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        tagPoint.click()
+        app.typeText("X")
+
+        let editedTask = app.textFields.matching(
+            NSPredicate(format: "value CONTAINS %@ AND value CONTAINS %@", "Alpha", "Omega")
+        ).firstMatch
+        XCTAssertTrue(editedTask.waitForExistence(timeout: 5))
+        let editedValue = editedTask.value as? String ?? ""
+        XCTAssertTrue(editedValue.contains("X"), "Clicking the rendered tag should focus the native editor at the clicked text position.")
+        XCTAssertTrue(
+            editedValue.range(of: #"\[[^\]]*X[^\]]*\]"#, options: .regularExpression) != nil,
+            "The mouse click should place the caret inside the bracketed source text."
+        )
+    }
+
     func testDraggingTaskHandleReordersVisibleRows() throws {
         try exerciseTaskReorderUI(multiline: false, dropIntoGap: false)
     }

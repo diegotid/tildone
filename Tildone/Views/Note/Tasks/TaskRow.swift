@@ -115,26 +115,50 @@ struct TaskRow: View {
             }
             .padding(.vertical, taskControlVerticalPadding)
 
-            if showsCompletedAppearance && !isActive && !task.text.isEmpty {
-                WordTagsView(
-                    richText: task.richText,
-                    fontSize: CGFloat(fontSize),
-                    foregroundColor: contentColor,
-                    tagColor: tagBackgroundColor(
-                        from: noteBackgroundColor,
-                        noteOpacity: noteBackgroundOpacity
-                    ),
-                    truncation: truncation,
-                    isCompleted: showsCompletedAppearance,
-                    onSelect: showsCompletedAppearance ? nil : onEditLink
-                )
-                .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
-                .transaction { $0.animation = nil }
-                .if(truncation == .single) {
-                    $0.modifier(TaskTextTruncationTooltip(
-                        text: task.text,
-                        fontSize: CGFloat(fontSize)
-                    ))
+            if !isActive && !task.text.isEmpty {
+                ZStack(alignment: .leading) {
+                    if !showsCompletedAppearance {
+                        MouseSafeTaskTextField(
+                            richText: Binding(get: { task.richText }, set: onEdit),
+                            taskID: task.id,
+                            isFocused: false,
+                            placesCaretAtStartOnFocus: false,
+                            fontSize: CGFloat(fontSize),
+                            textColor: .clear,
+                            cursorColor: cursorColor,
+                            searchQuery: searchQuery,
+                            truncation: truncation,
+                            onFocus: onNativeFocus,
+                            onBlur: onNativeBlur,
+                            onEnter: { onEnter($0) },
+                            onMoveUp: onMoveUp,
+                            onMoveDown: onSubmit,
+                            onPastedList: onPastedList
+                        )
+                        .frame(maxWidth: .infinity, minHeight: taskLineHeight, maxHeight: taskLineHeight, alignment: .leading)
+                        .opacity(0.001)
+                    }
+                    WordTagsView(
+                        richText: task.richText,
+                        fontSize: CGFloat(fontSize),
+                        foregroundColor: contentColor,
+                        tagColor: tagBackgroundColor(
+                            from: noteBackgroundColor,
+                            noteOpacity: noteBackgroundOpacity
+                        ),
+                        truncation: truncation,
+                        isCompleted: showsCompletedAppearance,
+                        onSelect: showsCompletedAppearance ? nil : onEditLink
+                    )
+                    .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
+                    .allowsHitTesting(showsCompletedAppearance)
+                    .transaction { $0.animation = nil }
+                    .if(truncation == .single) {
+                        $0.modifier(TaskTextTruncationTooltip(
+                            text: task.text,
+                            fontSize: CGFloat(fontSize)
+                        ))
+                    }
                 }
             } else {
                 ZStack(alignment: .leading) {
