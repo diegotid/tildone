@@ -757,7 +757,7 @@ private extension SettingsForm {
     @ViewBuilder
     func proFeatureLink(_ feature: ProFeature) -> some View {
         Button("Explore all Pro features…") {
-            pro.preparePaywall(for: feature)
+            pro.preparePaywall()
             openWindow(id: "tildonePro")
         }
         .buttonStyle(.link)

@@ -112,6 +112,13 @@ final class TildoneUITests: XCTestCase {
         let gatherPreview = app.descendants(matching: .any)["settings-gather-preview"].firstMatch
         XCTAssertTrue(gatherPreview.waitForExistence(timeout: 5))
         assertMatchingBottomPadding(gatherPreview)
+        app.buttons["settings-pro-gathering"].click()
+        XCTAssertTrue(app.buttons["pro-feature-gathering"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["pro-discover-all"].exists)
+        app.descendants(matching: .any)["Appearance"].firstMatch.click()
+        app.buttons["settings-pro-dimming"].click()
+        XCTAssertTrue(app.buttons["pro-feature-dimming"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["pro-discover-all"].exists)
         app.descendants(matching: .any)["General"].firstMatch.click()
         XCTAssertTrue(discover.waitForExistence(timeout: 5))
         discover.click()
