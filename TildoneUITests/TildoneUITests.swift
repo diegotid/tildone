@@ -93,6 +93,9 @@ final class TildoneUITests: XCTestCase {
         let purchase = app.buttons["settings-purchase-pro"]
         XCTAssertTrue(purchase.exists, "Purchase and discovery must be separate actions")
         XCTAssertLessThan(purchase.frame.maxY, discover.frame.minY)
+        let restore = app.buttons["settings-restore-pro"]
+        XCTAssertTrue(restore.exists)
+        XCTAssertLessThan(discover.frame.maxY, restore.frame.minY)
         let settingsWindow = app.windows.containing(.button, identifier: "settings-discover-pro").firstMatch
         XCTAssertGreaterThan(discover.frame.height, 0)
         XCTAssertLessThanOrEqual(discover.frame.maxY, settingsWindow.frame.maxY)
@@ -103,7 +106,8 @@ final class TildoneUITests: XCTestCase {
             XCTAssertEqual(bottom, 28, accuracy: 2)
             XCTAssertEqual(bottom, right, accuracy: 2)
         }
-        assertMatchingBottomPadding(discover)
+        let status = app.staticTexts["settings-pro-status"]
+        assertMatchingBottomPadding(status.exists ? status : restore)
         app.descendants(matching: .any)["Positioning"].firstMatch.click()
         let gatherPreview = app.descendants(matching: .any)["settings-gather-preview"].firstMatch
         XCTAssertTrue(gatherPreview.waitForExistence(timeout: 5))

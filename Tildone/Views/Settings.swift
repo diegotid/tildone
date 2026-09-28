@@ -163,8 +163,8 @@ private enum SettingsTab: Hashable {
 
 struct SettingsForm: View {
     private static let windowWidth: CGFloat = 600
-    static let generalPaneHeight: CGFloat = 323
-    static let generalUnlockedPaneHeight: CGFloat = 243
+    static let generalPaneHeight: CGFloat = 367
+    static let generalUnlockedPaneHeight: CGFloat = 287
     static let tasksPaneHeight: CGFloat = 244
     static let appearancePaneHeight: CGFloat = 720
     static let positioningPaneHeight: CGFloat = 474
@@ -463,6 +463,7 @@ private extension SettingsForm {
             if let message = pro.message {
                 Text(message).font(.footnote).foregroundStyle(.secondary)
                     .lineLimit(3).help(message)
+                    .accessibilityIdentifier("settings-pro-status")
             }
         }
     }

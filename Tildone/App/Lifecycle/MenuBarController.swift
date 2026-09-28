@@ -25,6 +25,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var proStatusItem: NSMenuItem?
     private var proUnlockItem: NSMenuItem?
     private var proRestoreItem: NSMenuItem?
+    private var proIsUnlocked = false
+    private var proStatusText = String(localized: "Tildone Pro is locked.")
+    private var proIsBusy = false
+    private var proStatusMessage: String?
     private let findPopover = NSPopover()
 
     static let copyNoteTitleLengthLimit = 32
@@ -103,12 +107,20 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     func updateProPresentation(isPro: Bool, status: String, isBusy: Bool, message: String?) {
-        proStatusItem?.title = status
-        proStatusItem?.toolTip = message
-        proStatusItem?.image = menuImage(named: isPro ? "checkmark.circle" : "lock")
-        proUnlockItem?.isHidden = isPro
-        proUnlockItem?.isEnabled = !isBusy
-        proRestoreItem?.isEnabled = !isBusy
+        proIsUnlocked = isPro
+        proStatusText = status
+        proIsBusy = isBusy
+        proStatusMessage = message
+        applyProPresentation()
+    }
+
+    private func applyProPresentation() {
+        proStatusItem?.title = proStatusText
+        proStatusItem?.toolTip = proStatusMessage
+        proStatusItem?.image = menuImage(named: proIsUnlocked ? "checkmark.circle" : "lock")
+        proUnlockItem?.isHidden = proIsUnlocked
+        proUnlockItem?.isEnabled = !proIsBusy
+        proRestoreItem?.isEnabled = !proIsBusy
     }
 
     static func copyNoteMenuPresentation(
@@ -257,13 +269,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let restorePro = item(String(localized: "Restore Purchases"), action: #selector(restoreProPurchases), symbolName: "arrow.clockwise")
         proRestoreItem = restorePro
         menu.addItem(restorePro)
-        let pro = ProEntitlement.shared
-        updateProPresentation(
-            isPro: pro.isPro,
-            status: pro.purchaseStatusText,
-            isBusy: pro.isPurchasing || pro.isRestoring,
-            message: pro.message
-        )
+        applyProPresentation()
 
         menu.addItem(.separator())
         let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",", symbolName: "gearshape")

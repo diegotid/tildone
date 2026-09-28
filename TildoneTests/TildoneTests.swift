@@ -1758,6 +1758,40 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarProSectionReflectsEntitlementAndBusyState() throws {
+        let controller = MenuBarController.shared
+        controller.updateProPresentation(
+            isPro: false, status: String(localized: "Tildone Pro is locked."),
+            isBusy: false, message: nil
+        )
+        let menu = controller.makeMenu()
+        let status = try XCTUnwrap(menu.items.first { $0.title == String(localized: "Tildone Pro is locked.") })
+        let unlock = try XCTUnwrap(menu.items.first { $0.title == String(localized: "Unlock Tildone Pro…") })
+        let restore = try XCTUnwrap(menu.items.first { $0.title == String(localized: "Restore Purchases") })
+        XCTAssertFalse(status.isEnabled)
+        XCTAssertFalse(unlock.isHidden)
+        XCTAssertNotNil(unlock.action)
+        XCTAssertNotNil(restore.action)
+        let statusIndex = menu.index(of: status)
+        let restoreIndex = menu.index(of: restore)
+        XCTAssertTrue(menu.items[statusIndex - 1].isSeparatorItem)
+        XCTAssertTrue(menu.items[restoreIndex + 1].isSeparatorItem)
+
+        controller.updateProPresentation(
+            isPro: true, status: String(localized: "Tildone Pro is unlocked."),
+            isBusy: false, message: nil
+        )
+        XCTAssertTrue(unlock.isHidden)
+        XCTAssertEqual(status.title, String(localized: "Tildone Pro is unlocked."))
+        XCTAssertTrue(restore.isEnabled)
+        controller.updateProPresentation(
+            isPro: true, status: String(localized: "Restoring purchases…"),
+            isBusy: true, message: nil
+        )
+        XCTAssertFalse(restore.isEnabled)
+    }
+
+    @MainActor
     func testMenuBarMenuAdvertisesCopyNoteContentsShortcut() throws {
         let controller = MenuBarController.shared
         controller.updateCopyNotePresentation(noteTitle: nil, hasActiveNote: false)
