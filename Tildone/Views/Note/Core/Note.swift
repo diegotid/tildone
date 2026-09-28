@@ -109,6 +109,7 @@ struct Note: View {
     @State var completedTaskMovementAnimationID: TaskID?
     @State var optimisticTaskCompletions: [TaskID: Bool] = [:]
     @State var hoveredTaskID: TaskID?
+    @State var isHoveringTaskFromRight = false
     @State var collapsedTaskIDs: Set<TaskID> = []
     @State var keyboardMonitor: Any?
     @State var isEmptySingleMemoHintDismissed = false
