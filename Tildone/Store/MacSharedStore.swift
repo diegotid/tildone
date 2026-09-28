@@ -53,6 +53,8 @@ final class MacSharedStore: ObservableObject {
         let task: Task
         let deletingEmptyTaskIDs: Set<TaskID>
         let preservesExistingDepth: Bool
+        let orderUpdates: [TaskStructureUpdate]
+        let presentationRevision: UInt64
     }
 
     private struct PendingNoteTitleEdit {
@@ -424,15 +426,16 @@ final class MacSharedStore: ObservableObject {
         if indentLevel > 0 && !ProEntitlement.shared.require(
             .subtasks, isAlreadyActive: preservesExistingDepth, in: noteID
         ) { throw ProAccessError.requiresPro }
-        let lower = insertionIndex > 0 ? tasks[insertionIndex - 1].orderToken : nil
-        let upper = insertionIndex < tasks.count ? tasks[insertionIndex].orderToken : nil
-        let task = try await repository.addTask(
+        let placement = try TaskInsertionOrder.plan(at: insertionIndex, in: tasks)
+        let task = try await repository.replaceEmptyTasksAndAddTask(
+            deleting: [],
             id: TaskID(),
             to: noteID,
             createdAt: createdAt,
             text: text,
-            orderToken: try OrderToken.between(lower, upper),
-            indentLevel: indentLevel
+            orderToken: placement.token,
+            indentLevel: indentLevel,
+            orderUpdates: placement.updates
         )
         try await reload(noteID)
         scheduleSyncNotification()
@@ -459,8 +462,11 @@ final class MacSharedStore: ObservableObject {
             .count
         var remaining = snapshot.tasks.filter { !emptyTaskIDs.contains($0.id) }
         let insertionIndex = min(max(position - removedBeforeInsertion, 0), remaining.count)
-        let lower = insertionIndex > 0 ? remaining[insertionIndex - 1].orderToken : nil
-        let upper = insertionIndex < remaining.count ? remaining[insertionIndex].orderToken : nil
+        let placement = try TaskInsertionOrder.plan(at: insertionIndex, in: remaining)
+        let updatesByID = Dictionary(uniqueKeysWithValues: placement.updates.map { ($0.id, $0) })
+        remaining = remaining.map { task in
+            updatesByID[task.id].map { presentationTask(task, applying: $0) } ?? task
+        }
         let stamp = snapshot.note.lastMeaningfulEditVersion
         let task = Task(
             id: TaskID(),
@@ -469,7 +475,7 @@ final class MacSharedStore: ObservableObject {
             text: text,
             textVersion: stamp,
             completionVersion: stamp,
-            orderToken: try OrderToken.between(lower, upper),
+            orderToken: placement.token,
             orderVersion: stamp,
             indentLevel: indentLevel,
             indentVersion: stamp,
@@ -479,7 +485,9 @@ final class MacSharedStore: ObservableObject {
         stagedTaskInsertions[task.id] = StagedTaskInsertion(
             task: task,
             deletingEmptyTaskIDs: emptyTaskIDs,
-            preservesExistingDepth: preservesExistingDepth
+            preservesExistingDepth: preservesExistingDepth,
+            orderUpdates: placement.updates,
+            presentationRevision: nextEditRevision()
         )
         publish(MacNoteSnapshot(note: snapshot.note, tasks: remaining))
         return task
@@ -503,6 +511,9 @@ final class MacSharedStore: ObservableObject {
             for id in emptyTaskIDs {
                 await waitForPendingTaskTextEdit(for: id)
             }
+            for update in staged?.orderUpdates ?? [] {
+                await waitForStagedTaskInsertion(update.id)
+            }
             _ = try await repository.replaceEmptyTasksAndAddTask(
                 deleting: emptyTaskIDs,
                 id: task.id,
@@ -510,7 +521,8 @@ final class MacSharedStore: ObservableObject {
                 createdAt: task.createdAt,
                 text: task.text,
                 orderToken: task.orderToken,
-                indentLevel: task.indentLevel
+                indentLevel: task.indentLevel,
+                orderUpdates: staged?.orderUpdates ?? []
             )
             CompletedTaskOrderPreference.removeOriginalOrderTokens(for: emptyTaskIDs)
             finishStagedTaskInsertion(task.id)
@@ -1058,16 +1070,22 @@ final class MacSharedStore: ObservableObject {
             }
         }
 
-        let lower = adjustedDestination > 0 ? reordered[adjustedDestination - 1].orderToken : nil
+        let placement = try TaskInsertionOrder.plan(at: adjustedDestination, in: reordered)
         let upper = adjustedDestination < reordered.count ? reordered[adjustedDestination].orderToken : nil
-        var previous = lower
-        let updates = try movedSubtree.map { task in
-            let orderToken = try OrderToken.between(previous, upper)
+        var previous = placement.token
+        var updates = placement.updates
+        for (index, task) in movedSubtree.enumerated() {
+            let orderToken = index == 0 ? placement.token : try OrderToken.between(previous, upper)
             previous = orderToken
-            return TaskStructureUpdate(id: task.id, orderToken: orderToken)
+            updates.append(TaskStructureUpdate(id: task.id, orderToken: orderToken))
         }
         presentTaskStructureUpdates(updates, in: noteID)
-        _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
+        do {
+            _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
+        } catch {
+            try? await reload(noteID)
+            throw error
+        }
         CompletedTaskOrderPreference.removeOriginalOrderTokens(for: ordered.map(\.id))
         undoController.recordTaskReorder(
             before: ordered,
@@ -1283,13 +1301,22 @@ private extension MacSharedStore {
             let note = pendingNoteTitleEdits[snapshot.id].map {
                 presentationNote(snapshot.note, title: $0.title)
             } ?? snapshot.note
-            let staged = stagedTaskInsertions.values.filter { $0.task.noteID == snapshot.id }
+            let staged = stagedTaskInsertions.values
+                .filter { $0.task.noteID == snapshot.id }
+                .sorted { $0.presentationRevision < $1.presentationRevision }
             let hiddenTaskIDs = staged.reduce(into: Set<TaskID>()) {
                 $0.formUnion($1.deletingEmptyTaskIDs)
             }
             var visibleTasks = snapshot.tasks.filter { !hiddenTaskIDs.contains($0.id) }
             let persistedIDs = Set(visibleTasks.map(\.id))
             visibleTasks.append(contentsOf: staged.map(\.task).filter { !persistedIDs.contains($0.id) })
+            var orderUpdates: [TaskID: TaskStructureUpdate] = [:]
+            for insertion in staged {
+                for update in insertion.orderUpdates { orderUpdates[update.id] = update }
+            }
+            visibleTasks = visibleTasks.map { task in
+                orderUpdates[task.id].map { presentationTask(task, applying: $0) } ?? task
+            }
             visibleTasks.sort(by: Task.orderedBefore)
             let tasks = visibleTasks.map { task in
                 pendingTaskTextEdits[task.id].map {

@@ -823,7 +823,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
 
     /// Deletes abandoned empty placeholders and inserts their replacement in
     /// one transaction. The caller supplies the order token it already used for
-    /// its optimistic presentation snapshot.
+    /// its optimistic presentation snapshot. Repairs to tied ordering positions
+    /// are saved with the insertion and their outbound sync work atomically.
     public func replaceEmptyTasksAndAddTask(
         deleting taskIDs: Set<TaskID>,
         id: TaskID,
@@ -831,9 +832,15 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         createdAt: Date,
         text: String,
         orderToken: OrderToken,
-        indentLevel: Int
+        indentLevel: Int,
+        orderUpdates: [TaskStructureUpdate] = []
     ) throws -> Task {
-        guard indentLevel >= 0, !taskIDs.contains(id) else {
+        guard indentLevel >= 0, !taskIDs.contains(id),
+              Set(orderUpdates.map(\.id)).count == orderUpdates.count,
+              orderUpdates.allSatisfy({
+                  $0.id != id && !taskIDs.contains($0.id) && $0.orderToken != nil
+                      && $0.indentLevel == nil && $0.completion == nil
+              }) else {
             throw PersistenceError.domainInvariant
         }
         let context = mutationContext()
@@ -859,6 +866,21 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try upsertTaskIndentation(for: task, in: context)
             try upsertTaskRichText(for: task, in: context)
             try enqueue(.task, id: task.id.stringValue, sequence: stamp.logicalCounter, in: context)
+        }
+
+        for update in orderUpdates {
+            let stored = try requireStoredTask(id: update.id, in: context)
+            var existing = try mappedTask(from: stored, expectedNoteID: noteID, in: context)
+            guard existing.lifecycle == .active else { throw PersistenceError.domainInvariant }
+            guard let token = update.orderToken, token != existing.orderToken else { continue }
+            let stamp = try nextStamp(metadata, observing: maxVersion(in: existing))
+            do { try existing.move(to: token, version: stamp) }
+            catch { throw PersistenceError.domainInvariant }
+            try promoteTaskToCurrentSchema(&existing, version: stamp)
+            try StoredDomainMapping.update(stored, from: existing)
+            try upsertTaskIndentation(for: existing, in: context)
+            try upsertTaskRichText(for: existing, in: context)
+            try enqueue(.task, id: existing.id.stringValue, sequence: stamp.logicalCounter, in: context)
         }
 
         let taskStamp = try nextStamp(metadata)

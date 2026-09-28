@@ -68,7 +68,10 @@ extension Note {
         }
     }
 
-    static func mutationFailureMessage(operation: String, error: Error) -> String {
+    static func mutationFailureMessage(operation: String, error: Error) -> String? {
+        // The entitlement gate already presents its paywall and note toast.
+        // A denied Pro action is not a failed save or a synchronization issue.
+        if error is ProAccessError { return nil }
         var result = "Your notes remain on this Mac. Synchronization needs attention before this change can be saved."
 #if DEBUG
         result += "\n\nDevelopment detail: \(operation) / \(safePersistenceCategory(error))"
@@ -77,6 +80,15 @@ extension Note {
     }
 
     static func safePersistenceCategory(_ error: Error) -> String {
+        if error is ProAccessError { return "requires-pro" }
+        if let error = error as? OrderTokenError {
+            return switch error {
+            case .empty: "order-token-empty"
+            case .invalidCharacter: "order-token-invalid-character"
+            case .nonCanonicalEnding: "order-token-noncanonical"
+            case .invalidBounds: "order-token-invalid-bounds"
+            }
+        }
         guard let error = error as? PersistenceError else { return "non-persistence-error" }
         return switch error {
         case .openFailure: "open-failure"

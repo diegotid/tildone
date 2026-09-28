@@ -436,6 +436,123 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testDraggingExistingSubtaskToFourthChildHandlesTiedTaskPositionsWithoutPro() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(false)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let note = try await repository.createNote(id: NoteID(), createdAt: Date(), title: nil)
+        var original: [TildoneDomain.Task] = []
+        for (index, depth) in [0, 1, 1, 1, 0, 1, 1, 2, 1].enumerated() {
+            original.append(try await repository.addTask(
+                id: TaskID(UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", index + 1))!),
+                to: note.id, createdAt: Date(), text: "Fixture \(index)",
+                orderToken: OrderToken(rawValue: ["a", "c", "f", "m", "m", "t", "v", "w", "y"][index]),
+                indentLevel: depth
+            ))
+        }
+        let store = MacSharedStore(repository: repository)
+        try await store.reload()
+        let deniedBefore = pro.deniedRequest?.id
+        let moved = try await store.moveTask(original[6].id, in: note.id, to: 4)
+        XCTAssertTrue(moved)
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [0, 1, 2, 3, 6, 7, 4, 5, 8].map { original[$0].id })
+        XCTAssertEqual(TaskHierarchy.parentID(at: 4, in: tasks), original[0].id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 5, in: tasks), original[6].id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 7, in: tasks), original[4].id)
+        for task in tasks {
+            let before = try XCTUnwrap(original.first { $0.id == task.id })
+            XCTAssertEqual(task.indentLevel, before.indentLevel)
+            XCTAssertEqual(task.richText, before.richText)
+            XCTAssertEqual(task.completion, before.completion)
+        }
+        XCTAssertEqual(pro.deniedRequest?.id, deniedBefore)
+        try await store.undoLatestAction()
+        let undone = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(undone.map(\.id), original.map(\.id))
+        XCTAssertEqual(undone.map(\.orderToken), original.map(\.orderToken))
+        XCTAssertEqual(undone.map(\.indentLevel), original.map(\.indentLevel))
+    }
+
+    @MainActor
+    func testReturnAddsFourthChildWhenNextRootSharesItsOrderToken() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(false)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let note = try await repository.createNote(id: NoteID(), createdAt: Date(), title: nil)
+        var original: [TildoneDomain.Task] = []
+        for (index, depth) in [0, 1, 1, 1, 0, 1].enumerated() {
+            // Equal positions are valid after concurrent inserts. The stable IDs
+            // still put the last child before the next root in visible order.
+            original.append(try await repository.addTask(
+                id: TaskID(UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", index + 1))!),
+                to: note.id, createdAt: Date(), text: "Fixture \(index)",
+                orderToken: OrderToken(rawValue: ["a", "c", "f", "m", "m", "t"][index]),
+                indentLevel: depth
+            ))
+        }
+        let store = MacSharedStore(repository: repository)
+        try await store.reload()
+        let insertion = TaskHierarchy.insertionIndexAfterSubtree(startingAt: 3, in: original)
+        let staged = try store.stageEmptyTaskInsertion(
+            in: note.id, at: insertion, deleting: [], indentLevel: 1, text: "Fourth child"
+        )
+        let expectedIDs = Array(original.prefix(4)).map(\.id) + [staged.id] + Array(original.suffix(2)).map(\.id)
+        try await store.reloadAfterRemoteChange()
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.id), expectedIDs,
+                       "A refresh must retain the optimistic ordering repair until it saves")
+        try await store.commitStagedTaskInsertion(staged, deleting: [])
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), expectedIDs)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 4, in: tasks), original[0].id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 6, in: tasks), original[4].id)
+        XCTAssertEqual(tasks.filter { $0.id != staged.id }.map(\.text), original.map(\.text))
+        XCTAssertEqual(tasks.filter { $0.id != staged.id }.map(\.indentLevel), original.map(\.indentLevel))
+    }
+
+    @MainActor
+    func testReturnAddsFourthExistingChildWithoutPro() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(true)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        var children: [TildoneDomain.Task] = []
+        for index in 1...3 {
+            children.append(try await store.addTask(to: note.id, text: "Child \(index)", indentLevel: 1))
+        }
+        let nextRoot = try await store.addTask(to: note.id, text: "Next group")
+        let nextChild = try await store.addTask(to: note.id, text: "Next group's child", indentLevel: 1)
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        let view = Note(store: store, presentation: presentation, noteID: note.id)
+        pro.setTestOverride(false)
+        let deniedBefore = pro.deniedRequest?.id
+        view.handleEnter(for: children[2], cursor: children[2].text.utf16.count)
+        let inserted = try XCTUnwrap(store.note(note.id)?.tasks.first(where: { $0.text.isEmpty }))
+        // A keystroke may arrive before the optimistic insertion has saved.
+        let worker = store.queueTaskTextEdit(inserted.id, text: "Fourth child") { error in
+            XCTFail("The fourth child's text must save: \(Note.safePersistenceCategory(error))")
+        }
+        await worker.value
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [parent.id] + children.map(\.id) + [inserted.id, nextRoot.id, nextChild.id])
+        XCTAssertEqual(tasks[4].text, "Fourth child")
+        XCTAssertEqual(tasks[4].indentLevel, 1)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 4, in: tasks), parent.id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 6, in: tasks), nextRoot.id)
+        XCTAssertEqual(pro.deniedRequest?.id, deniedBefore)
+    }
+
+    @MainActor
+    func testProRestrictionIsNotPresentedAsASynchronizationFailure() {
+        XCTAssertNil(Note.mutationFailureMessage(operation: "Error on task creation", error: ProAccessError.requiresPro))
+    }
+
+    @MainActor
     func testFreeMacStoreCanInsertSiblingsAtExistingDepthWithoutChangingHierarchy() async throws {
         let pro = ProEntitlement.shared
         pro.setTestOverride(true)
