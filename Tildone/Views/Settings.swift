@@ -615,7 +615,6 @@ private extension SettingsForm {
         HStack(alignment: .top, spacing: 28) {
             VStack(alignment: .leading, spacing: 10) {
                 proFeatureHeading("Note dimming:")
-                proFeatureLink(.dimming)
                 ShortcutSettingRow(
                     "Scroll shortcut",
                     shortcut: opacityShortcutBinding,
@@ -629,6 +628,7 @@ private extension SettingsForm {
                 Label("Add Shift to apply the dimming change to all notes. Shift cannot be part of the shortcut itself.", systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                proFeatureLink(.dimming)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             dimmingPreview()
@@ -725,7 +725,6 @@ private extension SettingsForm {
         HStack(alignment: .top, spacing: 28) {
             VStack(alignment: .leading, spacing: 10) {
                 proFeatureHeading("Gather:")
-                proFeatureLink(.gathering)
                 Text("Hold the shortcut and scroll over a note to gather all notes. Scroll up to restore their positions.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -739,6 +738,7 @@ private extension SettingsForm {
                     validationMessage: $gatherShortcutValidationMessage
                 )
                 shortcutValidationMessage(gatherShortcutValidationMessage)
+                proFeatureLink(.gathering)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             GatherPreview(
@@ -756,7 +756,7 @@ private extension SettingsForm {
 
     @ViewBuilder
     func proFeatureLink(_ feature: ProFeature) -> some View {
-        Button("Explore this feature…") {
+        Button("Explore all Pro features…") {
             pro.preparePaywall(for: feature)
             openWindow(id: "tildonePro")
         }
@@ -769,9 +769,17 @@ private extension SettingsForm {
     func proFeatureHeading(_ title: LocalizedStringKey) -> some View {
         HStack(spacing: 7) {
             if !pro.isPro {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 11, weight: .medium))
+                Label("Pro", systemImage: "lock.fill")
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(.quaternary, in: Capsule())
+                    .overlay {
+                        Capsule().stroke(.secondary.opacity(0.18), lineWidth: 0.5)
+                    }
+                    .fixedSize()
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Requires Pro")
             }
             Text(title)

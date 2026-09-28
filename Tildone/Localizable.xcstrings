@@ -1715,12 +1715,12 @@
         }
       }
     },
-    "Explore this feature…" : {
+    "Explore all Pro features…" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Explore this feature…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Descubrir esta función…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Découvrir cette fonctionnalité…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "了解此功能…" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Explore all Pro features…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Descubrir todas las funciones Pro…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Découvrir toutes les fonctionnalités Pro…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "了解全部专业版功能…" } }
       }
     },
     "Discover all Pro features" : {
@@ -4596,6 +4596,15 @@
             "value" : "提升任务层级"
           }
         }
+      }
+    },
+    "Pro" : {
+      "comment" : "Label inside the chip marking a locked Pro setting.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pro" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pro" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pro" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "专业版" } }
       }
     },
     "Purchase could not be completed. Please try again." : {
