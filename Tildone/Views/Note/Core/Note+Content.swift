@@ -466,7 +466,7 @@ extension Note {
                 } else {
                     NoteTitleTextField(
                         text: Binding(get: { note?.title ?? "" }, set: handleTopicEdit),
-                        placeholder: String(localized: "Topic"),
+                        placeholder: String(localized: "Note title"),
                         isFocused: focusedField == .topic,
                         font: .systemFont(ofSize: size, weight: .bold),
                         textColor: NSColor(noteForeground),

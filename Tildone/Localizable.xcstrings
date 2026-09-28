@@ -4030,6 +4030,28 @@
         }
       }
     },
+    "Note title" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Título de la nota"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titre de la note"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记标题"
+          }
+        }
+      }
+    },
     "Note type" : {
       "localizations" : {
         "es" : {

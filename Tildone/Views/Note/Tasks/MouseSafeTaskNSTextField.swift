@@ -28,6 +28,10 @@ final class MouseSafeTaskNSTextField: NSTextField {
     private var isVerifyingFocus = false
     private var lastLayoutWidth: CGFloat = 0
 
+    override func accessibilityLabel() -> String? {
+        isNoteTitleField ? String(localized: "Note title") : super.accessibilityLabel()
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         schedulePendingFocusRequest()

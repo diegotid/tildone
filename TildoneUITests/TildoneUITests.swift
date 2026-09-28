@@ -220,7 +220,7 @@ final class TildoneUITests: XCTestCase {
         app.launchArguments.append("--tildone-ui-test")
         app.launch()
 
-        let topic = app.textFields["Topic"]
+        let topic = app.textFields["Note title"]
         XCTAssertTrue(topic.waitForExistence(timeout: 5))
         topic.click()
         topic.typeText("Tag test")
@@ -268,7 +268,7 @@ final class TildoneUITests: XCTestCase {
         app.launchArguments.append("--tildone-ui-test")
         app.launch()
 
-        let topic = app.textFields["Topic"]
+        let topic = app.textFields["Note title"]
         XCTAssertTrue(topic.waitForExistence(timeout: 5))
         app.typeKey(",", modifierFlags: .command)
         let appearanceTab = app.buttons["Appearance"].firstMatch

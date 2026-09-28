@@ -91,13 +91,17 @@ struct ChecklistView: View {
                             .font(.title2.weight(.semibold))
                             .submitLabel(.done)
                             .onSubmit {
+                                // Finishing title typing should dismiss the keyboard,
+                                // not remove the initial title row from the checklist.
                                 isEditingTitle = false
                             }
                             .onChange(of: isEditingTitle) { wasEditing, isEditing in
                                 guard wasEditing, !isEditing else { return }
                                 finishTitleEditing()
+                                // A transient focus loss must not remove the
+                                // initial title field while creating a note.
+                                guard !isEnteringNewNoteTitle else { return }
                                 isRenamingTitle = false
-                                isEnteringNewNoteTitle = false
                                 advanceFocusFromTitle()
                             }
                     }
@@ -239,9 +243,9 @@ struct ChecklistView: View {
                         Button {
                             toggleTitleEditing()
                         } label: {
-                            Image(systemName: isRenamingTitle ? "checkmark" : "pencil")
+                            Image(systemName: showsTitleInput ? "checkmark" : "pencil")
                         }
-                        .accessibilityLabel(isRenamingTitle ? "Done" : "Rename Note")
+                        .accessibilityLabel(showsTitleInput ? "Done" : "Rename Note")
                     }
 
                     if !isRenamingTitle {
