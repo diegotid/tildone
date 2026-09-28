@@ -16,6 +16,7 @@ struct TildoneiOSApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        FeatureDiscoveryTip.configure()
         if ProcessInfo.processInfo.environment["TILDONE_UI_TESTING"] == "1" ||
             TildoneiOSSyncBootstrapper.isTestProcess {
             let workspaceID = UUID(uuidString: "00000000-0000-0000-0000-000000000009")!

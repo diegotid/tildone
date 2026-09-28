@@ -6,6 +6,7 @@
 import AppKit
 import Foundation
 import SwiftUI
+import TipKit
 import TildoneDomain
 
 struct TaskRow: View {
@@ -40,6 +41,7 @@ struct TaskRow: View {
     @State private var rowWidth: CGFloat = 0
     @State private var isPointerInsideRow = false
     @State private var isDropTargeted = false
+    @State private var hasHoveredHierarchyControl = false
     let onToggle: () -> Void
     let onEdit: (RichText) -> Void
     let onEnter: (Int?) -> Void
@@ -52,6 +54,7 @@ struct TaskRow: View {
     let onToggleSubtasks: () -> Void
     let onIndent: () -> Void
     let onOutdent: () -> Void
+    var offersDiscoveryHint = false
     let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
     let onRowHover: (Bool, Bool) -> Void
@@ -305,6 +308,12 @@ struct TaskRow: View {
                 .padding(.trailing, 4)
                 .opacity(showsHoverControls ? 1 : 0)
                 .allowsHitTesting(showsHoverControls)
+                .if(offersDiscoveryHint && rowIndex == 1 && hasHoveredHierarchyControl && !WhatsNewRelease.isIsolatedProcess) {
+                    $0.popoverTip(FeatureDiscoveryTip(kind: .subtasks, contentColor: contentColor), arrowEdge: .trailing)
+                        // ScrollFrame forces light appearance; the tip must follow the note's computed contrast.
+                        .environment(\.colorScheme, isDark ? .dark : .light)
+                        .tint(contentColor)
+                }
                 .help("Task hierarchy")
                 .accessibilityLabel("Task hierarchy")
 
@@ -355,6 +364,11 @@ struct TaskRow: View {
             case .ended:
                 isPointerInsideRow = false
                 onRowHover(false, false)
+            }
+        }
+        .onChange(of: showsHoverControls) { _, isVisible in
+            if offersDiscoveryHint && rowIndex == 1 && isVisible {
+                hasHoveredHierarchyControl = true
             }
         }
         .if(isFirst) { $0.onHover { onHover($0) } }

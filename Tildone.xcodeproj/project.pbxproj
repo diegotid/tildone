@@ -217,6 +217,21 @@
 		Z70000000000000000000039 /* Tildone/Resources/Fonts/PermanentMarker-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z70000000000000000000119 /* Tildone/Resources/Fonts/PermanentMarker-LICENSE.txt */; };
 		Z7000000000000000000003A /* Tildone/Resources/Fonts/SeaweedScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011A /* Tildone/Resources/Fonts/SeaweedScript-Regular.ttf */; };
 		Z7000000000000000000003B /* Tildone/Resources/Fonts/SeaweedScript-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = Z7000000000000000000011B /* Tildone/Resources/Fonts/SeaweedScript-OFL.txt */; };
+		B92900000000000000000201 /* WhatsNewRelease.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000101 /* WhatsNewRelease.swift */; };
+		B92900000000000000000301 /* WhatsNewRelease.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000101 /* WhatsNewRelease.swift */; };
+		B92900000000000000000202 /* WhatsNewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000102 /* WhatsNewView.swift */; };
+		B92900000000000000000302 /* WhatsNewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000102 /* WhatsNewView.swift */; };
+		B92900000000000000000203 /* WhatsNewPreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000103 /* WhatsNewPreviewContent.swift */; };
+		B92900000000000000000303 /* WhatsNewPreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000103 /* WhatsNewPreviewContent.swift */; };
+		B92900000000000000000204 /* WhatsNewEverydayPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000104 /* WhatsNewEverydayPreview.swift */; };
+		B92900000000000000000304 /* WhatsNewEverydayPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000104 /* WhatsNewEverydayPreview.swift */; };
+		B92900000000000000000205 /* FeatureDiscoveryTip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000105 /* FeatureDiscoveryTip.swift */; };
+		B92900000000000000000305 /* FeatureDiscoveryTip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000105 /* FeatureDiscoveryTip.swift */; };
+		B92900000000000000000207 /* WhatsNewReleaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000107 /* WhatsNewReleaseTests.swift */; };
+		B92900000000000000000208 /* WhatsNewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000108 /* WhatsNewUITests.swift */; };
+		B92900000000000000000309 /* WhatsNewiOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000109 /* WhatsNewiOSUITests.swift */; };
+		B9290000000000000000020A /* ProFeatureBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9290000000000000000010A /* ProFeatureBadge.swift */; };
+		B9290000000000000000030A /* ProFeatureBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9290000000000000000010A /* ProFeatureBadge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -440,6 +455,15 @@
 		Z7000000000000000000011D /* Tildone/Resources/Fonts/NotoSansSC-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Tildone/Resources/Fonts/NotoSansSC-OFL.txt"; sourceTree = SOURCE_ROOT; };
 		Z7000000000000000000011E /* Tildone/Resources/Fonts/NotoSerifSC.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Tildone/Resources/Fonts/NotoSerifSC.ttf; sourceTree = SOURCE_ROOT; };
 		Z7000000000000000000011F /* Tildone/Resources/Fonts/NotoSerifSC-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Tildone/Resources/Fonts/NotoSerifSC-OFL.txt"; sourceTree = SOURCE_ROOT; };
+		B92900000000000000000101 /* WhatsNewRelease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewRelease.swift; sourceTree = "<group>"; };
+		B92900000000000000000102 /* WhatsNewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewView.swift; sourceTree = "<group>"; };
+		B92900000000000000000103 /* WhatsNewPreviewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewPreviewContent.swift; sourceTree = "<group>"; };
+		B92900000000000000000104 /* WhatsNewEverydayPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewEverydayPreview.swift; sourceTree = "<group>"; };
+		B92900000000000000000105 /* FeatureDiscoveryTip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureDiscoveryTip.swift; sourceTree = "<group>"; };
+		B92900000000000000000107 /* WhatsNewReleaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewReleaseTests.swift; sourceTree = "<group>"; };
+		B92900000000000000000108 /* WhatsNewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewUITests.swift; sourceTree = "<group>"; };
+		B92900000000000000000109 /* WhatsNewiOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewiOSUITests.swift; sourceTree = "<group>"; };
+		B9290000000000000000010A /* ProFeatureBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProFeatureBadge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -522,6 +546,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000019 /* TildoneiOSUITests.swift */,
+				B92900000000000000000109 /* WhatsNewiOSUITests.swift */,
 			);
 			path = TildoneiOSUITests;
 			sourceTree = "<group>";
@@ -1015,6 +1040,7 @@
 			isa = PBXGroup;
 			children = (
 				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
+				B92900000000000000000107 /* WhatsNewReleaseTests.swift */,
 				B60000000000000000000014 /* LegacyMigrationTests.swift */,
 			);
 			path = TildoneTests;
@@ -1024,6 +1050,7 @@
 			isa = PBXGroup;
 			children = (
 				F16670642AF711EE000B76A5 /* TildoneUITests.swift */,
+				B92900000000000000000108 /* WhatsNewUITests.swift */,
 				F16670662AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift */,
 			);
 			path = TildoneUITests;
@@ -1078,8 +1105,10 @@
 			isa = PBXGroup;
 			children = (
 				S10000000000000000000011 /* SingleMemoTypography.swift */,
+				B92900000000000000000001 /* Discovery */,
 				P10000000000000000000011 /* ProEntitlement.swift */,
 				P10000000000000000000012 /* ProPaywallView.swift */,
+				B9290000000000000000010A /* ProFeatureBadge.swift */,
 				E92500000000000000000101 /* ProFeature+Presentation.swift */,
 				E92500000000000000000102 /* ProPreviewContent.swift */,
 				E92500000000000000000103 /* ProFeaturePreview.swift */,
@@ -1087,6 +1116,18 @@
 				Z70000000000000000000101 /* FontAttributionsView.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		B92900000000000000000001 /* Discovery */ = {
+			isa = PBXGroup;
+			children = (
+				B92900000000000000000101 /* WhatsNewRelease.swift */,
+				B92900000000000000000102 /* WhatsNewView.swift */,
+				B92900000000000000000103 /* WhatsNewPreviewContent.swift */,
+				B92900000000000000000104 /* WhatsNewEverydayPreview.swift */,
+				B92900000000000000000105 /* FeatureDiscoveryTip.swift */,
+			);
+			path = Discovery;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1370,6 +1411,12 @@
 				E92500000000000000000301 /* ProFeature+Presentation.swift in Sources */,
 				E92500000000000000000302 /* ProPreviewContent.swift in Sources */,
 				E92500000000000000000303 /* ProFeaturePreview.swift in Sources */,
+				B92900000000000000000301 /* WhatsNewRelease.swift in Sources */,
+				B92900000000000000000302 /* WhatsNewView.swift in Sources */,
+				B92900000000000000000303 /* WhatsNewPreviewContent.swift in Sources */,
+				B92900000000000000000304 /* WhatsNewEverydayPreview.swift in Sources */,
+				B92900000000000000000305 /* FeatureDiscoveryTip.swift in Sources */,
+				B9290000000000000000030A /* ProFeatureBadge.swift in Sources */,
 				E92500000000000000000307 /* ProPreviewMotion.swift in Sources */,
 				E92500000000000000000306 /* ProPreviewScene.swift in Sources */,
 				Z70000000000000000000002 /* FontAttributionsView.swift in Sources */,
@@ -1433,6 +1480,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000006 /* TildoneiOSUITests.swift in Sources */,
+				B92900000000000000000309 /* WhatsNewiOSUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1446,6 +1494,12 @@
 				E92500000000000000000201 /* ProFeature+Presentation.swift in Sources */,
 				E92500000000000000000202 /* ProPreviewContent.swift in Sources */,
 				E92500000000000000000203 /* ProFeaturePreview.swift in Sources */,
+				B92900000000000000000201 /* WhatsNewRelease.swift in Sources */,
+				B92900000000000000000202 /* WhatsNewView.swift in Sources */,
+				B92900000000000000000203 /* WhatsNewPreviewContent.swift in Sources */,
+				B92900000000000000000204 /* WhatsNewEverydayPreview.swift in Sources */,
+				B92900000000000000000205 /* FeatureDiscoveryTip.swift in Sources */,
+				B9290000000000000000020A /* ProFeatureBadge.swift in Sources */,
 				E92500000000000000000207 /* ProPreviewMotion.swift in Sources */,
 				E92500000000000000000204 /* ProPreviewScene.swift in Sources */,
 				E92500000000000000000205 /* MacProPreviewNote.swift in Sources */,
@@ -1553,6 +1607,7 @@
 			files = (
 				B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */,
 				F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */,
+				B92900000000000000000207 /* WhatsNewReleaseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1562,6 +1617,7 @@
 			files = (
 				F16670672AF711EE000B76A5 /* TildoneUITestsLaunchTests.swift in Sources */,
 				F16670652AF711EE000B76A5 /* TildoneUITests.swift in Sources */,
+				B92900000000000000000208 /* WhatsNewUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

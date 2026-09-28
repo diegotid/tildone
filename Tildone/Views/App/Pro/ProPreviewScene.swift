@@ -12,6 +12,9 @@ struct ProPreviewScene: View {
     var usesFixedTime = false
     var canvasSize = CGSize(width: 360, height: 360)
 
+    @AppStorage(FontSize.storageKey) private var fontSize = Double(FontSize.small.rawValue)
+    @AppStorage(TaskLineTruncation.storageKey) private var truncation: TaskLineTruncation = .single
+
     private var noteScale: CGFloat { min(1, canvasSize.height / 360, canvasSize.width / 360) }
     @State private var isHoveringNote = false
     @AppStorage(NoteColor.storageKey) private var noteColorRawValue = NoteColor.yellow.legacyRawValue
@@ -45,8 +48,8 @@ struct ProPreviewScene: View {
                 )
             case .dimming:
                 DimmingPreview(
-                    noteColor: defaultNoteColor, backgroundOpacity: backgroundOpacity, fontSize: 13,
-                    taskLineTruncation: .multiple,
+                    noteColor: defaultNoteColor, backgroundOpacity: backgroundOpacity, fontSize: fontSize,
+                    taskLineTruncation: truncation,
                     canvasSize: canvasSize,
                     previewDate: usesFixedTime ? Date(timeIntervalSinceReferenceDate: elapsedTime) : nil,
                     reduceMotion: reduceMotion, windowButtonSize: 12, corner: gatheringCorner,

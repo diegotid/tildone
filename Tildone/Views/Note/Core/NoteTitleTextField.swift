@@ -43,7 +43,10 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.drawsBackground = false
         field.lineBreakMode = .byTruncatingTail
         field.cell?.lineBreakMode = .byTruncatingTail
-        field.cell?.isScrollable = true
+        field.cell?.truncatesLastVisibleLine = true
+        // A scrollable inactive field clips its trailing edge instead of drawing
+        // the topic's ellipsis. Enable scrolling only while the user edits it.
+        field.cell?.isScrollable = false
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false
         }
@@ -67,8 +70,10 @@ struct NoteTitleTextField: NSViewRepresentable {
         field.onPasteboardList = { [weak coordinator = context.coordinator] list in
             coordinator?.parent.onPastedList(list) ?? false
         }
+        let editor = field.currentEditor()
         let isEditing = context.coordinator.isEditing
-            || field.window?.firstResponder === field.currentEditor()
+            || (editor != nil && field.window?.firstResponder === editor)
+        field.cell?.isScrollable = isEditing
         if !isEditing, field.stringValue != text {
             field.stringValue = text
         }

@@ -2845,6 +2845,37 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(style.allowsDefaultTighteningForTruncation)
     }
 
+    @MainActor
+    func testInactiveNoteTopicUsesTailTruncationInsteadOfScrolling() throws {
+        let topic = NoteTitleTextField(
+            text: .constant("A deliberately long topic that exceeds the note width"),
+            placeholder: "Note title",
+            isFocused: false,
+            font: .systemFont(ofSize: 20, weight: .bold),
+            textColor: .labelColor,
+            onFocus: {},
+            onBlur: {},
+            onTextChange: {},
+            onSubmit: {},
+            onPastedList: { _ in false }
+        )
+        let host = NSHostingView(rootView: topic)
+        host.frame = NSRect(x: 0, y: 0, width: 140, height: 32)
+        host.layoutSubtreeIfNeeded()
+
+        func textFields(in view: NSView) -> [MouseSafeTaskNSTextField] {
+            view.subviews.flatMap { child in
+                (child as? MouseSafeTaskNSTextField).map { [$0] } ?? textFields(in: child)
+            }
+        }
+
+        let field = try XCTUnwrap(textFields(in: host).first)
+        XCTAssertEqual(field.lineBreakMode, .byTruncatingTail)
+        XCTAssertEqual(field.cell?.lineBreakMode, .byTruncatingTail)
+        XCTAssertTrue(field.cell?.truncatesLastVisibleLine ?? false)
+        XCTAssertFalse(field.cell?.isScrollable ?? true)
+    }
+
     func testPastedMemoParagraphAlignmentOverridesTheCenteredMemoDefault() throws {
         let left = NSMutableParagraphStyle()
         left.alignment = .left

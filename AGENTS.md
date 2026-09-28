@@ -72,7 +72,7 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - `Tildone/Services/`:
   - `Copier.swift`: AppKit pasteboard copy/paste behavior for tasks and lists.
   - `Launcher.swift`: `SMAppService.mainApp` registration.
-  - `UpdateChecker.swift`: StoreKit app-version check and locally generated “what’s new” system note.
+  - `UpdateChecker.swift`: launch policy for the installation-local What’s New scene; preserves the legacy known-version key for installation detection.
 - `Tildone/Localizable.xcstrings`: English source strings and Spanish, French, and Simplified Chinese localizations.
 - `Tildone/Assets.xcassets`, `Tildone/TildoneIcon.icon`: runtime artwork and icon sources.
 - `Tildone/Preview Content/`: preview assets and in-memory model mocks. `Mocks.swift` is currently included in the app target, not a separate preview-only module.
@@ -179,7 +179,7 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 1. The main scene bootstraps the shared local-only repository and displays `Desktop` only after it is active; a legacy source is copied/verified by Stage 6 before cutover.
 2. `Desktop` opens one manual note window for every persisted list; if the store is empty, it creates one empty note.
 3. AppKit frame autosaving restores each non-new note’s size and position using its creation timestamp.
-4. `UpdateChecker` may create a green system note after an App Store update, based on `AppTransaction.shared` and `knownAppVersion` in `UserDefaults`.
+4. `UpdateChecker` opens the What’s New scene after notes are ready for unacknowledged curated `WhatsNewRelease.contentID` content. Close, Escape, native window close, and iPhone swipe dismissal leave it eligible on the next launch. The “Don't show until next version” link suppresses automatic presentation until `CFBundleShortVersionString` changes, without acknowledging content. “Let’s get started” acknowledges the current content. Help or the menu-bar menu → What’s New reopens it; iPhone uses About → What’s New. New installations also receive the overview. Automated tests and Xcode previews skip automatic presentation. Old pending system-note state is discarded.
 
 ### Capture and editing
 
@@ -308,7 +308,10 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 - `noteWindowOpacity.<note-id>`: installation-local whole-window opacity set with Command–wheel; default 1.0.
 - `noteUserDraggedPosition.<note-id>`: installation-local last manually dragged Mac window origin; wheel convergence and arrangement never overwrite it.
 - `noteCornerWheelPosition.<note-id>`: installation-local marker that lets Command–Control–wheel restore a wheel-moved note to its last manual origin after relaunch.
-- `knownAppVersion`: last App Store version for which the local update note was generated.
+- `knownAppVersion`: retained legacy installation-detection evidence; no longer drives discovery.
+- `seenWhatsNewContent`: the last explicitly completed curated highlights identifier, installation-local.
+- `suppressedWhatsNewVersion`: the marketing version for which the user selected “Don't show until next version”; build-number changes do not reset this installation-local suppression.
+- TipKit discovery state is installation-local; daily hints are limited to hierarchy controls and gesture settings.
 - `NSFullScreenMenuItemEverywhere`: set false during desktop setup.
 - `syncTransportState.<account-workspace-uuid>`: `active` or `paused`; missing state preserves the Debug default and malformed state fails safe to paused.
 - `localWorkspaceAdoptionFingerprint.<account-workspace-uuid>`: SHA-256 of the last explicitly copied local workspace snapshot; this is adoption evidence, not content or sync-engine state.
@@ -336,9 +339,10 @@ Follow the codebase’s existing Swift style unless a scoped refactor establishe
 
 - Pending notes stay visible and cannot be casually closed; this is central macOS product behavior.
 - Retain immediate editing and keyboard efficiency on macOS. Verify topic/new-task initial focus, Return/Tab insertion, arrow navigation, delete/backspace, Command-W, copy/paste, and menu shortcuts after relevant changes.
+- Inactive Mac note topics must tail-truncate with an ellipsis. Keep their `NSTextFieldCell` non-scrollable until editing, and preserve the regression test in `TildoneTests`; scrollable inactive cells clip the title instead of drawing the ellipsis.
 - Keep animation calm and functional. Completion must retain a clear way to cancel before destructive removal.
 - Note windows have minimal chrome, translucent colored material, fixed minimum size (180×240), default size (250×300), and a compact progress form (96×66).
-- Normal note color and opacity are global settings; system release notes remain green.
+- Normal note color and opacity are global settings. System release notes are retired; What’s New reuses the settings-aware Pro previews and real note components for free-feature examples.
 - The note content forces a light SwiftUI color scheme in `ScrollFrame`, while foreground colors also inspect the environment color scheme/opacity. Appearance changes need visual testing because this interaction is non-obvious.
 - Do not transfer exact pixel sizes or macOS control density to iPhone. Use Apple-platform standard touch targets and Dynamic Type.
 - Avoid adding hierarchy, metadata, or settings that compete with task text without a clear product need.
@@ -352,7 +356,7 @@ Follow the codebase’s existing Swift style unless a scoped refactor establishe
 - Preserve interpolation placeholders such as `Updated to v%@` and numeric placeholders.
 - Focus Filter parameter titles/descriptions/display representations, menus, Settings, overlays, gauges, system notes, links, and iOS-only strings all require localization.
 - `NoteColor.label` returns English strings used by Settings help and currently has no catalog entries for the color names. Treat this as an existing localization gap.
-- `UpdateChecker` hard-codes release contents for version 1.6.0. Future release notes need a deliberate update/versioning process.
+- Curate the platform-appropriate highlights in `Shared/Discovery/WhatsNewRelease.swift` and change `contentID` when shipping new content. Ordinary builds do not reset discovery; never reuse an identifier for a different release tour.
 
 ### Accessibility
 
@@ -468,7 +472,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 - `Tildone/Views/Settings.swift`: owns preference raw values/migrations and contains app-like preview persistence code.
 - `Tildone/Localizable.xcstrings`: generated/extracted state and manually maintained translations can be changed by Xcode; inspect diffs carefully.
 - `Tildone/Tildone.entitlements`: contains apparently unused or incomplete capabilities; coordinate changes with provisioning and App Store configuration.
-- `Tildone/Services/UpdateChecker.swift`: StoreKit verification, persistent version flag, version-specific localized content, and an HTTP release URL.
+- `Tildone/Services/UpdateChecker.swift`: installation-local launch discovery policy and retained legacy known-version evidence.
 
 ## Known technical debt and risks
 
@@ -501,7 +505,6 @@ Do not answer these implicitly in implementation work:
 - What shipping UX authorizes local-only Mac adoption, and what operator/user flow handles a Production zone reset without automatic reseed?
 - What explicit build/release control enables transport after Stage 12C while preserving the account workspace during containment?
 - What is the iPhone mechanism for pending-task visibility: app overview, widget, Live Activity, notifications, App Intents, or a deliberately smaller first release?
-- Should system release notes be stored in the same user-data model at all?
 - Should shared code be a local Swift package/framework or shared target membership? Decide after the domain/store boundary and deployment targets are known.
 - Which currently declared entitlements are genuinely required, and what is the intended signed release/archive process?
 

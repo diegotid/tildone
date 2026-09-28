@@ -93,7 +93,6 @@ struct Desktop: View {
     @State private var colorFolderOrigins: [NoteColor: NSPoint] = [:]
     @State private var closedNoteIDs: Set<NoteID> = []
     @State private var foregroundWindow: NSWindow?
-    @State private var updateWindow: NSWindow?
     @State private var hiddenFindNoteWindowIDs: Set<NoteID> = []
     @State private var noteScrollMonitor = NoteScrollMonitor()
     @State private var cornerConvergence: NoteCornerConvergence?
@@ -136,7 +135,7 @@ struct Desktop: View {
         Id.keyboardShortcutsWindow,
         Id.scrollGesturesHelpWindow,
         Id.syncStatusWindow,
-        Id.updateWindow
+        Id.whatsNewWindow
     ]
 
     private var taskCompletionDates: [Date?] {
@@ -168,11 +167,11 @@ struct Desktop: View {
             .frame(width: 0, height: 0)
             .onAppear {
                 setWindowOptions()
-                if store.notes.isEmpty {
+                if store.notes.isEmpty && !UpdateChecker.shouldPresentWhatsNew() {
                     MenuBarController.shared.presentMenuForEmptyMenuBarOnlyWorkspace()
                 }
                 openNoteWindows()
-                createWhatsNewNoteIfNeeded()
+                presentWhatsNewIfNeeded()
                 scheduleCompletedTaskRetention()
                 installScrollMonitor()
                 updateClickThroughMonitoring()
@@ -715,11 +714,9 @@ private extension Desktop {
         }
     }
 
-    func createWhatsNewNoteIfNeeded() {
-        Swift.Task {
-            guard await UpdateChecker.hasNewRelease() else { return }
-            openSystemReleaseNote(version: UpdateChecker.pendingVersion)
-        }
+    func presentWhatsNewIfNeeded() {
+        guard UpdateChecker.shouldPresentWhatsNew() else { return }
+        openWindow(id: Id.whatsNewWindow)
     }
 }
 
@@ -1246,32 +1243,6 @@ private extension Desktop {
         noteWindows[state.noteID]?.level = state.staysInBackground ? .normal : .floating
     }
 
-    func openSystemReleaseNote(version: String?) {
-        if let updateWindow {
-            updateWindow.makeKeyAndOrderFront(nil)
-            return
-        }
-        let layout = NSRect(x: 0, y: 0, width: Layout.defaultNoteWidth, height: Layout.defaultNoteHeight)
-        let window = NSWindow(
-            contentRect: layout,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
-            backing: .buffered,
-            defer: false
-        )
-        window.identifier = NSUserInterfaceItemIdentifier(Id.updateWindow)
-        window.setNoteStyle(noteColor: .green)
-        window.setNoteHostingContentView(NSHostingView(rootView: MacSystemReleaseNote(version: version) {
-            UpdateChecker.dismissPendingReleaseNote()
-            window.close()
-            updateWindow = nil
-        }))
-        window.applyNoteBackground(isSystem: true)
-        window.setFrameAutosaveName("TildoneUpdateNote")
-        window.titleVisibility = .hidden
-        updateWindow = window
-        window.makeKeyAndOrderFront(nil)
-    }
-
     func arrangeNotes(onlyMinimized: Bool = false, animated: Bool = true) {
         resetCornerConvergence()
         for (noteID, window) in noteWindows where window.isVisible && window.isOnActiveSpace
@@ -1672,28 +1643,5 @@ private struct NoteColorFolderView: View {
 private extension String {
     func matchesSearch(_ query: String) -> Bool {
         range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-    }
-}
-
-private struct MacSystemReleaseNote: View {
-    let version: String?
-    let dismiss: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(version.map { String(localized: "Updated to v\($0)") } ?? String(localized: "Updated"))
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-            Text("New features:\n• Ability to change color and adjust the transparency of notes\n• Enhanced keyboard navigation for the task list")
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer()
-            HStack {
-                Link("Visit release notes", destination: UpdateChecker.Remote.releaseNotesURL)
-                    .buttonStyle(.borderedProminent)
-                Spacer()
-                Button("Dismiss", action: dismiss).buttonStyle(.plain)
-            }
-        }
-        .padding(22)
-        .frame(minWidth: Layout.minNoteWidth, minHeight: Layout.minNoteHeight)
     }
 }

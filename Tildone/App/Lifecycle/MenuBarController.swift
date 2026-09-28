@@ -275,6 +275,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let settings = item(String(localized: "Settings…"), action: #selector(openSettings), keyEquivalent: ",", symbolName: "gearshape")
         settings.keyEquivalentModifierMask = .command
         menu.addItem(settings)
+        menu.addItem(item(String(localized: "What’s New…"), action: #selector(openWhatsNew), symbolName: "sparkles"))
         let keyboardShortcuts = item(
             String(localized: "Keyboard Shortcuts…"),
             action: #selector(openKeyboardShortcuts),
@@ -341,6 +342,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     @objc private func lineUpNotes() { sendToActiveApp(.arrange) }
     @objc private func openSettings() { sendToActiveApp(.openSettings) }
     @objc private func openAbout() { sendToActiveApp(.openAbout) }
+    @objc private func openWhatsNew() { sendToActiveApp(.openWhatsNew) }
     @objc private func openPro() { sendToActiveApp(.openPro) }
     @objc private func restoreProPurchases() { sendToActiveApp(.restoreProPurchases) }
     @objc private func openFocusFilterHelp() { sendToActiveApp(.openFocusFilterHelp) }

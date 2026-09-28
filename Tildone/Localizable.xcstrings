@@ -77,6 +77,118 @@
         }
       }
     },
+    "Close" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
+    },
+    "Don't show until next version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't show until next version"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No mostrar hasta la próxima versión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne plus afficher avant la prochaine version"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一版本前不再显示"
+          }
+        }
+      }
+    },
+    "Let’s get started" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let’s get started"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empecemos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est parti"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始使用"
+          }
+        }
+      }
+    },
+    "Preview available to everyone" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview available to everyone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa disponible para todos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu accessible à tous"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有人均可预览"
+          }
+        }
+      }
+    },
     "© 2023 Diego Rivera" : {
       "localizations" : {
         "es" : {
@@ -119,6 +231,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "+"
+          }
+        }
+      }
+    },
+    "A calmer desktop" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A calmer desktop"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un escritorio más tranquilo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un bureau plus calme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更清爽的桌面"
           }
         }
       }
@@ -376,6 +517,35 @@
         }
       }
     },
+    "Back" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atrás"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retour"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一步"
+          }
+        }
+      }
+    },
     "Blue" : {
       "localizations" : {
         "es" : {
@@ -468,6 +638,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "预订餐桌"
+          }
+        }
+      }
+    },
+    "Book a table [weekend]" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book a table [weekend]"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reservar una mesa [fin de semana]"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réserver une table [week-end]"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预订餐桌 [周末]"
           }
         }
       }
@@ -572,6 +771,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将任务拆分成小步骤，并用清晰的层级将它们归为一组。"
+          }
+        }
+      }
+    },
+    "Break a task into smaller steps, see their progress, and collapse them when you want a simpler view." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Break a task into smaller steps, see their progress, and collapse them when you want a simpler view."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide una tarea en pasos más pequeños, consulta su progreso y contráelos cuando quieras una vista más sencilla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décomposez une tâche en petites étapes, suivez leur progression et repliez-les pour simplifier l’affichage."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将任务分成小步骤，查看进度，并在需要简洁视图时折叠它们。"
           }
         }
       }
@@ -1613,6 +1841,35 @@
         }
       }
     },
+    "Dim one note or all of them" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dim one note or all of them"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenúa una nota o todas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atténuez une note ou toutes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "降低一张或所有便笺的不透明度"
+          }
+        }
+      }
+    },
     "Dim or Restore All Notes" : {
       "localizations" : {
         "en" : {
@@ -1715,14 +1972,6 @@
         }
       }
     },
-    "Explore all Pro features…" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Explore all Pro features…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Descubrir todas las funciones Pro…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Découvrir toutes les fonctionnalités Pro…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "了解全部专业版功能…" } }
-      }
-    },
     "Discover all Pro features" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1772,6 +2021,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "关闭"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
           }
         }
       }
@@ -1901,6 +2179,35 @@
         }
       }
     },
+    "Existing subtasks remain visible and editable without Pro. Creating or changing their hierarchy requires Pro." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Existing subtasks remain visible and editable without Pro. Creating or changing their hierarchy requires Pro."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las subtareas existentes siguen siendo visibles y editables sin Pro. Crear o cambiar su jerarquía requiere Pro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les sous-tâches existantes restent visibles et modifiables sans Pro. Créer ou modifier leur hiérarchie nécessite Pro."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无需 Pro 也可查看和编辑已有子任务。创建或更改任务层级需要 Pro。"
+          }
+        }
+      }
+    },
     "Expand subtasks" : {
       "localizations" : {
         "en" : {
@@ -1925,6 +2232,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "展开子任务"
+          }
+        }
+      }
+    },
+    "Explore all Pro features…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explore all Pro features…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descubrir todas las funciones Pro…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découvrir toutes les fonctionnalités Pro…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "了解全部专业版功能…"
           }
         }
       }
@@ -1996,6 +2331,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在笔记中查找…"
+          }
+        }
+      }
+    },
+    "Find notes, undo recent changes, and turn words in brackets into clear tags. These improvements are available to everyone." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find notes, undo recent changes, and turn words in brackets into clear tags. These improvements are available to everyone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Busca notas, deshaz cambios recientes y convierte las palabras entre corchetes en etiquetas claras. Estas mejoras están disponibles para todos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retrouvez vos notes, annulez les modifications récentes et transformez les mots entre crochets en étiquettes lisibles. Ces améliorations sont accessibles à tous."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查找便笺、撤销最近的更改，并将方括号中的文字显示为清晰的标签。每个人都可以使用这些改进。"
           }
         }
       }
@@ -2343,6 +2707,64 @@
         }
       }
     },
+    "Gather notes, dim distractions, and choose when your notes stay behind other windows or keep their text private." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gather notes, dim distractions, and choose when your notes stay behind other windows or keep their text private."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reúne las notas, atenúa las distracciones y elige cuándo quedan detrás de otras ventanas o mantienen su texto privado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rassemblez les notes, atténuez les distractions et choisissez quand vos notes restent derrière les autres fenêtres ou masquent leur texte."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聚拢便笺、降低干扰，并选择何时让便笺留在其他窗口后方或隐藏文字。"
+          }
+        }
+      }
+    },
+    "Gather, then return" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gather, then return"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reúne las notas y restáuralas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rassemblez, puis restaurez"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聚拢后再还原"
+          }
+        }
+      }
+    },
     "Gather:" : {
       "comment" : "A label displayed above the gather settings.",
       "isCommentAutoGenerated" : true,
@@ -2413,6 +2835,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "手势"
+          }
+        }
+      }
+    },
+    "Give one thought its own memo, or make important words stand out with text styling." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Give one thought its own memo, or make important words stand out with text styling."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dedica una nota a una sola idea o destaca las palabras importantes con estilos de texto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Consacrez un mémo à une seule idée ou faites ressortir les mots importants avec des styles de texte."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用一张备忘便笺记录一个想法，或通过文字样式突出重要的内容。"
           }
         }
       }
@@ -2618,6 +3069,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按住此快捷键并在一条笔记上滚动，即可使整个窗口变暗或恢复。"
+          }
+        }
+      }
+    },
+    "Hold your dimming shortcut and scroll over a note. Add Shift to change all notes together." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold your dimming shortcut and scroll over a note. Add Shift to change all notes together."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsado tu atajo de atenuación y desplázate sobre una nota. Añade Mayúsculas para cambiar todas las notas a la vez."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez votre raccourci d’atténuation et faites défiler sur une note. Ajoutez Maj pour modifier toutes les notes à la fois."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住降低不透明度的快捷键并在便笺上滚动。再按住 Shift 可同时调整所有便笺。"
+          }
+        }
+      }
+    },
+    "Hold your gathering shortcut and scroll down over a note. Scroll up to restore the notes to their previous positions." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold your gathering shortcut and scroll down over a note. Scroll up to restore the notes to their previous positions."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsado tu atajo para reunir y desplázate hacia abajo sobre una nota. Desplázate hacia arriba para devolverlas a sus posiciones anteriores."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez votre raccourci de rassemblement et faites défiler vers le bas sur une note. Faites défiler vers le haut pour replacer les notes à leur position précédente."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按住聚拢快捷键并在便笺上向下滚动。向上滚动可将便笺还原到之前的位置。"
           }
         }
       }
@@ -2876,6 +3385,64 @@
         }
       }
     },
+    "Included for everyone" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Included for everyone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluido para todos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclus pour tous"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有人均可使用"
+          }
+        }
+      }
+    },
+    "Included in your Pro purchase" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Included in your Pro purchase"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluido en tu compra de Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclus dans votre achat Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已包含在您购买的 Pro 中"
+          }
+        }
+      }
+    },
     "Insert task above" : {
       "comment" : "A tooltip that describes the action of inserting a task above the current task.",
       "isCommentAutoGenerated" : true,
@@ -3071,6 +3638,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "继续显示这台 Mac 上保存的笔记。iCloud 中的笔记保持不变。"
+          }
+        }
+      }
+    },
+    "Keep smaller steps together" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep smaller steps together"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrupa los pasos más pequeños"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regroupez les petites étapes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将小步骤归在一起"
           }
         }
       }
@@ -3723,6 +4319,35 @@
         }
       }
     },
+    "More ways to express an idea" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More ways to express an idea"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más formas de expresar una idea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus de façons d’exprimer une idée"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多表达想法的方式"
+          }
+        }
+      }
+    },
     "Move checked tasks to the end" : {
       "localizations" : {
         "es" : {
@@ -3747,6 +4372,7 @@
     },
     "New features:\n• Ability to change color and adjust the transparency of notes\n• Enhanced keyboard navigation for the task list" : {
       "comment" : "System release-note content shown after an app update.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "es" : {
@@ -3861,6 +4487,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新建任务"
+          }
+        }
+      }
+    },
+    "Next" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siguiente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivant"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一步"
           }
         }
       }
@@ -4417,6 +5072,35 @@
         }
       }
     },
+    "Pick up flowers" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick up flowers"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recoger flores"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer les fleurs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取鲜花"
+          }
+        }
+      }
+    },
     "Pick up fresh flowers" : {
       "comment" : "A task that is not completed.",
       "isCommentAutoGenerated" : true,
@@ -4563,6 +5247,64 @@
         }
       }
     },
+    "Pro" : {
+      "comment" : "Label inside the chip marking a locked Pro setting.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专业版"
+          }
+        }
+      }
+    },
+    "Pro · Preview available to everyone" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro · Preview available to everyone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro · Vista previa disponible para todos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro · Aperçu accessible à tous"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro · 所有人均可预览"
+          }
+        }
+      }
+    },
     "Pro features" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4620,15 +5362,6 @@
         }
       }
     },
-    "Pro" : {
-      "comment" : "Label inside the chip marking a locked Pro setting.",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pro" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pro" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pro" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "专业版" } }
-      }
-    },
     "Purchase could not be completed. Please try again." : {
       "localizations" : {
         "es" : {
@@ -4673,14 +5406,6 @@
         }
       }
     },
-    "Purchasing Tildone Pro…" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Purchasing Tildone Pro…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Comprando Tildone Pro…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Achat de Tildone Pro…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在购买 Tildone 专业版…" } }
-      }
-    },
     "Purchase pending approval." : {
       "localizations" : {
         "es" : {
@@ -4699,6 +5424,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "购买正在等待批准。"
+          }
+        }
+      }
+    },
+    "Purchasing Tildone Pro…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchasing Tildone Pro…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprando Tildone Pro…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Achat de Tildone Pro…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在购买 Tildone 专业版…"
           }
         }
       }
@@ -4957,24 +5710,6 @@
         }
       }
     },
-    "Requires Pro" : {
-      "comment" : "VoiceOver label for the lock beside a Pro setting.",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Requires Pro" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Requiere Pro" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nécessite Pro" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要专业版" } }
-      }
-    },
-    "Requires Pro. Note unchanged; Pro window opened." : {
-      "comment" : "Temporary hint on a note after a Pro-only action was blocked and the Pro window opened.",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Requires Pro. Note unchanged; Pro window opened." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Requiere Pro. La nota no ha cambiado; se abrió la ventana de Pro." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nécessite Pro. La note est inchangée ; la fenêtre Pro est ouverte." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要专业版。便笺未更改；已打开专业版窗口。" } }
-      }
-    },
     "Requires at least " : {
       "comment" : "A label displayed under the click-through toggle.",
       "isCommentAutoGenerated" : true,
@@ -4999,12 +5734,62 @@
         }
       }
     },
-    "Restoring purchases…" : {
+    "Requires Pro" : {
+      "comment" : "VoiceOver label for the lock beside a Pro setting.",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restoring purchases…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Restaurando compras…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restauration des achats…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在恢复购买…" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requires Pro"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere Pro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nécessite Pro"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要专业版"
+          }
+        }
+      }
+    },
+    "Requires Pro. Note unchanged; Pro window opened." : {
+      "comment" : "Temporary hint on a note after a Pro-only action was blocked and the Pro window opened.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requires Pro. Note unchanged; Pro window opened."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere Pro. La nota no ha cambiado; se abrió la ventana de Pro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nécessite Pro. La note est inchangée ; la fenêtre Pro est ouverte."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要专业版。便笺未更改；已打开专业版窗口。"
+          }
+        }
       }
     },
     "Restore Purchases" : {
@@ -5047,6 +5832,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法恢复购买。请重试。"
+          }
+        }
+      }
+    },
+    "Restoring purchases…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restoring purchases…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurando compras…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restauration des achats…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在恢复购买…"
           }
         }
       }
@@ -5615,6 +6428,35 @@
         }
       }
     },
+    "Small improvements, every day" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small improvements, every day"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pequeñas mejoras para el día a día"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De petites améliorations au quotidien"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让日常更轻松的小改进"
+          }
+        }
+      }
+    },
     "Source" : {
       "localizations" : {
         "en" : {
@@ -5711,6 +6553,35 @@
         }
       }
     },
+    "Step %lld of %lld" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step %lld of %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paso %lld de %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Étape %lld sur %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %lld 步，共 %lld 步"
+          }
+        }
+      }
+    },
     "Strikethrough" : {
       "localizations" : {
         "en" : {
@@ -5786,6 +6657,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "子任务"
+          }
+        }
+      }
+    },
+    "Swipe a task to make a subtask or promote it. Creating or changing hierarchy requires Pro." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe a task to make a subtask or promote it. Creating or changing hierarchy requires Pro."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desliza una tarea para convertirla en subtarea o subirla de nivel. Crear o cambiar la jerarquía requiere Pro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Balayez une tâche pour en faire une sous-tâche ou la remonter d’un niveau. Créer ou modifier la hiérarchie nécessite Pro."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滑动任务可将其变为子任务或提升层级。创建或更改层级需要 Pro。"
           }
         }
       }
@@ -6457,10 +7358,30 @@
     },
     "Tildone Pro is locked." : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tildone Pro is locked." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tildone Pro está bloqueado." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tildone Pro est verrouillé." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Tildone 专业版尚未解锁。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro is locked."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro está bloqueado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone Pro est verrouillé."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tildone 专业版尚未解锁。"
+          }
+        }
       }
     },
     "Tildone Pro is unlocked." : {
@@ -6639,6 +7560,28 @@
         }
       }
     },
+    "Topic" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asunto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sujet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主题"
+          }
+        }
+      }
+    },
     "To change or remove the filter later, return to the same Focus settings." : {
       "comment" : "A description of how to change or remove a focus filter.",
       "isCommentAutoGenerated" : true,
@@ -6703,28 +7646,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "右上"
-          }
-        }
-      }
-    },
-    "Topic" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Asunto"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sujet"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "主题"
           }
         }
       }
@@ -7053,14 +7974,6 @@
         }
       }
     },
-    "Unlock Tildone Pro…" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlock Tildone Pro…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desbloquear Tildone Pro…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déverrouiller Tildone Pro…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "解锁 Tildone 专业版…" } }
-      }
-    },
     "Unlock Tildone Pro" : {
       "localizations" : {
         "es" : {
@@ -7079,6 +7992,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "解锁 Tildone Pro"
+          }
+        }
+      }
+    },
+    "Unlock Tildone Pro…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock Tildone Pro…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear Tildone Pro…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déverrouiller Tildone Pro…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解锁 Tildone 专业版…"
           }
         }
       }
@@ -7134,6 +8075,7 @@
       }
     },
     "Updated" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7360,6 +8302,35 @@
         }
       }
     },
+    "Use this menu to make a subtask or promote it. Creating or changing hierarchy requires Pro." : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this menu to make a subtask or promote it. Creating or changing hierarchy requires Pro."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa este menú para crear una subtarea o subirla de nivel. Crear o cambiar la jerarquía requiere Pro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez ce menu pour créer une sous-tâche ou la remonter d’un niveau. Créer ou modifier la hiérarchie nécessite Pro."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用此菜单将任务变为子任务或提升层级。创建或更改层级需要 Pro。"
+          }
+        }
+      }
+    },
     "Using Focus Filter Defaults" : {
       "localizations" : {
         "es" : {
@@ -7477,6 +8448,7 @@
       }
     },
     "Visit release notes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7518,6 +8490,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "周末计划"
+          }
+        }
+      }
+    },
+    "What’s New" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s New"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novedades"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveautés"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新功能"
+          }
+        }
+      }
+    },
+    "What’s New…" : {
+      "comment" : "Release highlights and contextual feature discovery.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s New…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novedades…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveautés…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新功能…"
           }
         }
       }

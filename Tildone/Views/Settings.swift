@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 import AppKit
 import TildoneDomain
 
@@ -631,7 +632,13 @@ private extension SettingsForm {
                 proFeatureLink(.dimming)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            dimmingPreview()
+            VStack(spacing: 10) {
+                dimmingPreview()
+                if !WhatsNewRelease.isIsolatedProcess {
+                    TipView(FeatureDiscoveryTip(kind: .dimming))
+                }
+            }
+            .frame(width: 240)
         }
 
         Divider()
@@ -752,6 +759,9 @@ private extension SettingsForm {
             .accessibilityLabel(Text("Gather notes"))
             .accessibilityIdentifier("settings-gather-preview")
         }
+        if !WhatsNewRelease.isIsolatedProcess {
+            TipView(FeatureDiscoveryTip(kind: .gathering))
+        }
     }
 
     @ViewBuilder
@@ -769,18 +779,7 @@ private extension SettingsForm {
     func proFeatureHeading(_ title: LocalizedStringKey) -> some View {
         HStack(spacing: 7) {
             if !pro.isPro {
-                Label("Pro", systemImage: "lock.fill")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(.quaternary, in: Capsule())
-                    .overlay {
-                        Capsule().stroke(.secondary.opacity(0.18), lineWidth: 0.5)
-                    }
-                    .fixedSize()
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Requires Pro")
+                ProFeatureBadge()
             }
             Text(title)
                 .font(.headline)

@@ -685,6 +685,7 @@ extension Note {
             },
             onIndent: { handleTaskIndent(task.id, outdent: false) },
             onOutdent: { handleTaskIndent(task.id, outdent: true) },
+            offersDiscoveryHint: true,
             onDrop: { payload, destination in
                 handleTaskDrop(payload, at: destination)
             },

@@ -6,18 +6,15 @@ struct ProPreviewContent {
     let note: TildoneDomain.Note
     let tasks: [TildoneDomain.Task]
 
+    init(note: TildoneDomain.Note, tasks: [TildoneDomain.Task]) {
+        self.note = note
+        self.tasks = tasks
+    }
+
     init(feature: ProFeature, locale: Locale, noteColor: NoteColor = .yellow) {
         // String(localized:locale:) uses locale for formatting, not language
         // selection. Select the matching catalog bundle for preview examples.
-        let language: String
-        switch locale.language.languageCode?.identifier {
-        case "es": language = "es"
-        case "fr": language = "fr"
-        case "zh": language = "zh-Hans"
-        default: language = "en"
-        }
-        let bundle = Bundle.main.path(forResource: language, ofType: "lproj")
-            .flatMap(Bundle.init(path:)) ?? .main
+        let bundle = Self.localizationBundle(for: locale)
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let version = VersionStamp(logicalCounter: 1, replicaID: ReplicaID())
         let noteID = NoteID()
@@ -79,5 +76,17 @@ struct ProPreviewContent {
                 indentLevel: example.1, lifecycleVersion: version
             )
         }
+    }
+
+    static func localizationBundle(for locale: Locale) -> Bundle {
+        let language: String
+        switch locale.language.languageCode?.identifier {
+        case "es": language = "es"
+        case "fr": language = "fr"
+        case "zh": language = "zh-Hans"
+        default: language = "en"
+        }
+        return Bundle.main.path(forResource: language, ofType: "lproj")
+            .flatMap(Bundle.init(path:)) ?? .main
     }
 }

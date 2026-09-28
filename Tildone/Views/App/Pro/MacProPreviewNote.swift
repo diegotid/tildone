@@ -7,6 +7,8 @@ struct MacProPreviewNote: View {
     let content: ProPreviewContent
     var noteColor: NoteColor = .yellow
     var backgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
+    var fontSize: Double = 14
+    var truncation: TaskLineTruncation = .multiple
     @Environment(\.colorScheme) private var colorScheme
 
     private var foreground: Color {
@@ -66,11 +68,11 @@ struct MacProPreviewNote: View {
     private func row(_ task: TildoneDomain.Task, index: Int) -> some View {
         TaskRow(
             task: task, dragPayload: MacTaskDragPayload(noteID: task.noteID, taskID: task.id),
-            rowIndex: index, fontSize: 14,
+            rowIndex: index, fontSize: fontSize,
             isDark: NoteContentForeground.usesLightText(colorScheme: colorScheme, backgroundOpacity: backgroundOpacity),
             noteBackgroundColor: Color(nsColor: noteColor.nsColor), noteBackgroundOpacity: backgroundOpacity,
             contentColor: foreground, cursorColor: foreground, searchQuery: "", placeholderColor: foreground,
-            truncation: .multiple, isFirst: index == 0, followsDeeperTask: false,
+            truncation: truncation, isFirst: index == 0, followsDeeperTask: false,
             isShowingRowControls: false,
             isHoveringFromRight: false,
             hasSubtasks: TaskHierarchy.subtaskProgress(at: index, in: content.tasks) != nil,
@@ -91,8 +93,10 @@ extension MacProPreviewNote {
     @MainActor
     static func rasterImage(content: ProPreviewContent, locale: Locale, colorScheme: ColorScheme = .light,
                             backgroundOpacity: Double = Double(NoteWindowBackground.defaultAlpha),
-                            noteColor: NoteColor = .yellow) -> NSImage? {
-        let view = MacProPreviewNote(content: content, noteColor: noteColor, backgroundOpacity: backgroundOpacity)
+                            noteColor: NoteColor = .yellow, fontSize: Double = 14,
+                            truncation: TaskLineTruncation = .multiple) -> NSImage? {
+        let view = MacProPreviewNote(content: content, noteColor: noteColor, backgroundOpacity: backgroundOpacity,
+                                     fontSize: fontSize, truncation: truncation)
             .environment(\.locale, locale)
             .environment(\.colorScheme, colorScheme)
             .frame(width: 216, height: 262)

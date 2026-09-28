@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TildoneiOSAboutView: View {
     @State private var showsPro = false
+    @State private var showsWhatsNew = false
     private var version: String? {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
     }
@@ -32,6 +33,7 @@ struct TildoneiOSAboutView: View {
             }
 
             Section {
+                Button("What’s New") { showsWhatsNew = true }
                 NavigationLink("Font Attributions") {
                     FontAttributionsView()
                 }
@@ -39,6 +41,11 @@ struct TildoneiOSAboutView: View {
         }
         .navigationTitle("About Tildone")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsWhatsNew) {
+            WhatsNewView {
+                showsWhatsNew = false
+            }
+        }
         .sheet(isPresented: $showsPro) {
             ProPaywallView(feature: nil)
         }

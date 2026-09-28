@@ -15,11 +15,13 @@ struct TildoneApp: App {
     @State private var undoErrorMessage: String?
     @StateObject private var sharedStoreBootstrapper = MacSharedStoreBootstrapper()
     @ObservedObject private var pro = ProEntitlement.shared
+    @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         SingleMemoTypography.registerBundledFonts()
+        FeatureDiscoveryTip.configure()
     }
 
     var isCloseCommandDisabled: Bool {
@@ -148,6 +150,9 @@ struct TildoneApp: App {
 
     private var primarySceneContent: some View {
         notificationHandlingDesktopContent
+            .onReceive(NotificationCenter.default.publisher(for: .openWhatsNew)) { _ in
+                openWindow(id: Id.whatsNewWindow)
+            }
             .alert("Couldn’t undo this change", isPresented: Binding(
                 get: { undoErrorMessage != nil },
                 set: { if !$0 { undoErrorMessage = nil } }
@@ -257,6 +262,7 @@ struct TildoneApp: App {
             }
             MacWindowManagementCommands()
             TildoneHelpCommands(
+                openWhatsNew: { openWindow(id: Id.whatsNewWindow) },
                 openKeyboardShortcuts: { openWindow(id: Id.keyboardShortcutsWindow) },
                 openScrollGesturesHelp: { openWindow(id: Id.scrollGesturesHelpWindow) },
                 openFocusFilterHelp: { openWindow(id: Id.focusFilterHelpWindow) }
@@ -266,6 +272,14 @@ struct TildoneApp: App {
             About()
         }
         .windowResizability(.contentSize)
+        .commandsRemoved()
+        Window("What’s New", id: Id.whatsNewWindow) {
+            WhatsNewView {
+                dismissWindow(id: Id.whatsNewWindow)
+            }
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
         .commandsRemoved()
         Window("Tildone Pro", id: "tildonePro") {
             ProPaywallView(feature: pro.requestedFeature)
@@ -415,12 +429,15 @@ private struct MacICloudSyncCommands: Commands {
 }
 
 private struct TildoneHelpCommands: Commands {
+    let openWhatsNew: () -> Void
     let openKeyboardShortcuts: () -> Void
     let openScrollGesturesHelp: () -> Void
     let openFocusFilterHelp: () -> Void
 
     var body: some Commands {
         CommandGroup(replacing: .help) {
+            Button("What’s New…", action: openWhatsNew)
+            Divider()
             Button("Keyboard Shortcuts…", action: openKeyboardShortcuts)
                 .keyboardShortcut("/", modifiers: .command)
             Button("Scroll Gestures…", action: openScrollGesturesHelp)

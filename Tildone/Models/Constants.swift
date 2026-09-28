@@ -19,7 +19,7 @@ enum Id {
     static let keyboardShortcutsWindow: String = "keyboard-shortcuts"
     static let scrollGesturesHelpWindow: String = "scroll-gestures-help"
     static let syncStatusWindow: String = "sync-status"
-    static let updateWindow: String = "update-tildone"
+    static let whatsNewWindow: String = "whats-new-tildone"
 }
 
 enum Frame {
