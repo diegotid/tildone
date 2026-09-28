@@ -4436,7 +4436,7 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
-    func testDraggingRootCannotTakeAnotherRootsChildren() async throws {
+    func testDraggingRootIntoAnotherRootsChildrenSnapsToRootBoundary() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)
         let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
@@ -4447,9 +4447,9 @@ final class TildoneTests: XCTestCase {
 
         let moved = try await store.moveTask(otherRoot.id, in: note.id, to: 1)
 
-        XCTAssertFalse(moved)
+        XCTAssertTrue(moved)
         let tasks = try await repository.orderedTasks(in: note.id)
-        XCTAssertEqual(tasks.map(\.id), [parent.id, child.id, otherRoot.id])
+        XCTAssertEqual(tasks.map(\.id), [otherRoot.id, parent.id, child.id])
         XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), parent.id)
     }
 

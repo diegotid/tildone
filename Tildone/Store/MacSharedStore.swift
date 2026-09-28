@@ -1041,19 +1041,41 @@ final class MacSharedStore: ObservableObject {
         }
 
         let taskDepth = reordered[originalIndex].indentLevel
-        let subtreeEnd = reordered[(originalIndex + 1)...].firstIndex {
-            $0.indentLevel <= taskDepth
-        } ?? reordered.endIndex
+        let subtreeEnd = TaskHierarchy.subtreeRange(
+            startingAt: originalIndex,
+            in: reordered
+        ).upperBound
         let subtreeRange = originalIndex..<subtreeEnd
         guard !(subtreeRange.contains(destination) || destination == subtreeEnd) else {
             return false
         }
 
+        var resolvedDestination = destination
+        if taskDepth == 0 {
+            // A root task can only be inserted between other root subtrees. A
+            // drop line inside a parent's children otherwise makes the moved
+            // subtree their new parent, so snap it to the nearest root boundary.
+            for rootIndex in reordered.indices where reordered[rootIndex].indentLevel == 0 {
+                let rootRange = TaskHierarchy.subtreeRange(startingAt: rootIndex, in: reordered)
+                guard rootRange.lowerBound != originalIndex,
+                      rootRange.lowerBound < destination,
+                      destination < rootRange.upperBound else {
+                    continue
+                }
+                let distanceToStart = destination - rootRange.lowerBound
+                let distanceToEnd = rootRange.upperBound - destination
+                resolvedDestination = distanceToStart <= distanceToEnd
+                    ? rootRange.lowerBound
+                    : rootRange.upperBound
+                break
+            }
+        }
+
         let movedSubtree = Array(reordered[subtreeRange])
         reordered.removeSubrange(subtreeRange)
-        let adjustedDestination = destination > subtreeEnd
-            ? destination - movedSubtree.count
-            : destination
+        let adjustedDestination = resolvedDestination > subtreeEnd
+            ? resolvedDestination - movedSubtree.count
+            : resolvedDestination
         guard (0...reordered.count).contains(adjustedDestination) else { return false }
 
         var candidate = reordered
