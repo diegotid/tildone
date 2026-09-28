@@ -573,7 +573,7 @@ extension Note {
             .frame(maxWidth: .infinity, minHeight: taskLineHeight, alignment: .leading)
             Spacer()
         }
-        .padding(.leading, 2 + CGFloat(newTaskIndentLevel ?? 0) * (Layout.checkboxSize + 8))
+        .padding(.leading, 2 + CGFloat(newTaskDraftIndentLevel) * (Layout.checkboxSize + 8))
         .padding(.bottom, 10)
         .allowsHitTesting(!isInsertedNewTaskFocused)
     }

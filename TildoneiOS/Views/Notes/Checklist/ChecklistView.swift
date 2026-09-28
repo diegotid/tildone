@@ -209,6 +209,7 @@ struct ChecklistView: View {
                                 .onSubmit { addTask() }
                                 .accessibilityLabel("New task")
                                 .frame(minHeight: 33, maxHeight: 33)
+                                .padding(.leading, CGFloat(tasks.last?.indentLevel ?? 0) * 24)
                                 .id(Self.newTaskSlotID)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                         }

@@ -101,9 +101,7 @@ extension Note {
     func handleNewTaskCommit() {
         guard !newTaskText.isEmpty else { return }
         let text = newTaskText.capitalizingFirstLetter()
-        let indentLevel = newTaskIndentLevel ?? 0
-        newTaskText = ""
-        newTaskIndentLevel = indentLevel
+        let indentLevel = newTaskDraftIndentLevel
         let stagedTask: TildoneDomain.Task
         do {
             // Publish the committed row before its asynchronous save begins. This
@@ -124,6 +122,8 @@ extension Note {
             )
             return
         }
+        newTaskText = ""
+        newTaskIndentLevel = indentLevel
         Swift.Task {
             do {
                 try await store.commitStagedTaskInsertion(stagedTask, deleting: [])
@@ -244,7 +244,7 @@ extension Note {
         _ list: MouseSafeTaskTextField.PastedList,
         usesTitle: Bool
     ) -> Bool {
-        let baseIndentLevel = usesTitle ? 0 : (newTaskIndentLevel ?? 0)
+        let baseIndentLevel = usesTitle ? 0 : newTaskDraftIndentLevel
         // Replace the draft rather than committing it again when the editor blurs.
         newTaskText = ""
         noteWindow?.makeFirstResponder(nil)
@@ -300,10 +300,10 @@ extension Note {
     }
 
     func handleNewTaskTab(outdent: Bool) {
-        adjustNewTaskDraftIndent(outdent: outdent)
+        guard adjustNewTaskDraftIndent(outdent: outdent) else { return }
         guard !newTaskText.isEmpty else { return }
         let text = newTaskText.capitalizingFirstLetter()
-        let indentLevel = newTaskIndentLevel ?? 0
+        let indentLevel = newTaskDraftIndentLevel
         newTaskText = ""
         focusedField = nil
 
@@ -326,17 +326,19 @@ extension Note {
         }
     }
 
-    func adjustNewTaskDraftIndent(outdent: Bool) {
-        guard ProEntitlement.shared.require(.subtasks, in: noteID) else { return }
-        guard let precedingTask = tasks.last else { return }
+    @discardableResult
+    func adjustNewTaskDraftIndent(outdent: Bool) -> Bool {
+        guard ProEntitlement.shared.require(.subtasks, in: noteID) else { return false }
+        guard let precedingTask = tasks.last else { return false }
         if outdent {
-            newTaskIndentLevel = max(0, (newTaskIndentLevel ?? 0) - 1)
+            newTaskIndentLevel = max(0, newTaskDraftIndentLevel - 1)
         } else {
             newTaskIndentLevel = min(
-                (newTaskIndentLevel ?? 0) + 1,
+                newTaskDraftIndentLevel + 1,
                 precedingTask.indentLevel + 1
             )
         }
+        return true
     }
 
     func handleTaskEdit(_ task: TildoneDomain.Task, to richText: RichText) {
@@ -477,9 +479,9 @@ extension Note {
             if event.keyCode == Keyboard.returnKey,
                focusedField == .newTask,
                newTaskText.isEmpty,
-               let newTaskIndentLevel,
-               newTaskIndentLevel > 0 {
-                self.newTaskIndentLevel = newTaskIndentLevel - 1
+               newTaskDraftIndentLevel > 0 {
+                guard ProEntitlement.shared.require(.subtasks, in: noteID) else { return nil }
+                newTaskIndentLevel = newTaskDraftIndentLevel - 1
                 return nil
             }
             if event.keyCode == Keyboard.arrowUp { handleMoveUp(); return nil }

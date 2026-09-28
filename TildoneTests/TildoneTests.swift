@@ -436,6 +436,96 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testFreeMacStoreCanInsertSiblingsAtExistingDepthWithoutChangingHierarchy() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(true)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let root = try await store.addTask(to: note.id, text: "Root")
+        let parent = try await store.addTask(to: note.id, text: "Nested parent", indentLevel: 1)
+        let child = try await store.addTask(to: note.id, text: "Existing child", indentLevel: 2)
+        let otherRoot = try await store.addTask(to: note.id, text: "Other root")
+        pro.setTestOverride(false)
+
+        let before = try await store.addTask(
+            to: note.id, text: "Before parent", insertingAt: 1, indentLevel: 1
+        )
+        let pasted = try await store.addTask(
+            to: note.id, text: "Pasted sibling", insertingAfter: parent.id, indentLevel: 1
+        )
+        var tasks = try await repository.orderedTasks(in: note.id)
+        let parentIndex = try XCTUnwrap(tasks.firstIndex(where: { $0.id == parent.id }))
+        let insertion = TaskHierarchy.insertionIndexAfterSubtree(startingAt: parentIndex, in: tasks)
+        let returned = try store.stageEmptyTaskInsertion(
+            in: note.id, at: insertion, deleting: [], indentLevel: 1, text: "Return sibling"
+        )
+        try await store.commitStagedTaskInsertion(returned, deleting: [])
+        // Plain pasted content also requests the existing level; this must be a no-op.
+        try await store.setTaskIndentLevels([(id: returned.id, level: 1)])
+        do {
+            _ = try await store.addTask(to: note.id, text: "Reparent child", insertingAt: 3, indentLevel: 1)
+            XCTFail("Insertion must not change the parent of existing descendants")
+        } catch ProAccessError.requiresPro {}
+        do {
+            _ = try await store.addTask(to: note.id, text: "New depth", insertingAfter: child.id, indentLevel: 3)
+            XCTFail("Creating a deeper level must require Pro")
+        } catch ProAccessError.requiresPro {}
+        for level in [0, 2] {
+            do {
+                try await store.setTaskIndentLevels([(id: parent.id, level: level)])
+                XCTFail("Promoting and indenting must require Pro")
+            } catch ProAccessError.requiresPro {}
+        }
+        XCTAssertTrue(try store.stageTaskOutdent(parent.id, in: note.id).isEmpty)
+        XCTAssertTrue(store.stageTaskIndentLevels([(id: parent.id, level: 2)], in: note.id).isEmpty)
+        tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [root.id, before.id, parent.id, child.id, returned.id, pasted.id, otherRoot.id])
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 1, 2, 1, 1, 0])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 3, in: tasks), parent.id)
+        XCTAssertEqual(TaskHierarchy.parentID(at: 4, in: tasks), root.id)
+        XCTAssertEqual(tasks[3].text, "Existing child")
+    }
+
+    @MainActor
+    func testFreeMacStagedInsertionPreservesInheritedDepthButCannotAuthorizeANewDepth() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(true)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let root = try await store.addTask(to: note.id, text: "Root")
+        let child = try await store.addTask(to: note.id, text: "Child", indentLevel: 1)
+        let empty = try await store.addTask(to: note.id, text: "", indentLevel: 1)
+        pro.setTestOverride(false)
+        let replacement = try store.stageEmptyTaskInsertion(
+            in: note.id, at: 3, deleting: [empty.id], indentLevel: 1, text: "Replacement"
+        )
+        try await store.commitStagedTaskInsertion(replacement, deleting: [empty.id])
+        let appended = try await store.addTask(to: note.id, text: "Appended", indentLevel: 1)
+        do {
+            _ = try store.stageEmptyTaskInsertion(in: note.id, at: 4, deleting: [], indentLevel: 2)
+            XCTFail("A draft cannot create a new depth without Pro")
+        } catch ProAccessError.requiresPro {}
+
+        pro.setTestOverride(true)
+        let deeperDraft = try store.stageEmptyTaskInsertion(
+            in: note.id, at: 4, deleting: [], indentLevel: 2, text: "New child"
+        )
+        pro.setTestOverride(false)
+        do {
+            try await store.commitStagedTaskInsertion(deeperDraft, deleting: [])
+            XCTFail("A draft must not count as pre-existing hierarchy after Pro is lost")
+        } catch ProAccessError.requiresPro {}
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.id), [root.id, child.id, replacement.id, appended.id])
+        XCTAssertEqual(tasks.map(\.indentLevel), [0, 1, 1, 1])
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.id), tasks.map(\.id))
+    }
+
+    @MainActor
     func testFreeMacStoreRejectsMemoConversionWithoutChangingExistingNote() async throws {
         let pro = ProEntitlement.shared
         pro.setTestOverride(false)

@@ -52,6 +52,7 @@ final class MacSharedStore: ObservableObject {
     private struct StagedTaskInsertion {
         let task: Task
         let deletingEmptyTaskIDs: Set<TaskID>
+        let preservesExistingDepth: Bool
     }
 
     private struct PendingNoteTitleEdit {
@@ -405,11 +406,9 @@ final class MacSharedStore: ObservableObject {
         indentLevel: Int = 0,
         createdAt: Date = Date()
     ) async throws -> Task {
-        if indentLevel > 0 && !ProEntitlement.shared.require(.subtasks, in: noteID) {
-            throw ProAccessError.requiresPro
-        }
         let tasks = try await repository.orderedTasks(in: noteID)
         let insertionIndex: Int
+        let preservesExistingDepth: Bool
         if let precedingTaskID {
             guard let precedingIndex = tasks.firstIndex(where: { $0.id == precedingTaskID }) else {
                 throw PersistenceError.missing(.task, precedingTaskID.stringValue)
@@ -417,9 +416,14 @@ final class MacSharedStore: ObservableObject {
             insertionIndex = TaskHierarchy.insertionIndexAfterSubtree(
                 startingAt: precedingIndex, in: tasks
             )
+            preservesExistingDepth = indentLevel == tasks[precedingIndex].indentLevel
         } else {
             insertionIndex = min(max(position ?? tasks.count, 0), tasks.count)
+            preservesExistingDepth = ProFeatureAccess.preservesTaskDepth(indentLevel, at: insertionIndex, in: tasks)
         }
+        if indentLevel > 0 && !ProEntitlement.shared.require(
+            .subtasks, isAlreadyActive: preservesExistingDepth, in: noteID
+        ) { throw ProAccessError.requiresPro }
         let lower = insertionIndex > 0 ? tasks[insertionIndex - 1].orderToken : nil
         let upper = insertionIndex < tasks.count ? tasks[insertionIndex].orderToken : nil
         let task = try await repository.addTask(
@@ -443,10 +447,13 @@ final class MacSharedStore: ObservableObject {
         text: String = "",
         createdAt: Date = Date()
     ) throws -> Task {
-        if indentLevel > 0 && !ProEntitlement.shared.require(.subtasks, in: noteID) {
-            throw ProAccessError.requiresPro
-        }
         guard let snapshot = note(noteID) else { throw PersistenceError.missing(.note, noteID.stringValue) }
+        let preservesExistingDepth = ProFeatureAccess.preservesTaskDepth(
+            indentLevel, at: min(max(position, 0), snapshot.tasks.count), in: snapshot.tasks
+        )
+        if indentLevel > 0 && !ProEntitlement.shared.require(
+            .subtasks, isAlreadyActive: preservesExistingDepth, in: noteID
+        ) { throw ProAccessError.requiresPro }
         let removedBeforeInsertion = snapshot.tasks[..<min(max(position, 0), snapshot.tasks.count)]
             .filter { emptyTaskIDs.contains($0.id) }
             .count
@@ -471,7 +478,8 @@ final class MacSharedStore: ObservableObject {
         remaining.insert(task, at: insertionIndex)
         stagedTaskInsertions[task.id] = StagedTaskInsertion(
             task: task,
-            deletingEmptyTaskIDs: emptyTaskIDs
+            deletingEmptyTaskIDs: emptyTaskIDs,
+            preservesExistingDepth: preservesExistingDepth
         )
         publish(MacNoteSnapshot(note: snapshot.note, tasks: remaining))
         return task
@@ -482,7 +490,14 @@ final class MacSharedStore: ObservableObject {
         deleting emptyTaskIDs: Set<TaskID>
     ) async throws {
         do {
-            if task.indentLevel > 0 && !ProEntitlement.shared.require(.subtasks, in: task.noteID) {
+            let staged = stagedTaskInsertions[task.id]
+            let preservesExistingDepth = staged?.preservesExistingDepth == true
+                && staged?.task.noteID == task.noteID
+                && staged?.task.indentLevel == task.indentLevel
+                && staged?.task.orderToken == task.orderToken
+            if task.indentLevel > 0 && !ProEntitlement.shared.require(
+                .subtasks, isAlreadyActive: preservesExistingDepth, in: task.noteID
+            ) {
                 throw ProAccessError.requiresPro
             }
             for id in emptyTaskIDs {
@@ -576,6 +591,8 @@ final class MacSharedStore: ObservableObject {
         undoDirection: MacTaskIndentationUndoDirection? = nil
     ) async throws {
         guard let noteID = levels.first.flatMap({ noteID(containing: $0.id) }) else { return }
+        let currentLevels = Dictionary(uniqueKeysWithValues: (note(noteID)?.tasks ?? []).map { ($0.id, $0.indentLevel) })
+        guard levels.contains(where: { currentLevels[$0.id] != $0.level }) else { return }
         guard ProEntitlement.shared.require(.subtasks, in: noteID) else { throw ProAccessError.requiresPro }
         let updates = levels.map { TaskStructureUpdate(id: $0.id, indentLevel: $0.level) }
         presentTaskStructureUpdates(updates, in: noteID)

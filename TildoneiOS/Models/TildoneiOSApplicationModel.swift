@@ -431,8 +431,11 @@ final class TildoneiOSApplicationModel: ObservableObject {
         let presentedTasks = snapshot.tasks
         let lastToken = presentedTasks.last?.orderToken ?? OrderToken.before(initialUpperBound)
         let order = OrderToken.after(lastToken)
-        let resolvedIndentLevel = max(0, indentLevel ?? (ProEntitlement.shared.isPro ? presentedTasks.last?.indentLevel : 0) ?? 0)
-        if resolvedIndentLevel > 0 && !ProEntitlement.shared.require(.subtasks) {
+        let resolvedIndentLevel = max(0, indentLevel ?? presentedTasks.last?.indentLevel ?? 0)
+        let preservesExistingDepth = resolvedIndentLevel == presentedTasks.last?.indentLevel
+        if resolvedIndentLevel > 0 && !ProEntitlement.shared.require(
+            .subtasks, isAlreadyActive: preservesExistingDepth
+        ) {
             throw ProAccessError.requiresPro
         }
         let stagedTask = Self.presentationTask(
@@ -473,9 +476,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
             return nil
         }
         let target = snapshot.tasks[targetIndex]
-        if target.indentLevel > 0 && !ProEntitlement.shared.require(.subtasks) {
-            throw ProAccessError.requiresPro
-        }
+        // This row inherits the target's depth; it does not change the hierarchy.
         let lowerBound = targetIndex > 0 ? snapshot.tasks[targetIndex - 1].orderToken : nil
         let order = try OrderToken.between(lowerBound, target.orderToken)
         let stagedTask = Self.presentationTask(

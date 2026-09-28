@@ -70,6 +70,42 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertFalse(ProFeatureAccess.allows(.subtasks, isPro: state.isPro))
     }
 
+    func testFreeIPhoneModelCanCreateExistingDepthSiblingsButCannotChangeDepth() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(true)
+        defer { pro.setTestOverride(nil) }
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Existing hierarchy")
+        let rootResult = try await model.addTask(noteID: note.id, text: "Root", after: [])
+        let root = try XCTUnwrap(rootResult)
+        let childResult = try await model.addTask(noteID: note.id, text: "Child", after: [], indentLevel: 1)
+        let child = try XCTUnwrap(childResult)
+        pro.setTestOverride(false)
+
+        let beforeResult = try await model.addTask(noteID: note.id, text: "Before child", before: child.id)
+        let before = try XCTUnwrap(beforeResult)
+        let appendedResult = try await model.addTask(noteID: note.id, text: "New sibling", after: [])
+        let appended = try XCTUnwrap(appendedResult)
+        XCTAssertEqual(before.indentLevel, 1)
+        XCTAssertEqual(appended.indentLevel, 1)
+        let tasks = try await model.tasks(in: note.id)
+        for outdent in [false, true] {
+            do {
+                _ = try await model.changeIndentation(taskID: child.id, in: tasks, outdent: outdent)
+                XCTFail("Indenting and promoting must still require Pro")
+            } catch ProAccessError.requiresPro {}
+        }
+        do {
+            _ = try await model.addTask(noteID: note.id, text: "Deeper", after: [], indentLevel: 2)
+            XCTFail("A new depth must still require Pro")
+        } catch ProAccessError.requiresPro {}
+        let persisted = try await model.tasks(in: note.id)
+        XCTAssertEqual(persisted.map(\.id), [root.id, before.id, child.id, appended.id])
+        XCTAssertEqual(persisted.map(\.indentLevel), [0, 1, 1, 1])
+        XCTAssertEqual(TaskHierarchy.parentID(at: 2, in: persisted), root.id)
+        XCTAssertEqual(persisted[2].text, "Child")
+    }
+
     func testFreeIPhoneModelRejectsMemoConversionWithoutChangingNote() async throws {
         let pro = ProEntitlement.shared
         pro.setTestOverride(false)

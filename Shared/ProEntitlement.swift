@@ -44,6 +44,17 @@ enum ProFeatureAccess {
     static func allows(_ feature: ProFeature, isPro: Bool, isAlreadyActive: Bool = false) -> Bool {
         isPro || isAlreadyActive
     }
+
+    /// A sibling may inherit an existing depth without unlocking hierarchy changes.
+    /// Inserting before descendants at a shallower depth would reparent them.
+    static func preservesTaskDepth(_ depth: Int, at position: Int, in tasks: [TildoneDomain.Task]) -> Bool {
+        guard depth >= 0, position >= 0, position <= tasks.count else { return false }
+        if depth == 0 { return true }
+        if position < tasks.count, tasks[position].indentLevel == depth { return true }
+        guard let siblingIndex = tasks[..<position].lastIndex(where: { $0.indentLevel <= depth }),
+              tasks[siblingIndex].indentLevel == depth else { return false }
+        return TaskHierarchy.insertionIndexAfterSubtree(startingAt: siblingIndex, in: tasks) == position
+    }
 }
 
 enum ProAccessError: Error {
