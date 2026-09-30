@@ -48,11 +48,16 @@ struct CoordinatorWindowVisibility: NSViewRepresentable {
         private func updateWindowVisibility() {
             guard let window else { return }
             CoordinatorWindowVisibility.disableRestoration(for: window)
+            // SwiftUI can order the scene front after this view attaches. Make
+            // the coordinator invisible before that happens, including its chrome.
+            window.alphaValue = isVisible ? 1 : 0
+            window.ignoresMouseEvents = !isVisible
             if isVisible {
                 window.makeKeyAndOrderFront(nil)
             } else {
                 window.orderOut(nil)
-                DispatchQueue.main.async { [weak window] in
+                DispatchQueue.main.async { [weak self, weak window] in
+                    guard let self, !self.isVisible, self.window === window else { return }
                     window?.orderOut(nil)
                 }
             }

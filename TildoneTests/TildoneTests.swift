@@ -3315,6 +3315,38 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testCoordinatorStaysInvisibleWhenSwiftUIOrdersItFrontDuringLaunch() async {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 32, height: 64),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        defer { window.orderOut(nil) }
+        let coordinator = CoordinatorWindowVisibility.CoordinatorView(isVisible: false)
+        window.contentView = coordinator
+
+        // Simulate SwiftUI ordering the scene after the view has attached.
+        window.orderFront(nil)
+        XCTAssertEqual(window.alphaValue, 0)
+        XCTAssertTrue(window.ignoresMouseEvents)
+
+        // An error arriving before deferred cleanup must remain visible.
+        coordinator.isVisible = true
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        XCTAssertEqual(window.alphaValue, 1)
+        XCTAssertFalse(window.ignoresMouseEvents)
+        XCTAssertTrue(window.isVisible)
+
+        coordinator.isVisible = false
+        XCTAssertEqual(window.alphaValue, 0)
+        XCTAssertTrue(window.ignoresMouseEvents)
+        XCTAssertFalse(window.isVisible)
+    }
+
+    @MainActor
     func testActiveNativeTaskEditorRejectsStaleModelWriteback() {
         XCTAssertFalse(
             MouseSafeTaskTextField.shouldApplyModelText(
