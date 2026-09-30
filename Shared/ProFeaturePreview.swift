@@ -6,6 +6,7 @@ import TildoneDomain
 struct ProFeaturePreview: View {
     let feature: ProFeature
     var canvasSize = CGSize(width: 360, height: 360)
+    var previewDefaults: UserDefaults = .standard
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -17,6 +18,25 @@ struct ProFeaturePreview: View {
     #else
     @State private var preview: Image?
     #endif
+
+    init(feature: ProFeature, canvasSize: CGSize = CGSize(width: 360, height: 360),
+         previewDefaults: UserDefaults = .standard) {
+        self.feature = feature
+        self.canvasSize = canvasSize
+        self.previewDefaults = previewDefaults
+        #if os(macOS)
+        _backgroundOpacity = AppStorage(
+            wrappedValue: Double(NoteWindowBackground.defaultAlpha),
+            NoteWindowBackground.opacityStorageKey,
+            store: previewDefaults
+        )
+        _noteColorRawValue = AppStorage(
+            wrappedValue: NoteColor.yellow.legacyRawValue,
+            NoteColor.storageKey,
+            store: previewDefaults
+        )
+        #endif
+    }
 
     var body: some View {
         Group {

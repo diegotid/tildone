@@ -2,7 +2,8 @@ import SwiftUI
 
 struct TildoneiOSAboutView: View {
     @State private var showsPro = false
-    @State private var showsWhatsNew = false
+    @State private var showsWelcome = false
+    @State private var showsMacDownload = false
     private var version: String? {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
     }
@@ -33,7 +34,8 @@ struct TildoneiOSAboutView: View {
             }
 
             Section {
-                Button("What’s New") { showsWhatsNew = true }
+                Button("Welcome to Tildone") { showsWelcome = true }
+                Button("Get Tildone for Mac") { showsMacDownload = true }
                 NavigationLink("Font Attributions") {
                     FontAttributionsView()
                 }
@@ -41,11 +43,12 @@ struct TildoneiOSAboutView: View {
         }
         .navigationTitle("About Tildone")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showsWhatsNew) {
-            WhatsNewView {
-                showsWhatsNew = false
+        .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {
+            WelcomeOnboardingView {
+                showsWelcome = false
             }
         }
+        .sheet(isPresented: $showsMacDownload) { GetTildoneForMacView() }
         .sheet(isPresented: $showsPro) {
             ProPaywallView(feature: nil)
         }

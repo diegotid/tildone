@@ -279,6 +279,7 @@ struct TildoneApp: App {
             }
         }
         .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
         .defaultPosition(.center)
         .commandsRemoved()
         Window("Tildone Pro", id: "tildonePro") {

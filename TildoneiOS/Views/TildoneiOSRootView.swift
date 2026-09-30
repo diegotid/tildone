@@ -12,8 +12,8 @@ import TildoneSync
 struct TildoneiOSRootView: View {
     @ObservedObject var appModel: TildoneiOSApplicationModel
     @ObservedObject private var pro = ProEntitlement.shared
-    @State private var showsWhatsNew = false
-    @State private var checkedWhatsNew = false
+    @State private var showsWelcome = false
+    @State private var checkedWelcome = false
 
     var body: some View {
         Group {
@@ -28,21 +28,21 @@ struct TildoneiOSRootView: View {
                 try await appModel.undoLatestAction()
             }
         }
-        .onAppear { presentWhatsNewIfReady() }
-        .onChange(of: appModel.hasWorkspace) { _, _ in presentWhatsNewIfReady() }
-        .sheet(isPresented: $showsWhatsNew) {
-            WhatsNewView {
-                showsWhatsNew = false
+        .onAppear { presentWelcomeIfReady() }
+        .onChange(of: appModel.hasWorkspace) { _, _ in presentWelcomeIfReady() }
+        .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {
+            WelcomeOnboardingView {
+                showsWelcome = false
             }
         }
         .sheet(item: $pro.requestedFeature) { feature in
             ProPaywallView(feature: feature)
         }
     }
-    private func presentWhatsNewIfReady() {
-        guard appModel.hasWorkspace, !checkedWhatsNew, !WhatsNewRelease.isIsolatedProcess else { return }
-        checkedWhatsNew = true
-        showsWhatsNew = WhatsNewRelease.shouldPresent()
+    private func presentWelcomeIfReady() {
+        guard appModel.hasWorkspace, !checkedWelcome, !WhatsNewRelease.isIsolatedProcess else { return }
+        checkedWelcome = true
+        showsWelcome = WelcomeOnboarding.shouldPresent()
     }
 }
 

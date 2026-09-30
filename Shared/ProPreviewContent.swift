@@ -30,12 +30,13 @@ struct ProPreviewContent {
         let examples: [(String, Int, Bool)]
         switch feature {
         case .singleMemo:
-            examples = [(String(localized: "Remember to call the electrician on Monday about the kitchen lights. Ask for a morning appointment and a quote.", bundle: bundle, locale: locale), 0, false)]
+            examples = [(String(localized: "Remember to call the electrician on Monday", bundle: bundle, locale: locale), 0, false)]
         case .subtasks:
             examples = [
                 (String(localized: "Plan a weekend away", bundle: bundle, locale: locale), 0, false),
                 (String(localized: "Choose a place", bundle: bundle, locale: locale), 1, true),
-                (String(localized: "Book the trip", bundle: bundle, locale: locale), 1, false)
+                (String(localized: "Book the trip", bundle: bundle, locale: locale), 1, false),
+                (String(localized: "Pack a bag", bundle: bundle, locale: locale), 0, false)
             ]
         default:
             examples = [

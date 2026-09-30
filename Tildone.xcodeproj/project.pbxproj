@@ -220,7 +220,6 @@
 		B92900000000000000000201 /* WhatsNewRelease.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000101 /* WhatsNewRelease.swift */; };
 		B92900000000000000000301 /* WhatsNewRelease.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000101 /* WhatsNewRelease.swift */; };
 		B92900000000000000000202 /* WhatsNewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000102 /* WhatsNewView.swift */; };
-		B92900000000000000000302 /* WhatsNewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000102 /* WhatsNewView.swift */; };
 		B92900000000000000000203 /* WhatsNewPreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000103 /* WhatsNewPreviewContent.swift */; };
 		B92900000000000000000303 /* WhatsNewPreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000103 /* WhatsNewPreviewContent.swift */; };
 		B92900000000000000000204 /* WhatsNewEverydayPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000104 /* WhatsNewEverydayPreview.swift */; };
@@ -232,6 +231,15 @@
 		B92900000000000000000309 /* WhatsNewiOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92900000000000000000109 /* WhatsNewiOSUITests.swift */; };
 		B9290000000000000000020A /* ProFeatureBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9290000000000000000010A /* ProFeatureBadge.swift */; };
 		B9290000000000000000030A /* ProFeatureBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9290000000000000000010A /* ProFeatureBadge.swift */; };
+		B93000000000000000000201 /* CompanionAppLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000101 /* CompanionAppLink.swift */; };
+		B93000000000000000000301 /* CompanionAppLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000101 /* CompanionAppLink.swift */; };
+		B93000000000000000000202 /* CompanionPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000102 /* CompanionPreview.swift */; };
+		B93000000000000000000302 /* CompanionPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000102 /* CompanionPreview.swift */; };
+		B93000000000000000000203 /* CompanionDownloadQRCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000103 /* CompanionDownloadQRCode.swift */; };
+		B93000000000000000000204 /* WelcomeOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000104 /* WelcomeOnboarding.swift */; };
+		B93000000000000000000304 /* WelcomeOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000104 /* WelcomeOnboarding.swift */; };
+		B93000000000000000000305 /* WelcomeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000105 /* WelcomeOnboardingView.swift */; };
+		B93000000000000000000306 /* GetTildoneForMacView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000106 /* GetTildoneForMacView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -464,6 +472,12 @@
 		B92900000000000000000108 /* WhatsNewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewUITests.swift; sourceTree = "<group>"; };
 		B92900000000000000000109 /* WhatsNewiOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewiOSUITests.swift; sourceTree = "<group>"; };
 		B9290000000000000000010A /* ProFeatureBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProFeatureBadge.swift; sourceTree = "<group>"; };
+		B93000000000000000000101 /* CompanionAppLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionAppLink.swift; sourceTree = "<group>"; };
+		B93000000000000000000102 /* CompanionPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionPreview.swift; sourceTree = "<group>"; };
+		B93000000000000000000103 /* CompanionDownloadQRCode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionDownloadQRCode.swift; sourceTree = "<group>"; };
+		B93000000000000000000104 /* WelcomeOnboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeOnboarding.swift; sourceTree = "<group>"; };
+		B93000000000000000000105 /* WelcomeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeOnboardingView.swift; sourceTree = "<group>"; };
+		B93000000000000000000106 /* GetTildoneForMacView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GetTildoneForMacView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -599,6 +613,7 @@
 			children = (
 				E92500000000000000000402 /* Pro */,
 				Z70000000000000000000102 /* About/TildoneiOSAboutView.swift */,
+				B93000000000000000000001 /* Onboarding */,
 				C10000000000000000000016 /* TildoneiOSRootView.swift */,
 				U10000000000000000000012 /* TildoneiOSUndoOverlay.swift */,
 				C10000000000000000000024 /* Notes */,
@@ -1126,8 +1141,21 @@
 				B92900000000000000000103 /* WhatsNewPreviewContent.swift */,
 				B92900000000000000000104 /* WhatsNewEverydayPreview.swift */,
 				B92900000000000000000105 /* FeatureDiscoveryTip.swift */,
+				B93000000000000000000104 /* WelcomeOnboarding.swift */,
+				B93000000000000000000103 /* CompanionDownloadQRCode.swift */,
+				B93000000000000000000102 /* CompanionPreview.swift */,
+				B93000000000000000000101 /* CompanionAppLink.swift */,
 			);
 			path = Discovery;
+			sourceTree = "<group>";
+		};
+		B93000000000000000000001 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				B93000000000000000000105 /* WelcomeOnboardingView.swift */,
+				B93000000000000000000106 /* GetTildoneForMacView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1412,10 +1440,14 @@
 				E92500000000000000000302 /* ProPreviewContent.swift in Sources */,
 				E92500000000000000000303 /* ProFeaturePreview.swift in Sources */,
 				B92900000000000000000301 /* WhatsNewRelease.swift in Sources */,
-				B92900000000000000000302 /* WhatsNewView.swift in Sources */,
 				B92900000000000000000303 /* WhatsNewPreviewContent.swift in Sources */,
 				B92900000000000000000304 /* WhatsNewEverydayPreview.swift in Sources */,
 				B92900000000000000000305 /* FeatureDiscoveryTip.swift in Sources */,
+				B93000000000000000000306 /* GetTildoneForMacView.swift in Sources */,
+				B93000000000000000000305 /* WelcomeOnboardingView.swift in Sources */,
+				B93000000000000000000304 /* WelcomeOnboarding.swift in Sources */,
+				B93000000000000000000302 /* CompanionPreview.swift in Sources */,
+				B93000000000000000000301 /* CompanionAppLink.swift in Sources */,
 				B9290000000000000000030A /* ProFeatureBadge.swift in Sources */,
 				E92500000000000000000307 /* ProPreviewMotion.swift in Sources */,
 				E92500000000000000000306 /* ProPreviewScene.swift in Sources */,
@@ -1499,6 +1531,10 @@
 				B92900000000000000000203 /* WhatsNewPreviewContent.swift in Sources */,
 				B92900000000000000000204 /* WhatsNewEverydayPreview.swift in Sources */,
 				B92900000000000000000205 /* FeatureDiscoveryTip.swift in Sources */,
+				B93000000000000000000204 /* WelcomeOnboarding.swift in Sources */,
+				B93000000000000000000203 /* CompanionDownloadQRCode.swift in Sources */,
+				B93000000000000000000202 /* CompanionPreview.swift in Sources */,
+				B93000000000000000000201 /* CompanionAppLink.swift in Sources */,
 				B9290000000000000000020A /* ProFeatureBadge.swift in Sources */,
 				E92500000000000000000207 /* ProPreviewMotion.swift in Sources */,
 				E92500000000000000000204 /* ProPreviewScene.swift in Sources */,

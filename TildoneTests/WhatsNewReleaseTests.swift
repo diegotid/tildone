@@ -1,6 +1,7 @@
 import XCTest
 import SwiftUI
 import TipKit
+import CoreImage
 @testable import Tildone
 
 final class WhatsNewReleaseTests: XCTestCase {
@@ -93,9 +94,69 @@ final class WhatsNewReleaseTests: XCTestCase {
     }
 
     func testMacHighlightsCoverEveryProFeatureAfterFreeImprovements() {
-        XCTAssertEqual(WhatsNewRelease.steps.first, .everyday)
+        XCTAssertEqual(WhatsNewRelease.steps.first, .companion)
+        XCTAssertTrue(WhatsNewRelease.Step.companion.features.isEmpty)
         XCTAssertTrue(WhatsNewRelease.Step.everyday.features.isEmpty)
         XCTAssertEqual(Set(WhatsNewRelease.steps.flatMap(\.features)), Set(ProFeature.catalog))
+    }
+
+    func testWelcomeCompletionIsIndependentOfReleaseHighlightsAndVersion() {
+        XCTAssertTrue(WelcomeOnboarding.shouldPresent(defaults: defaults))
+        WhatsNewRelease.acknowledge(defaults: defaults)
+        XCTAssertTrue(WelcomeOnboarding.shouldPresent(defaults: defaults))
+        WelcomeOnboarding.finish(defaults: defaults)
+        let reopened = UserDefaults(suiteName: suiteName)!
+        XCTAssertFalse(WelcomeOnboarding.shouldPresent(defaults: reopened))
+        XCTAssertTrue(WhatsNewRelease.shouldPresent(defaults: reopened, contentID: "future-release", version: "2.0"))
+        XCTAssertFalse(WelcomeOnboarding.shouldPresent(defaults: reopened))
+    }
+
+    func testHostedTestsAndPreviewsCannotConsumeLiveWelcomeState() {
+        let completed = UserDefaults.standard.object(forKey: WelcomeOnboarding.completedKey) as? Bool
+        XCTAssertFalse(WelcomeOnboarding.shouldPresent())
+        WelcomeOnboarding.finish()
+        XCTAssertEqual(UserDefaults.standard.object(forKey: WelcomeOnboarding.completedKey) as? Bool, completed)
+    }
+
+    func testCompanionQRCodeResolvesToTheSharedAppStoreListing() throws {
+        let image = try XCTUnwrap(CompanionDownloadQRCode.image)
+        let detector = try XCTUnwrap(CIDetector(ofType: CIDetectorTypeQRCode, context: CIContext(),
+                                              options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]))
+        let code = try XCTUnwrap(detector.features(in: CIImage(cgImage: image)).first as? CIQRCodeFeature)
+        XCTAssertEqual(code.messageString, CompanionAppLink.appStore.absoluteString)
+        XCTAssertEqual(CompanionAppLink.appStore.host, "apps.apple.com")
+    }
+
+    @MainActor
+    func testMacTourFitsWithoutScrollingInEverySupportedLanguage() async throws {
+        for language in ["en", "es", "fr", "zh-Hans"] {
+            for step in WhatsNewRelease.steps {
+                let view = WhatsNewView(startingAt: step, close: {})
+                    .environment(\.locale, Locale(identifier: language))
+                let host = NSHostingView(rootView: view)
+                let window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 760, height: 700),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.contentView = host
+                window.orderFront(nil)
+                defer { window.close() }
+                try await Task.sleep(for: .milliseconds(200))
+                host.layoutSubtreeIfNeeded()
+                host.displayIfNeeded()
+                func containsScrollView(_ view: NSView) -> Bool {
+                    view is NSScrollView || view.subviews.contains(where: containsScrollView)
+                }
+                XCTAssertFalse(containsScrollView(host), "\(language), \(step) must fit without a scroll container")
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let image = NSImage(size: host.bounds.size)
+                image.addRepresentation(bitmap)
+                let attachment = XCTAttachment(image: image)
+                attachment.name = "mac-tour-\(language)-\(step)"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
     }
 
     func testEverydayPreviewUsesColorAndCompletedOrderingWithoutPersisting() {

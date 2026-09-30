@@ -179,7 +179,8 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 1. The main scene bootstraps the shared local-only repository and displays `Desktop` only after it is active; a legacy source is copied/verified by Stage 6 before cutover.
 2. `Desktop` opens one manual note window for every persisted list; if the store is empty, it creates one empty note.
 3. AppKit frame autosaving restores each non-new note’s size and position using its creation timestamp.
-4. `UpdateChecker` opens the What’s New scene after notes are ready for unacknowledged curated `WhatsNewRelease.contentID` content. Close, Escape, native window close, and iPhone swipe dismissal leave it eligible on the next launch. The “Don't show until next version” link suppresses automatic presentation until `CFBundleShortVersionString` changes, without acknowledging content. “Let’s get started” acknowledges the current content. Help or the menu-bar menu → What’s New reopens it; iPhone uses About → What’s New. New installations also receive the overview. Automated tests and Xcode previews skip automatic presentation. Old pending system-note state is discarded.
+4. On Mac, `UpdateChecker` opens What’s New after notes are ready for unacknowledged `WhatsNewRelease.contentID` content. The first step introduces iCloud and iPhone with native checklist previews, an App Store link, and a locally generated QR code. The centered footer counter shares the navigation row. Close opens a menu: “Show again next launch” leaves content unacknowledged; “Don't show until next version” suppresses presentation until `CFBundleShortVersionString` changes. Escape and native window close leave the content eligible. “Let’s get started” acknowledges it. Help or the menu-bar menu reopens the tour. The Mac tour has no vertical scroll container; all five steps must fit in English, Spanish, French, and Simplified Chinese.
+5. iPhone first launch uses a separate two-page welcome tour explaining standalone use, the Mac companion, and iCloud. Skip, Start, and swipe dismissal complete onboarding once per installation, independently of app versions or Mac highlights. About → Welcome to Tildone replays it, and Get Tildone for Mac opens a native download/share sheet. Both onboarding and release discovery skip automatic presentation in tests/previews and never write notes. Old pending system-note state is discarded.
 
 ### Capture and editing
 
@@ -310,6 +311,7 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 - `noteCornerWheelPosition.<note-id>`: installation-local marker that lets Command–Control–wheel restore a wheel-moved note to its last manual origin after relaunch.
 - `knownAppVersion`: retained legacy installation-detection evidence; no longer drives discovery.
 - `seenWhatsNewContent`: the last explicitly completed curated highlights identifier, installation-local.
+- `completedWelcomeOnboarding`: installation-local iPhone first-run completion, independent of release highlights and version numbers.
 - `suppressedWhatsNewVersion`: the marketing version for which the user selected “Don't show until next version”; build-number changes do not reset this installation-local suppression.
 - TipKit discovery state is installation-local; daily hints are limited to hierarchy controls and gesture settings.
 - `NSFullScreenMenuItemEverywhere`: set false during desktop setup.

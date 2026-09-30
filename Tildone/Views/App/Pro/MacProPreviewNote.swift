@@ -9,6 +9,7 @@ struct MacProPreviewNote: View {
     var backgroundOpacity = Double(NoteWindowBackground.defaultAlpha)
     var fontSize: Double = 14
     var truncation: TaskLineTruncation = .multiple
+    var singleMemoScale: CGFloat = 1
     @Environment(\.colorScheme) private var colorScheme
 
     private var foreground: Color {
@@ -22,7 +23,8 @@ struct MacProPreviewNote: View {
                 MouseSafeTaskTextField(
                     richText: .constant(task.richText), taskID: task.id,
                     isFocused: false, placesCaretAtStartOnFocus: false,
-                    fontSize: memoFontSize(for: task), textColor: foreground, cursorColor: foreground,
+                    fontSize: memoFontSize(for: task) * singleMemoScale,
+                    textColor: foreground, cursorColor: foreground,
                     truncation: .multiple,
                     fontName: SingleMemoTypography.fontName(for: content.note.singleMemoFont),
                     alignment: .center,

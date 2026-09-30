@@ -2,6 +2,8 @@ import SwiftUI
 import TildoneDomain
 
 struct WhatsNewEverydayPreview: View {
+    var showsBackdrop = true
+    var showsWindowControls = true
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var colorScheme
     #if os(macOS)
@@ -21,16 +23,18 @@ struct WhatsNewEverydayPreview: View {
         Group {
             #if os(macOS)
             ZStack {
-                SettingsPreviewBackground(size: CGSize(width: 360, height: 360))
+                if showsBackdrop { SettingsPreviewBackground(size: CGSize(width: 360, height: 360)) }
                 VStack(spacing: 0) {
-                    HStack(spacing: 5) {
-                        ForEach(0..<3) { index in
-                            Circle().fill(index == 1 ? Color.yellow : .gray.opacity(0.4))
-                                .frame(width: 12, height: 12)
+                    if showsWindowControls {
+                        HStack(spacing: 5) {
+                            ForEach(0..<3) { index in
+                                Circle().fill(index == 1 ? Color.yellow : .gray.opacity(0.4))
+                                    .frame(width: 12, height: 12)
+                            }
+                            Spacer()
                         }
-                        Spacer()
+                        .padding(.horizontal, 11).frame(height: 26)
                     }
-                    .padding(.horizontal, 11).frame(height: 26)
                     if let image { Image(nsImage: image).resizable().frame(width: 216, height: 262) }
                     else { Color.clear.frame(width: 216, height: 262) }
                 }
@@ -52,13 +56,24 @@ struct WhatsNewEverydayPreview: View {
             #else
             let content = WhatsNewPreviewContent(noteColor: .yellow, movesCompletedTasksToEnd: false, locale: locale).content
             ZStack {
-                (colorScheme == .dark ? Color(white: 0.12) : Color(white: 0.92))
+                if showsBackdrop { (colorScheme == .dark ? Color(white: 0.12) : Color(white: 0.92)) }
                 iOSNote(content)
             }
             .frame(maxWidth: .infinity, minHeight: 340)
             #endif
         }
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 14) {
+                Image(systemName: "magnifyingglass")
+                Spacer()
+                Image(systemName: "arrow.uturn.backward")
+            }
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.2), radius: 2)
+            .padding(16)
+        }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -94,4 +109,8 @@ struct WhatsNewEverydayPreview: View {
         .environment(\.colorScheme, .light)
     }
     #endif
+}
+
+#Preview {
+    WhatsNewEverydayPreview()
 }
