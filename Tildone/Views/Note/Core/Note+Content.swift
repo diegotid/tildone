@@ -407,6 +407,28 @@ extension Note {
         .animation(.easeInOut(duration: 0.2), value: isHoveringMinimizedTaskList)
         .background(WindowAccessor(note: self, window: $noteWindow))
         .onHover { isHoveringMinimizedTaskList = $0 }
+        .background {
+            if isHoveringMinimizedTaskList {
+                Color.clear
+                    .frame(width: 0, height: 0)
+                    .onReceive(timer) { _ in
+                        // SwiftUI can miss the exit when a compact window moves
+                        // or its hover content changes beneath the pointer.
+                        guard let window = noteWindow,
+                              window.isVisible,
+                              window.isOnActiveSpace,
+                              window.frame.contains(NSEvent.mouseLocation),
+                              NSWindow.windowNumber(
+                                at: NSEvent.mouseLocation,
+                                belowWindowWithWindowNumber: 0
+                              ) == window.windowNumber else {
+                            isHoveringMinimizedTaskList = false
+                            return
+                        }
+                    }
+            }
+        }
+        .onDisappear { isHoveringMinimizedTaskList = false }
         .onTapGesture(perform: handleBringUp)
         .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
     }
