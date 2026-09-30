@@ -16,6 +16,40 @@ final class TildonePersistenceTests: XCTestCase {
     private let taskID = TaskID(UUID(uuidString: "30000000-0000-0000-0000-000000000001")!)
     private let createdAt = Date(timeIntervalSince1970: 1_000)
 
+    func testTaskSplitSavesBothStyledHalvesAndOutboundWorkAtomically() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)
+        _ = try await repository.addTask(id: taskID, to: noteID, createdAt: createdAt,
+                                        text: "Head tail", orderToken: OrderToken(rawValue: "a"))
+        let styled = RichText(text: "Head tail").applying(.toggle(.bold), to: .init(location: 0, length: 9))
+        _ = try await repository.editTask(id: taskID, richText: styled)
+        let parts = try XCTUnwrap(styled.split(atUTF16Offset: 5))
+        try await repository.acknowledgeMutations(ids: Set(try await repository.pendingMutations().map(\.id)))
+        let tailID = TaskID()
+        await repository.failNextSaveForTesting()
+        await XCTAssertThrowsPersistenceError(.atomicMutationFailure) {
+            _ = try await repository.replaceEmptyTasksAndAddTask(
+                deleting: [], id: tailID, to: self.noteID, createdAt: self.createdAt,
+                text: parts.tail.text, orderToken: OrderToken(rawValue: "m"), indentLevel: 0,
+                richText: parts.tail, splittingTask: (self.taskID, parts.head)
+            )
+        }
+        let unchanged = try await repository.orderedTasks(in: noteID)
+        XCTAssertEqual(unchanged.map(\.richText), [styled])
+        let rolledBackWork = try await repository.pendingMutations()
+        XCTAssertTrue(rolledBackWork.isEmpty)
+
+        _ = try await repository.replaceEmptyTasksAndAddTask(
+            deleting: [], id: tailID, to: noteID, createdAt: createdAt,
+            text: parts.tail.text, orderToken: OrderToken(rawValue: "m"), indentLevel: 0,
+            richText: parts.tail, splittingTask: (taskID, parts.head)
+        )
+        let persisted = try await repository.orderedTasks(in: noteID)
+        XCTAssertEqual(persisted.map(\.richText), [parts.head, parts.tail])
+        let work = try await repository.pendingMutations()
+        XCTAssertEqual(Set(work.map(\.targetStableID)), [noteID.stringValue, taskID.stringValue, tailID.stringValue])
+    }
+
     func testTiedTaskOrderRepairAndInsertionSaveAtomically() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)

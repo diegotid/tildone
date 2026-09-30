@@ -6,6 +6,24 @@ import XCTest
 @testable import TildoneDomain
 
 final class RichTextTests: XCTestCase {
+    func testSplitPreservesUnicodeWhitespaceAndCrossingFormattingSpans() throws {
+        let original = RichText(text: "Plan 🐱 café", spans: [
+            RichTextSpan(range: .init(location: 3, length: 9),
+                         attributes: RichTextAttributes(styleNames: ["bold"]))
+        ])
+        let parts = try XCTUnwrap(original.split(atUTF16Offset: 8))
+        XCTAssertEqual(parts.head.text, "Plan 🐱 ")
+        XCTAssertEqual(parts.tail.text, "café")
+        XCTAssertEqual(parts.head.spans.first?.range, .init(location: 3, length: 5))
+        XCTAssertEqual(parts.tail.spans.first?.range, .init(location: 0, length: 4))
+        XCTAssertEqual(parts.tail.spans.first?.attributes.styles, [.bold])
+        XCTAssertNil(original.split(atUTF16Offset: 6), "Never split inside an emoji surrogate pair")
+        XCTAssertNil(original.split(atUTF16Offset: -1))
+        XCTAssertNil(original.split(atUTF16Offset: 100))
+        XCTAssertEqual(original.split(atUTF16Offset: 0)?.tail, original)
+        XCTAssertEqual(original.split(atUTF16Offset: original.utf16Count)?.head, original)
+    }
+
     func testCodableRoundTripPreservesCanonicalAndUnknownAttributes() throws {
         let value = RichText(
             text: "Plan café",

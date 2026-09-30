@@ -38,6 +38,7 @@ final class MacSharedStore: ObservableObject {
     private var pendingTaskTextEdits: [TaskID: PendingTaskTextEdit] = [:]
     private var taskTextEditWorkers: [TaskID: Swift.Task<Void, Never>] = [:]
     private var stagedTaskInsertions: [TaskID: StagedTaskInsertion] = [:]
+    private var inFlightTaskTextEdits: [TaskID: Swift.Task<Task, Error>] = [:]
     private var stagedTaskInsertionWaiters: [TaskID: [CheckedContinuation<Void, Never>]] = [:]
     private var pendingNoteTitleEdits: [NoteID: PendingNoteTitleEdit] = [:]
     private var noteTitleEditWorkers: [NoteID: Swift.Task<Void, Never>] = [:]
@@ -55,6 +56,9 @@ final class MacSharedStore: ObservableObject {
         let preservesExistingDepth: Bool
         let orderUpdates: [TaskStructureUpdate]
         let presentationRevision: UInt64
+        var splittingTask: (id: TaskID, head: RichText)? = nil
+        var sourceTextWrite: Swift.Task<Task, Error>? = nil
+        var retiredSourceEdit: PendingTaskTextEdit? = nil
     }
 
     private struct PendingNoteTitleEdit {
@@ -448,7 +452,8 @@ final class MacSharedStore: ObservableObject {
         deleting emptyTaskIDs: Set<TaskID>,
         indentLevel: Int,
         text: String = "",
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        richText: RichText? = nil
     ) throws -> Task {
         guard let snapshot = note(noteID) else { throw PersistenceError.missing(.note, noteID.stringValue) }
         let preservesExistingDepth = ProFeatureAccess.preservesTaskDepth(
@@ -472,7 +477,7 @@ final class MacSharedStore: ObservableObject {
             id: TaskID(),
             noteID: noteID,
             createdAt: createdAt,
-            text: text,
+            richText: richText ?? RichText(text: text),
             textVersion: stamp,
             completionVersion: stamp,
             orderToken: placement.token,
@@ -493,12 +498,38 @@ final class MacSharedStore: ObservableObject {
         return task
     }
 
+    func stageTaskSplit(
+        _ id: TaskID,
+        in noteID: NoteID,
+        atUTF16Offset offset: Int
+    ) throws -> Task {
+        guard let snapshot = note(noteID),
+              let index = snapshot.tasks.firstIndex(where: { $0.id == id }),
+              let parts = snapshot.tasks[index].richText.split(atUTF16Offset: offset),
+              !parts.head.text.isEmpty, !parts.tail.text.isEmpty else {
+            throw PersistenceError.domainInvariant
+        }
+        let source = snapshot.tasks[index]
+        let insertion = TaskHierarchy.insertionIndexAfterSubtree(startingAt: index, in: snapshot.tasks)
+        let tail = try stageEmptyTaskInsertion(
+            in: noteID, at: insertion, deleting: [], indentLevel: source.indentLevel,
+            text: parts.tail.text, richText: parts.tail
+        )
+        // The split itself saves the latest typing value. Retire its queued
+        // full-text edit so it cannot overwrite the shortened head afterward.
+        stagedTaskInsertions[tail.id]?.retiredSourceEdit = pendingTaskTextEdits.removeValue(forKey: id)
+        stagedTaskInsertions[tail.id]?.sourceTextWrite = inFlightTaskTextEdits[id]
+        stagedTaskInsertions[tail.id]?.splittingTask = (id, parts.head)
+        refreshPresentationEdits(for: noteID)
+        return tail
+    }
+
     func commitStagedTaskInsertion(
         _ task: Task,
         deleting emptyTaskIDs: Set<TaskID>
     ) async throws {
+        let staged = stagedTaskInsertions[task.id]
         do {
-            let staged = stagedTaskInsertions[task.id]
             let preservesExistingDepth = staged?.preservesExistingDepth == true
                 && staged?.task.noteID == task.noteID
                 && staged?.task.indentLevel == task.indentLevel
@@ -507,6 +538,12 @@ final class MacSharedStore: ObservableObject {
                 .subtasks, isAlreadyActive: preservesExistingDepth, in: task.noteID
             ) {
                 throw ProAccessError.requiresPro
+            }
+            if let source = staged?.splittingTask {
+                // Wait only for a write already submitted before Enter. New
+                // edits to either half wait for the atomic split instead.
+                _ = try? await staged?.sourceTextWrite?.value
+                await waitForStagedTaskInsertion(source.id)
             }
             for id in emptyTaskIDs {
                 await waitForPendingTaskTextEdit(for: id)
@@ -522,7 +559,9 @@ final class MacSharedStore: ObservableObject {
                 text: task.text,
                 orderToken: task.orderToken,
                 indentLevel: task.indentLevel,
-                orderUpdates: staged?.orderUpdates ?? []
+                orderUpdates: staged?.orderUpdates ?? [],
+                richText: task.richText,
+                splittingTask: staged?.splittingTask
             )
             CompletedTaskOrderPreference.removeOriginalOrderTokens(for: emptyTaskIDs)
             finishStagedTaskInsertion(task.id)
@@ -530,6 +569,11 @@ final class MacSharedStore: ObservableObject {
             scheduleSyncNotification()
         } catch {
             finishStagedTaskInsertion(task.id)
+            if let source = staged?.splittingTask,
+               let retiredEdit = staged?.retiredSourceEdit,
+               pendingTaskTextEdits[source.id] == nil {
+                queueTaskTextEdit(source.id, richText: retiredEdit.richText, onFailure: retiredEdit.onFailure)
+            }
             try? await reload(task.noteID)
             throw error
         }
@@ -1243,10 +1287,17 @@ private extension MacSharedStore {
         let editedNoteID = noteID(containing: id)
         while let edit = pendingTaskTextEdits[id] {
             await waitForStagedTaskInsertion(id)
+            if let split = stagedTaskInsertions.values.first(where: { $0.splittingTask?.id == id }) {
+                await waitForStagedTaskInsertion(split.task.id)
+            }
             guard pendingTaskTextEdits[id]?.revision == edit.revision else { continue }
             do {
-                _ = try await repository.editTask(id: id, richText: edit.richText)
+                let write = Swift.Task { try await repository.editTask(id: id, richText: edit.richText) }
+                inFlightTaskTextEdits[id] = write
+                defer { inFlightTaskTextEdits[id] = nil }
+                _ = try await write.value
             } catch {
+                guard pendingTaskTextEdits[id]?.revision == edit.revision else { continue }
                 let latest = pendingTaskTextEdits.removeValue(forKey: id) ?? edit
                 taskTextEditWorkers[id] = nil
                 if let editedNoteID { try? await reload(editedNoteID) }
@@ -1341,9 +1392,9 @@ private extension MacSharedStore {
             }
             visibleTasks.sort(by: Task.orderedBefore)
             let tasks = visibleTasks.map { task in
-                pendingTaskTextEdits[task.id].map {
-                    presentationTask(task, richText: $0.richText)
-                } ?? task
+                let splitHead = staged.compactMap(\.splittingTask).last(where: { $0.id == task.id })?.head
+                let richText = pendingTaskTextEdits[task.id]?.richText ?? splitHead
+                return richText.map { presentationTask(task, richText: $0) } ?? task
             }
             return MacNoteSnapshot(note: note, tasks: tasks)
         }

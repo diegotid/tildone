@@ -523,7 +523,14 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             switch commandSelector {
             case #selector(NSResponder.insertNewline(_:)):
-                parent.onEnter(textView.selectedRange().location)
+                let cursor = textView.selectedRange().location
+                if cursor > 0, cursor < textView.string.utf16.count {
+                    // Typing is already published. The structural split now
+                    // owns this value; a later blur must not publish it again.
+                    hasLocalEdits = false
+                    preservesCanonicalAfterBlur = false
+                }
+                parent.onEnter(cursor)
                 return true
             case #selector(NSResponder.moveUp(_:)):
                 parent.onMoveUp()

@@ -18,6 +18,28 @@ public struct RichText: Codable, Hashable, Sendable {
     public var utf16Count: Int { text.utf16.count }
     public var isPlain: Bool { spans.isEmpty }
 
+    /// Splits at a native caret offset, clipping and rebasing formatting spans.
+    public func split(atUTF16Offset offset: Int) -> (head: Self, tail: Self)? {
+        guard offset >= 0, offset <= utf16Count,
+              let index = String.Index(
+                text.utf16.index(text.utf16.startIndex, offsetBy: offset), within: text
+              ) else { return nil }
+        func part(_ text: String, from lower: Int, to upper: Int) -> Self {
+            let clipped = spans.compactMap { span -> RichTextSpan? in
+                let start = max(lower, span.range.location)
+                let end = min(upper, span.range.upperBound)
+                guard start < end else { return nil }
+                return RichTextSpan(
+                    range: RichTextRange(location: start - lower, length: end - start),
+                    attributes: span.attributes
+                )
+            }
+            return Self(text: text, spans: clipped, representationVersion: representationVersion)
+        }
+        return (part(String(text[..<index]), from: 0, to: offset),
+                part(String(text[index...]), from: offset, to: utf16Count))
+    }
+
     public init(
         text: String,
         spans: [RichTextSpan] = [],

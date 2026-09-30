@@ -833,9 +833,13 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         text: String,
         orderToken: OrderToken,
         indentLevel: Int,
-        orderUpdates: [TaskStructureUpdate] = []
+        orderUpdates: [TaskStructureUpdate] = [],
+        richText: RichText? = nil,
+        splittingTask: (id: TaskID, head: RichText)? = nil
     ) throws -> Task {
         guard indentLevel >= 0, !taskIDs.contains(id),
+              richText == nil || richText?.text == text,
+              splittingTask.map({ $0.id != id && !taskIDs.contains($0.id) }) ?? true,
               Set(orderUpdates.map(\.id)).count == orderUpdates.count,
               orderUpdates.allSatisfy({
                   $0.id != id && !taskIDs.contains($0.id) && $0.orderToken != nil
@@ -883,12 +887,28 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             try enqueue(.task, id: existing.id.stringValue, sequence: stamp.logicalCounter, in: context)
         }
 
+        // Persist the shortened source and its new tail together. A failed
+        // save must leave the original task intact.
+        if let splittingTask {
+            let stored = try requireStoredTask(id: splittingTask.id, in: context)
+            var source = try mappedTask(from: stored, expectedNoteID: noteID, in: context)
+            guard source.lifecycle == .active else { throw PersistenceError.domainInvariant }
+            let stamp = try nextStamp(metadata, observing: maxVersion(in: source))
+            do { try source.editRichText(splittingTask.head, version: stamp) }
+            catch { throw PersistenceError.domainInvariant }
+            try promoteTaskToCurrentSchema(&source, version: stamp)
+            try StoredDomainMapping.update(stored, from: source)
+            try upsertTaskIndentation(for: source, in: context)
+            try upsertTaskRichText(for: source, in: context)
+            try enqueue(.task, id: source.id.stringValue, sequence: stamp.logicalCounter, in: context)
+        }
+
         let taskStamp = try nextStamp(metadata)
         let task = Task(
             id: id,
             noteID: noteID,
             createdAt: createdAt,
-            text: text,
+            richText: richText ?? RichText(text: text),
             textVersion: taskStamp,
             completionVersion: taskStamp,
             orderToken: orderToken,

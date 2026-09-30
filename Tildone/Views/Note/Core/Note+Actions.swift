@@ -585,7 +585,44 @@ extension Note {
 
     func handleEnter(for task: TildoneDomain.Task, cursor: Int?) {
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        let cursor = cursor ?? task.text.count
+        // Native typing publishes before SwiftUI rebuilds the row callback.
+        // Use that latest value when deciding whether the caret is in the middle.
+        let task = tasks[index]
+        let cursor = cursor ?? task.richText.utf16Count
+        if cursor > 0, cursor < task.richText.utf16Count {
+            // Commit the active editor's final value before moving focus so
+            // its blur callback cannot write the unsplit text over the head.
+            noteWindow?.makeFirstResponder(nil)
+            nativeFocusedTaskID = nil
+            focusedTaskID = nil
+            skipsNextTaskCountBottomScroll = true
+            let tail: TildoneDomain.Task
+            do {
+                tail = try store.stageTaskSplit(task.id, in: noteID, atUTF16Offset: cursor)
+            } catch {
+                skipsNextTaskCountBottomScroll = false
+                focusTaskUsingKeyboard(task.id)
+                mutationErrorMessage = Self.mutationFailureMessage(
+                    operation: "Error on task creation", error: error
+                )
+                return
+            }
+            // Let AppKit finish the Return/blur delegate cycle before handing
+            // its shared field editor to the new row. This never waits on I/O.
+            DispatchQueue.main.async { focusTaskUsingKeyboard(tail.id) }
+            Swift.Task {
+                do {
+                    try await store.commitStagedTaskInsertion(tail, deleting: [])
+                } catch {
+                    skipsNextTaskCountBottomScroll = false
+                    focusTaskUsingKeyboard(task.id)
+                    mutationErrorMessage = Self.mutationFailureMessage(
+                        operation: "Error on task creation", error: error
+                    )
+                }
+            }
+            return
+        }
         let insertion = cursor == 0
             ? index
             : TaskHierarchy.insertionIndexAfterSubtree(startingAt: index, in: tasks)

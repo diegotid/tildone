@@ -3003,6 +3003,129 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testTaskSplitPreservesNestedDepthAndEditsTypedDuringCommit() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Head tail")
+        let following = try await store.addTask(to: note.id, text: "Following")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+        var headWorker: Swift.Task<Void, Never>?
+        var tailWorker: Swift.Task<Void, Never>?
+        let tail = try store.stageTaskSplit(child.id, in: note.id, atUTF16Offset: 5)
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.text), ["Parent", "Head ", "tail", "Following"])
+        headWorker = store.queueTaskTextEdit(child.id, text: "Edited head") { error in
+            XCTFail("Head edit failed: \(error)")
+        }
+        tailWorker = store.queueTaskTextEdit(tail.id, text: "Edited tail") { error in
+            XCTFail("Tail edit failed: \(error)")
+        }
+        try await store.commitStagedTaskInsertion(tail, deleting: [])
+        await headWorker?.value
+        await tailWorker?.value
+        let persisted = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(persisted.map(\.text), ["Parent", "Edited head", "Edited tail", "Following"])
+        XCTAssertEqual(persisted.map(\.indentLevel), [0, 1, 1, 0])
+        XCTAssertEqual(persisted.first?.id, parent.id)
+        XCTAssertEqual(persisted[1].id, child.id)
+        XCTAssertEqual(persisted.last?.id, following.id)
+    }
+
+    @MainActor
+    func testTaskSplitStagesLatestTypingAndRepeatedSplitsBeforeAnySave() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let original = try await store.addTask(to: note.id, text: "Old")
+        let typing = store.queueTaskTextEdit(original.id, text: "One two three") { error in
+            XCTFail("Typing failed: \(error)")
+        }
+        // No suspension: both splits must be visible before any worker runs.
+        let second = try store.stageTaskSplit(original.id, in: note.id, atUTF16Offset: 4)
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.text), ["One ", "two three"])
+        let third = try store.stageTaskSplit(second.id, in: note.id, atUTF16Offset: 4)
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.text), ["One ", "two ", "three"])
+        let beforeSave = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(beforeSave.map(\.text), ["Old"])
+        try await store.commitStagedTaskInsertion(second, deleting: [])
+        try await store.commitStagedTaskInsertion(third, deleting: [])
+        await typing.value
+        let persisted = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(persisted.map(\.text), ["One ", "two ", "three"])
+    }
+
+    @MainActor
+    func testNativeTaskReturnSplitsAtCaretAndFocusesTailInBothLayouts() async throws {
+        for truncation in [TaskLineTruncation.single, .multiple] {
+            let defaults = UserDefaults.standard
+            let previous = defaults.object(forKey: TaskLineTruncation.storageKey)
+            defaults.set(truncation.rawValue, forKey: TaskLineTruncation.storageKey)
+            defer {
+                if let previous { defaults.set(previous, forKey: TaskLineTruncation.storageKey) }
+                else { defaults.removeObject(forKey: TaskLineTruncation.storageKey) }
+            }
+            let repository = try TildoneRepository(descriptor: .inMemory())
+            let store = MacSharedStore(repository: repository)
+            let note = try await store.createNote()
+            let original = try await store.addTask(to: note.id, text: "Old")
+            let following = try await store.addTask(to: note.id, text: "Following")
+            let presentation = try XCTUnwrap(store.presentation(for: note.id))
+            let window = MacNoteWindow(
+                contentRect: NSRect(x: 100, y: 100, width: 360, height: 500),
+                styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+            )
+            window.isReleasedWhenClosed = false
+            let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: note.id))
+            window.setNoteHostingContentView(host)
+            window.makeKeyAndOrderFront(nil)
+            defer { window.close() }
+            func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
+                (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
+            }
+            for _ in 0..<30 {
+                host.layoutSubtreeIfNeeded()
+                if fields(host).contains(where: { $0.taskID == original.id }) { break }
+                try await Swift.Task.sleep(for: .milliseconds(20))
+            }
+            let field = try XCTUnwrap(fields(host).first { $0.taskID == original.id })
+            XCTAssertTrue(window.makeFirstResponder(field))
+            let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+            // Type immediately before Return to exercise pending edits and blur.
+            editor.insertText("Plan 🐱 café!", replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+            editor.setSelectedRange(NSRange(location: 8, length: 0))
+            let event = try XCTUnwrap(NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: window.windowNumber, context: nil,
+                characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36
+            ))
+            window.sendEvent(event)
+            for _ in 0..<100 {
+                host.layoutSubtreeIfNeeded()
+                if store.note(note.id)?.tasks.count == 3,
+                   let tail = store.note(note.id)?.tasks[1],
+                   let tailField = fields(host).first(where: { $0.taskID == tail.id }),
+                   tailField.currentEditor() != nil,
+                   window.firstResponder === tailField.currentEditor() { break }
+                try await Swift.Task.sleep(for: .milliseconds(20))
+            }
+            let tasks = try XCTUnwrap(store.note(note.id)?.tasks)
+            XCTAssertEqual(tasks.map(\.text), ["Plan 🐱 ", "café!", "Following"])
+            guard tasks.count == 3 else { return }
+            XCTAssertEqual(tasks[0].id, original.id)
+            XCTAssertEqual(tasks[2].id, following.id)
+            let tailField = try XCTUnwrap(fields(host).first { $0.taskID == tasks[1].id })
+            let tailEditor = try XCTUnwrap(tailField.currentEditor() as? NSTextView)
+            XCTAssertTrue(window.firstResponder === tailEditor)
+            XCTAssertEqual(tailEditor.selectedRange(), NSRange(location: 0, length: 0))
+            window.makeFirstResponder(nil)
+            try await Swift.Task.sleep(for: .milliseconds(100))
+            let persisted = try await repository.orderedTasks(in: note.id)
+            XCTAssertEqual(persisted.map(\.text), ["Plan 🐱 ", "café!", "Following"])
+        }
+    }
+
+    @MainActor
     func testNativeTaskPasteImportsListInBothRowLayouts() async throws {
         for truncation in [TaskLineTruncation.single, .multiple] {
             try await verifyNativeListPaste(truncation: truncation, intoTitle: false)
