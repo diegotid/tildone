@@ -25,7 +25,6 @@ struct TaskRow: View {
     let isFirst: Bool
     let followsDeeperTask: Bool
     let isShowingRowControls: Bool
-    let isHoveringFromRight: Bool
     let hasSubtasks: Bool
     let isSubtasksCollapsed: Bool
     let subtaskProgress: TaskSubtaskProgress?
@@ -38,8 +37,6 @@ struct TaskRow: View {
     let onNativeBlur: () -> Void
     let onEditLink: () -> Void
     @State private var rowHeight: CGFloat = 0
-    @State private var rowWidth: CGFloat = 0
-    @State private var isPointerInsideRow = false
     @State private var isDropTargeted = false
     @State private var hasHoveredHierarchyControl = false
     let onToggle: () -> Void
@@ -57,7 +54,7 @@ struct TaskRow: View {
     var offersDiscoveryHint = false
     let onDrop: (MacTaskDragPayload, Int) -> Bool
     let onHover: (Bool) -> Void
-    let onRowHover: (Bool, Bool) -> Void
+    let onRowHover: (Bool) -> Void
 
     private var taskControlSize: CGFloat {
         NoteTypography.taskControlSize(for: CGFloat(fontSize))
@@ -87,10 +84,6 @@ struct TaskRow: View {
         max(12, taskLineHeight)
     }
 
-    private var subtaskDisclosureRestingOffset: CGFloat {
-        taskActionControlSize * 3 + 9 + 6 - taskControlsTrailingInset
-    }
-
     private var taskControlsTrailingInset: CGFloat {
         8
     }
@@ -100,7 +93,9 @@ struct TaskRow: View {
     }
 
     private var subtaskControlsWidth: CGFloat {
-        86 + subtaskDisclosureHitTargetWidth - taskActionControlSize
+        // Reserve the entire strip even while its secondary actions are hidden.
+        // Include the font-scaled drag handle, spacing, and control padding.
+        subtaskDisclosureHitTargetWidth + taskActionControlSize * 2.9 + 25
     }
 
     private var hierarchyTransitionTopSpacing: CGFloat {
@@ -116,7 +111,7 @@ struct TaskRow: View {
     }
 
     private var showsHoverControls: Bool {
-        isShowingRowControls && !isActive && !(hasSubtasks && isHoveringFromRight)
+        isShowingRowControls && !isActive
     }
 
     var body: some View {
@@ -250,26 +245,6 @@ struct TaskRow: View {
             }
 
             HStack(spacing: 2) {
-                if hasSubtasks {
-                    Button(action: onToggleSubtasks) {
-                        Image(systemName: isSubtasksCollapsed ? "chevron.right" : "chevron.down")
-                            .font(.system(size: taskActionControlSize * 0.65, weight: .semibold))
-                            .frame(width: taskActionControlSize, height: taskActionControlSize)
-                            .frame(
-                                width: subtaskDisclosureHitTargetWidth,
-                                height: taskActionControlSize,
-                                alignment: .trailing
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(taskActionColor)
-                    .contentShape(Rectangle())
-                    .help(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
-                    .accessibilityLabel(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
-                    .offset(x: showsHoverControls ? 0 : subtaskDisclosureRestingOffset)
-                    .animation(.easeInOut(duration: 0.14), value: showsHoverControls)
-                }
-
                 Menu {
                     Button(action: onIndent) {
                         Label {
@@ -341,6 +316,25 @@ struct TaskRow: View {
                 .padding(.leading, 2)
                 .opacity(showsHoverControls ? 1 : 0)
                 .allowsHitTesting(showsHoverControls)
+
+                // Keep disclosure at the trailing edge; hover must never move its hit target.
+                if hasSubtasks {
+                    Button(action: onToggleSubtasks) {
+                        Image(systemName: isSubtasksCollapsed ? "chevron.right" : "chevron.down")
+                            .font(.system(size: taskActionControlSize * 0.65, weight: .semibold))
+                            .frame(width: taskActionControlSize, height: taskActionControlSize)
+                            .frame(
+                                width: subtaskDisclosureHitTargetWidth,
+                                height: taskActionControlSize,
+                                alignment: .trailing
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(taskActionColor)
+                    .contentShape(Rectangle())
+                    .help(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
+                    .accessibilityLabel(isSubtasksCollapsed ? "Expand subtasks" : "Collapse subtasks")
+                }
             }
             .padding(.trailing, taskControlsTrailingInset)
             .frame(
@@ -355,17 +349,7 @@ struct TaskRow: View {
         .padding(.top, followsDeeperTask ? hierarchyTransitionTopSpacing : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .onContinuousHover(coordinateSpace: .local) { phase in
-            switch phase {
-            case .active(let location):
-                guard !isPointerInsideRow else { return }
-                isPointerInsideRow = true
-                onRowHover(true, enteredFromRightEdge(at: location))
-            case .ended:
-                isPointerInsideRow = false
-                onRowHover(false, false)
-            }
-        }
+        .onHover { onRowHover($0) }
         .onChange(of: showsHoverControls) { _, isVisible in
             if offersDiscoveryHint && rowIndex == 1 && isVisible {
                 hasHoveredHierarchyControl = true
@@ -377,10 +361,8 @@ struct TaskRow: View {
                 Color.clear
                     .onAppear {
                         rowHeight = geometry.size.height
-                        rowWidth = geometry.size.width
                     }
                     .onChange(of: geometry.size.height) { _, height in rowHeight = height }
-                    .onChange(of: geometry.size.width) { _, width in rowWidth = width }
             }
         }
         .background(Color.accentColor.opacity(isDropTargeted ? 0.1 : 0))
@@ -391,16 +373,6 @@ struct TaskRow: View {
         } isTargeted: { targeted in
             isDropTargeted = targeted
         }
-    }
-
-    private func enteredFromRightEdge(at location: CGPoint) -> Bool {
-        guard rowWidth > 0, rowHeight > 0 else { return false }
-        let distanceFromRight = rowWidth - location.x
-        let distanceFromLeft = location.x
-        let distanceFromTop = location.y
-        let distanceFromBottom = rowHeight - location.y
-        let closestVerticalEdge = min(distanceFromTop, distanceFromBottom)
-        return distanceFromRight < min(distanceFromLeft, closestVerticalEdge)
     }
 
     private func tagBackgroundColor(from color: Color, noteOpacity: Double) -> Color {

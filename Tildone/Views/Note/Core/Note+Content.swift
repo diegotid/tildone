@@ -680,7 +680,6 @@ extension Note {
             isFirst: task.id == tasks.first?.id,
             followsDeeperTask: followsVisibleDeeperTask(at: index),
             isShowingRowControls: hoveredTaskID == task.id,
-            isHoveringFromRight: isHoveringTaskFromRight,
             hasSubtasks: TaskHierarchy.hasSubtasks(at: index, in: tasks),
             isSubtasksCollapsed: collapsedTaskIDs.contains(task.id),
             subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
@@ -717,13 +716,11 @@ extension Note {
             onHover: { hovering in
                 if hovering { isTopicHidden = false }
             },
-            onRowHover: { hovering, enteredFromRight in
+            onRowHover: { hovering in
                 if hovering {
                     hoveredTaskID = task.id
-                    isHoveringTaskFromRight = enteredFromRight
                 } else if hoveredTaskID == task.id {
                     hoveredTaskID = nil
-                    isHoveringTaskFromRight = false
                 }
             }
         )

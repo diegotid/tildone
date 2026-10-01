@@ -76,7 +76,6 @@ struct MacProPreviewNote: View {
             contentColor: foreground, cursorColor: foreground, searchQuery: "", placeholderColor: foreground,
             truncation: truncation, isFirst: index == 0, followsDeeperTask: false,
             isShowingRowControls: false,
-            isHoveringFromRight: false,
             hasSubtasks: TaskHierarchy.subtaskProgress(at: index, in: content.tasks) != nil,
             isSubtasksCollapsed: false,
             subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: content.tasks),
@@ -85,7 +84,7 @@ struct MacProPreviewNote: View {
             onNativeFocus: {}, onNativeBlur: {}, onEditLink: {}, onToggle: {},
             onEdit: { _ in }, onEnter: { _ in }, onCopy: {}, onPaste: {}, onPastedList: { _ in false },
             onMoveUp: {}, onSubmit: {}, onInsertAbove: {}, onToggleSubtasks: {},
-            onIndent: {}, onOutdent: {}, onDrop: { _, _ in false }, onHover: { _ in }, onRowHover: { _, _ in }
+            onIndent: {}, onOutdent: {}, onDrop: { _, _ in false }, onHover: { _ in }, onRowHover: { _ in }
         )
     }
 }
