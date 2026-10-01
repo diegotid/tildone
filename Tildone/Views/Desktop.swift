@@ -648,15 +648,13 @@ private extension Desktop {
     }
 
     func createAndShowNewNote(at position: CGPoint, color: NoteColor? = nil) {
-        Swift.Task {
-            do {
-                let note = try await store.createNote(color: color)
-                openWindow(for: note, position: position)
-            } catch {
-                noteCreationErrorMessage = String(
-                    localized: "Your existing notes were not changed."
-                )
+        do {
+            let note = try store.createNoteForImmediatePresentation(color: color) { _ in
+                noteCreationErrorMessage = String(localized: "Your existing notes were not changed.")
             }
+            openWindow(for: note, position: position)
+        } catch {
+            noteCreationErrorMessage = String(localized: "Your existing notes were not changed.")
         }
     }
 

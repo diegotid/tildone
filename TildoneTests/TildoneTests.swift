@@ -4256,6 +4256,84 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(store.note(note.id)?.singleTask?.id, stagedTask.id)
     }
 
+    @MainActor
+    func testImmediateNoteCreationPreservesTitleAndTaskEnteredBeforeSave() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try store.createNoteForImmediatePresentation(color: .blue) { XCTFail("\($0)") }
+        XCTAssertEqual(store.note(note.id)?.color, .blue)
+        let titleWrite = store.queueNoteTitleEdit(note.id, title: "Fast capture") { XCTFail("\($0)") }
+        let task = try store.stageEmptyTaskInsertion(in: note.id, at: 0, deleting: [], indentLevel: 0, text: "First task")
+        try await store.commitStagedTaskInsertion(task, deleting: [])
+        await titleWrite.value
+        try await store.reload()
+        let persisted = try await repository.note(id: note.id)
+        XCTAssertEqual(persisted.title, "Fast capture")
+        XCTAssertEqual(persisted.color, .blue)
+        let tasks = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(tasks.map(\.text), ["First task"])
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.id), [task.id])
+    }
+
+    @MainActor
+    func testFailedImmediateNoteCreationRollsBackOnlyTheNewPresentation() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let existing = try await store.createNote()
+        try await store.renameNote(existing.id, to: "Keep me")
+        let deleted = try await store.createNote()
+        try await store.deleteNote(deleted.id)
+        var failed = false
+        _ = try store.createNoteForImmediatePresentation(id: deleted.id) { _ in failed = true }
+        XCTAssertNotNil(store.note(deleted.id))
+        do {
+            try await store.waitForNoteCreation(deleted.id)
+            XCTFail("A reused persisted ID must be rejected")
+        } catch PersistenceError.duplicateID(.note, _) {}
+        XCTAssertTrue(failed)
+        XCTAssertNil(store.note(deleted.id))
+        XCTAssertEqual(store.note(existing.id)?.title, "Keep me")
+    }
+
+    @MainActor
+    func testNewNoteShortcutOpensWindowBeforeReturningAndFocusesTitle() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let existing = try await store.createNote()
+        try await store.renameNote(existing.id, to: "Existing note")
+        let host = NSHostingView(rootView: Desktop(
+            store: store, noteSyncIndicatorState: .hidden, foregroundNoteID: .constant(nil)
+        ))
+        let coordinatorWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        coordinatorWindow.isReleasedWhenClosed = false
+        coordinatorWindow.contentView = host
+        coordinatorWindow.orderFront(nil)
+        defer { coordinatorWindow.close() }
+        host.layoutSubtreeIfNeeded()
+        try await Swift.Task.sleep(for: .milliseconds(150))
+        // Both Cmd-N and the global shortcut dispatch this notification.
+        NotificationCenter.default.post(name: .new, object: nil)
+        let note = try XCTUnwrap(store.notes.first(where: { $0.id != existing.id }))
+        let window = try XCTUnwrap(NSApp.windows.first(where: { $0.title == note.legacyWindowKey }))
+        XCTAssertTrue(window.isVisible, "The new window must exist before the shortcut action returns")
+        var titleField: MouseSafeTaskNSTextField?
+        for _ in 0..<50 {
+            host.layoutSubtreeIfNeeded()
+            let fields: [MouseSafeTaskNSTextField] = window.contentView?.getNestedSubviews() ?? []
+            if let field = fields.first(where: \.isNoteTitleField),
+               let editor = field.currentEditor(), window.firstResponder === editor {
+                titleField = field
+                break
+            }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertNotNil(titleField, "The new title must be ready for typing")
+        try await store.waitForNoteCreation(note.id)
+    }
+
     func testLegacyMacColorLookupPrefersPerNoteValueAndPreservesGlobalFallback() throws {
         let suiteName = "TildoneColorMigrationTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

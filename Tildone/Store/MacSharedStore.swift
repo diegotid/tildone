@@ -42,6 +42,8 @@ final class MacSharedStore: ObservableObject {
     private var stagedTaskInsertionWaiters: [TaskID: [CheckedContinuation<Void, Never>]] = [:]
     private var pendingNoteTitleEdits: [NoteID: PendingNoteTitleEdit] = [:]
     private var noteTitleEditWorkers: [NoteID: Swift.Task<Void, Never>] = [:]
+    private var stagedNoteCreations: [NoteID: MacNoteSnapshot] = [:]
+    private var noteCreationWorkers: [NoteID: Swift.Task<Void, Error>] = [:]
     private var notePresentations: [NoteID: MacNotePresentation] = [:]
 
     private struct PendingTaskTextEdit {
@@ -87,10 +89,22 @@ final class MacSharedStore: ObservableObject {
             snapshots.append(MacNoteSnapshot(note: note, tasks: try await repository.orderedTasks(in: note.id)))
         }
         guard reloadRevision == nextReloadRevision else { return }
+        let persistedIDs = Set(snapshots.map(\.id))
+        snapshots.append(contentsOf: stagedNoteCreations.values.filter { !persistedIDs.contains($0.id) })
+        snapshots.sort {
+            if $0.note.lastMeaningfulEditAt != $1.note.lastMeaningfulEditAt {
+                return $0.note.lastMeaningfulEditAt > $1.note.lastMeaningfulEditAt
+            }
+            return $0.id < $1.id
+        }
         publish(applyingPendingPresentationEdits(to: snapshots))
     }
 
     func reload(_ noteID: NoteID) async throws {
+        if let staged = stagedNoteCreations[noteID] {
+            publish(applyingPendingPresentationEdits(to: [staged])[0])
+            return
+        }
         nextReloadRevision &+= 1
         let reloadRevision = nextReloadRevision
         latestNoteReloadRevisions[noteID] = reloadRevision
@@ -264,7 +278,58 @@ final class MacSharedStore: ObservableObject {
         return snapshot
     }
 
+    /// Publishes the empty note before scheduling storage work, so the shortcut
+    /// can open and focus its window in the same main-thread turn.
+    func createNoteForImmediatePresentation(
+        id: NoteID = NoteID(),
+        createdAt: Date = Date(),
+        color: NoteColor? = nil,
+        onFailure: @escaping (Error) -> Void
+    ) throws -> MacNoteSnapshot {
+        guard note(id) == nil else { throw PersistenceError.duplicateID(.note, id.stringValue) }
+        let stamp = VersionStamp(logicalCounter: 0, replicaID: ReplicaID())
+        let note = TildoneDomain.Note(
+            id: id, createdAt: createdAt, title: nil, titleVersion: stamp,
+            color: color ?? NoteColor.current(), colorVersion: stamp,
+            lifecycleVersion: stamp, lastMeaningfulEditAt: createdAt,
+            lastMeaningfulEditVersion: stamp
+        )
+        let snapshot = MacNoteSnapshot(note: note, tasks: [])
+        stagedNoteCreations[id] = snapshot
+        publish(snapshot)
+        noteCreationWorkers[id] = Swift.Task { [weak self] in
+            guard let self else { return }
+            do {
+                let persisted = try await repository.createNote(
+                    id: id, createdAt: createdAt, title: nil, color: note.color
+                )
+                stagedNoteCreations[id] = nil
+                nextReloadRevision &+= 1
+                latestNoteReloadRevisions[id] = nextReloadRevision
+                // Retain title drafts, memo conversion and task rows that the
+                // user already started while the note itself was being saved.
+                publish(applyingPendingPresentationEdits(to: [
+                    MacNoteSnapshot(note: persisted, tasks: [])
+                ])[0])
+                noteCreationWorkers[id] = nil
+                scheduleSyncNotification()
+            } catch {
+                stagedNoteCreations[id] = nil
+                noteCreationWorkers[id] = nil
+                removePresentation(for: id)
+                onFailure(error)
+                throw error
+            }
+        }
+        return snapshot
+    }
+
+    func waitForNoteCreation(_ id: NoteID) async throws {
+        try await noteCreationWorkers[id]?.value
+    }
+
     func renameNote(_ id: NoteID, to title: String?) async throws {
+        try await waitForNoteCreation(id)
         await waitForPendingTitleEdit(for: id)
         _ = try await repository.renameNote(id: id, to: title, editedAt: Date())
         try await reload(id)
@@ -294,6 +359,7 @@ final class MacSharedStore: ObservableObject {
     }
 
     func setColor(_ color: NoteColor, for id: NoteID) async throws {
+        try await waitForNoteCreation(id)
         guard let previousColor = note(id)?.color, previousColor != color else { return }
         _ = try await repository.setNoteColor(id: id, color: color)
         undoController.recordNoteColor(
@@ -307,6 +373,7 @@ final class MacSharedStore: ObservableObject {
     }
 
     func setSingleMemoFont(_ font: SingleMemoFont, for id: NoteID) async throws {
+        try await waitForNoteCreation(id)
         guard note(id)?.singleMemoFont != font else { return }
         guard ProEntitlement.shared.require(.textStyling, in: id) else { throw ProAccessError.requiresPro }
         _ = try await repository.setSingleMemoFont(id: id, font: font)
@@ -327,6 +394,7 @@ final class MacSharedStore: ObservableObject {
             }
         }
         do {
+            try await waitForNoteCreation(id)
             let isStagedMemo = memoTask.map { task in
                 original.kind == .singleTask && original.tasks.map(\.id) == [task.id]
             } ?? false
@@ -412,6 +480,7 @@ final class MacSharedStore: ObservableObject {
         indentLevel: Int = 0,
         createdAt: Date = Date()
     ) async throws -> Task {
+        try await waitForNoteCreation(noteID)
         let tasks = try await repository.orderedTasks(in: noteID)
         let insertionIndex: Int
         let preservesExistingDepth: Bool
@@ -530,6 +599,7 @@ final class MacSharedStore: ObservableObject {
     ) async throws {
         let staged = stagedTaskInsertions[task.id]
         do {
+            try await waitForNoteCreation(task.noteID)
             let preservesExistingDepth = staged?.preservesExistingDepth == true
                 && staged?.task.noteID == task.noteID
                 && staged?.task.indentLevel == task.indentLevel
@@ -1177,6 +1247,7 @@ final class MacSharedStore: ObservableObject {
     }
 
     func deleteNote(_ id: NoteID) async throws {
+        try await waitForNoteCreation(id)
         guard let deletedSnapshot = note(id) else { return }
         await waitForPendingTitleEdit(for: id)
         for taskID in notes.first(where: { $0.id == id })?.tasks.map(\.id) ?? [] {
@@ -1342,6 +1413,7 @@ private extension MacSharedStore {
     func drainNoteTitleEdits(for id: NoteID) async {
         while let edit = pendingNoteTitleEdits[id] {
             do {
+                try await waitForNoteCreation(id)
                 _ = try await repository.renameNote(id: id, to: edit.title, editedAt: Date())
             } catch {
                 let latest = pendingNoteTitleEdits.removeValue(forKey: id) ?? edit
