@@ -89,7 +89,8 @@ struct TaskRow: View {
     }
 
     private var subtaskDisclosureHitTargetWidth: CGFloat {
-        max(28, taskActionControlSize + 12)
+        // Match the drag handle’s two-point padding instead of leaving a wide gap.
+        taskActionControlSize + 2
     }
 
     private var subtaskControlsWidth: CGFloat {
