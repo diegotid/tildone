@@ -368,26 +368,50 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { return }
+        guard note.kind != kind else { return }
+        guard kind != .singleTask || snapshot.tasks.count <= 1 else {
+            throw PersistenceError.domainInvariant
+        }
+        var tasks = snapshot.tasks
+        if kind == .singleTask {
+            if let task = tasks.first {
+                tasks = [Self.presentationTask(
+                    task,
+                    applying: nil,
+                    richText: task.richText.carryingNoteTitle(note.title)
+                )]
+            } else {
+                let stamp = note.lastMeaningfulEditVersion
+                tasks = [Task(
+                    id: TaskID(),
+                    noteID: noteID,
+                    createdAt: Date(),
+                    text: RichText(text: "").carryingNoteTitle(note.title).text,
+                    textVersion: stamp,
+                    completionVersion: stamp,
+                    orderToken: try OrderToken.between(nil, nil),
+                    orderVersion: stamp,
+                    lifecycleVersion: stamp
+                )]
+            }
+        }
+        let memoTask = tasks.first
         let revision = stage(TildoneiOSNoteSnapshot(
             note: Self.presentationNote(note, kind: kind),
-            tasks: snapshot.tasks
+            tasks: tasks
         ))
         do {
             let persisted = try await withRepository { repository in
-                let persisted = note.kind == kind
-                    ? try await repository.note(id: noteID)
-                    : try await repository.setNoteKind(id: noteID, kind: kind)
-                if kind == .singleTask, try await repository.orderedTasks(in: noteID).isEmpty {
-                    _ = try await repository.addTask(
-                        id: TaskID(),
-                        to: noteID,
-                        createdAt: Date(),
-                        text: "",
-                        orderToken: try OrderToken.between(nil, nil),
-                        indentLevel: 0
+                if kind == .singleTask, snapshot.tasks.isEmpty, let memoTask {
+                    _ = try await repository.convertEmptyNoteToSingleTask(
+                        id: noteID,
+                        taskID: memoTask.id,
+                        createdAt: memoTask.createdAt,
+                        orderToken: memoTask.orderToken
                     )
+                    return try await repository.note(id: noteID)
                 }
-                return persisted
+                return try await repository.setNoteKind(id: noteID, kind: kind)
             }
             publishPersistedNote(persisted, ifCurrentRevision: revision)
             await reconcileSuccessfulMutation(noteID, revision: revision)

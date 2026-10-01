@@ -392,7 +392,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             )
             do {
                 try prefixedTask.editRichText(
-                    singleMemoRichText(from: task.richText, prefixedBy: title),
+                    task.richText.carryingNoteTitle(title),
                     version: taskStamp
                 )
                 try promoteTaskToCurrentSchema(&prefixedTask, version: taskStamp)
@@ -417,25 +417,8 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         return try mappedNote(from: stored, in: context)
     }
 
-    private func singleMemoRichText(from richText: RichText, prefixedBy title: String) -> RichText {
-        let prefix = richText.text.isEmpty ? "\(title):" : "\(title): "
-        let offset = prefix.utf16.count
-        return RichText(
-            text: prefix + richText.text,
-            spans: richText.spans.map { span in
-                RichTextSpan(
-                    range: RichTextRange(location: span.range.location + offset, length: span.range.length),
-                    attributes: span.attributes
-                )
-            },
-            representationVersion: richText.representationVersion
-        )
-    }
-
-    /// Converts an empty checklist into a single memo and creates the memo's
-    /// editable task in the same transaction. Presentation must not expose the
-    /// task before this operation returns because task edits require a durable
-    /// row and stable ownership.
+    /// Converts an empty checklist and creates its titled memo in one transaction.
+    /// Adapters may stage the editor immediately and buffer edits until it is durable.
     public func convertEmptyNoteToSingleTask(
         id: NoteID,
         taskID: TaskID,
@@ -472,7 +455,7 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
             id: taskID,
             noteID: id,
             createdAt: createdAt,
-            text: "",
+            text: RichText(text: "").carryingNoteTitle(note.title).text,
             textVersion: taskStamp,
             completionVersion: taskStamp,
             orderToken: orderToken,

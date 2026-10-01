@@ -150,6 +150,7 @@ struct Note: View {
     @State var singleTaskDraft = RichText(text: "")
     @State var singleTaskDraftID: TaskID?
     @State var stagedSingleMemoTaskID: TaskID?
+    @State var singleMemoTitleCaretOffset: Int?
     // Both capture fields are AppKit-backed; there is no SwiftUI .focused
     // binding to retain a FocusState value or carry a focus request to them.
     @State var focusedField: Field?
@@ -181,6 +182,8 @@ struct Note: View {
                 }
             }
         }
+        .onAppear { presentation.onKindChange = { handleNoteKindChange($0) } }
+        .onDisappear { presentation.onKindChange = nil }
         .overlay(alignment: .bottom) {
             if let proAccessToast, !isMinimized {
                 proAccessHint(for: proAccessToast)

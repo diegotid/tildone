@@ -186,6 +186,18 @@ final class TildonePersistenceTests: XCTestCase {
         XCTAssertEqual(task.text, "Shopping: Buy fruit")
     }
 
+    func testEmptyTitledNoteConversionCarriesTitleIntoMemo() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
+        _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: "  Shopping  ")
+        let task = try await repository.convertEmptyNoteToSingleTask(
+            id: noteID, taskID: taskID, createdAt: createdAt,
+            orderToken: try OrderToken.between(nil, nil)
+        )
+        XCTAssertEqual(task.text, "Shopping")
+        let persisted = try await repository.task(id: taskID)
+        XCTAssertEqual(persisted.text, task.text)
+    }
+
     func testEmptyNoteConversionPersistsMemoTaskAndOutboxAtomically() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory(), replicaID: replica)
         _ = try await repository.createNote(id: noteID, createdAt: createdAt, title: nil)

@@ -44,6 +44,7 @@ final class MacSharedStore: ObservableObject {
     private var noteTitleEditWorkers: [NoteID: Swift.Task<Void, Never>] = [:]
     private var stagedNoteCreations: [NoteID: MacNoteSnapshot] = [:]
     private var noteCreationWorkers: [NoteID: Swift.Task<Void, Error>] = [:]
+    private var stagedSingleMemos: [NoteID: MacNoteSnapshot] = [:]
     private var notePresentations: [NoteID: MacNotePresentation] = [:]
 
     private struct PendingTaskTextEdit {
@@ -389,44 +390,40 @@ final class MacSharedStore: ObservableObject {
         guard let original = note(id) else { throw PersistenceError.missing(.note, id.stringValue) }
         if kind == .singleTask && (original.kind != .singleTask || memoTask != nil) {
             guard ProEntitlement.shared.require(.singleMemo, in: id) else {
+                stagedSingleMemos[id] = nil
                 try? await reload(id)
                 throw ProAccessError.requiresPro
             }
         }
         do {
             try await waitForNoteCreation(id)
-            let isStagedMemo = memoTask.map { task in
-                original.kind == .singleTask && original.tasks.map(\.id) == [task.id]
-            } ?? false
-            if kind == .singleTask, original.tasks.isEmpty || isStagedMemo {
-                let task: Task
-                if let memoTask {
-                    task = memoTask
-                } else {
-                    task = Task(
-                        id: TaskID(),
-                        noteID: id,
-                        createdAt: Date(),
-                        text: "",
-                        textVersion: original.note.lastMeaningfulEditVersion,
-                        completionVersion: original.note.lastMeaningfulEditVersion,
-                        orderToken: try OrderToken.between(nil, nil),
-                        orderVersion: original.note.lastMeaningfulEditVersion,
-                        lifecycleVersion: original.note.lastMeaningfulEditVersion
+            // Let the staged editor render while pending title/task writes settle.
+            await waitForPendingTitleEdit(for: id)
+            if let taskID = original.tasks.first?.id {
+                await waitForPendingTaskTextEdit(for: taskID)
+            }
+            if kind == .singleTask,
+               memoTask != nil || original.tasks.isEmpty {
+                let persistedTasks = try await repository.orderedTasks(in: id)
+                if persistedTasks.isEmpty {
+                    let taskID = memoTask?.id ?? TaskID()
+                    _ = try await repository.convertEmptyNoteToSingleTask(
+                        id: id,
+                        taskID: taskID,
+                        createdAt: memoTask?.createdAt ?? Date(),
+                        orderToken: try memoTask?.orderToken ?? OrderToken.between(nil, nil)
                     )
+                } else {
+                    _ = try await repository.setNoteKind(id: id, kind: kind)
                 }
-                _ = try await repository.convertEmptyNoteToSingleTask(
-                    id: id,
-                    taskID: task.id,
-                    createdAt: task.createdAt,
-                    orderToken: task.orderToken
-                )
             } else if original.kind != kind {
                 _ = try await repository.setNoteKind(id: id, kind: kind)
             }
+            stagedSingleMemos[id] = nil
             try await reload(id)
             scheduleSyncNotification()
         } catch {
+            stagedSingleMemos[id] = nil
             try? await reload(id)
             throw error
         }
@@ -434,17 +431,19 @@ final class MacSharedStore: ObservableObject {
 
     /// Stages an editable memo in presentation state so its editor can receive
     /// focus while the same task is being durably created in the background.
-    func stageEmptySingleMemo(for id: NoteID) throws -> Task? {
+    func stageSingleMemo(for id: NoteID) throws -> Task? {
         guard let snapshot = note(id),
               snapshot.kind == .checklist,
-              snapshot.tasks.isEmpty else { return nil }
+              snapshot.tasks.count <= 1 else { return nil }
         let note = snapshot.note
         let stamp = note.lastMeaningfulEditVersion
-        let task = Task(
+        let task = try snapshot.tasks.first.map {
+            presentationTask($0, richText: $0.richText.carryingNoteTitle(note.title))
+        } ?? Task(
             id: TaskID(),
             noteID: id,
             createdAt: Date(),
-            text: "",
+            text: RichText(text: "").carryingNoteTitle(note.title).text,
             textVersion: stamp,
             completionVersion: stamp,
             orderToken: try OrderToken.between(nil, nil),
@@ -468,7 +467,9 @@ final class MacSharedStore: ObservableObject {
             lastMeaningfulEditVersion: note.lastMeaningfulEditVersion,
             schemaVersion: note.schemaVersion
         )
-        publish(MacNoteSnapshot(note: memo, tasks: [task]))
+        let staged = MacNoteSnapshot(note: memo, tasks: [task])
+        stagedSingleMemos[id] = staged
+        publish(staged)
         return task
     }
 
@@ -1443,6 +1444,7 @@ private extension MacSharedStore {
         to snapshots: [MacNoteSnapshot]
     ) -> [MacNoteSnapshot] {
         snapshots.map { snapshot in
+            let snapshot = stagedSingleMemos[snapshot.id] ?? snapshot
             let note = pendingNoteTitleEdits[snapshot.id].map {
                 presentationNote(snapshot.note, title: $0.title)
             } ?? snapshot.note
@@ -1465,7 +1467,9 @@ private extension MacSharedStore {
             visibleTasks.sort(by: Task.orderedBefore)
             let tasks = visibleTasks.map { task in
                 let splitHead = staged.compactMap(\.splittingTask).last(where: { $0.id == task.id })?.head
-                let richText = pendingTaskTextEdits[task.id]?.richText ?? splitHead
+                let richText = stagedSingleMemos[snapshot.id] == nil
+                    ? pendingTaskTextEdits[task.id]?.richText ?? splitHead
+                    : nil
                 return richText.map { presentationTask(task, richText: $0) } ?? task
             }
             return MacNoteSnapshot(note: note, tasks: tasks)

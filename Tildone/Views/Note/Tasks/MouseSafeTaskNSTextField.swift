@@ -11,6 +11,7 @@ final class MouseSafeTaskNSTextField: NSTextField {
     var isNoteTitleField = false
     var isNewTaskField = false
     var placesCaretAtStartOnFocus = false
+    var caretUTF16OffsetOnFocus: Int?
     var cursorColor = NSColor.textColor
     var onEditorFocus: (() -> Void)?
     var onPastedList: ((NSAttributedString) -> Bool)?
@@ -110,9 +111,13 @@ final class MouseSafeTaskNSTextField: NSTextField {
     }
 
     override func becomeFirstResponder() -> Bool {
+        // Focus callbacks consume the view's one-time conversion request.
+        let caretOffset = caretUTF16OffsetOnFocus ?? (placesCaretAtStartOnFocus ? 0 : nil)
         let becameFirstResponder = super.becomeFirstResponder()
-        if becameFirstResponder, placesCaretAtStartOnFocus {
-            (currentEditor() as? NSTextView)?.selectedRange = NSRange(location: 0, length: 0)
+        if becameFirstResponder, let caretOffset, let editor = currentEditor() as? NSTextView {
+            editor.selectedRange = NSRange(
+                location: min(max(0, caretOffset), editor.string.utf16.count), length: 0
+            )
         }
         return becameFirstResponder
     }

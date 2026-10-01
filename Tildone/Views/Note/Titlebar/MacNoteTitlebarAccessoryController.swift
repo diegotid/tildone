@@ -417,7 +417,7 @@ private struct MacNoteKindMenu: View {
             isAlreadyActive: presentation.snapshot.kind == .singleTask,
             in: noteID
         ) { return }
-        Swift.Task { try? await store.setKind(kind, for: noteID) }
+        presentation.requestKindChange(kind)
     }
 }
 

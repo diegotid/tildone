@@ -12,6 +12,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     let taskID: TaskID
     let isFocused: Bool
     let placesCaretAtStartOnFocus: Bool
+    var caretUTF16OffsetOnFocus: Int? = nil
     let fontSize: CGFloat
     let textColor: Color
     let cursorColor: Color
@@ -86,6 +87,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         context.coordinator.field = field
         field.taskID = taskID
         field.placesCaretAtStartOnFocus = placesCaretAtStartOnFocus
+        field.caretUTF16OffsetOnFocus = caretUTF16OffsetOnFocus
         field.cursorColor = NSColor(cursorColor)
         field.onPastedList = { [weak coordinator = context.coordinator] attributed in
             coordinator?.handlePastedList(attributed) ?? false

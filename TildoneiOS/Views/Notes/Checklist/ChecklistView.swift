@@ -32,6 +32,8 @@ struct ChecklistView: View {
     @State private var pendingTaskInsertionID: TaskID?
     @State private var showsInsertionHint = false
     @State private var singleTaskDraft = RichText(text: "")
+    @State private var singleTaskDraftID: TaskID?
+    @State private var singleMemoTitleCaretOffset: Int?
     @State private var isShowingCompletion = false
     @State private var completionExitTask: Swift.Task<Void, Never>?
     @State private var hasLeftDetail = false
@@ -457,7 +459,11 @@ struct ChecklistView: View {
         VStack(spacing: 12) {
             if let task = tasks.first {
                 RichTaskTextEditor(
-                    richText: $singleTaskDraft,
+                    initialCaretUTF16Offset: singleMemoTitleCaretOffset,
+                    richText: Binding(
+                        get: { singleTaskDraftID == task.id ? singleTaskDraft : task.richText },
+                        set: { singleTaskDraftID = task.id; singleTaskDraft = $0 }
+                    ),
                     modelRichText: task.richText,
                     taskID: task.id,
                     focusedTask: $focusedTask,
@@ -474,6 +480,7 @@ struct ChecklistView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .onAppear {
+                    singleTaskDraftID = task.id
                     singleTaskDraft = task.richText
                     focusedTask = task.id
                 }
@@ -518,6 +525,14 @@ struct ChecklistView: View {
         }
     }
 
+    private func switchToSingleMemo() {
+        singleMemoTitleCaretOffset = Self.normalizedTitle(note?.title)?.utf16.count
+        Swift.Task {
+            do { try await appModel.setKind(noteID: noteID, kind: .singleTask) }
+            catch { singleMemoTitleCaretOffset = nil }
+        }
+    }
+
     private func noteTypeMenu(_ note: Note) -> some View {
         Menu {
             Button {
@@ -526,7 +541,7 @@ struct ChecklistView: View {
                 Label("Task list", systemImage: "checklist")
             }
             Button {
-                Swift.Task { try? await appModel.setKind(noteID: noteID, kind: .singleTask) }
+                switchToSingleMemo()
             } label: {
                 Label {
                     Text("Single memo")

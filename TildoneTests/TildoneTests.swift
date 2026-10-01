@@ -4246,7 +4246,7 @@ final class TildoneTests: XCTestCase {
         let store = MacSharedStore(repository: repository)
         let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 121))
 
-        let stagedTask = try XCTUnwrap(store.stageEmptySingleMemo(for: note.id))
+        let stagedTask = try XCTUnwrap(store.stageSingleMemo(for: note.id))
         XCTAssertEqual(store.note(note.id)?.kind, .singleTask)
         XCTAssertEqual(store.note(note.id)?.singleTask?.id, stagedTask.id)
         let persistedTasks = try await repository.orderedTasks(in: note.id)
@@ -4332,6 +4332,114 @@ final class TildoneTests: XCTestCase {
         }
         XCTAssertNotNil(titleField, "The new title must be ready for typing")
         try await store.waitForNoteCreation(note.id)
+    }
+
+    @MainActor
+    func testTitlebarMemoSwitchImmediatelyStagesAndMovesCaretFromTitleTail() async throws {
+        for hasTask in [false, true] {
+            let repository = try TildoneRepository(descriptor: .inMemory())
+            let store = MacSharedStore(repository: repository)
+            let note = try await store.createNote()
+            let title = "🛒 Shopping"
+            try await store.renameNote(note.id, to: title)
+            if hasTask { _ = try await store.addTask(to: note.id, text: "Buy fruit") }
+            let presentation = try XCTUnwrap(store.presentation(for: note.id))
+            let window = MacNoteWindow(
+                contentRect: NSRect(x: 100, y: 100, width: 360, height: 500),
+                styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+            )
+            window.isReleasedWhenClosed = false
+            let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: note.id))
+            window.setNoteHostingContentView(host)
+            window.makeKeyAndOrderFront(nil)
+            defer { window.close() }
+            func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
+                (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
+            }
+            for _ in 0..<50 {
+                host.layoutSubtreeIfNeeded()
+                if presentation.onKindChange != nil,
+                   fields(host).contains(where: \.isNoteTitleField) { break }
+                try await Swift.Task.sleep(for: .milliseconds(20))
+            }
+            let titleField = try XCTUnwrap(fields(host).first(where: \.isNoteTitleField))
+            XCTAssertTrue(window.makeFirstResponder(titleField))
+            let titleEditor = try XCTUnwrap(titleField.currentEditor() as? NSTextView)
+            titleEditor.setSelectedRange(NSRange(location: title.utf16.count, length: 0))
+            // This is the exact synchronous action dispatched by the upper menu.
+            presentation.requestKindChange(.singleTask)
+            XCTAssertEqual(presentation.snapshot.kind, .singleTask)
+            let task = try XCTUnwrap(presentation.snapshot.singleTask)
+            XCTAssertEqual(task.text, hasTask ? "\(title): Buy fruit" : title)
+            var memoEditor: NSTextView?
+            for _ in 0..<50 {
+                host.layoutSubtreeIfNeeded()
+                if let field = fields(host).first(where: { $0.taskID == task.id }),
+                   let editor = field.currentEditor() as? NSTextView,
+                   window.firstResponder === editor {
+                    memoEditor = editor
+                    break
+                }
+                try await Swift.Task.sleep(for: .milliseconds(20))
+            }
+            let editor = try XCTUnwrap(memoEditor)
+            XCTAssertEqual(editor.selectedRange(), NSRange(location: title.utf16.count, length: 0))
+            try await Swift.Task.sleep(for: .milliseconds(150))
+            XCTAssertEqual(editor.selectedRange(), NSRange(location: title.utf16.count, length: 0))
+        }
+    }
+
+    @MainActor
+    func testMemoFocusPlacesCaretAfterPreservedUnicodeTitle() throws {
+        let title = "🛒 Shopping"
+        let field = MouseSafeTaskNSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
+        field.isEditable = true
+        field.stringValue = "\(title): Buy fruit"
+        field.placesCaretAtStartOnFocus = true
+        field.caretUTF16OffsetOnFocus = title.utf16.count
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 80),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        window.contentView?.addSubview(field)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        XCTAssertEqual(editor.selectedRange(), NSRange(location: title.utf16.count, length: 0))
+    }
+
+    @MainActor
+    func testTitledNoteStagesMemoBeforePendingTitleIsSaved() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        store.queueNoteTitleEdit(note.id, title: "Shopping", onFailure: { XCTFail("\($0)") })
+        let task = try XCTUnwrap(store.stageSingleMemo(for: note.id))
+        XCTAssertEqual(task.text, "Shopping")
+        XCTAssertEqual(store.note(note.id)?.kind, .singleTask)
+        try await store.reload()
+        XCTAssertEqual(store.note(note.id)?.singleTask?.text, "Shopping")
+        try await store.setKind(.singleTask, for: note.id, memoTask: task)
+        let persisted = try await repository.task(id: task.id)
+        XCTAssertEqual(persisted.text, "Shopping")
+    }
+
+    @MainActor
+    func testOneTaskNoteStagesTitleAndTaskBeforeConversionIsSaved() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        try await store.renameNote(note.id, to: "Shopping")
+        let original = try await store.addTask(to: note.id, text: "Buy fruit")
+        let staged = try XCTUnwrap(store.stageSingleMemo(for: note.id))
+        XCTAssertEqual(staged.id, original.id)
+        XCTAssertEqual(staged.text, "Shopping: Buy fruit")
+        let before = try await repository.task(id: original.id)
+        XCTAssertEqual(before.text, "Buy fruit")
+        try await store.setKind(.singleTask, for: note.id, memoTask: staged)
+        let after = try await repository.task(id: original.id)
+        XCTAssertEqual(after.text, staged.text)
     }
 
     func testLegacyMacColorLookupPrefersPerNoteValueAndPreservesGlobalFallback() throws {

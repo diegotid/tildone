@@ -73,6 +73,7 @@ extension Note {
                         taskID: task.id,
                         isFocused: activeFocusedTaskID == task.id,
                         placesCaretAtStartOnFocus: keyboardFocusedTaskID == task.id,
+                        caretUTF16OffsetOnFocus: singleMemoTitleCaretOffset,
                         fontSize: size,
                         textColor: noteForeground,
                         cursorColor: noteForeground,
@@ -85,6 +86,7 @@ extension Note {
                         onFocus: {
                             activateNativeTask(task.id)
                             keyboardFocusedTaskID = nil
+                            singleMemoTitleCaretOffset = nil
                         },
                         onBlur: { handleNativeTaskBlur(task.id) },
                         onEnter: { _ in },

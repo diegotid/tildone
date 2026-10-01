@@ -133,6 +133,23 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(model.presentation(for: note.id).snapshot.note?.kind, .singleTask)
     }
 
+    func testTitledEmptyNotePublishesMemoContentBeforeConversionCompletes() async throws {
+        let model = try await makeModel()
+        let note = try await model.createNote(title: "Shopping")
+        let presentation = model.presentation(for: note.id)
+        var firstMemo: TildoneiOSNoteSnapshot?
+        let subscription = presentation.$snapshot.sink { snapshot in
+            if snapshot.note?.kind == .singleTask, firstMemo == nil {
+                firstMemo = snapshot
+            }
+        }
+        defer { subscription.cancel() }
+        try await model.setKind(noteID: note.id, kind: .singleTask)
+        XCTAssertEqual(firstMemo?.tasks.first?.text, "Shopping")
+        XCTAssertEqual(presentation.snapshot.tasks.first?.id, firstMemo?.tasks.first?.id)
+        XCTAssertEqual(presentation.snapshot.tasks.first?.text, "Shopping")
+    }
+
     func testUntitledNoteSyncDoesNotReplaceAnInitializedTitleDraftWhileEditing() {
         XCTAssertTrue(ChecklistView.shouldSynchronizeTitleDraft(
             isEditingTitle: true,
@@ -188,6 +205,32 @@ final class TildoneiOSTests: XCTestCase {
             attributes[.backgroundColor] as? UIColor,
             UIColor.systemBlue.withAlphaComponent(0.34)
         )
+    }
+
+    func testMemoInitialCaretFollowsUnicodeTitleAndDoesNotResetSelection() {
+        let title = "🛒 Shopping"
+        let value = RichText(text: "\(title): Buy fruit")
+        let focusState = FocusState<TaskID?>()
+        let editor = RichTaskTextEditor(
+            initialCaretUTF16Offset: title.utf16.count,
+            richText: .constant(value), modelRichText: value, taskID: TaskID(),
+            focusedTask: focusState.projectedValue, isCompleted: false, onCommit: { _ in }
+        )
+        let coordinator = RichTaskTextEditor.Coordinator(parent: editor)
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        let controller = UIViewController()
+        window.rootViewController = controller
+        let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 100))
+        controller.view.addSubview(textView)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        textView.attributedText = NSAttributedString(string: value.text)
+        XCTAssertTrue(textView.becomeFirstResponder())
+        coordinator.placeInitialCaretIfNeeded(textView)
+        XCTAssertEqual(textView.selectedRange, NSRange(location: title.utf16.count, length: 0))
+        textView.selectedRange = NSRange(location: value.utf16Count, length: 0)
+        coordinator.placeInitialCaretIfNeeded(textView)
+        XCTAssertEqual(textView.selectedRange.location, value.utf16Count)
     }
 
     func testIPhoneFormatCommandUsesTheEditorsPreservedSelection() throws {

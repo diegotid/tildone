@@ -6,6 +6,20 @@ import XCTest
 @testable import TildoneDomain
 
 final class RichTextTests: XCTestCase {
+    func testCarryingNoteTitlePreservesUnicodeFormattingAndHandlesMissingTitle() {
+        let original = RichText(text: "Buy fruit", spans: [
+            RichTextSpan(range: .init(location: 4, length: 5),
+                         attributes: RichTextAttributes(styleNames: ["bold"]))
+        ])
+        let memo = original.carryingNoteTitle("  🛒 Shopping  ")
+        XCTAssertEqual(memo.text, "🛒 Shopping: Buy fruit")
+        XCTAssertEqual(memo.spans.first?.range, .init(location: 17, length: 5))
+        XCTAssertEqual(memo.spans.first?.attributes, original.spans.first?.attributes)
+        XCTAssertEqual(original.carryingNoteTitle(nil), original)
+        XCTAssertEqual(original.carryingNoteTitle(" \n "), original)
+        XCTAssertEqual(RichText(text: "").carryingNoteTitle("Shopping").text, "Shopping")
+    }
+
     func testSplitPreservesUnicodeWhitespaceAndCrossingFormattingSpans() throws {
         let original = RichText(text: "Plan 🐱 café", spans: [
             RichTextSpan(range: .init(location: 3, length: 9),

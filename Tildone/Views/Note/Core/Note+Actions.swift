@@ -166,14 +166,17 @@ extension Note {
     func handleNoteKindChange(_ kind: NoteKind) {
         guard noteKind != kind else { return }
         if kind == .singleTask && !ProEntitlement.shared.require(.singleMemo, in: noteID) { return }
+        // End the native title edit before replacing its view. The titlebar
+        // menu shares this handler with the keyboard conversion path.
+        noteWindow?.makeFirstResponder(nil)
         focusedField = nil
+        nativeFocusedTaskID = nil
+        keyboardFocusedTaskID = nil
         focusedTaskID = nil
+        let title = note?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        singleMemoTitleCaretOffset = title.flatMap { $0.isEmpty ? nil : $0.utf16.count }
         if kind == .singleTask,
-           let task = try? store.stageEmptySingleMemo(for: noteID) {
-            // The title field can remain AppKit's first responder for one
-            // run-loop turn after this view switches. Clear it now so a fast
-            // paste cannot send a list into the note title.
-            noteWindow?.makeFirstResponder(nil)
+           let task = try? store.stageSingleMemo(for: noteID) {
             stagedSingleMemoTaskID = task.id
             singleTaskDraftID = task.id
             singleTaskDraft = task.richText

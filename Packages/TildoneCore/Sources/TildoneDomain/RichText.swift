@@ -18,6 +18,23 @@ public struct RichText: Codable, Hashable, Sendable {
     public var utf16Count: Int { text.utf16.count }
     public var isPlain: Bool { spans.isEmpty }
 
+    /// Carries a checklist title into its memo without losing task formatting.
+    public func carryingNoteTitle(_ title: String?) -> Self {
+        guard let title = title?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return self }
+        let prefix = text.isEmpty ? title : "\(title): "
+        return Self(
+            text: prefix + text,
+            spans: spans.map {
+                RichTextSpan(
+                    range: RichTextRange(location: $0.range.location + prefix.utf16.count, length: $0.range.length),
+                    attributes: $0.attributes
+                )
+            },
+            representationVersion: representationVersion
+        )
+    }
+
     /// Splits at a native caret offset, clipping and rebasing formatting spans.
     public func split(atUTF16Offset offset: Int) -> (head: Self, tail: Self)? {
         guard offset >= 0, offset <= utf16Count,

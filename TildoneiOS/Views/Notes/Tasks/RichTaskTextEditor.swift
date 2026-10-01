@@ -13,6 +13,8 @@ extension Notification.Name {
 struct RichTaskTextEditor: UIViewRepresentable {
     private static let rowHeight: CGFloat = 33
 
+    var initialCaretUTF16Offset: Int? = nil
+
     @Binding var richText: RichText
     let modelRichText: RichText
     let taskID: TaskID
@@ -94,6 +96,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         context.coordinator.lastLineHeightMultiple = lineHeightMultiple
         if focusedTask.wrappedValue == taskID || forceFocus {
             if !view.isFirstResponder { view.becomeFirstResponder() }
+            context.coordinator.placeInitialCaretIfNeeded(view)
         } else if view.isFirstResponder {
             view.resignFirstResponder()
         }
@@ -108,6 +111,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         private var lastSelection = NSRange(location: 0, length: 0)
         private var lastCommittedRichText: RichText?
         private var hasLocalEdits = false
+        private var hasPlacedInitialCaret = false
         private var formatObserver: NSObjectProtocol?
         var lastFontName: String?
         var lastTextStyle: UIFont.TextStyle?
@@ -130,6 +134,15 @@ struct RichTaskTextEditor: UIViewRepresentable {
         deinit {
             if Self.formattingTarget === self { Self.formattingTarget = nil }
             if let formatObserver { NotificationCenter.default.removeObserver(formatObserver) }
+        }
+
+        func placeInitialCaretIfNeeded(_ textView: UITextView) {
+            guard !hasPlacedInitialCaret, textView.isFirstResponder,
+                  let offset = parent.initialCaretUTF16Offset,
+                  textView.attributedText.length >= offset else { return }
+            hasPlacedInitialCaret = true
+            textView.selectedRange = NSRange(location: max(0, offset), length: 0)
+            lastSelection = textView.selectedRange
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
