@@ -88,7 +88,13 @@ struct Note: View {
     @State var noteWindow: NSWindow?
     @State var newTaskText = ""
     @State var newTaskIndentLevel: Int?
-    var newTaskDraftIndentLevel: Int { newTaskIndentLevel ?? tasks.last?.indentLevel ?? 0 }
+    var newTaskInsertionIndex: Int {
+        Self.newTaskInsertionIndex(in: tasks, moveCompletedToBottom: moveCheckedTasksToEnd)
+    }
+    var newTaskDraftIndentLevel: Int {
+        guard newTaskInsertionIndex > 0 else { return 0 }
+        return newTaskIndentLevel ?? tasks[newTaskInsertionIndex - 1].indentLevel
+    }
     @State var isTextBlurred = false
     @State var isPointerHovering = false
     @State var isClickThroughCommandInteractionActive = false

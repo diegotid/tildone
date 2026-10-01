@@ -4105,6 +4105,60 @@ final class TildoneTests: XCTestCase {
         XCTAssertNil(editFailure)
     }
 
+    @MainActor
+    func testBottomInputInsertsNewTasksBeforeCompletedGroups() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let pending = try await store.addTask(to: note.id, text: "Pending")
+        let completedParent = try await store.addTask(to: note.id, text: "Completed parent")
+        let completedChild = try await store.addTask(to: note.id, text: "Completed child")
+        let completed = try await store.addTask(to: note.id, text: "Completed")
+        try await store.setTaskIndentLevels([(id: completedChild.id, level: 1)])
+        _ = try await store.setTaskCompletion(completedChild.id, completed: true)
+        _ = try await store.setTaskCompletion(completed.id, completed: true)
+
+        let original = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(Note.newTaskInsertionIndex(in: original, moveCompletedToBottom: false), 4)
+        XCTAssertEqual(Note.newTaskInsertionIndex(in: original, moveCompletedToBottom: true), 1)
+        let first = try store.stageEmptyTaskInsertion(
+            in: note.id,
+            at: Note.newTaskInsertionIndex(in: original, moveCompletedToBottom: true),
+            deleting: [], indentLevel: 0, text: "First new task"
+        )
+        let stagedTasks = try XCTUnwrap(store.note(note.id)).tasks
+        let second = try store.stageEmptyTaskInsertion(
+            in: note.id,
+            at: Note.newTaskInsertionIndex(in: stagedTasks, moveCompletedToBottom: true),
+            deleting: [], indentLevel: 0, text: "Second new task"
+        )
+        let expected = [pending.id, first.id, second.id, completedParent.id, completedChild.id, completed.id]
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.id), expected)
+        try await store.commitStagedTaskInsertion(first, deleting: [])
+        try await store.commitStagedTaskInsertion(second, deleting: [])
+        let persisted = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(persisted.map(\.id), expected)
+        XCTAssertEqual(persisted.map(\.indentLevel), [0, 0, 0, 0, 1, 0])
+    }
+
+    @MainActor
+    func testBottomInputPlacementWithAllCompletedOrIncompleteGroups() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        XCTAssertEqual(Note.newTaskInsertionIndex(in: [], moveCompletedToBottom: true), 0)
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Child")
+        try await store.setTaskIndentLevels([(id: child.id, level: 1)])
+        _ = try await store.setTaskCompletion(parent.id, completed: true)
+        let incompleteGroup = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(Note.newTaskInsertionIndex(in: incompleteGroup, moveCompletedToBottom: true), 2)
+        _ = try await store.setTaskCompletion(child.id, completed: true)
+        let completedGroup = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(Note.newTaskInsertionIndex(in: completedGroup, moveCompletedToBottom: true), 0)
+        XCTAssertEqual(Note.newTaskInsertionIndex(in: completedGroup, moveCompletedToBottom: false), 2)
+    }
+
     func testMacSharedStoreRoutesCRUDThroughDomainRepository() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),

@@ -110,6 +110,20 @@ extension Note {
         }
     }
 
+    static func newTaskInsertionIndex(
+        in tasks: [TildoneDomain.Task],
+        moveCompletedToBottom: Bool
+    ) -> Int {
+        guard moveCompletedToBottom else { return tasks.count }
+        var insertionIndex = tasks.count
+        for rootIndex in tasks.indices.reversed() where tasks[rootIndex].indentLevel == 0 {
+            let group = Array(tasks[TaskHierarchy.subtreeRange(startingAt: rootIndex, in: tasks)])
+            guard TaskHierarchy.leafTasks(in: group).allSatisfy(\.isCompleted) else { break }
+            insertionIndex = rootIndex
+        }
+        return insertionIndex
+    }
+
     func handleNewTaskCommit() {
         guard !newTaskText.isEmpty else { return }
         let text = newTaskText.capitalizingFirstLetter()
@@ -121,7 +135,7 @@ extension Note {
             // below receives the caret, instead of briefly showing an empty gap.
             stagedTask = try store.stageEmptyTaskInsertion(
                 in: noteID,
-                at: tasks.count,
+                at: newTaskInsertionIndex,
                 deleting: [],
                 indentLevel: indentLevel,
                 text: text
@@ -272,6 +286,7 @@ extension Note {
                     let task = try await store.addTask(
                         to: noteID,
                         text: item.richText.text,
+                        insertingAt: newTaskInsertionIndex,
                         indentLevel: baseIndentLevel + item.indentLevel
                     )
                     try await store.editTask(task.id, richText: item.richText)
@@ -324,6 +339,7 @@ extension Note {
                 let task = try await store.addTask(
                     to: noteID,
                     text: text,
+                    insertingAt: newTaskInsertionIndex,
                     indentLevel: indentLevel
                 )
                 focusTaskUsingKeyboard(task.id)
@@ -341,7 +357,8 @@ extension Note {
     @discardableResult
     func adjustNewTaskDraftIndent(outdent: Bool) -> Bool {
         guard ProEntitlement.shared.require(.subtasks, in: noteID) else { return false }
-        guard let precedingTask = tasks.last else { return false }
+        guard newTaskInsertionIndex > 0 else { return false }
+        let precedingTask = tasks[newTaskInsertionIndex - 1]
         if outdent {
             newTaskIndentLevel = max(0, newTaskDraftIndentLevel - 1)
         } else {
