@@ -1224,10 +1224,10 @@ final class TildoneTests: XCTestCase {
             window.setFrame(NSRect(x: 100, y: 100, width: 360, height: height), display: true)
             try await settle()
             window.makeFirstResponder(nil)
-            // A fractional/partial scroll must not replace a still-visible title.
-            // Returning to the top must also restore it after the sticky state.
-            for offset: CGFloat in [0, 0.25, 1, 5, 200, 5, 0] {
-                let scrolled = offset == 200
+            // Keep the title in place while its top padding is visible, then
+            // hand it off before the text clips. Restore it on scrolling back.
+            for offset: CGFloat in [0, 0.25, 1, 4.75, 5, 15, 200, 5, 4.75, 0] {
+                let scrolled = offset >= 5
                 scroll.contentView.scroll(to: NSPoint(x: 0, y: offset))
                 scroll.reflectScrolledClipView(scroll.contentView)
                 try await settle()

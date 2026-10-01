@@ -524,9 +524,9 @@ extension Note {
                             of: titleGeometry.frame(in: .named("noteTaskViewport")),
                             initial: true
                         ) { _, frame in
-                            // Follow the actual title's trailing edge. Its top can
-                            // cross zero while most of the title is still visible.
-                            isTopScrolledOut = frame.maxY <= 0
+                            // Start the handoff when the title's five-point top
+                            // padding scrolls away, before its text is clipped.
+                            isTopScrolledOut = frame.minY <= -5
                         }
                 }
             }
@@ -655,7 +655,10 @@ extension Note {
     func topicListItem() -> some View {
         let taskFontSize = CGFloat(fontSize)
         return listTopic()
-            .opacity(isTopicHidden ? 0 : 1)
+            // Keep the row's geometry stable while the title is in the upper bar.
+            .opacity(isTopicHidden || isTopScrolledOut ? 0 : 1)
+            .allowsHitTesting(!isTopScrolledOut)
+            .accessibilityHidden(isTopScrolledOut)
             .frame(height: isTopicHidden ? 1 : NoteTypography.topicRowHeight(for: taskFontSize))
             .padding(.bottom, max(0, taskFontSize - 10))
     }
