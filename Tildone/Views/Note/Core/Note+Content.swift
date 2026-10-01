@@ -366,10 +366,12 @@ extension Note {
                     ))
                     .lineSpacing(SingleMemoTypography.lineSpacing(for: 16))
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    .lineLimit(4)
+                    .truncationMode(.tail)
                     .minimumScaleFactor(0.65)
                     .strikethrough(note.singleTask?.isCompleted == true)
                     .foregroundStyle(foreground)
+                    .blur(radius: isHoveringMinimizedTaskList ? 0 : 3)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .padding(8)
             } else {
@@ -406,6 +408,7 @@ extension Note {
             height: compactSize.height,
             alignment: .topLeading
         )
+        .contentShape(Rectangle())
         .animation(.easeInOut(duration: 0.2), value: isHoveringMinimizedTaskList)
         .background(WindowAccessor(note: self, window: $noteWindow))
         .onHover { isHoveringMinimizedTaskList = $0 }
