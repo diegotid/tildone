@@ -469,8 +469,11 @@ struct ChecklistView: View {
                     focusedTask: $focusedTask,
                     isCompleted: task.isCompleted,
                     allowsMultipleLines: true,
+                    fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
+                    fitsSingleMemo: true,
                     textStyle: .body,
-                    textAlignment: .natural,
+                    textAlignment: .center,
+                    lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
                     onCommit: { value in
                         Swift.Task {
                             try? await appModel.edit(taskID: task.id, richText: value)
@@ -478,7 +481,7 @@ struct ChecklistView: View {
                     }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .focused($focusedTask, equals: task.id)
                 .onAppear {
                     singleTaskDraftID = task.id
                     singleTaskDraft = task.richText

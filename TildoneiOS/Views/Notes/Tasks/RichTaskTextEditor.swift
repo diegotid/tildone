@@ -22,6 +22,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
     let isCompleted: Bool
     var allowsMultipleLines = false
     var fontName: String? = nil
+    var fitsSingleMemo = false
     var forceFocus = false
     var textStyle: UIFont.TextStyle = .body
     var textAlignment: NSTextAlignment = .natural
@@ -32,7 +33,8 @@ struct RichTaskTextEditor: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
     func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+        let view = SingleMemoTextView()
+        view.fitsSingleMemo = fitsSingleMemo
         view.delegate = context.coordinator
         view.backgroundColor = .clear
         view.isScrollEnabled = false
@@ -64,7 +66,8 @@ struct RichTaskTextEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.view = view
-        view.isScrollEnabled = allowsMultipleLines
+        (view as? SingleMemoTextView)?.fitsSingleMemo = fitsSingleMemo
+        if !fitsSingleMemo { view.isScrollEnabled = allowsMultipleLines }
         view.textContainer.maximumNumberOfLines = allowsMultipleLines ? 0 : 1
         view.textContainer.lineBreakMode = allowsMultipleLines ? .byWordWrapping : .byTruncatingTail
         view.returnKeyType = allowsMultipleLines ? .default : .done
@@ -83,6 +86,15 @@ struct RichTaskTextEditor: UIViewRepresentable {
                 alignment: textAlignment,
                 lineHeightMultiple: lineHeightMultiple
             )
+            if fitsSingleMemo {
+                view.typingAttributes = Self.attributedString(
+                    from: RichText(text: "M"),
+                    fontName: fontName,
+                    textStyle: textStyle,
+                    alignment: textAlignment,
+                    lineHeightMultiple: lineHeightMultiple
+                ).attributes(at: 0, effectiveRange: nil)
+            }
             if view.isFirstResponder {
                 view.selectedRange = Coordinator.validSelection(
                     selection,
@@ -101,6 +113,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
             view.resignFirstResponder()
         }
         view.alpha = isCompleted ? 0.6 : 1
+        view.setNeedsLayout()
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -182,6 +195,10 @@ struct RichTaskTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             hasLocalEdits = true
+            if parent.fitsSingleMemo {
+                parent.richText = RichTaskTextEditor.richText(from: textView.attributedText)
+                textView.setNeedsLayout()
+            }
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {

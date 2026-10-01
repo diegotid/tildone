@@ -339,6 +339,83 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(committed, RichText(text: "Before typing"))
     }
 
+    func testSingleMemoHostedEditorKeepsTypedTextAndCaretInsideViewport() async throws {
+        for convertsVisibleChecklist in [false, true] {
+            let model = try await makeModel()
+            let note = try await model.createNote(title: nil)
+            if !convertsVisibleChecklist {
+                try await model.setKind(noteID: note.id, kind: .singleTask)
+            }
+            let host = UIHostingController(rootView: NavigationStack {
+                ChecklistView(appModel: model, noteID: note.id, isCreatingNote: convertsVisibleChecklist)
+            })
+            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            window.rootViewController = host
+            window.makeKeyAndVisible()
+            host.view.layoutIfNeeded()
+            defer { window.isHidden = true }
+            try await Swift.Task.sleep(nanoseconds: 500_000_000)
+            if convertsVisibleChecklist {
+                try await model.setKind(noteID: note.id, kind: .singleTask)
+                try await Swift.Task.sleep(nanoseconds: 500_000_000)
+            }
+            func findEditor(in view: UIView) -> SingleMemoTextView? {
+                if let editor = view as? SingleMemoTextView { return editor }
+                return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+            }
+            let view = try XCTUnwrap(findEditor(in: host.view))
+            XCTAssertTrue(view.isFirstResponder)
+            view.insertText("Visible memo")
+            try await Swift.Task.sleep(nanoseconds: 200_000_000)
+            host.view.layoutIfNeeded()
+            XCTAssertTrue(view.isFirstResponder)
+            XCTAssertEqual(view.text, "Visible memo")
+            let selection = try XCTUnwrap(view.selectedTextRange)
+            let caret = view.caretRect(for: selection.end)
+            XCTAssertTrue(view.bounds.intersects(caret), "Caret \(caret), viewport \(view.bounds), inset \(view.textContainerInset)")
+            XCTAssertGreaterThan(view.bounds.height, caret.height)
+            view.resignFirstResponder()
+            try await Swift.Task.sleep(nanoseconds: 100_000_000)
+            let savedTasks = try await model.tasks(in: note.id)
+            XCTAssertEqual(savedTasks.first?.text, "Visible memo")
+        }
+    }
+
+    func testSingleMemoFitsAndCentersAboveKeyboardWhilePreservingFormatting() {
+        let view = SingleMemoTextView(frame: CGRect(x: 0, y: 0, width: 340, height: 550))
+        view.fitsSingleMemo = true
+        view.textContainer.lineFragmentPadding = 0
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        view.attributedText = NSAttributedString(string: "A short memo", attributes: [
+            .font: UIFont.boldSystemFont(ofSize: 18),
+            .paragraphStyle: paragraph,
+            .foregroundColor: UIColor.systemOrange
+        ])
+        view.selectedRange = NSRange(location: 3, length: 2)
+        view.layoutSubviews()
+        let largeFont = (view.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)!
+        XCTAssertGreaterThan(largeFont.pointSize, 60)
+        XCTAssertGreaterThan(view.textContainerInset.top, 100)
+        XCTAssertEqual(view.selectedRange, NSRange(location: 3, length: 2))
+
+        view.frame.size.height = 230
+        view.textStorage.append(NSAttributedString(string: String(repeating: " more words", count: 20), attributes: view.typingAttributes))
+        view.layoutSubviews()
+        let smallerFont = (view.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)!
+        XCTAssertLessThan(smallerFont.pointSize, largeFont.pointSize)
+        XCTAssertTrue(smallerFont.fontDescriptor.symbolicTraits.contains(.traitBold))
+        XCTAssertEqual(view.attributedText.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor, .systemOrange)
+        XCTAssertEqual(view.selectedRange, NSRange(location: 3, length: 2))
+
+        view.textStorage.append(NSAttributedString(string: String(repeating: " long memo", count: 300)))
+        view.layoutSubviews()
+        XCTAssertTrue(view.isScrollEnabled)
+        XCTAssertEqual(view.textContainerInset.top, 8)
+    }
+
     func testIPhoneTransportIsDisabledUnderTests() {
         XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
     }

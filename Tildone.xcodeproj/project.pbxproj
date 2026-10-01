@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A91000000000000000000001 /* SingleMemoTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91000000000000000000002 /* SingleMemoTextView.swift */; };
 		A10000000000000000000001 /* TildoneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* TildoneiOSApp.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
 		A10000000000000000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Preview Assets.xcassets */; };
@@ -274,6 +275,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A91000000000000000000002 /* SingleMemoTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMemoTextView.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* TildoneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -945,6 +947,7 @@
 			isa = PBXGroup;
 			children = (
 				R10000000000000000000012 /* RichTaskTextEditor.swift */,
+				A91000000000000000000002 /* SingleMemoTextView.swift */,
 				C1000000000000000000001B /* TaskRow.swift */,
 				C1000000000000000000001F /* TaskCheckbox.swift */,
 				C10000000000000000000104 /* TaskControlMetrics.swift */,
@@ -1454,6 +1457,7 @@
 				Z70000000000000000000002 /* FontAttributionsView.swift in Sources */,
 				Z70000000000000000000003 /* About/TildoneiOSAboutView.swift in Sources */,
 				R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */,
+				A91000000000000000000001 /* SingleMemoTextView.swift in Sources */,
 				R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */,
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
 				C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */,
