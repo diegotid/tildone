@@ -24,6 +24,7 @@ struct NotesListView: View {
     @State private var noteToDelete: Note?
     @State private var deckOrder: [NoteID] = []
     @State private var showsAbout = false
+    @State private var showsWelcome = false
     @State private var searchText = ""
     @State private var departingNote: Note?
     @State private var isDepartingNoteFading = false
@@ -118,7 +119,8 @@ struct NotesListView: View {
                     TildoneiOSSyncStatusMenu(
                         appModel: appModel,
                         showsLaunchProgress: appModel.isCheckingCloudForNotes && !activeNotes.isEmpty,
-                        showAbout: { showsAbout = true }
+                        showAbout: { showsAbout = true },
+                        showWelcome: { showsWelcome = true }
                     )
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -161,6 +163,9 @@ struct NotesListView: View {
             .navigationDestination(isPresented: $showsAbout) {
                 TildoneiOSAboutView()
             }
+        }
+        .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {
+            WelcomeOnboardingView { showsWelcome = false }
         }
         .onAppear { reconcileDeckOrder() }
         .onChange(of: overviewNotes.map(\.id)) { _, _ in

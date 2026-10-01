@@ -37,7 +37,7 @@ struct CompanionPreview: View {
                     .offset(x: 203, y: 0)
             }
         }
-        .frame(width: 580, height: 320)
+        .frame(width: showsPhone ? 580 : 356, height: 320)
         .accessibilityHidden(true)
     }
 
@@ -52,11 +52,19 @@ struct CompanionPreview: View {
                 }
                 #else
                 ZStack {
-                    Color(red: 0.18, green: 0.22, blue: 0.26)
-                    HStack(spacing: 10) {
-                        desktopNote(yellowContent, color: .yellow)
-                        desktopNote(blueContent, color: .blue)
-                    }
+                    Image("desktop")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 340, height: 220)
+                        .clipped()
+                    desktopNote(yellowContent, color: .yellow)
+                        .scaleEffect(0.5)
+                        .frame(width: 75, height: 95)
+                        .offset(x: -74, y: -38)
+                    desktopNote(blueContent, color: .blue)
+                        .scaleEffect(0.5)
+                        .frame(width: 75, height: 95)
+                        .offset(x: 66, y: 34)
                 }
                 #endif
             }
@@ -110,16 +118,27 @@ struct CompanionPreview: View {
     }
     #else
     private func desktopNote(_ content: ProPreviewContent, color: NoteColor) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(content.note.title ?? "").font(.system(size: 12, weight: .bold)).lineLimit(2)
-            ForEach(content.tasks.prefix(3), id: \.id) { task in
-                HStack(alignment: .top, spacing: 5) {
-                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 9))
-                    Text(task.richText.text).font(.system(size: 9)).lineLimit(2)
+        Group {
+            if content.note.kind == .singleTask, let task = content.tasks.first {
+                Text(task.richText.text)
+                    .font(.custom(SingleMemoTypography.fontName(for: content.note.singleMemoFont), size: 26))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(6)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(content.note.title ?? "").font(.system(size: 12, weight: .bold)).lineLimit(2)
+                    ForEach(content.tasks.prefix(3), id: \.id) { task in
+                        HStack(alignment: .top, spacing: 5) {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 9))
+                            Text(task.richText.text).font(.system(size: 9)).lineLimit(2)
+                        }
+                    }
+                    Spacer(minLength: 0)
                 }
             }
-            Spacer(minLength: 0)
         }
         .foregroundStyle(.black)
         .padding(8)

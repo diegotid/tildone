@@ -5,16 +5,19 @@ struct TildoneiOSSyncStatusMenu: View {
     let appModel: TildoneiOSApplicationModel
     let showsLaunchProgress: Bool
     let showAbout: () -> Void
+    let showWelcome: (() -> Void)?
     @ObservedObject private var presentation: TildoneiOSSyncPresentation
 
     init(
         appModel: TildoneiOSApplicationModel,
         showsLaunchProgress: Bool = false,
-        showAbout: @escaping () -> Void
+        showAbout: @escaping () -> Void,
+        showWelcome: (() -> Void)? = nil
     ) {
         self.appModel = appModel
         self.showsLaunchProgress = showsLaunchProgress
         self.showAbout = showAbout
+        self.showWelcome = showWelcome
         _presentation = ObservedObject(wrappedValue: appModel.syncPresentation)
     }
 
@@ -29,6 +32,7 @@ struct TildoneiOSSyncStatusMenu: View {
             resume: appModel.resumeTransport,
             offerCloudAdoption: appModel.offerCloudAdoption,
             showAbout: showAbout,
+            showWelcome: showWelcome,
             animatesSyncSymbol: showsLaunchProgress
         )
     }

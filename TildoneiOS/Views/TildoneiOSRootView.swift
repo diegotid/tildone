@@ -36,7 +36,14 @@ struct TildoneiOSRootView: View {
             }
         }
         .sheet(item: $pro.requestedFeature) { feature in
-            ProPaywallView(feature: feature)
+            NavigationStack {
+                ProPaywallView(feature: feature)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Close") { pro.requestedFeature = nil }
+                        }
+                    }
+            }
         }
     }
     private func presentWelcomeIfReady() {

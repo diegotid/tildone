@@ -18,6 +18,7 @@ struct SyncStatusMenu: View {
     let resume: () -> Void
     let offerCloudAdoption: () -> Void
     var showAbout: (() -> Void)? = nil
+    var showWelcome: (() -> Void)? = nil
     var animatesSyncSymbol = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -54,6 +55,9 @@ struct SyncStatusMenu: View {
             if let showAbout {
                 Divider()
                 Button("About Tildone", systemImage: "info.circle", action: showAbout)
+            }
+            if let showWelcome {
+                Button("Welcome to Tildone", systemImage: "hand.wave", action: showWelcome)
             }
         } label: {
             TimelineView(.animation(

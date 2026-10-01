@@ -7,7 +7,12 @@ struct GetTildoneForMacView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    CompanionPreview(showsPhone: false)
+                    GeometryReader { geometry in
+                        CompanionPreview(showsPhone: false)
+                            .scaleEffect(min(1, geometry.size.width / 356))
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                    }
+                    .aspectRatio(356.0 / 320.0, contentMode: .fit)
                     Text("A little space on your desktop")
                         .font(.title.bold()).fixedSize(horizontal: false, vertical: true)
                     Text("Keep tasks visible in desktop notes on your Mac, and take them with you on iPhone. Share the download link to your Mac to get started.")

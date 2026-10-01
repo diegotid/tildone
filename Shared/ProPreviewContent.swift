@@ -11,7 +11,7 @@ struct ProPreviewContent {
         self.tasks = tasks
     }
 
-    init(feature: ProFeature, locale: Locale, noteColor: NoteColor = .yellow) {
+    init(feature: ProFeature, locale: Locale, noteColor: NoteColor = .yellow, title: String? = nil) {
         // String(localized:locale:) uses locale for formatting, not language
         // selection. Select the matching catalog bundle for preview examples.
         let bundle = Self.localizationBundle(for: locale)
@@ -20,7 +20,7 @@ struct ProPreviewContent {
         let noteID = NoteID()
         note = TildoneDomain.Note(
             id: noteID, createdAt: date,
-            title: feature == .singleMemo ? nil : String(localized: "A little space to think", bundle: bundle, locale: locale),
+            title: feature == .singleMemo ? nil : title ?? String(localized: "A little space to think", bundle: bundle, locale: locale),
             titleVersion: version, color: noteColor,
             kind: feature == .singleMemo ? .singleTask : .checklist,
             singleMemoFont: .overlock,

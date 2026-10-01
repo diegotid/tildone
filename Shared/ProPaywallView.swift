@@ -4,13 +4,16 @@ import StoreKit
 struct ProPaywallView: View {
     @ObservedObject private var entitlement = ProEntitlement.shared
     let feature: ProFeature?
+    private let indexTitle: LocalizedStringKey
     @State private var selectedFeature: ProFeature?
+    @State private var hasDiscoveredAllFeatures = false
     #if os(macOS)
     @State private var indexHeight: CGFloat = 540
     #endif
 
-    init(feature: ProFeature?) {
+    init(feature: ProFeature?, indexTitle: LocalizedStringKey = "Pro features") {
         self.feature = feature
+        self.indexTitle = indexTitle
         _selectedFeature = State(initialValue: feature)
     }
 
@@ -61,6 +64,8 @@ struct ProPaywallView: View {
             .frame(maxWidth: 408)
             .frame(maxWidth: .infinity)
         }
+        .navigationTitle(selectedFeature?.title ?? (hasDiscoveredAllFeatures ? LocalizedStringKey("Pro features") : indexTitle))
+        .navigationBarTitleDisplayMode(.inline)
         .onChange(of: feature) { _, selected in selectedFeature = selected }
         .onChange(of: entitlement.paywallPresentationID) { _, _ in
             selectedFeature = entitlement.requestedFeature
@@ -70,6 +75,7 @@ struct ProPaywallView: View {
 
     private var discoverButton: some View {
         Button {
+            hasDiscoveredAllFeatures = true
             selectedFeature = nil
         } label: {
             Text("Discover all Pro features")
