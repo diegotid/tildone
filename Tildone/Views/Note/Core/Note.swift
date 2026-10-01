@@ -162,12 +162,14 @@ struct Note: View {
         store: MacSharedStore,
         presentation: MacNotePresentation,
         noteID: NoteID,
-        initialFocusBlurred: Bool = false
+        initialFocusBlurred: Bool = false,
+        initialMinimizationState: NoteWindowMinimizationState = NoteWindowMinimizationState()
     ) {
         self.store = store
         self.presentation = presentation
         self.noteID = noteID
         _isTextBlurred = State(initialValue: initialFocusBlurred)
+        _minimizationState = State(initialValue: initialMinimizationState)
     }
 
     var body: some View {
@@ -210,6 +212,8 @@ struct Note: View {
             contentWindowAlpha = window?.alphaValue ?? 1
             updateWindowMenuTitle()
             updateFormatControlForeground()
+            setTrafficLightsHidden(isMinimized)
+            setColorPickerHidden(isMinimized)
         }
         .onChange(of: note?.title) { _, _ in
             updateWindowMenuTitle()

@@ -201,7 +201,7 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 - The standard minimize button is intercepted. It shrinks the same window to a 96×66 progress gauge rather than using macOS Dock minimization.
 - Clicking a gauge restores its previous in-memory frame. “Minimize All” and “Bring All Up” publish global notifications.
 - “Arrange Notes” groups windows by screen and lays them out horizontally or vertically from the selected corner with configured margins and spacing.
-- Minimized state and the pre-minimize frame are not persisted across launch.
+- Minimized state and compact position are saved per stable note ID in installation-local preferences. Launch configures minimized notes before showing their windows; the normal AppKit autosaved frame remains the expansion target.
 
 ### Focus Filter
 
@@ -488,7 +488,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 - Foreground-list matching in `Desktop.handleFocus` compares against `lists.first` before other handling; this path deserves tests and review.
 - The manual window array may diverge from model/query state, especially once remote changes exist.
 - Window positioning mixes screen frame and visible frame logic; `randomPositionOnScreen()` can form invalid ranges on unusually small screens.
-- Minimized state is encoded in a title prefix and its restoration frame exists only in view state.
+- The title prefix identifies compact windows at runtime. A local per-note preference restores minimized state and compact position across launches, while AppKit frame autosave preserves the expanded restoration frame.
 - Accessibility is largely unimplemented for custom controls and visuals; focus rings are globally suppressed.
 - Localization gaps include color help labels; the catalog and release-note content require manual care.
 - App entitlements intentionally remain Development-only; effective Production capabilities have not been inspected or configured.

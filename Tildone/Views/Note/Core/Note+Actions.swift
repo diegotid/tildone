@@ -25,6 +25,7 @@ extension Note {
         )
         noteWindow.contentMinSize = CompactNoteScale.contentSize()
         noteWindow.setFrame(minimizedFrame(for: noteWindow), display: true, animate: false)
+        NoteWindowMinimizationState.saveMinimized(true, for: noteID, compactFrame: noteWindow.frame)
         noteWindow.ignoresMouseEvents = false
         updateWindowMenuTitle()
         NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
@@ -801,6 +802,7 @@ extension Note {
 
     func handleBringUp() {
         guard let noteWindow, let restoration = minimizationState.beginRestoring() else { return }
+        NoteWindowMinimizationState.saveMinimized(false, for: noteID)
         (noteWindow as? MacNoteWindow)?.leaveCompactStyle()
         if noteWindow.title.starts(with: "_") {
             noteWindow.title = String(noteWindow.title.dropFirst())

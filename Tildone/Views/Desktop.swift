@@ -587,11 +587,16 @@ private extension Desktop {
 
     func handleNoteWindowMove(_ event: Notification) {
         updateClickThroughHintPosition(for: event)
-        guard NoteWindowManualPosition.shouldRecordDrag(),
-              let window = event.object as? NSWindow,
-              let noteID = noteWindows.first(where: { $0.value === window })?.key else {
+        guard let window = event.object as? NSWindow,
+              let noteID = noteWindows.first(where: { $0.value === window })?.key else { return }
+        if isCompactNoteWindow(window) {
+            if NoteWindowMinimizationState.savedIsMinimized(for: noteID) {
+                NoteWindowMinimizationState.saveCompactFrame(window.frame, for: noteID)
+            }
+            if NoteWindowManualPosition.shouldRecordDrag() { resetCornerConvergence() }
             return
         }
+        guard NoteWindowManualPosition.shouldRecordDrag() else { return }
         NoteWindowManualPosition.recordDraggedOrigin(window.frame.origin, for: noteID)
         resetCornerConvergence()
     }
@@ -833,7 +838,10 @@ private extension Desktop {
         }
     }
 
-    func noteWindow(for note: MacNoteSnapshot) -> some View {
+    func noteWindow(
+        for note: MacNoteSnapshot,
+        initialMinimizationState: NoteWindowMinimizationState = NoteWindowMinimizationState()
+    ) -> some View {
         guard let presentation = store.presentation(for: note.id) else {
             return AnyView(EmptyView())
         }
@@ -845,7 +853,8 @@ private extension Desktop {
                 for: note.id,
                 focusBlurred: isFocusFilterTextBlurred,
                 focusAllowsBackground: focusFilterAllowsBackgroundNotes
-            ).isContentBlurred
+            ).isContentBlurred,
+            initialMinimizationState: initialMinimizationState
         )
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
                 guard let window = event.object as? NSWindow else { return }
@@ -888,15 +897,6 @@ private extension Desktop {
         let windowAlpha = NoteWindowOpacity.currentAlpha(for: note.id)
         window.alphaValue = windowAlpha
         window.standardWindowButton(.closeButton)?.isEnabled = note.isCloseButtonEnabled
-        window.setNoteHostingContentView(NSHostingView(rootView: noteWindow(for: note)))
-        addNoteTitlebarAccessory(to: window, noteID: note.id)
-        window.applyNoteBackgroundColor(
-            note.color.nsColor,
-            alpha: NoteWindowBackground.tintAlpha(
-                configuredAlpha: NoteWindowBackground.currentAlpha(),
-                windowAlpha: windowAlpha
-            )
-        )
         window.setFrameAutosaveName(note.legacyWindowKey)
         repairUndersizedRestoredFrame(of: window)
         window.title = note.legacyWindowKey
@@ -926,6 +926,41 @@ private extension Desktop {
             on: destinationScreen
         ))
         NoteWindowManualPosition.ensureStoredOrigin(window.frame.origin, for: note.id)
+        var initialMinimizationState = NoteWindowMinimizationState()
+        if NoteWindowMinimizationState.savedIsMinimized(for: note.id) {
+            _ = initialMinimizationState.beginMinimizing(
+                from: window.frame, autosaveName: window.frameAutosaveName
+            )
+        }
+        window.setNoteHostingContentView(NSHostingView(rootView: noteWindow(for: note, initialMinimizationState: initialMinimizationState)))
+        addNoteTitlebarAccessory(to: window, noteID: note.id)
+        window.applyNoteBackgroundColor(
+            note.color.nsColor,
+            alpha: NoteWindowBackground.tintAlpha(
+                configuredAlpha: NoteWindowBackground.currentAlpha(),
+                windowAlpha: windowAlpha
+            )
+        )
+        if initialMinimizationState.isMinimized {
+            // Configure the compact window before showing it. Keep the normal
+            // autosaved frame intact for expanding after this launch.
+            NoteWindowFrameAutosavePolicy.suspend(for: window)
+            window.title = "_" + window.title
+            window.noteTitlebarAccessoryController?.setColorPickerHidden(true)
+            window.setNoteContentExtendsUnderTitlebar(true)
+            window.enterCompactStyle(cornerRadius: CompactNoteScale.cornerRadius())
+            window.contentMinSize = CompactNoteScale.contentSize()
+            let size = window.frameRect(forContentRect: NSRect(origin: .zero, size: CompactNoteScale.contentSize())).size
+            let previous = NoteWindowMinimizationState.savedCompactFrame(for: note.id) ?? window.frame
+            window.setFrame(NSRect(
+                x: previous.minX, y: previous.maxY - size.height,
+                width: size.width, height: size.height
+            ), display: false)
+            let screen = NSScreen.screens.first(where: { $0.frame.contains(NSPoint(x: window.frame.midX, y: window.frame.midY)) })
+                ?? destinationScreen
+            window.setFrameOrigin(clampedOrigin(for: window, desiredOrigin: window.frame.origin, on: screen))
+            window.ignoresMouseEvents = false
+        }
         noteWindows[note.id] = window
         updateClickThroughHoverAppearance()
         closedNoteIDs.remove(note.id)

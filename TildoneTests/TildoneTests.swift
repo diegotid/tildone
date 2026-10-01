@@ -2279,6 +2279,84 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(frame, NSRect(x: 229, y: 272, width: 19, height: 22))
     }
 
+    func testMinimizedPreferencesPersistSeparatelyPerNoteAndClearOnRestore() throws {
+        let suite = "TildoneMinimizationTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let minimizedID = NoteID()
+        let expandedID = NoteID()
+        let frame = NSRect(x: 120, y: 200, width: 96, height: 66)
+        NoteWindowMinimizationState.saveMinimized(true, for: minimizedID, compactFrame: frame, defaults: defaults)
+        let reopened = try XCTUnwrap(UserDefaults(suiteName: suite))
+        XCTAssertTrue(NoteWindowMinimizationState.savedIsMinimized(for: minimizedID, defaults: reopened))
+        XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: expandedID, defaults: reopened))
+        XCTAssertEqual(NoteWindowMinimizationState.savedCompactFrame(for: minimizedID, defaults: reopened), frame)
+        NoteWindowMinimizationState.saveMinimized(false, for: minimizedID, defaults: reopened)
+        XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: minimizedID, defaults: defaults))
+        XCTAssertNil(NoteWindowMinimizationState.savedCompactFrame(for: minimizedID, defaults: defaults))
+    }
+
+    @MainActor
+    func testDesktopReopenPreservesMixedMinimizedNotesAndExpandedRestorationFrame() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let createdAt = Date().addingTimeInterval(-Double.random(in: 1000...1000000))
+        let compactNote = try await store.createNote(createdAt: createdAt)
+        try await store.renameNote(compactNote.id, to: "Minimized note")
+        let expandedNote = try await store.createNote(createdAt: createdAt.addingTimeInterval(1))
+        try await store.renameNote(expandedNote.id, to: "Expanded note")
+        defer {
+            for note in [compactNote, expandedNote] {
+                NoteWindowMinimizationState.saveMinimized(false, for: note.id)
+                NSWindow.removeFrame(usingName: note.legacyWindowKey)
+            }
+        }
+        let desktop = Desktop(store: store, noteSyncIndicatorState: .hidden, foregroundNoteID: .constant(nil))
+        let host = NSHostingView(rootView: AnyView(desktop))
+        let coordinator = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        coordinator.isReleasedWhenClosed = false
+        coordinator.contentView = host
+        coordinator.orderFront(nil)
+        defer { host.rootView = AnyView(EmptyView()); coordinator.close() }
+        func noteWindow(_ note: MacNoteSnapshot) -> NSWindow? {
+            NSApp.windows.first { $0.title == note.legacyWindowKey || $0.title == "_" + note.legacyWindowKey }
+        }
+        for _ in 0..<50 {
+            host.layoutSubtreeIfNeeded()
+            if noteWindow(compactNote)?.standardWindowButton(.miniaturizeButton)?.target is NoteWindowButtonActionController { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        let firstWindow = try XCTUnwrap(noteWindow(compactNote))
+        let expandedFrame = firstWindow.frame
+        firstWindow.makeKeyAndOrderFront(nil)
+        try await Swift.Task.sleep(for: .milliseconds(150))
+        let button = try XCTUnwrap(firstWindow.standardWindowButton(.miniaturizeButton))
+        XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(button.action), to: button.target, from: button))
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(NoteWindowMinimizationState.savedIsMinimized(for: compactNote.id))
+        XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: expandedNote.id))
+        let compactFrame = firstWindow.frame
+        host.rootView = AnyView(EmptyView())
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        host.rootView = AnyView(desktop)
+        host.layoutSubtreeIfNeeded()
+        try await Swift.Task.sleep(for: .milliseconds(150))
+        let reopened = try XCTUnwrap(noteWindow(compactNote))
+        XCTAssertTrue(reopened.title.hasPrefix("_"))
+        XCTAssertEqual(reopened.frame, compactFrame)
+        XCTAssertEqual(reopened.frameAutosaveName, "")
+        XCTAssertFalse(try XCTUnwrap(noteWindow(expandedNote)).title.hasPrefix("_"))
+        NotificationCenter.default.post(name: .bringAllUp, object: nil)
+        try await Swift.Task.sleep(for: .milliseconds(350))
+        XCTAssertFalse(reopened.title.hasPrefix("_"))
+        XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: compactNote.id))
+        XCTAssertEqual(reopened.frame, expandedFrame)
+        XCTAssertEqual(reopened.frameAutosaveName, compactNote.legacyWindowKey)
+    }
+
     func testRepeatedMinimizeAllKeepsTheFirstNormalFrameAndRestoresOnce() throws {
         let normalFrame = NSRect(x: 120, y: 180, width: 420, height: 360)
         let compactFrame = NSRect(x: 20, y: 20, width: 96, height: 98)
@@ -4299,7 +4377,7 @@ final class TildoneTests: XCTestCase {
     func testNewNoteShortcutOpensWindowBeforeReturningAndFocusesTitle() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)
-        let existing = try await store.createNote()
+        let existing = try await store.createNote(createdAt: Date().addingTimeInterval(-100))
         try await store.renameNote(existing.id, to: "Existing note")
         let host = NSHostingView(rootView: Desktop(
             store: store, noteSyncIndicatorState: .hidden, foregroundNoteID: .constant(nil)
