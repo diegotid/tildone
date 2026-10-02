@@ -802,11 +802,17 @@ extension Note {
 
     func handleBringUp() {
         guard let noteWindow, let restoration = minimizationState.beginRestoring() else { return }
-        NoteWindowMinimizationState.saveMinimized(false, for: noteID)
         (noteWindow as? MacNoteWindow)?.leaveCompactStyle()
         if noteWindow.title.starts(with: "_") {
             noteWindow.title = String(noteWindow.title.dropFirst())
         }
+        noteWindow.setNoteContentExtendsUnderTitlebar(false)
+        noteWindow.contentMinSize = NSSize(width: Layout.minNoteWidth, height: Layout.minNoteHeight)
+        // Restore the real frame in this action, so the expanded editor never
+        // waits in a compact canvas for a queued resize animation to finish.
+        noteWindow.setFrame(restoration.frame, display: true)
+        minimizationState.finishRestoring()
+        setTrafficLightsHidden(false)
         updateWindowMenuTitle()
         setColorPickerHidden(false)
         applyCurrentNoteBackground()
@@ -814,25 +820,8 @@ extension Note {
             isEnabled: clickThroughNotes,
             isCommandPressed: NoteWindowClickThrough.isCommandPressed
         )
-        DispatchQueue.main.async {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.2
-                noteWindow.animator().setFrame(restoration.frame, display: true)
-            } completionHandler: {
-                Swift.Task { @MainActor in
-                    noteWindow.setNoteContentExtendsUnderTitlebar(false)
-                    noteWindow.contentMinSize = NSSize(
-                        width: Layout.minNoteWidth,
-                        height: Layout.minNoteHeight
-                    )
-                    NoteWindowFrameAutosavePolicy.resume(
-                        for: noteWindow,
-                        using: restoration.autosaveName
-                    )
-                    minimizationState.finishRestoring()
-                }
-            }
-        }
+        NoteWindowFrameAutosavePolicy.resume(for: noteWindow, using: restoration.autosaveName)
+        NoteWindowMinimizationState.saveMinimized(false, for: noteID)
     }
 
     func updateWindowMenuTitle() {

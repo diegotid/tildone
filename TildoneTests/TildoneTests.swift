@@ -2350,7 +2350,9 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(reopened.frameAutosaveName, "")
         XCTAssertFalse(try XCTUnwrap(noteWindow(expandedNote)).title.hasPrefix("_"))
         NotificationCenter.default.post(name: .bringAllUp, object: nil)
-        try await Swift.Task.sleep(for: .milliseconds(350))
+        // Expansion must finish before the restore action returns, without
+        // waiting for the next run-loop turn or an animation completion.
+        XCTAssertEqual(reopened.frame, expandedFrame)
         XCTAssertFalse(reopened.title.hasPrefix("_"))
         XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: compactNote.id))
         XCTAssertEqual(reopened.frame, expandedFrame)
