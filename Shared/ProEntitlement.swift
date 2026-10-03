@@ -170,6 +170,18 @@ final class ProEntitlement: ObservableObject {
         await completePurchase { try await purchaseAction(product) }
     }
 
+    #if os(macOS)
+    @available(macOS 15.2, *)
+    func purchase(confirmIn window: NSWindow?) async {
+        guard let window, window.isVisible else {
+            message = String(localized: "Purchase could not be completed. Please try again.")
+            return
+        }
+        guard let product else { await loadProduct(); return }
+        await completePurchase { try await product.purchase(confirmIn: window) }
+    }
+    #endif
+
     private func completePurchase(_ action: () async throws -> Product.PurchaseResult) async {
         guard !isPurchasing && !isRestoring else { return }
         isPurchasing = true

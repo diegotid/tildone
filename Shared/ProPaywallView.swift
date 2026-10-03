@@ -225,13 +225,24 @@ struct ProPaywallView: View {
 struct ProPurchaseButton: View {
     @ObservedObject private var entitlement = ProEntitlement.shared
     @Environment(\.purchase) private var purchase
+    #if os(macOS)
+    @State private var windowReference = PurchaseWindowReference()
+    #endif
     var accessibilityIdentifier = "pro-purchase"
 
     var body: some View {
         if let price = entitlement.localizedPrice {
             Button {
                 Task {
+                    #if os(macOS)
+                    if #available(macOS 15.2, *) {
+                        await entitlement.purchase(confirmIn: windowReference.window)
+                    } else {
+                        await entitlement.purchase(using: purchase)
+                    }
+                    #else
                     await entitlement.purchase(using: purchase)
+                    #endif
                 }
             } label: {
                 HStack(spacing: 12) {
@@ -245,6 +256,9 @@ struct ProPurchaseButton: View {
             .buttonStyle(.borderedProminent)
             .accessibilityIdentifier(accessibilityIdentifier)
             .disabled(entitlement.isPurchasing || entitlement.isRestoring)
+            #if os(macOS)
+            .background(PurchaseWindowReader(reference: windowReference).frame(width: 0, height: 0))
+            #endif
         } else {
             Button {
                 Task { await entitlement.loadProduct() }
@@ -258,4 +272,36 @@ struct ProPurchaseButton: View {
             .disabled(entitlement.isLoadingProduct)
         }
     }
+
+    #if os(macOS)
+    private final class PurchaseWindowReference {
+        weak var window: NSWindow?
+    }
+
+    /// Capture the button's window rather than a key window that may change
+    /// while an asynchronous StoreKit request is in progress.
+    private struct PurchaseWindowReader: NSViewRepresentable {
+        let reference: PurchaseWindowReference
+
+        func makeNSView(context: Context) -> AttachmentView {
+            let view = AttachmentView()
+            view.reference = reference
+            return view
+        }
+
+        func updateNSView(_ nsView: AttachmentView, context: Context) {
+            nsView.reference = reference
+            reference.window = nsView.window
+        }
+
+        final class AttachmentView: NSView {
+            var reference: PurchaseWindowReference?
+
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                reference?.window = window
+            }
+        }
+    }
+    #endif
 }
