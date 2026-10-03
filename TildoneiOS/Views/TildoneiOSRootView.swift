@@ -5,11 +5,13 @@
 //  Created by Diego Rivera on 8/1/26.
 //
 import SwiftUI
+import StoreKit
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
 
 struct TildoneiOSRootView: View {
+    @Environment(\.requestReview) private var requestReview
     @ObservedObject var appModel: TildoneiOSApplicationModel
     @ObservedObject private var pro = ProEntitlement.shared
     @State private var showsWelcome = false
@@ -28,8 +30,14 @@ struct TildoneiOSRootView: View {
                 try await appModel.undoLatestAction()
             }
         }
-        .onAppear { presentWelcomeIfReady() }
-        .onChange(of: appModel.hasWorkspace) { _, _ in presentWelcomeIfReady() }
+        .onAppear {
+            AppReviewController.shared.start { requestReview() }
+            presentWelcomeIfReady()
+        }
+        .onChange(of: appModel.hasWorkspace) { _, _ in
+            AppReviewController.shared.cancelPendingRequest()
+            presentWelcomeIfReady()
+        }
         .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {
             WelcomeOnboardingView {
                 showsWelcome = false

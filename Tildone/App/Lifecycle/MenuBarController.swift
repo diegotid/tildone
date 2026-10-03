@@ -198,6 +198,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         menu.autoenablesItems = false
         menu.minimumWidth = NoteColorFilterMenuView.preferredMenuWidth
         menu.addItem(item(String(localized: "About Tildone"), action: #selector(openAbout), symbolName: "info.circle"))
+        menu.addItem(item(String(localized: "Rate Tildone"), action: #selector(rateTildone), symbolName: "star"))
         menu.addItem(.separator())
 
         menu.addItem(item(String(localized: "New Note"), action: #selector(createNote), symbolName: "square.and.pencil"))
@@ -342,6 +343,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     @objc private func lineUpNotes() { sendToActiveApp(.arrange) }
     @objc private func openSettings() { sendToActiveApp(.openSettings) }
     @objc private func openAbout() { sendToActiveApp(.openAbout) }
+    @objc private func rateTildone() {
+        DispatchQueue.main.async {
+            AppReviewController.shared.cancelPendingRequest()
+            NSWorkspace.shared.open(CompanionAppLink.writeReview)
+        }
+    }
     @objc private func openWhatsNew() { sendToActiveApp(.openWhatsNew) }
     @objc private func openPro() { sendToActiveApp(.openPro) }
     @objc private func restoreProPurchases() { sendToActiveApp(.restoreProPurchases) }

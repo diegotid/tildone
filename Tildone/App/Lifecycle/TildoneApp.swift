@@ -189,6 +189,10 @@ struct TildoneApp: App {
                 Button("About Tildone") {
                     openWindow(id: Id.aboutWindow)
                 }
+                Button("Rate Tildone") {
+                    AppReviewController.shared.cancelPendingRequest()
+                    NSWorkspace.shared.open(CompanionAppLink.writeReview)
+                }
                 Divider()
                 Button(pro.purchaseStatusText) {}.disabled(true)
                 if !pro.isPro {

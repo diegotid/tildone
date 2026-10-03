@@ -844,6 +844,7 @@ final class MacSharedStore: ObservableObject {
         completed: Bool,
         moveToEndWhenCompleted: Bool = false
     ) async throws -> TaskID? {
+        AppReviewController.shared.cancelPendingRequest()
         await waitForPendingTaskTextEdit(for: id)
         let beforeTasks = try await repository.orderedTasks(
             in: try await repository.task(id: id).noteID
@@ -852,10 +853,19 @@ final class MacSharedStore: ObservableObject {
             id: id,
             completion: completed ? .completed(at: Date()) : .incomplete
         )
+        var succeeded = false
+        defer {
+            if succeeded, let previous = beforeTasks.first(where: { $0.id == id }),
+               previous.isCompleted != completed,
+               !previous.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                AppReviewController.shared.recordCompletion(id.rawValue, completed: completed)
+            }
+        }
         guard moveToEndWhenCompleted else {
             try await recordTaskCompletion(before: beforeTasks, taskID: id)
             try await reload(task.noteID)
             scheduleSyncNotification()
+            succeeded = true
             return nil
         }
 
@@ -875,6 +885,7 @@ final class MacSharedStore: ObservableObject {
                 try await recordTaskCompletion(before: beforeTasks, taskID: id)
                 try await reload(task.noteID)
                 scheduleSyncNotification()
+                succeeded = true
                 return group.first?.id
             }
         } else if !completed {
@@ -883,6 +894,7 @@ final class MacSharedStore: ObservableObject {
             try await reload(task.noteID)
         }
         scheduleSyncNotification()
+        succeeded = true
         return nil
     }
 
@@ -1265,6 +1277,7 @@ final class MacSharedStore: ObservableObject {
     }
 
     func undoLatestAction() async throws {
+        AppReviewController.shared.cancelPendingRequest()
         let action = try await undoController.undo()
         if action == .indentTask || action == .outdentTask,
            let indentationPreferenceUndo {

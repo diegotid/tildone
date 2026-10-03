@@ -38,6 +38,8 @@ struct About: View {
             if let website = URL(string: "http://cuatro.studio") {
                 Link("cuatro.studio", destination: website)
             }
+            Link("Rate Tildone", destination: CompanionAppLink.writeReview)
+                .font(.caption)
             Button("Font Attributions") {
                 openWindow(id: Id.fontAttributionsWindow)
             }

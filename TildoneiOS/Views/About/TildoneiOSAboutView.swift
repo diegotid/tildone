@@ -44,6 +44,7 @@ struct TildoneiOSAboutView: View {
             }
 
             Section {
+                Link("Rate Tildone", destination: CompanionAppLink.writeReview)
                 Button("Welcome to Tildone") { showsWelcome = true }
                 Button("Get Tildone for Mac") { showsMacDownload = true }
                 NavigationLink("Font Attributions") {

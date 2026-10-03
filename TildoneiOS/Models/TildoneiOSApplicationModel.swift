@@ -290,6 +290,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     /// turn as the tap while persistence continues asynchronously.
     @discardableResult
     func createNoteAndPresent(title: String? = nil, id: NoteID = NoteID()) -> NoteID {
+        AppReviewController.shared.cancelPendingRequest()
         let staged = stageNoteCreation(title: title, id: id)
         Swift.Task { [weak self] in
             try? await self?.commitNoteCreation(staged.note, revision: staged.revision)
@@ -304,6 +305,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func rename(noteID: NoteID, title: String?) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         let title = Self.normalizedTitle(title)
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
@@ -324,6 +326,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func setColor(noteID: NoteID, color: NoteColor) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
         let revision = stage(TildoneiOSNoteSnapshot(
@@ -349,6 +352,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func setSingleMemoFont(noteID: NoteID, font: SingleMemoFont) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         guard ProEntitlement.shared.require(.textStyling) else { throw ProAccessError.requiresPro }
         guard let snapshot = notePresentations[noteID]?.snapshot,
               let note = snapshot.note else { throw TildoneiOSPresentationError.noWorkspace }
@@ -369,6 +373,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func setKind(noteID: NoteID, kind: NoteKind) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         if kind == .singleTask && notePresentations[noteID]?.snapshot.note?.kind != .singleTask {
             guard ProEntitlement.shared.require(.singleMemo) else { throw ProAccessError.requiresPro }
         }
@@ -454,6 +459,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         after _: [Task],
         indentLevel: Int? = nil
     ) async throws -> Task? {
+        AppReviewController.shared.cancelPendingRequest()
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         let initialUpperBound = try initialOrderUpperBound()
@@ -499,6 +505,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         text: String,
         before targetTaskID: TaskID
     ) async throws -> Task? {
+        AppReviewController.shared.cancelPendingRequest()
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         let snapshot = try requireSnapshot(noteID)
@@ -535,12 +542,14 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func edit(taskID: TaskID, text: String) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         try await edit(taskID: taskID, richText: RichText(text: text))
     }
 
     func edit(taskID: TaskID, richText: RichText) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         let richText = richText.trimmingCharacters(in: .whitespacesAndNewlines)
         let (snapshot, task) = try requireSnapshot(containing: taskID)
         if task.richText.text == richText.text && task.richText.spans != richText.spans {
@@ -565,6 +574,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func setCompletion(taskID: TaskID, completed: Bool) async throws {
+        AppReviewController.shared.cancelPendingRequest()
         let (snapshot, task) = try requireSnapshot(containing: taskID)
         let completion: CompletionState = completed ? .completed(at: Date()) : .incomplete
         let updates = [TaskStructureUpdate(id: taskID, completion: completion)]
@@ -586,6 +596,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 showsCompletionControl: completed && taskSummaries[task.noteID]?.isComplete == true
             )
             scheduleSyncNotification()
+            if task.isCompleted != completed && !task.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                AppReviewController.shared.recordCompletion(taskID.rawValue, completed: completed)
+            }
         } catch {
             await rollback(task.noteID, revision: revision)
             throw error
@@ -622,6 +635,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         in orderedTasks: [Task],
         outdent: Bool
     ) async throws -> Bool {
+        AppReviewController.shared.cancelPendingRequest()
         guard ProEntitlement.shared.require(.subtasks) else { throw ProAccessError.requiresPro }
         guard let index = orderedTasks.firstIndex(where: { $0.id == taskID }) else { return false }
         let task = orderedTasks[index]
@@ -669,6 +683,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         from source: IndexSet,
         to destination: Int
     ) async throws -> Bool {
+        AppReviewController.shared.cancelPendingRequest()
         guard let originalIndex = orderedTasks.firstIndex(where: { $0.id == taskID }),
               source.contains(originalIndex),
               (0...orderedTasks.count).contains(destination) else {
@@ -803,6 +818,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     func undoLatestAction() async throws {
+        AppReviewController.shared.cancelPendingRequest()
         guard let undoController else { throw ConsequentialActionUndoError.unavailable }
         _ = try await undoController.undo()
         undoPresentation.clear()

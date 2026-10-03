@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import StoreKit
 import TildoneDomain
 
 enum MacNoteWindowGeometry {
@@ -84,6 +85,7 @@ enum NoteWindowLineUpSelection {
 /// macOS-only window coordinator. It renders repository snapshots but owns no
 /// persistence objects, contexts, or shared-store mutation rules.
 struct Desktop: View {
+    @Environment(\.requestReview) private var requestReview
     @ObservedObject var store: MacSharedStore
     let noteSyncIndicatorState: MacNoteSyncIndicatorState
     @Environment(\.openSettings) private var openSettings
@@ -166,6 +168,7 @@ struct Desktop: View {
         Color.clear
             .frame(width: 0, height: 0)
             .onAppear {
+                AppReviewController.shared.start { requestReview() }
                 setWindowOptions()
                 if store.notes.isEmpty && !UpdateChecker.shouldPresentWhatsNew() {
                     MenuBarController.shared.presentMenuForEmptyMenuBarOnlyWorkspace()

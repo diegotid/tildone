@@ -241,6 +241,12 @@
 		B93000000000000000000304 /* WelcomeOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000104 /* WelcomeOnboarding.swift */; };
 		B93000000000000000000305 /* WelcomeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000105 /* WelcomeOnboardingView.swift */; };
 		B93000000000000000000306 /* GetTildoneForMacView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93000000000000000000106 /* GetTildoneForMacView.swift */; };
+		A94000000000000000000201 /* AppReviewPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000101 /* AppReviewPolicy.swift */; };
+		A94000000000000000000301 /* AppReviewPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000101 /* AppReviewPolicy.swift */; };
+		A94000000000000000000202 /* AppReviewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000102 /* AppReviewController.swift */; };
+		A94000000000000000000302 /* AppReviewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000102 /* AppReviewController.swift */; };
+		A94000000000000000000203 /* AppReviewPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000103 /* AppReviewPolicyTests.swift */; };
+		A94000000000000000000303 /* AppReviewPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000103 /* AppReviewPolicyTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -480,6 +486,9 @@
 		B93000000000000000000104 /* WelcomeOnboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeOnboarding.swift; sourceTree = "<group>"; };
 		B93000000000000000000105 /* WelcomeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeOnboardingView.swift; sourceTree = "<group>"; };
 		B93000000000000000000106 /* GetTildoneForMacView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GetTildoneForMacView.swift; sourceTree = "<group>"; };
+		A94000000000000000000101 /* AppReviewPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewPolicy.swift; sourceTree = "<group>"; };
+		A94000000000000000000102 /* AppReviewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewController.swift; sourceTree = "<group>"; };
+		A94000000000000000000103 /* AppReviewPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewPolicyTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1058,6 +1067,7 @@
 			isa = PBXGroup;
 			children = (
 				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
+				A94000000000000000000103 /* AppReviewPolicyTests.swift */,
 				B92900000000000000000107 /* WhatsNewReleaseTests.swift */,
 				B60000000000000000000014 /* LegacyMigrationTests.swift */,
 			);
@@ -1139,6 +1149,8 @@
 		B92900000000000000000001 /* Discovery */ = {
 			isa = PBXGroup;
 			children = (
+				A94000000000000000000101 /* AppReviewPolicy.swift */,
+				A94000000000000000000102 /* AppReviewController.swift */,
 				B92900000000000000000101 /* WhatsNewRelease.swift */,
 				B92900000000000000000102 /* WhatsNewView.swift */,
 				B92900000000000000000103 /* WhatsNewPreviewContent.swift */,
@@ -1442,6 +1454,8 @@
 				E92500000000000000000301 /* ProFeature+Presentation.swift in Sources */,
 				E92500000000000000000302 /* ProPreviewContent.swift in Sources */,
 				E92500000000000000000303 /* ProFeaturePreview.swift in Sources */,
+				A94000000000000000000301 /* AppReviewPolicy.swift in Sources */,
+				A94000000000000000000302 /* AppReviewController.swift in Sources */,
 				B92900000000000000000301 /* WhatsNewRelease.swift in Sources */,
 				B92900000000000000000303 /* WhatsNewPreviewContent.swift in Sources */,
 				B92900000000000000000304 /* WhatsNewEverydayPreview.swift in Sources */,
@@ -1507,6 +1521,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A94000000000000000000303 /* AppReviewPolicyTests.swift in Sources */,
 				A10000000000000000000005 /* TildoneiOSTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1530,6 +1545,8 @@
 				E92500000000000000000201 /* ProFeature+Presentation.swift in Sources */,
 				E92500000000000000000202 /* ProPreviewContent.swift in Sources */,
 				E92500000000000000000203 /* ProFeaturePreview.swift in Sources */,
+				A94000000000000000000201 /* AppReviewPolicy.swift in Sources */,
+				A94000000000000000000202 /* AppReviewController.swift in Sources */,
 				B92900000000000000000201 /* WhatsNewRelease.swift in Sources */,
 				B92900000000000000000202 /* WhatsNewView.swift in Sources */,
 				B92900000000000000000203 /* WhatsNewPreviewContent.swift in Sources */,
@@ -1647,6 +1664,7 @@
 			files = (
 				B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */,
 				F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */,
+				A94000000000000000000203 /* AppReviewPolicyTests.swift in Sources */,
 				B92900000000000000000207 /* WhatsNewReleaseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

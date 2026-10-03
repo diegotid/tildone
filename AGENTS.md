@@ -321,6 +321,13 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 
 Launch at login comes from `SMAppService` state, not `UserDefaults`. Preserve raw values and storage keys unless shipping a tested conversion. Note that Settings currently labels two sections “General”; treat whether that is intentional as uncertain.
 
+## App Store ratings
+
+- Both apps use native StoreKit review requests only after meaningful local engagement: seven elapsed days, three active days and ten distinct nonempty task completions. Synced/imported content is never engagement evidence.
+- `Shared/Discovery/AppReviewPolicy.swift` owns installation-local eligibility and request budgets; `AppReviewController.swift` waits 30 seconds beyond completion/undo and checks foreground editing/modal state. On Mac the active note supplies the StoreKit presentation environment.
+- At most one call per marketing version, 120 days between calls and three calls in a rolling year. Every call consumes budget even when Apple suppresses its UI. No rating/submission result is observable.
+- Debug, tests and previews disable automatic requests. About provides a localized voluntary App Store write-review link. No incentives, sentiment screening or analytics. See `docs/app-store-review-requests.md` and `AppReviewPolicyTests` in both test targets.
+
 ## Coding conventions
 
 Follow the codebase’s existing Swift style unless a scoped refactor establishes a new convention:

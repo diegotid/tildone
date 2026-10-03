@@ -5,11 +5,13 @@
 
 import Combine
 import SwiftUI
+import StoreKit
 import TildoneDomain
 
 /// A macOS note window backed solely by shared-domain snapshots. AppKit state
 /// (focus, fade, minimization and window styling) deliberately remains here.
 struct Note: View {
+    @Environment(\.requestReview) private var requestReview
     let store: MacSharedStore
     @ObservedObject var presentation: MacNotePresentation
     let noteID: NoteID
@@ -209,6 +211,9 @@ struct Note: View {
             updateRestoreControlForeground()
         }
         .onChange(of: noteWindow) { _, window in
+            if window?.isKeyWindow == true {
+                AppReviewController.shared.setPresenter { requestReview() }
+            }
             contentWindowAlpha = window?.alphaValue ?? 1
             updateWindowMenuTitle()
             updateFormatControlForeground()
@@ -229,6 +234,10 @@ struct Note: View {
         }
         .onChange(of: colorScheme) { _, _ in
             updateFormatControlForeground()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard let window = notification.object as? NSWindow, window === noteWindow else { return }
+            AppReviewController.shared.setPresenter { requestReview() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,
