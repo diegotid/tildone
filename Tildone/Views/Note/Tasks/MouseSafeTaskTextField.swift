@@ -22,6 +22,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     var alignment: NSTextAlignment = .left
     var lineHeightMultiple: CGFloat? = nil
     var verticallyCentersContent = false
+    var insertsLineBreaks = false
     let onFocus: () -> Void
     let onBlur: () -> Void
     let onEnter: (Int) -> Void
@@ -525,6 +526,10 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             switch commandSelector {
             case #selector(NSResponder.insertNewline(_:)):
+                if parent.insertsLineBreaks {
+                    textView.insertText("\n", replacementRange: textView.selectedRange())
+                    return true
+                }
                 let cursor = textView.selectedRange().location
                 if cursor > 0, cursor < textView.string.utf16.count {
                     // Typing is already published. The structural split now

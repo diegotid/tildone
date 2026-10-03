@@ -16,6 +16,27 @@ import TildoneSync
 
 @MainActor
 final class TildoneiOSTests: XCTestCase {
+    func testSingleMemoReturnAllowsLineBreakWithoutSubmitting() {
+        let focus = FocusState<TaskID?>()
+        var draft = RichText(text: "FirstSecond")
+        let parent = RichTaskTextEditor(
+            richText: Binding(get: { draft }, set: { draft = $0 }),
+            modelRichText: RichText(text: "FirstSecond"),
+            taskID: TaskID(), focusedTask: focus.projectedValue, isCompleted: false,
+            allowsMultipleLines: true, fitsSingleMemo: true, onCommit: { _ in }
+        )
+        let coordinator = parent.makeCoordinator()
+        let view = UITextView()
+        view.text = "FirstSecond"
+        XCTAssertTrue(coordinator.textView(
+            view, shouldChangeTextIn: NSRange(location: 5, length: 0),
+            replacementText: "\n"
+        ))
+        view.text = "First\nSecond"
+        coordinator.textViewDidChange(view)
+        XCTAssertEqual(draft.text, "First\nSecond")
+    }
+
     func testProFeaturePreviewsRenderNativeCardsInBothAppearances() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/ios")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

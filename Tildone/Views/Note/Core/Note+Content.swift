@@ -83,6 +83,7 @@ extension Note {
                         alignment: .center,
                         lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
                         verticallyCentersContent: true,
+                        insertsLineBreaks: true,
                         onFocus: {
                             activateNativeTask(task.id)
                             keyboardFocusedTaskID = nil

@@ -3575,6 +3575,30 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testMemoReturnInsertsLineBreakInsteadOfSplittingTask() {
+        var submitted = false
+        let parent = MouseSafeTaskTextField(
+            richText: .constant(RichText(text: "FirstSecond")),
+            taskID: TaskID(), isFocused: false, placesCaretAtStartOnFocus: false,
+            fontSize: 14, textColor: .primary, cursorColor: .primary,
+            truncation: .multiple, insertsLineBreaks: true,
+            onFocus: {}, onBlur: {}, onEnter: { _ in submitted = true },
+            onMoveUp: {}, onMoveDown: {}
+        )
+        let coordinator = parent.makeCoordinator()
+        let editor = NSTextView()
+        editor.string = "FirstSecond"
+        editor.setSelectedRange(NSRange(location: 5, length: 0))
+        XCTAssertTrue(coordinator.control(
+            NSTextField(), textView: editor,
+            doCommandBy: #selector(NSResponder.insertNewline(_:))
+        ))
+        XCTAssertEqual(editor.string, "First\nSecond")
+        XCTAssertEqual(editor.selectedRange(), NSRange(location: 6, length: 0))
+        XCTAssertFalse(submitted)
+    }
+
+    @MainActor
     func testNativeTaskEndEditingPreservesFormattingThroughFieldEditorLifecycle() async throws {
         let plainText = RichText(text: "Formatted")
         var modelValue = plainText
