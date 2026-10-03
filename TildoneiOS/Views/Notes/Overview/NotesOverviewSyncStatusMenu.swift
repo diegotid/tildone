@@ -33,7 +33,7 @@ struct TildoneiOSSyncStatusMenu: View {
             offerCloudAdoption: appModel.offerCloudAdoption,
             showAbout: showAbout,
             showWelcome: showWelcome,
-            animatesSyncSymbol: showsLaunchProgress
+            animatesSyncSymbol: showsLaunchProgress || presentation.status.activity == .syncing
         )
     }
 }

@@ -440,6 +440,93 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertTrue(model.isEmptyStateConfirmed)
     }
 
+    func testInitialRestoreLeavesWorkspaceEditableAndPublishesNotesBeforeCompletion() async throws {
+        let workspaceID = UUID()
+        let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceID)))
+        let started = expectation(description: "Initial download started")
+        var finish: CheckedContinuation<SyncStatus, Error>?
+        defer { finish?.resume(throwing: CancellationError()) }
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { identity in
+                if identity == .account(workspaceID) { return repository }
+                return try TildoneRepository(descriptor: .inMemory(workspace: identity))
+            },
+            accountResolver: { CloudAccountSnapshot(state: .available, workspaceID: workspaceID) },
+            synchronizationEnabled: true,
+            initialSyncRunner: { _, _ in
+                try await withCheckedThrowingContinuation { continuation in
+                    finish = continuation
+                    started.fulfill()
+                }
+            }
+        )
+
+        await model.resolveAndOpenCurrentWorkspace()
+        await fulfillment(of: [started], timeout: 3)
+        XCTAssertTrue(model.hasWorkspace)
+        XCTAssertFalse(model.isResolvingWorkspace)
+        XCTAssertFalse(model.isCheckingCloudForNotes)
+        XCTAssertFalse(model.isEmptyStateConfirmed)
+        XCTAssertEqual(model.syncStatus.activity, .syncing)
+
+        let downloaded = try await repository.createNote(
+            id: NoteID(), createdAt: Date(), title: "Downloaded before completion"
+        )
+        try await model.reloadNotes()
+        XCTAssertEqual(model.notes.map(\.id), [downloaded.id])
+        let created = try await model.createNote(title: "Created during restore")
+        XCTAssertEqual(Set(model.notes.map(\.id)), [downloaded.id, created.id])
+        XCTAssertFalse(model.isEmptyStateConfirmed)
+
+        let confirmed = expectation(description: "Download completed")
+        let observation = model.$isEmptyStateConfirmed.dropFirst().filter { $0 }.sink { _ in
+            confirmed.fulfill()
+        }
+        finish?.resume(returning: SyncStatus(
+            availability: .available, activity: .idle, lastSuccessfulSyncAt: Date()
+        ))
+        finish = nil
+        await fulfillment(of: [confirmed], timeout: 3)
+        withExtendedLifetime(observation) {}
+        XCTAssertEqual(model.syncStatus.activity, .idle)
+        XCTAssertEqual(Set(model.notes.map(\.id)), [downloaded.id, created.id])
+    }
+
+    func testInitialRestoreCompletionCannotReopenSignedOutWorkspace() async throws {
+        let workspaceID = UUID()
+        var account = CloudAccountSnapshot(state: .available, workspaceID: workspaceID)
+        let started = expectation(description: "Initial download started")
+        var finish: CheckedContinuation<SyncStatus, Error>?
+        defer { finish?.resume(throwing: CancellationError()) }
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { identity in
+                try TildoneRepository(descriptor: .inMemory(workspace: identity))
+            },
+            accountResolver: { account },
+            synchronizationEnabled: true,
+            initialSyncRunner: { _, _ in
+                try await withCheckedThrowingContinuation { continuation in
+                    finish = continuation
+                    started.fulfill()
+                }
+            }
+        )
+        await model.resolveAndOpenCurrentWorkspace()
+        await fulfillment(of: [started], timeout: 3)
+        account = CloudAccountSnapshot(state: .noAccount, workspaceID: nil)
+        await model.resolveAndOpenCurrentWorkspace()
+        let localNote = try await model.createNote(title: "Keep local")
+        finish?.resume(returning: SyncStatus(
+            availability: .available, activity: .idle, lastSuccessfulSyncAt: Date()
+        ))
+        finish = nil
+        await Swift.Task.yield()
+        await Swift.Task.yield()
+        XCTAssertTrue(model.isUsingLocalWorkspace)
+        XCTAssertEqual(model.syncStatus.availability, .noAccount)
+        XCTAssertEqual(model.notes.map(\.id), [localNote.id])
+    }
+
     func testNoICloudAccountOpensEditableLocalWorkspace() async throws {
         let localRepository = try TildoneRepository(
             descriptor: .inMemory(workspace: .localOnly)

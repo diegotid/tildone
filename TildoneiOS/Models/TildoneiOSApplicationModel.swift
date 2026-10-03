@@ -13,6 +13,7 @@ import TildoneSync
 @MainActor
 final class TildoneiOSApplicationModel: ObservableObject {
     typealias RepositoryFactory = (WorkspaceIdentity) async throws -> TildoneRepository
+    typealias InitialSyncRunner = (TildoneRepository, UUID) async throws -> SyncStatus
 
     let overviewPresentation = TildoneiOSOverviewPresentation()
     let syncPresentation = TildoneiOSSyncPresentation()
@@ -45,6 +46,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
 
     private let repositoryFactory: RepositoryFactory
     private let accountResolver: () async -> CloudAccountSnapshot
+    private let initialSyncRunner: InitialSyncRunner?
     private let synchronizationEnabled: Bool
     private let transportStateStore: SyncTransportStateStore
     private let defaults: UserDefaults
@@ -55,6 +57,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private var coordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
     private var workspaceResolutionTask: Swift.Task<Void, Never>?
+    private var initialSyncTask: Swift.Task<Void, Never>?
     private var activeWorkspace: UUID?
     private var accountWorkspaceID: UUID?
     private var notePresentations: [NoteID: TildoneiOSNotePresentation] = [:]
@@ -73,18 +76,21 @@ final class TildoneiOSApplicationModel: ObservableObject {
         },
         synchronizationEnabled: Bool = TildoneiOSSyncBootstrapper.featureEnabled,
         transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        initialSyncRunner: InitialSyncRunner? = nil
     ) {
         self.repositoryFactory = repositoryFactory
         self.accountResolver = accountResolver
         self.synchronizationEnabled = synchronizationEnabled
         self.transportStateStore = transportStateStore
         self.defaults = defaults
+        self.initialSyncRunner = initialSyncRunner
     }
 
     deinit {
         statusTask?.cancel()
         remoteReloadTask?.cancel()
+        initialSyncTask?.cancel()
     }
 
     func start() {
@@ -1161,21 +1167,52 @@ final class TildoneiOSApplicationModel: ObservableObject {
             )
             isEmptyStateConfirmed = true
         } else {
-            syncStatus = SyncStatus(availability: .available, activity: .idle)
+            syncStatus = SyncStatus(availability: .available, activity: .syncing)
             isEmptyStateConfirmed = false
         }
         try await reloadNotes()
+        // The account and local workspace are ready. The first cloud checkpoint
+        // may wait on the network, so expose its status instead of hiding it
+        // behind the launch spinner. Keep the empty state unconfirmed until
+        // CloudKit establishes whether this account has notes to download.
+        isResolvingWorkspace = false
+        isCheckingCloudForNotes = false
         await Swift.Task.yield()
         if SyncTransportActivationPolicy.shouldActivate(
             enabledByDefault: synchronizationEnabled,
             persistedState: transportState
         ) {
-            let checkpointStatus = try await startCoordinator(
-                for: accountRepository,
-                workspaceID: workspaceID
-            )
-            try await reloadNotes()
-            isEmptyStateConfirmed = checkpointStatus.lastSuccessfulSyncAt != nil
+            beginInitialSync(accountRepository, workspaceID: workspaceID)
+        }
+    }
+
+    private func beginInitialSync(_ repository: TildoneRepository, workspaceID: UUID) {
+        initialSyncTask = Swift.Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if !Swift.Task.isCancelled, activeWorkspace == workspaceID { initialSyncTask = nil }
+            }
+            do {
+                let checkpointStatus: SyncStatus
+                if let initialSyncRunner {
+                    checkpointStatus = try await initialSyncRunner(repository, workspaceID)
+                } else {
+                    checkpointStatus = try await startCoordinator(for: repository, workspaceID: workspaceID)
+                }
+                guard !Swift.Task.isCancelled, activeWorkspace == workspaceID,
+                      transportState == .active else { return }
+                try await reloadNotes()
+                present(status: checkpointStatus)
+                isEmptyStateConfirmed = checkpointStatus.lastSuccessfulSyncAt != nil
+            } catch {
+                guard !Swift.Task.isCancelled, activeWorkspace == workspaceID,
+                      transportState == .active else { return }
+                syncStatus = SyncStatus(
+                    availability: .available,
+                    activity: .attentionNeeded,
+                    issue: .unknown
+                )
+            }
         }
     }
 
@@ -1217,6 +1254,11 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 )
             }
         )
+        guard !Swift.Task.isCancelled, activeWorkspace == workspaceID,
+              transportState == .active else {
+            await coordinator.stop()
+            throw CancellationError()
+        }
         self.coordinator = coordinator
         statusTask?.cancel()
         statusTask = Swift.Task { [weak self, weak coordinator] in
@@ -1236,6 +1278,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     private func closeWorkspace(status: SyncStatus) async {
+        initialSyncTask?.cancel()
+        initialSyncTask = nil
         statusTask?.cancel()
         statusTask = nil
         remoteReloadTask?.cancel()

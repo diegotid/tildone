@@ -65,7 +65,7 @@ struct NotesListView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if overviewNotes.isEmpty && appModel.isCheckingCloudForNotes {
+                if overviewNotes.isEmpty && !appModel.hasWorkspace && appModel.isCheckingCloudForNotes {
                     ContentUnavailableView {
                         ProgressView()
                     } description: {
@@ -118,7 +118,7 @@ struct NotesListView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     TildoneiOSSyncStatusMenu(
                         appModel: appModel,
-                        showsLaunchProgress: appModel.isCheckingCloudForNotes && !activeNotes.isEmpty,
+                        showsLaunchProgress: appModel.isCheckingCloudForNotes,
                         showAbout: { showsAbout = true },
                         showWelcome: { showsWelcome = true }
                     )
@@ -354,8 +354,20 @@ private struct UnconfirmedEmptyWorkspaceStatus: View {
     }
 
     var body: some View {
-        WorkspaceStatusView(status: syncPresentation.status) {
-            appModel.syncNow()
+        if syncPresentation.status.availability == .available,
+           syncPresentation.status.activity == .syncing {
+            VStack(spacing: 12) {
+                Text("Downloading notes from iCloud…")
+                    .font(.headline)
+                Text("Your notes will appear here as they arrive. You can keep using Tildone.")
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(24)
+        } else {
+            WorkspaceStatusView(status: syncPresentation.status) {
+                appModel.syncNow()
+            }
         }
     }
 }
