@@ -6,6 +6,7 @@
 //
 import Foundation
 import SwiftData
+import SQLite3
 import XCTest
 import TildoneDomain
 import TildonePersistence
@@ -268,7 +269,9 @@ final class LegacyMigrationTests: XCTestCase {
                 try firstInterrupter.call(checkpoint)
             })
         )
-        _ = try? await partial.migrate()
+        await assertMigrationError(.interrupted(.afterMarker)) {
+            _ = try await partial.migrate()
+        }
         let copiedSource = try temporaryDirectory().appendingPathComponent("default.store")
         try copySourceSet(from: source, to: copiedSource)
         await assertMigrationError(.differentSource) {
@@ -280,13 +283,15 @@ final class LegacyMigrationTests: XCTestCase {
 
         let changedDestination = try temporaryDirectory().appendingPathComponent("shared.sqlite")
         let secondInterrupter = CheckpointInterrupter(target: .afterMarker)
-        _ = try? await LegacyMigrationCoordinator(
-            sourceURL: source,
-            destinationURL: changedDestination,
-            options: .init(checkpoint: { checkpoint in
-                try secondInterrupter.call(checkpoint)
-            })
-        ).migrate()
+        await assertMigrationError(.interrupted(.afterMarker)) {
+            _ = try await LegacyMigrationCoordinator(
+                sourceURL: source,
+                destinationURL: changedDestination,
+                options: .init(checkpoint: { checkpoint in
+                    try secondInterrupter.call(checkpoint)
+                })
+            ).migrate()
+        }
         let handle = try FileHandle(forWritingTo: source)
         try handle.seekToEnd()
         try handle.write(contentsOf: Data([0]))
@@ -471,19 +476,50 @@ final class LegacyMigrationTests: XCTestCase {
     }
 
     private func withLegacyStore(at url: URL, body: (ModelContext) throws -> Void) throws {
-        let schema = Schema([Todo.self, TodoList.self])
-        let configuration = ModelConfiguration(
-            "SanitizedLegacyFixture",
-            schema: schema,
-            url: url,
-            allowsSave: true,
-            cloudKitDatabase: .none
-        )
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        let context = ModelContext(container)
-        context.autosaveEnabled = false
-        try body(context)
-        try context.save()
+        let writerURL = url.deletingLastPathComponent().appendingPathComponent("fixture-writer.store")
+        // SwiftData may checkpoint its writer asynchronously after save/close.
+        // Freeze only this synthetic fixture with SQLite's backup API; no
+        // framework writer ever opens the returned migration source URL.
+        try autoreleasepool {
+            let schema = Schema([Todo.self, TodoList.self])
+            let configuration = ModelConfiguration(
+                "SanitizedLegacyFixture",
+                schema: schema,
+                url: writerURL,
+                allowsSave: true,
+                cloudKitDatabase: .none
+            )
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            let context = ModelContext(container)
+            context.autosaveEnabled = false
+            try body(context)
+            try context.save()
+            try freezeFixture(from: writerURL, to: url)
+        }
+    }
+
+    private func freezeFixture(from source: URL, to destination: URL) throws {
+        var reader: OpaquePointer?
+        var writer: OpaquePointer?
+        defer {
+            if let reader { sqlite3_close(reader) }
+            if let writer { sqlite3_close(writer) }
+        }
+        try requireSQLite(sqlite3_open_v2(source.path, &reader, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        try requireSQLite(sqlite3_open(destination.path, &writer), SQLITE_OK)
+        sqlite3_busy_timeout(reader, 5_000)
+        sqlite3_busy_timeout(writer, 5_000)
+        let backup = try XCTUnwrap(sqlite3_backup_init(writer, "main", reader, "main"))
+        let step = sqlite3_backup_step(backup, -1)
+        let finish = sqlite3_backup_finish(backup)
+        try requireSQLite(step, SQLITE_DONE)
+        try requireSQLite(finish, SQLITE_OK)
+    }
+
+    private func requireSQLite(_ actual: Int32, _ expected: Int32) throws {
+        guard actual == expected else {
+            throw NSError(domain: "SyntheticLegacyFixture", code: Int(actual))
+        }
     }
 
     private func makeList(created: Date, title: String?) -> TodoList {

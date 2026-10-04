@@ -1444,7 +1444,7 @@ enum ScrollChevronLayout {
     static let count = 6
     static let travelSpan: CGFloat = 60
     static let indicatorWidth: CGFloat = 24
-    static let previewCenterX: CGFloat = 228
+    static let previewCenterX: CGFloat = 224
 
     static func previewCenterX(for corner: ArrangementCorner) -> CGFloat {
         corner == .bottomRight ? 16 : previewCenterX
@@ -2189,8 +2189,10 @@ extension SettingsForm {
     }
 
     static func crossesSliderMarker(from oldValue: Double, to newValue: Double, marker: Double) -> Bool {
-        (oldValue < marker && newValue >= marker)
-            || (oldValue >= marker && newValue < marker)
+        // A marker derived from 1 - opacity can differ from the slider's
+        // decimal value by one representable step (for example, 0.3).
+        let tolerance = marker.ulp * 2
+        return (oldValue < marker - tolerance) != (newValue < marker - tolerance)
     }
 
     static func opacityPreviewValue(at date: Date) -> Double {

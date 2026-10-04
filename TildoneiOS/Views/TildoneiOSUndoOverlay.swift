@@ -193,7 +193,8 @@ struct TildoneiOSShakeUndoResponder: UIViewControllerRepresentable {
         }
 
         private func activateIfPossible() {
-            guard canBecomeFirstResponder, viewIfLoaded?.window != nil, !isFirstResponder else {
+            guard canBecomeFirstResponder, let window = viewIfLoaded?.window,
+                  window.isKeyWindow, !window.isHidden, !isFirstResponder else {
                 return
             }
             becomeFirstResponder()
@@ -206,22 +207,24 @@ struct TildoneiOSShakeUndoResponder: UIViewControllerRepresentable {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.isKeyboardVisible = true
+                MainActor.assumeIsolated { self?.isKeyboardVisible = true }
             })
             notificationObservers.append(center.addObserver(
                 forName: UIResponder.keyboardDidHideNotification,
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.isKeyboardVisible = false
-                self?.activateIfPossible()
+                MainActor.assumeIsolated {
+                    self?.isKeyboardVisible = false
+                    self?.activateIfPossible()
+                }
             })
             notificationObservers.append(center.addObserver(
                 forName: UIApplication.didBecomeActiveNotification,
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.activateIfPossible()
+                MainActor.assumeIsolated { self?.activateIfPossible() }
             })
         }
 

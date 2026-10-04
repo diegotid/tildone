@@ -131,12 +131,22 @@ final class TildoneTests: XCTestCase {
             )
             window.setNoteHostingContentView(host)
             defer { window.close() }
+            window.makeKeyAndOrderFront(nil)
             host.layoutSubtreeIfNeeded()
             try await Swift.Task.sleep(for: .milliseconds(100))
             func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
                 (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
             }
-            let field = try XCTUnwrap(fields(host).first(where: { $0.taskID == task.id }))
+            // Inactive rows contain a transparent native focus helper behind
+            // their rendered text. Activate the row before inspecting its editor.
+            let focusHelper = try XCTUnwrap(fields(host).first(where: { $0.taskID == task.id }))
+            XCTAssertTrue(window.makeFirstResponder(focusHelper))
+            focusHelper.onEditorFocus?()
+            host.layoutSubtreeIfNeeded()
+            try await Swift.Task.sleep(for: .milliseconds(100))
+            let field = try XCTUnwrap(fields(host).first(where: {
+                $0.taskID == task.id && ($0.textColor?.alphaComponent ?? 0) > 0.5
+            }))
             let color = try XCTUnwrap((field.attributedStringValue.attribute(
                 .foregroundColor, at: 0, effectiveRange: nil
             ) as? NSColor)?.usingColorSpace(.deviceRGB))
@@ -687,18 +697,22 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(note.color, .purple)
     }
 
+    @MainActor
     func testUndoPrefersAFocusedTextEditorOnlyWhenItHasTypingHistory() {
         let textView = NSTextView()
         XCTAssertFalse(MacUndoMenuButton.undoFocusedTextIfAvailable(responder: textView))
 
         var didUndo = false
         let undoManager = UndoManager()
-        undoManager.registerUndo(withTarget: NSObject()) { _ in didUndo = true }
+        let target = NSObject()
+        undoManager.registerUndo(withTarget: target) { _ in didUndo = true }
 
-        XCTAssertTrue(MacUndoMenuButton.undoFocusedTextIfAvailable(
-            responder: textView,
-            undoManager: undoManager
-        ))
+        withExtendedLifetime(target) {
+            XCTAssertTrue(MacUndoMenuButton.undoFocusedTextIfAvailable(
+                responder: textView,
+                undoManager: undoManager
+            ))
+        }
         XCTAssertTrue(didUndo)
     }
 
@@ -2276,7 +2290,7 @@ final class TildoneTests: XCTestCase {
             alignedWith: pickerFrame
         )
 
-        XCTAssertEqual(frame, NSRect(x: 229, y: 272, width: 19, height: 22))
+        XCTAssertEqual(frame, NSRect(x: 227.5, y: 272, width: 19, height: 22))
     }
 
     func testMinimizedPreferencesPersistSeparatelyPerNoteAndClearOnRestore() throws {
@@ -5061,7 +5075,8 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(moved)
         let tasks = try await repository.orderedTasks(in: note.id)
         XCTAssertEqual(tasks.map(\.id), [otherRoot.id, parent.id, child.id])
-        XCTAssertEqual(TaskHierarchy.parentID(at: 1, in: tasks), parent.id)
+        XCTAssertNil(TaskHierarchy.parentID(at: 1, in: tasks))
+        XCTAssertEqual(TaskHierarchy.parentID(at: 2, in: tasks), parent.id)
     }
 
     @MainActor
@@ -5628,7 +5643,7 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(source.contains("? TaskReorderFeedback.expandedHeight"))
         XCTAssertTrue(source.contains("TaskReorderInsertionLine()"))
         XCTAssertTrue(source.contains(".onChange(of: feedbackResetToken)"))
-        XCTAssertTrue(source.contains(".padding(.trailing, 8)"))
+        XCTAssertTrue(source.contains(".padding(.trailing, taskControlsTrailingInset)"))
         XCTAssertFalse(source.contains(".stroke(Color.accentColor"))
         XCTAssertTrue(source.contains(".dropDestination(for: MacTaskDragPayload.self)"))
         XCTAssertTrue(source.contains("accessibilityLabel() -> String? { String(localized: \"Reorder task\") }"))

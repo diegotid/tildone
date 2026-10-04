@@ -3756,6 +3756,66 @@
         }
       }
     },
+    "Help search aliases: Gather Notes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gather,gathering,collect,group,bring together,scroll,mouse wheel,trackpad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reunir,recoger,agrupar,juntar,desplazamiento,rueda del ratón,trackpad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rassembler,collecter,grouper,réunir,défilement,molette,trackpad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收拢,聚集,收集,归拢,滚动,鼠标滚轮,触控板"
+          }
+        }
+      },
+      "comment" : "Comma-separated localized keywords for the macOS Help menu search. Looked up dynamically by HelpMenuSearchCatalog."
+    },
+    "Help search aliases: Note Dimming" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dim,dimming,fade,opacity,transparency,restore,scroll,mouse wheel,trackpad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "atenuar,atenuación,desvanecer,opacidad,transparencia,restaurar,desplazamiento,rueda del ratón,trackpad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "atténuer,atténuation,fondu,opacité,transparence,restaurer,défilement,molette,trackpad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调暗,变暗,淡化,不透明度,透明度,恢复,滚动,鼠标滚轮,触控板"
+          }
+        }
+      },
+      "comment" : "Comma-separated localized keywords for the macOS Help menu search. Looked up dynamically by HelpMenuSearchCatalog."
+    },
     "Highlight" : {
       "localizations" : {
         "en" : {

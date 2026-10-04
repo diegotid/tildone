@@ -238,13 +238,20 @@ final class TildoneiOSTests: XCTestCase {
             focusedTask: focusState.projectedValue, isCompleted: false, onCommit: { _ in }
         )
         let coordinator = RichTaskTextEditor.Coordinator(parent: editor)
+        let previousKeyWindow = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first(where: \.isKeyWindow)
         let window = UIWindow(frame: UIScreen.main.bounds)
         let controller = UIViewController()
         window.rootViewController = controller
         let textView = UITextView(frame: CGRect(x: 0, y: 0, width: 300, height: 100))
         controller.view.addSubview(textView)
         window.makeKeyAndVisible()
-        defer { window.isHidden = true }
+        defer {
+            window.endEditing(true)
+            window.isHidden = true
+            window.rootViewController = nil
+            previousKeyWindow?.makeKey()
+        }
         textView.attributedText = NSAttributedString(string: value.text)
         XCTAssertTrue(textView.becomeFirstResponder())
         coordinator.placeInitialCaretIfNeeded(textView)
@@ -371,12 +378,18 @@ final class TildoneiOSTests: XCTestCase {
                 ChecklistView(appModel: model, noteID: note.id, isCreatingNote: convertsVisibleChecklist)
             })
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let previousKeyWindow = scene.windows.first(where: \.isKeyWindow)
             let window = UIWindow(windowScene: scene)
             window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
             window.rootViewController = host
             window.makeKeyAndVisible()
             host.view.layoutIfNeeded()
-            defer { window.isHidden = true }
+            defer {
+                window.endEditing(true)
+                window.isHidden = true
+                window.rootViewController = nil
+                previousKeyWindow?.makeKey()
+            }
             try await Swift.Task.sleep(nanoseconds: 500_000_000)
             if convertsVisibleChecklist {
                 try await model.setKind(noteID: note.id, kind: .singleTask)
@@ -939,10 +952,16 @@ final class TildoneiOSTests: XCTestCase {
         ) {
             undoInvocationCount += 1
         })
+        let previousKeyWindow = scene.windows.first(where: \.isKeyWindow)
         let window = UIWindow(windowScene: scene)
         window.rootViewController = hostingController
         window.makeKeyAndVisible()
-        defer { window.isHidden = true }
+        defer {
+            window.endEditing(true)
+            window.isHidden = true
+            window.rootViewController = nil
+            previousKeyWindow?.makeKey()
+        }
         hostingController.view.setNeedsLayout()
         hostingController.view.layoutIfNeeded()
 
@@ -957,6 +976,13 @@ final class TildoneiOSTests: XCTestCase {
         responder.motionEnded(.motionShake, with: nil)
         for _ in 0..<10 where undoInvocationCount == 0 { await Swift.Task.yield() }
         XCTAssertEqual(undoInvocationCount, 1)
+
+        // A hidden note must not reclaim keyboard focus from another window.
+        window.isHidden = true
+        responder.resignFirstResponder()
+        NotificationCenter.default.post(name: UIResponder.keyboardDidHideNotification, object: nil)
+        for _ in 0..<10 { await Swift.Task.yield() }
+        XCTAssertFalse(responder.isFirstResponder)
     }
 
     func testIPhoneHierarchyUsesRecursiveLeafProgressAndInheritsIndentation() async throws {

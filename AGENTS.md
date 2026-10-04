@@ -413,6 +413,8 @@ Continue prioritizing:
 
 Use in-memory `ModelConfiguration` for isolated model tests. For migration tests, retain versioned on-disk fixtures rather than creating both old and new stores with the current model.
 
+Generated legacy edge-case fixtures must be frozen with the test helper's SQLite backup before source fingerprinting. The SwiftData fixture writer uses a different temporary URL; asynchronous writer checkpointing must never be mistaken for a change to an immutable migration source. This helper is for synthetic fixtures only, never a live legacy store. Hosted window tests must release their temporary view controllers and restore the previous key window; retain undo targets through their invocation.
+
 ## Build and test commands
 
 Run commands from the repository root (the directory containing `Tildone.xcodeproj`). The verified local toolchain during this analysis was Xcode 26.4.1; the project was originally created with Xcode 15-era settings, so do not silently raise deployment or project format versions.
@@ -438,10 +440,12 @@ xcodebuild -project Tildone.xcodeproj -scheme Tildone -configuration Debug -dest
 Assert that both tracked app schemes use Debug launch/Release archive configuration and that the Release bundle IDs, entitlements, deployment targets, and compilation conditions remain deterministic:
 
 ```sh
-./Scripts/verify-release-configuration.sh
+./scripts/verify-release-configuration.sh
 ```
 
 Run the build command on the current tree before claiming application compilation. Stage 12C's shared Debug/Release package suites, four fresh generic Debug/Release platform builds, and Mac/iPhone hosted tests passed on 2026-08-09. These local results are not signed physical-device or live CloudKit evidence. Existing compiler warnings include explicit specialization of `getNestedSubviews()` in `Note.swift` and two never-mutated variables in `Desktop.clampedOrigin`; do not hide new warnings among them.
+
+The 2026-10-04 local repair qualification uses Xcode 27.0 (`27A266a`) on macOS 27.0.1 (`26A434`), without changing project format, deployment targets or signing. Its source patch and results are recorded in `docs/production-cloudkit-inspection-12d.md`; the August pass does not replace current qualification.
 
 There is no repository-defined lint or formatting command. The repository has deterministic Release configuration assertions but no authorized archive/upload command. The shared schemes support Archive in Release configuration, and the project uses automatic signing, but App Store archive/upload steps and release-note/version policy are **Unresolved**; do not invent or automate them without owner confirmation.
 

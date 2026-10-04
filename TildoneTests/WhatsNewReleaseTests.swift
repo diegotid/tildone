@@ -94,7 +94,8 @@ final class WhatsNewReleaseTests: XCTestCase {
     }
 
     func testMacHighlightsCoverEveryProFeatureAfterFreeImprovements() {
-        XCTAssertEqual(WhatsNewRelease.steps.first, .companion)
+        XCTAssertEqual(Array(WhatsNewRelease.steps.prefix(3)), [.welcome, .companion, .everyday])
+        XCTAssertTrue(WhatsNewRelease.Step.welcome.features.isEmpty)
         XCTAssertTrue(WhatsNewRelease.Step.companion.features.isEmpty)
         XCTAssertTrue(WhatsNewRelease.Step.everyday.features.isEmpty)
         XCTAssertEqual(Set(WhatsNewRelease.steps.flatMap(\.features)), Set(ProFeature.catalog))
