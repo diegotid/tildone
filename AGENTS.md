@@ -314,7 +314,7 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 - `seenWhatsNewContent`: the last explicitly completed curated highlights identifier, installation-local.
 - `completedWelcomeOnboarding`: installation-local iPhone first-run completion, independent of release highlights and version numbers.
 - `suppressedWhatsNewVersion`: the marketing version for which the user selected “Don't show until next version”; build-number changes do not reset this installation-local suppression.
-- TipKit discovery state is installation-local; daily hints are limited to hierarchy controls and gesture settings.
+- TipKit discovery state is installation-local; the Mac task hierarchy control retains its discovery popover. Do not insert inline discovery cards into Mac Settings or the iPhone checklist, where they add height and scrolling.
 - `NSFullScreenMenuItemEverywhere`: set false during desktop setup.
 - `syncTransportState.<account-workspace-uuid>`: `active` or `paused`; missing state preserves the Debug default and malformed state fails safe to paused.
 - `localWorkspaceAdoptionFingerprint.<account-workspace-uuid>`: SHA-256 of the last explicitly copied local workspace snapshot; this is adoption evidence, not content or sync-engine state.

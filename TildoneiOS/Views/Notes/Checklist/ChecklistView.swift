@@ -5,7 +5,6 @@
 //  Created by Diego Rivera on 8/1/26.
 //
 import SwiftUI
-import TipKit
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
@@ -109,9 +108,6 @@ struct ChecklistView: View {
                             }
                     }
 
-                    if tasks.count > 1 && focusedTask == nil && !showsTitleInput && !WhatsNewRelease.isIsolatedProcess {
-                        TipView(FeatureDiscoveryTip(kind: .subtasks))
-                    }
                     Section {
                         ForEach(visibleTasks) { visibleTask in
                             let index = visibleTask.index

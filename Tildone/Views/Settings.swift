@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import TipKit
 import AppKit
 import TildoneDomain
 
@@ -644,13 +643,8 @@ private extension SettingsForm {
                 proFeatureLink(.dimming)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(spacing: 10) {
-                dimmingPreview()
-                if !WhatsNewRelease.isIsolatedProcess {
-                    TipView(FeatureDiscoveryTip(kind: .dimming))
-                }
-            }
-            .frame(width: 240)
+            dimmingPreview()
+                .frame(width: 240)
         }
 
         Divider()
@@ -770,9 +764,6 @@ private extension SettingsForm {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Gather notes"))
             .accessibilityIdentifier("settings-gather-preview")
-        }
-        if !WhatsNewRelease.isIsolatedProcess {
-            TipView(FeatureDiscoveryTip(kind: .gathering))
         }
     }
 
