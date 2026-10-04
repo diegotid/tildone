@@ -166,7 +166,7 @@ struct SettingsForm: View {
     private static let windowWidth: CGFloat = 600
     static let generalPaneHeight: CGFloat = 367
     static let generalUnlockedPaneHeight: CGFloat = 287
-    static let tasksPaneHeight: CGFloat = 244
+    static let tasksPaneHeight: CGFloat = 340
     static let appearancePaneHeight: CGFloat = 720
     static let positioningPaneHeight: CGFloat = 474
 
@@ -227,6 +227,9 @@ struct SettingsForm: View {
 
     @AppStorage(AppAppearance.moveCheckedTasksToEndStorageKey)
     private var moveCheckedTasksToEnd = false
+
+    @AppStorage(TaskSpellChecking.storageKey)
+    private var spellCheckingEnabled = true
 
     @AppStorage(NoteWindowClickThrough.storageKey)
     private var clickThroughNotes = false
@@ -482,6 +485,8 @@ private extension SettingsForm {
                     }
             }
 
+            Divider()
+
             VStack(alignment: .leading, spacing: 10) {
                 Text("Keep completed tasks")
                     .font(.headline)
@@ -537,6 +542,13 @@ private extension SettingsForm {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
+            }
+
+            Divider()
+
+            settingWithHelp("Show red underlines beneath misspelled words in notes.") {
+                Toggle("Check spelling", isOn: $spellCheckingEnabled)
+                    .accessibilityIdentifier("settings-check-spelling")
             }
         }
         .onAppear(perform: refreshCompletedTaskDeletionCount)

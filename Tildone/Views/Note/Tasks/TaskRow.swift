@@ -410,6 +410,14 @@ struct TaskRow: View {
         let isCompleted: Bool
         let onSelect: (() -> Void)?
         @State private var availableWidth: CGFloat = 0
+        @State private var checkedText = ""
+        @State private var spellingRanges: [NSRange] = []
+        @AppStorage(TaskSpellChecking.storageKey) private var spellCheckingEnabled = true
+
+        private struct SpellingRequest: Hashable {
+            let richText: RichText
+            let isEnabled: Bool
+        }
 
         private struct Part: Identifiable {
             let id: Int
@@ -417,6 +425,7 @@ struct TaskRow: View {
             let trailingWhitespace: String
             let isTagged: Bool
             let isEllipsis: Bool
+            let sourceOffset: Int
         }
 
         private var tagTextColor: Color {
@@ -486,7 +495,8 @@ struct TaskRow: View {
                     text: styledText,
                     trailingWhitespace: whitespace,
                     isTagged: isTagged,
-                    isEllipsis: false
+                    isEllipsis: false,
+                    sourceOffset: match.range.location + displayRange.location
                 )
             }
         }
@@ -506,7 +516,7 @@ struct TaskRow: View {
                 ]
             )
             let text = (try? AttributedString(attributed, including: \.appKit)) ?? AttributedString("…")
-            return Part(id: Int.max, text: text, trailingWhitespace: "", isTagged: false, isEllipsis: true)
+            return Part(id: Int.max, text: text, trailingWhitespace: "", isTagged: false, isEllipsis: true, sourceOffset: 0)
         }
 
         private func truncatedParts(_ parts: [Part], to width: CGFloat) -> [Part] {
@@ -536,7 +546,8 @@ struct TaskRow: View {
                         text: prefix,
                         trailingWhitespace: "",
                         isTagged: part.isTagged,
-                        isEllipsis: false
+                        isEllipsis: false,
+                        sourceOffset: part.sourceOffset
                     ))
                 }
                 break
@@ -549,7 +560,8 @@ struct TaskRow: View {
                     text: part.text,
                     trailingWhitespace: "",
                     isTagged: part.isTagged,
-                    isEllipsis: false
+                    isEllipsis: false,
+                    sourceOffset: part.sourceOffset
                 )
             }
             visible.append(ellipsisPart)
@@ -623,6 +635,35 @@ struct TaskRow: View {
                 }
             }
             .opacity(isCompleted ? 0.6 : 1)
+            .task(id: SpellingRequest(richText: richText, isEnabled: spellCheckingEnabled)) {
+                checkedText = ""
+                spellingRanges = []
+                guard spellCheckingEnabled else { return }
+                let displayed = TaskRow.inactiveDisplayText(
+                    from: richText,
+                    fontSize: fontSize,
+                    foregroundColor: NSColor(foregroundColor)
+                )
+                let text = displayed.string
+                guard !text.isEmpty else { return }
+                let results: [NSTextCheckingResult] = await withCheckedContinuation { continuation in
+                    NSSpellChecker.shared.requestChecking(
+                        of: text,
+                        range: NSRange(location: 0, length: displayed.length),
+                        types: NSTextCheckingResult.CheckingType.spelling.rawValue,
+                        options: nil,
+                        inSpellDocumentWithTag: 0
+                    ) { _, results, _, _ in
+                        continuation.resume(returning: results)
+                    }
+                }
+                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+                // Shortened URL hosts should not be treated as prose.
+                spellingRanges = results.filter { result in
+                    displayed.attribute(.link, at: result.range.location, effectiveRange: nil) == nil
+                }.map(\.range)
+                checkedText = text
+            }
             .strikethrough(isCompleted, color: .accentColor)
             .contentShape(Rectangle())
             .if(onSelect != nil) { view in
@@ -644,6 +685,7 @@ struct TaskRow: View {
                             Text(part.text)
                                 .font(.system(size: fontSize))
                                 .foregroundStyle(tagTextColor)
+                                .overlay { spellingMarks(for: part) }
                                 .background {
                                     RoundedRectangle(cornerRadius: 5, style: .continuous)
                                         .fill(tagColor)
@@ -671,9 +713,27 @@ struct TaskRow: View {
                         } else {
                             Text(part.text + AttributedString(part.trailingWhitespace))
                                 .font(.system(size: fontSize))
+                                .overlay(alignment: .leading) {
+                                    spellingMarks(for: part)
+                                        .frame(width: NSAttributedString(part.text).size().width)
+                                }
                         }
                     }
                 }
+            }
+        }
+
+        @ViewBuilder
+        private func spellingMarks(for part: Part) -> some View {
+            let ranges = TaskSpellingMarks.localRanges(
+                spellingRanges,
+                offset: part.sourceOffset,
+                length: NSAttributedString(part.text).length
+            )
+            if spellCheckingEnabled && !checkedText.isEmpty && !ranges.isEmpty {
+                TaskSpellingMarks(text: part.text, ranges: ranges)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
         }
     }

@@ -300,6 +300,7 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 
 - `fontSize`: continuous point size; legacy small raw values are converted on note appearance.
 - `taskLineTruncation`: `TaskLineTruncation` raw value (`single = 1`, `multiple = 2`).
+- `taskSpellCheckingEnabled`: Mac-local spelling preference, default true; controls native editing checks and inactive task spelling marks from the Tasks settings tab.
 - `selectedArrangementCorner`: `ArrangementCorner` raw value.
 - `selectedArrangementAlignment`: `ArrangementAlignment` raw value.
 - `selectedArrangementCornerMargin`: `ArrangementSpacing` raw value.

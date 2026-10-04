@@ -13,6 +13,9 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
         editor.isFieldEditor = true
         editor.isRichText = true
         editor.importsGraphics = false
+        // Use AppKit's spelling marks and correction menu while editing titles,
+        // tasks, and drafts. Spelling marks stay out of the saved rich text.
+        editor.isContinuousSpellCheckingEnabled = TaskSpellChecking.isEnabled()
         // AppKit flushes pending text checks when focus moves. Its Data
         // Detectors scanner can wait on a lower-QoS thread during that flush.
         // Task links are already detected by our inactive text renderer.
@@ -22,6 +25,7 @@ final class MouseSafeTaskNSTextFieldCell: NSTextFieldCell {
     }()
 
     override func fieldEditor(for controlView: NSView) -> NSTextView? {
+        TaskSpellChecking.apply(TaskSpellChecking.isEnabled(), to: taskFieldEditor)
         taskFieldEditor.enforceSelectionContrast()
         if let field = controlView as? MouseSafeTaskNSTextField {
             taskFieldEditor.enforceInsertionPointColor(field.cursorColor.withAlphaComponent(1))

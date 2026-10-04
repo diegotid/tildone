@@ -3943,6 +3943,87 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testSpellCheckingPreferenceDefaultsOnAndPersistsOff() throws {
+        let suite = "TildoneSpellCheckingTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertTrue(TaskSpellChecking.isEnabled(in: defaults))
+        defaults.set(false, forKey: TaskSpellChecking.storageKey)
+        XCTAssertFalse(TaskSpellChecking.isEnabled(in: try XCTUnwrap(UserDefaults(suiteName: suite))))
+    }
+
+    @MainActor
+    func testDisablingSpellCheckingClearsActiveMarksAndPreservesFormatting() throws {
+        let editor = NSTextView()
+        editor.isContinuousSpellCheckingEnabled = true
+        editor.textStorage?.setAttributedString(NSAttributedString(string: "Mispelled", attributes: [
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]))
+        let manager = try XCTUnwrap(editor.layoutManager)
+        manager.addTemporaryAttribute(.spellingState, value: 1,
+                                      forCharacterRange: NSRange(location: 0, length: 9))
+
+        TaskSpellChecking.apply(false, to: editor)
+        XCTAssertFalse(editor.isContinuousSpellCheckingEnabled)
+        XCTAssertNil(manager.temporaryAttribute(.spellingState, atCharacterIndex: 0, effectiveRange: nil))
+        XCTAssertEqual(editor.textStorage?.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int,
+                       NSUnderlineStyle.single.rawValue)
+        TaskSpellChecking.apply(true, to: editor)
+        XCTAssertTrue(editor.isContinuousSpellCheckingEnabled)
+    }
+
+    @MainActor
+    func testInactiveSpellingMarksClipToVisibleUTF16Text() {
+        // An emoji precedes a bracketed tag; display offsets omit its brackets.
+        let text = "📝 [mispelled]"
+        let range = (text as NSString).range(of: "mispelled")
+        XCTAssertEqual(TaskSpellingMarks.localRanges([range], offset: 4, length: 5), [
+            NSRange(location: 0, length: 5)
+        ])
+        XCTAssertTrue(TaskSpellingMarks.localRanges([range], offset: 0, length: 2).isEmpty)
+    }
+
+    @MainActor
+    func testInactiveSpellingOverlayDrawsNativeMarksWithoutChangingSource() throws {
+        let text = NSAttributedString(string: "Mispelled", attributes: [
+            .font: NSFont.systemFont(ofSize: 24),
+            .foregroundColor: NSColor.black,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ])
+        let view = TaskSpellingMarksView(frame: NSRect(x: 0, y: 0, width: 140, height: 32))
+        view.update(text: text, ranges: [NSRange(location: 0, length: text.length)])
+        let bitmap = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        var redPixels = 0
+        var opaqueTextPixels = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      color.alphaComponent > 0.2 else { continue }
+                if color.redComponent > 0.5 && color.greenComponent < 0.8 && color.blueComponent < 0.8 {
+                    redPixels += 1
+                } else if color.redComponent < 0.2 {
+                    opaqueTextPixels += 1
+                }
+            }
+        }
+        XCTAssertGreaterThan(redPixels, 0)
+        XCTAssertEqual(opaqueTextPixels, 0, "The overlay must not draw text or user underlines")
+        XCTAssertEqual(text.attribute(.underlineStyle, at: 0, effectiveRange: nil) as? Int,
+                       NSUnderlineStyle.single.rawValue)
+        XCTAssertNil(text.attribute(.spellingState, at: 0, effectiveRange: nil))
+
+        view.update(text: text, ranges: [])
+        let clearedBitmap = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: clearedBitmap)
+        for y in 0..<clearedBitmap.pixelsHigh {
+            for x in 0..<clearedBitmap.pixelsWide {
+                XCTAssertLessThanOrEqual(clearedBitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0, 0.2)
+            }
+        }
+    }
+
+    @MainActor
     func testInactiveTaskDisplayRetainsRichAttributes() throws {
         let richText = RichText(
             text: "Formatted",

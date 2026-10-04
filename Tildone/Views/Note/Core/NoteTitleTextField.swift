@@ -9,6 +9,7 @@ import SwiftUI
 /// A native title/new-task editor that routes a pasted task list back to its note
 /// before AppKit inserts that list into the title field.
 struct NoteTitleTextField: NSViewRepresentable {
+    @AppStorage(TaskSpellChecking.storageKey) private var spellCheckingEnabled = true
     @Binding var text: String
     let placeholder: String
     let isFocused: Bool
@@ -71,6 +72,9 @@ struct NoteTitleTextField: NSViewRepresentable {
             coordinator?.parent.onPastedList(list) ?? false
         }
         let editor = field.currentEditor()
+        if let editor = editor as? NSTextView {
+            TaskSpellChecking.apply(spellCheckingEnabled, to: editor)
+        }
         let isEditing = context.coordinator.isEditing
             || (editor != nil && field.window?.firstResponder === editor)
         field.cell?.isScrollable = isEditing

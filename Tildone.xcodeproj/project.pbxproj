@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F51E11000000000000000203 /* TaskSpellChecking.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000103 /* TaskSpellChecking.swift */; };
+		F51E11000000000000000202 /* TaskSpellingMarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000102 /* TaskSpellingMarksView.swift */; };
+		F51E11000000000000000201 /* TaskSpellingMarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000101 /* TaskSpellingMarks.swift */; };
 		A91000000000000000000001 /* SingleMemoTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91000000000000000000002 /* SingleMemoTextView.swift */; };
 		A10000000000000000000001 /* TildoneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* TildoneiOSApp.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
@@ -281,6 +284,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F51E11000000000000000103 /* TaskSpellChecking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellChecking.swift; sourceTree = "<group>"; };
+		F51E11000000000000000102 /* TaskSpellingMarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellingMarksView.swift; sourceTree = "<group>"; };
+		F51E11000000000000000101 /* TaskSpellingMarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellingMarks.swift; sourceTree = "<group>"; };
 		A91000000000000000000002 /* SingleMemoTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMemoTextView.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* TildoneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApp.swift; sourceTree = "<group>"; };
@@ -855,6 +861,9 @@
 				D4000000000000000000010D /* TaskRowDropDelegate.swift */,
 				D4000000000000000000010C /* TaskRowDropPlacement.swift */,
 				D40000000000000000000109 /* TaskTextSelectionStyle.swift */,
+				F51E11000000000000000103 /* TaskSpellChecking.swift */,
+				F51E11000000000000000102 /* TaskSpellingMarksView.swift */,
+				F51E11000000000000000101 /* TaskSpellingMarks.swift */,
 			);
 			path = Tasks;
 			sourceTree = "<group>";
@@ -1626,6 +1635,9 @@
 				D40000000000000000000207 /* MouseSafeTaskNSTextFieldCell.swift in Sources */,
 				D40000000000000000000208 /* MouseSafeTaskFieldEditor.swift in Sources */,
 				D40000000000000000000209 /* TaskTextSelectionStyle.swift in Sources */,
+				F51E11000000000000000203 /* TaskSpellChecking.swift in Sources */,
+				F51E11000000000000000202 /* TaskSpellingMarksView.swift in Sources */,
+				F51E11000000000000000201 /* TaskSpellingMarks.swift in Sources */,
 				D4000000000000000000020A /* TaskReorderInsertionLine.swift in Sources */,
 				D4000000000000000000020B /* TaskReorderFeedback.swift in Sources */,
 				D4000000000000000000020C /* TaskRowDropPlacement.swift in Sources */,

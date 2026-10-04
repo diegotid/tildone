@@ -8,6 +8,7 @@ import SwiftUI
 import TildoneDomain
 
 struct MouseSafeTaskTextField: NSViewRepresentable {
+    @AppStorage(TaskSpellChecking.storageKey) private var spellCheckingEnabled = true
     @Binding var richText: RichText
     let taskID: TaskID
     let isFocused: Bool
@@ -184,6 +185,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         (field.cell as? MouseSafeTaskNSTextFieldCell)?.verticallyCentersContent = verticallyCentersContent
         field.updateTruncationTooltip()
         if let editor = editor as? NSTextView {
+            TaskSpellChecking.apply(spellCheckingEnabled, to: editor)
             Self.configure(
                 editor,
                 cursorColor: NSColor(cursorColor)
