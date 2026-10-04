@@ -1,8 +1,10 @@
 # Stage 12 — Controlled Production rollout plan
 
+> This plan preserves its 2026-08-09 Stage 12B baseline. The separately authorized Stage 12D read-only inspection was captured on 2026-10-04 in the [Stage 12D inspection packet](production-cloudkit-inspection-12d.md). Stage 12E is not authorized. Use the source-generated [CloudKit contract manifest](development-cloudkit-contract-manifest.md) for the current field contract; the older version lists below are historical.
+
 **Plan reconciled:** 2026-08-09, after Stage 12B repository and Development revalidation
-**Current authorization:** repository-local work and the completed explicitly approved Development validation scopes only
-**Production authorization:** none
+**Authorization at the 2026-08-09 baseline:** repository-local work and the completed explicitly approved Development validation scopes only
+**Production authorization at that baseline:** none
 **Production actions performed by Stage 12B:** none; Production was not inspected, modified, or deployed
 
 ## Executive decision
@@ -164,7 +166,7 @@ Preconditions:
 - Stage 12C exited;
 - Stage 12D read-only diff is understood and independently reviewed;
 - ordinary/encrypted field decision, indexes, roles, privacy disclosures, signing capabilities, rollback/containment, and incident staffing are accepted;
-- the deployment packet contains only the approved `TDNote` V1/V2, `TDTask` V1, and `TDClient` V1 contract.
+- the deployment packet contains only the exact current source-generated contract and its independently reviewed additive Production diff; the current baseline is recorded in the Stage 12D inspection packet.
 
 Deployment rules:
 
@@ -222,7 +224,7 @@ Before App Store release:
 - Privacy policy/App Privacy, encrypted-field decision, support, incident command, thresholds, accounts/devices, and distribution authority remain open.
 - Stage 11 background wake remained inconclusive; reliable foreground catch-up remains mandatory.
 
-## Authorization ledger
+## Authorization ledger at the 2026-08-09 baseline
 
 | Action | Current state |
 | --- | --- |
