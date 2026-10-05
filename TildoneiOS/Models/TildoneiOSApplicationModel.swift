@@ -56,6 +56,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private var undoController: ConsequentialActionUndoController?
     private var coordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
+    private var pausedPendingCountRevision: UInt64 = 0
     private var workspaceResolutionTask: Swift.Task<Void, Never>?
     private var initialSyncTask: Swift.Task<Void, Never>?
     private var activeWorkspace: UUID?
@@ -771,6 +772,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
               let repository else { return }
         transportStateStore.set(.paused, for: workspaceID)
         transportState = .paused
+        pausedPendingCountRevision &+= 1
         statusTask?.cancel()
         statusTask = nil
         let coordinator = coordinator
@@ -792,15 +794,8 @@ final class TildoneiOSApplicationModel: ObservableObject {
             guard let self, self.activeWorkspace == workspaceID, self.transportState == .paused else {
                 return
             }
-            let pending = (try? await repository.pendingMutations().count) ?? syncStatus.pendingMutationCount
-            syncStatus = SyncStatus(
-                availability: retainsAttention ? previousStatus.availability : .available,
-                activity: retainsAttention ? previousStatus.activity : .paused,
-                pendingMutationCount: pending,
-                lastSuccessfulSyncAt: previousStatus.lastSuccessfulSyncAt,
-                activeDeviceSummary: previousStatus.activeDeviceSummary,
-                issue: previousStatus.issue
-            )
+            guard self.repository === repository else { return }
+            scheduleSyncNotification()
         }
     }
 
@@ -1091,8 +1086,39 @@ final class TildoneiOSApplicationModel: ObservableObject {
     }
 
     private func scheduleSyncNotification() {
-        guard let coordinator else { return }
-        Swift.Task { await coordinator.notifyLocalChanges() }
+        if let coordinator {
+            Swift.Task { await coordinator.notifyLocalChanges() }
+            return
+        }
+        guard transportState == .paused, let workspaceID = activeWorkspace,
+              let repository else { return }
+        // Paused edits still change the durable outbox; only refresh its local count.
+        pausedPendingCountRevision &+= 1
+        let revision = pausedPendingCountRevision
+        Swift.Task { [weak self] in
+            let result: Result<Int, Error>
+            do { result = .success(try await repository.pendingMutations().count) }
+            catch { result = .failure(error) }
+            guard let self, transportState == .paused, activeWorkspace == workspaceID,
+                  self.repository === repository, pausedPendingCountRevision == revision else { return }
+            let current = syncStatus
+            switch result {
+            case let .success(pending):
+                syncStatus = SyncStatus(
+                    availability: current.availability, activity: current.activity,
+                    pendingMutationCount: pending,
+                    lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+                    activeDeviceSummary: current.activeDeviceSummary, issue: current.issue
+                )
+            case .failure:
+                syncStatus = SyncStatus(
+                    availability: current.availability, activity: .attentionNeeded,
+                    pendingMutationCount: current.pendingMutationCount,
+                    lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+                    activeDeviceSummary: current.activeDeviceSummary, issue: current.issue ?? .unknown
+                )
+            }
+        }
     }
 
     private func finishPendingMutation(_ noteID: NoteID, revision: UInt64) {
@@ -1116,8 +1142,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
         }
         transportStateStore.set(.active, for: workspaceID)
         transportState = .active
+        pausedPendingCountRevision &+= 1
         do {
-            try await startCoordinator(for: repository, workspaceID: workspaceID)
+            _ = try await startCoordinator(for: repository, workspaceID: workspaceID)
         } catch {
             syncStatus = SyncStatus(
                 availability: .available,
@@ -1282,18 +1309,22 @@ final class TildoneiOSApplicationModel: ObservableObject {
             for await status in await coordinator.statusModel.updates() {
                 guard !Swift.Task.isCancelled else { return }
                 await MainActor.run { [weak self] in
-                    guard self?.activeWorkspace == workspaceID else { return }
+                    guard self?.activeWorkspace == workspaceID,
+                          self?.transportState == .active else { return }
                     self?.present(status: status)
                 }
             }
         }
         await coordinator.start()
         let checkpointStatus = await coordinator.statusModel.snapshot()
-        present(status: checkpointStatus)
+        if activeWorkspace == workspaceID, transportState == .active, self.coordinator === coordinator {
+            present(status: checkpointStatus)
+        }
         return checkpointStatus
     }
 
     private func closeWorkspace(status: SyncStatus) async {
+        pausedPendingCountRevision &+= 1
         initialSyncTask?.cancel()
         initialSyncTask = nil
         statusTask?.cancel()

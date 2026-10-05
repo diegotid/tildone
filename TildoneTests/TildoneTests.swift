@@ -2626,6 +2626,46 @@ final class TildoneTests: XCTestCase {
         XCTAssertNil(CompletedTaskOrderPreference.originalOrderToken(for: parent.id))
     }
 
+    @MainActor
+    func testMacLocalChangesNotifyPausedStatusWithoutCoordinator() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        var notifications = 0
+        var observedPending = 0
+        let created = expectation(description: "Note saved before local status notification")
+        store.setLocalChangeHandler {
+            notifications += 1
+            Swift.Task {
+                observedPending = (try? await repository.pendingMutations().count) ?? 0
+                created.fulfill()
+            }
+        }
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 100))
+        await fulfillment(of: [created], timeout: 3)
+        let initialPending = try await repository.pendingMutations()
+        XCTAssertFalse(initialPending.isEmpty)
+        XCTAssertEqual(observedPending, initialPending.count)
+
+        let added = expectation(description: "Task saved before local status notification")
+        store.setLocalChangeHandler {
+            notifications += 1
+            Swift.Task {
+                observedPending = (try? await repository.pendingMutations().count) ?? 0
+                added.fulfill()
+            }
+        }
+        _ = try await store.addTask(to: note.id, text: "Queued Mac task")
+        await fulfillment(of: [added], timeout: 3)
+        let currentPending = try await repository.pendingMutations()
+        XCTAssertGreaterThan(currentPending.count, initialPending.count)
+        XCTAssertEqual(observedPending, currentPending.count)
+        XCTAssertEqual(notifications, 2)
+
+        store.setLocalChangeHandler(nil)
+        _ = try await store.addTask(to: note.id, text: "Detached observer")
+        XCTAssertEqual(notifications, 2, "A replaced workspace must not notify its former status owner")
+    }
+
     func testMacSyncPresentationDistinguishesActivePausedAndAttention() {
         let active = SyncStatus(availability: .available, activity: .idle)
         XCTAssertEqual(MacSyncPresentation.state(

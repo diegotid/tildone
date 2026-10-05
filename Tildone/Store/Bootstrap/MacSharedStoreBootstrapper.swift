@@ -13,7 +13,14 @@ import TildoneSync
 @MainActor
 final class MacSharedStoreBootstrapper: ObservableObject {
     @Published private(set) var store: MacSharedStore? {
-        didSet { store?.setUndoEnabled(!Self.requiresAttention(syncStatus)) }
+        didSet {
+            pausedPendingCountRevision &+= 1
+            oldValue?.setLocalChangeHandler(nil)
+            store?.setLocalChangeHandler { [weak self] in
+                self?.refreshPausedPendingCount()
+            }
+            store?.setUndoEnabled(!Self.requiresAttention(syncStatus))
+        }
     }
     @Published private(set) var error: Error?
     @Published private(set) var syncStatus: SyncStatus = .disabled {
@@ -42,6 +49,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     private var cloudContainer: CKContainer?
     private var syncCoordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
+    private var pausedPendingCountRevision: UInt64 = 0
 
     init(
         transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
@@ -167,16 +175,26 @@ final class MacSharedStoreBootstrapper: ObservableObject {
               let repository = accountRepository else { return }
         transportStateStore.set(.paused, for: workspaceID)
         transportState = .paused
+        pausedPendingCountRevision &+= 1
         isTransportActionInProgress = true
         statusTask?.cancel()
         statusTask = nil
         store?.attachSyncCoordinator(nil)
         let coordinator = syncCoordinator
         syncCoordinator = nil
+        if !Self.requiresAttention(syncStatus) {
+            syncStatus = SyncStatus(
+                availability: syncStatus.availability, activity: .paused,
+                pendingMutationCount: syncStatus.pendingMutationCount,
+                lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt,
+                activeDeviceSummary: syncStatus.activeDeviceSummary, issue: syncStatus.issue
+            )
+        }
         Swift.Task {
             await coordinator?.pause()
-            let paused = await pausedStatus(repository: repository)
-            if !Self.requiresAttention(syncStatus) { syncStatus = paused }
+            guard transportState == .paused, accountWorkspaceID == workspaceID,
+                  accountRepository === repository else { return }
+            refreshPausedPendingCount()
             isTransportActionInProgress = false
         }
     }
@@ -198,6 +216,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             }
             transportStateStore.set(.active, for: workspaceID)
             transportState = .active
+            pausedPendingCountRevision &+= 1
             do {
                 try await startCoordinator(
                     repository: repository,
@@ -553,7 +572,42 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         )
     }
 
+    private func refreshPausedPendingCount() {
+        guard transportState == .paused, isUsingAccountWorkspace,
+              let workspaceID = accountWorkspaceID, let repository = accountRepository,
+              selectedRepository === repository else { return }
+        // Never reconstruct transport just to display work saved while paused.
+        pausedPendingCountRevision &+= 1
+        let revision = pausedPendingCountRevision
+        Swift.Task { [weak self] in
+            let result: Result<Int, Error>
+            do { result = .success(try await repository.pendingMutations().count) }
+            catch { result = .failure(error) }
+            guard let self, transportState == .paused, isUsingAccountWorkspace,
+                  accountWorkspaceID == workspaceID, accountRepository === repository,
+                  selectedRepository === repository, pausedPendingCountRevision == revision else { return }
+            let current = syncStatus
+            switch result {
+            case let .success(pending):
+                syncStatus = SyncStatus(
+                    availability: current.availability, activity: current.activity,
+                    pendingMutationCount: pending,
+                    lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+                    activeDeviceSummary: current.activeDeviceSummary, issue: current.issue
+                )
+            case .failure:
+                syncStatus = SyncStatus(
+                    availability: current.availability, activity: .attentionNeeded,
+                    pendingMutationCount: current.pendingMutationCount,
+                    lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
+                    activeDeviceSummary: current.activeDeviceSummary, issue: current.issue ?? .unknown
+                )
+            }
+        }
+    }
+
     private func invalidateForAccountChange() {
+        pausedPendingCountRevision &+= 1
         statusTask?.cancel()
         statusTask = nil
         store?.attachSyncCoordinator(nil)

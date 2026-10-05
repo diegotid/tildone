@@ -31,6 +31,7 @@ final class MacSharedStore: ObservableObject {
         originalTokens: [TaskID: OrderToken]
     )?
     private var syncCoordinator: TildoneSyncCoordinator?
+    private var localChangeHandler: (() -> Void)?
     private var nextReloadRevision: UInt64 = 0
     private var latestFullReloadRevision: UInt64 = 0
     private var latestNoteReloadRevisions: [NoteID: UInt64] = [:]
@@ -77,6 +78,10 @@ final class MacSharedStore: ObservableObject {
 
     func attachSyncCoordinator(_ coordinator: TildoneSyncCoordinator?) {
         syncCoordinator = coordinator
+    }
+
+    func setLocalChangeHandler(_ handler: (() -> Void)?) {
+        localChangeHandler = handler
     }
 
     func reload() async throws {
@@ -1557,6 +1562,7 @@ private extension MacSharedStore {
     }
 
     func scheduleSyncNotification() {
+        localChangeHandler?()
         guard let syncCoordinator else { return }
         Swift.Task { await syncCoordinator.notifyLocalChanges() }
     }

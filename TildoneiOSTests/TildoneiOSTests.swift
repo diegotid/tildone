@@ -1455,14 +1455,82 @@ final class TildoneiOSTests: XCTestCase {
         let pendingA = try await repositoryA.pendingMutations()
         XCTAssertEqual(model.notes.count, 1)
         XCTAssertFalse(pendingA.isEmpty)
+        await assertPendingCount(model, equals: pendingA.count)
 
         try await model.openForTesting(workspaceID: workspaceB)
         XCTAssertEqual(model.transportState, .active)
         XCTAssertTrue(model.notes.isEmpty)
+        XCTAssertEqual(model.syncStatus.pendingMutationCount, 0)
 
         try await model.openForTesting(workspaceID: workspaceA)
         XCTAssertEqual(model.transportState, .paused)
         XCTAssertEqual(model.notes.count, 1)
+    }
+
+    func testPausedEditsRefreshPendingCountWithoutRestartOrAccountLookup() async throws {
+        let suiteName = "TildoneiOSPausedCount-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let workspace = UUID()
+        let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))
+        var accountLookups = 0
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { _ in repository },
+            accountResolver: {
+                accountLookups += 1
+                return CloudAccountSnapshot(state: .available, workspaceID: workspace)
+            },
+            synchronizationEnabled: true,
+            transportStateStore: SyncTransportStateStore(defaults: defaults)
+        )
+        try await model.openForTesting(workspaceID: workspace)
+        model.pauseTransport()
+        let checkpoint = Date(timeIntervalSince1970: 100)
+        let devices = SyncDeviceSummary(currentPlatform: .iPhone, otherMacCount: 1)
+        model.present(status: SyncStatus(
+            availability: .available, activity: .paused,
+            lastSuccessfulSyncAt: checkpoint, activeDeviceSummary: devices
+        ))
+
+        let note = try await model.createNote(title: "Paused count fixture")
+        await assertPendingCount(model, equals: try await repository.pendingMutations().count)
+        _ = try await model.addTask(noteID: note.id, text: "Queued task", after: [])
+        let pending = try await repository.pendingMutations()
+        XCTAssertGreaterThan(pending.count, 1)
+        await assertPendingCount(model, equals: pending.count)
+        try await model.rename(noteID: note.id, title: "Edited while paused")
+        await assertPendingCount(model, equals: try await repository.pendingMutations().count)
+
+        XCTAssertEqual(model.transportState, .paused)
+        XCTAssertEqual(model.syncStatus.activity, .paused)
+        XCTAssertEqual(model.syncStatus.lastSuccessfulSyncAt, checkpoint)
+        XCTAssertEqual(model.syncStatus.activeDeviceSummary, devices)
+        XCTAssertEqual(model.notes.first?.title, "Edited while paused")
+        XCTAssertEqual(accountLookups, 0, "Refreshing local queue status must not resume transport")
+    }
+
+    func testPausedPendingCountRefreshPreservesAttention() async throws {
+        let suiteName = "TildoneiOSPausedAttention-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let workspace = UUID()
+        let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { _ in repository }, synchronizationEnabled: true,
+            transportStateStore: SyncTransportStateStore(defaults: defaults)
+        )
+        try await model.openForTesting(workspaceID: workspace)
+        model.pauseTransport()
+        model.present(status: SyncStatus(
+            availability: .incompatibleRemoteData, activity: .attentionNeeded,
+            issue: .futureSchema
+        ))
+        _ = try await model.createNote(title: "Retain warning fixture")
+        await assertPendingCount(model, equals: try await repository.pendingMutations().count)
+        XCTAssertEqual(model.transportState, .paused)
+        XCTAssertEqual(model.syncStatus.availability, .incompatibleRemoteData)
+        XCTAssertEqual(model.syncStatus.activity, .attentionNeeded)
+        XCTAssertEqual(model.syncStatus.issue, .futureSchema)
     }
 
     func testWorkspaceResolutionRevalidatesAccountIdentity() async throws {
@@ -1571,6 +1639,22 @@ final class TildoneiOSTests: XCTestCase {
         )
         try await model.openForTesting(workspaceID: workspace)
         return model
+    }
+
+    private func assertPendingCount(
+        _ model: TildoneiOSApplicationModel,
+        equals expected: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        let updated = expectation(description: "Paused status reflects the committed outbox")
+        let subscription = model.syncPresentation.$status
+            .filter { $0.pendingMutationCount == expected }
+            .prefix(1)
+            .sink { _ in updated.fulfill() }
+        await fulfillment(of: [updated], timeout: 3)
+        XCTAssertEqual(model.syncStatus.pendingMutationCount, expected, file: file, line: line)
+        withExtendedLifetime(subscription) {}
     }
 
     private func assertUndoPresentation(
