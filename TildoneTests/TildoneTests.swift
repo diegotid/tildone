@@ -4589,6 +4589,63 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testCreatingNotePreservesGatheredCompactAndExpandedPositions() async throws {
+        let previousKeyWindow = NSApp.keyWindow
+        let selectedColors = NoteColorDisplayFilter.selectedColors
+        NoteColorDisplayFilter.setSelectedColors(Set(NoteColor.allCases))
+        defer { NoteColorDisplayFilter.setSelectedColors(selectedColors) }
+        let store = MacSharedStore(repository: try TildoneRepository(descriptor: .inMemory()))
+        let compact = try await store.createNote()
+        _ = try await store.addTask(to: compact.id, text: "Compact fixture")
+        let expanded = try await store.createNote()
+        _ = try await store.addTask(to: expanded.id, text: "Expanded fixture")
+        NoteWindowMinimizationState.saveMinimized(true, for: compact.id)
+        defer { NoteWindowMinimizationState.saveMinimized(false, for: compact.id) }
+        let host = NSHostingView(rootView: Desktop(
+            store: store, noteSyncIndicatorState: .hidden, foregroundNoteID: .constant(nil)
+        ))
+        let coordinator = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        coordinator.isReleasedWhenClosed = false
+        coordinator.contentView = host
+        coordinator.orderFront(nil)
+        defer {
+            for note in store.notes {
+                NSApp.windows.first(where: { $0.title.hasSuffix(note.legacyWindowKey) })?.close()
+            }
+            coordinator.contentView = nil
+            coordinator.close()
+            previousKeyWindow?.makeKeyAndOrderFront(nil)
+        }
+        host.layoutSubtreeIfNeeded()
+        try await Swift.Task.sleep(for: .milliseconds(300))
+        let compactWindow = try XCTUnwrap(NSApp.windows.first { $0.title == "_" + compact.legacyWindowKey })
+        let expandedWindow = try XCTUnwrap(NSApp.windows.first { $0.title == expanded.legacyWindowKey })
+        let screen = try XCTUnwrap(compactWindow.screen)
+        // Reproduce the window state left by Gather, away from the Line Up edge.
+        compactWindow.setFrameOrigin(NSPoint(x: screen.visibleFrame.midX, y: screen.visibleFrame.midY))
+        expandedWindow.setFrameOrigin(NSPoint(x: screen.visibleFrame.midX + 10, y: screen.visibleFrame.midY + 10))
+        NoteWindowManualPosition.setIsWheelPosition(true, for: compact.id)
+        NoteWindowManualPosition.setIsWheelPosition(true, for: expanded.id)
+        defer {
+            NoteWindowManualPosition.setIsWheelPosition(false, for: compact.id)
+            NoteWindowManualPosition.setIsWheelPosition(false, for: expanded.id)
+        }
+        let compactFrame = compactWindow.frame
+        let expandedFrame = expandedWindow.frame
+        NotificationCenter.default.post(name: .new, object: nil)
+        let created = try XCTUnwrap(store.notes.first { $0.id != compact.id && $0.id != expanded.id })
+        try await store.waitForNoteCreation(created.id)
+        try await Swift.Task.sleep(for: .milliseconds(500))
+        XCTAssertEqual(compactWindow.frame, compactFrame)
+        XCTAssertEqual(expandedWindow.frame, expandedFrame)
+        XCTAssertTrue(NoteWindowManualPosition.isWheelPosition(for: compact.id))
+        XCTAssertTrue(NoteWindowManualPosition.isWheelPosition(for: expanded.id))
+    }
+
+    @MainActor
     func testNewNoteShortcutOpensWindowBeforeReturningAndFocusesTitle() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)

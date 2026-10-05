@@ -734,6 +734,7 @@ private extension Desktop {
         let hiddenGroups = Dictionary(grouping: store.notes.filter {
             !selectedColors.contains($0.color)
         }, by: \.color)
+        let folderMembershipChanged = Set(colorFolderWindows.keys) != Set(hiddenGroups.keys)
 
         for color in colorFolderWindows.keys.filter({ hiddenGroups[$0] == nil }) {
             colorFolderWindows[color]?.close()
@@ -751,7 +752,12 @@ private extension Desktop {
                 openColorFolderWindow(for: color, noteCount: notes.count)
             }
         }
-        arrangeNotes(onlyMinimized: true, animated: animatesArrangement)
+        // Updating counts or adding a visible note must not undo Gather (or a
+        // manual placement) of compact notes. Only a changed folder set needs
+        // the automatic compact layout refreshed.
+        if folderMembershipChanged {
+            arrangeNotes(onlyMinimized: true, animated: animatesArrangement)
+        }
     }
 
     func openColorFolderWindow(for color: NoteColor, noteCount: Int) {
@@ -831,6 +837,7 @@ private extension Desktop {
             selectedColors: NoteColorDisplayFilter.selectedColors,
             animatesArrangement: false
         )
+        arrangeNotes(onlyMinimized: true, animated: false)
     }
 
     func colorFolderWindow(for color: NoteColor, noteCount: Int, size: NSSize) -> some View {
