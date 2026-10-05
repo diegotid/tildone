@@ -1,64 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Downloading notes from iCloud…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Downloading notes from iCloud…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Descargando notas de iCloud…"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Téléchargement des notes depuis iCloud…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在从 iCloud 下载笔记…"
-          }
-        }
-      }
-    },
-    "Your notes will appear here as they arrive. You can keep using Tildone." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your notes will appear here as they arrive. You can keep using Tildone."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tus notas aparecerán aquí a medida que lleguen. Puedes seguir usando Tildone."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vos notes apparaîtront ici au fur et à mesure. Vous pouvez continuer à utiliser Tildone."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "笔记下载后会陆续显示在这里。你可以继续使用 Tildone。"
-          }
-        }
-      }
-    },
     "%@. Tasks: %@" : {
       "localizations" : {
         "es" : {
@@ -1964,6 +1906,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "轻点两下来打开笔记"
+          }
+        }
+      }
+    },
+    "Downloading notes from iCloud…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading notes from iCloud…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargando notas de iCloud…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargement des notes depuis iCloud…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在从 iCloud 下载笔记…"
           }
         }
       }
@@ -4667,6 +4638,35 @@
         }
       }
     },
+    "Rate Tildone" : {
+      "comment" : "Voluntary link to write an App Store review in About.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rate Tildone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valorar Tildone"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Évaluer Tildone"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为 Tildone 评分"
+          }
+        }
+      }
+    },
     "Red" : {
       "localizations" : {
         "en" : {
@@ -7328,6 +7328,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的笔记会安全保留在此 iPhone 上。iCloud 可用后请重试。"
+          }
+        }
+      }
+    },
+    "Your notes will appear here as they arrive. You can keep using Tildone." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your notes will appear here as they arrive. You can keep using Tildone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus notas aparecerán aquí a medida que lleguen. Puedes seguir usando Tildone."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos notes apparaîtront ici au fur et à mesure. Vous pouvez continuer à utiliser Tildone."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记下载后会陆续显示在这里。你可以继续使用 Tildone。"
           }
         }
       }
