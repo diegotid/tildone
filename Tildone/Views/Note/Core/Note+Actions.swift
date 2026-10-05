@@ -394,6 +394,16 @@ extension Note {
         guard optimisticTaskCompletions[task.id] == nil else { return }
         let completion = !task.isCompleted
         optimisticTaskCompletions[task.id] = completion
+        if completion,
+           let progressTasks = note?.progressTasks,
+           progressTasks.allSatisfy({ $0.id == task.id || $0.isCompleted }) {
+            // Start the visible fade on the click path. The repository save can
+            // wait for pending edits and outbox work without delaying feedback.
+            let completedAt = Date()
+            completionFade.synchronize(completedAt: completedAt)
+            updateTopicVisibility()
+            advanceCompletionFade(completedAt)
+        }
         let originalOrderToken = CompletedTaskOrderPreference.originalOrderToken(for: task.id)
         let restoresOriginalPosition = originalOrderToken.map { $0 != task.orderToken } ?? false
         let animatesTaskMovement = moveCheckedTasksToEnd && (
@@ -403,27 +413,32 @@ extension Note {
         if animatesTaskMovement {
             completedTaskMovementAnimationID = task.id
         }
-        noteWindow?.makeFirstResponder(nil)
-        Swift.Task {
-            do {
-                let movedParentID = try await store.setTaskCompletion(
-                    task.id,
-                    completed: completion,
-                    moveToEndWhenCompleted: moveCheckedTasksToEnd
-                )
-                optimisticTaskCompletions.removeValue(forKey: task.id)
-                if let movedParentID {
-                    collapsedTaskIDs.insert(movedParentID)
+        // Let SwiftUI render the optimistic completion before focus cleanup or
+        // repository work starts on the next main-actor turn.
+        DispatchQueue.main.async {
+            noteWindow?.makeFirstResponder(nil)
+            Swift.Task {
+                do {
+                    let movedParentID = try await store.setTaskCompletion(
+                        task.id,
+                        completed: completion,
+                        moveToEndWhenCompleted: moveCheckedTasksToEnd
+                    )
+                    optimisticTaskCompletions.removeValue(forKey: task.id)
+                    if let movedParentID {
+                        collapsedTaskIDs.insert(movedParentID)
+                    }
+                } catch {
+                    optimisticTaskCompletions.removeValue(forKey: task.id)
+                    if animatesTaskMovement {
+                        completedTaskMovementAnimationID = nil
+                    }
+                    synchronizeCompletionFade(completedAt: note?.completedAt)
+                    mutationErrorMessage = Self.mutationFailureMessage(
+                        operation: "Error on task completion",
+                        error: error
+                    )
                 }
-        } catch {
-                optimisticTaskCompletions.removeValue(forKey: task.id)
-                if animatesTaskMovement {
-                    completedTaskMovementAnimationID = nil
-                }
-                mutationErrorMessage = Self.mutationFailureMessage(
-                    operation: "Error on task completion",
-                    error: error
-                )
             }
         }
     }
