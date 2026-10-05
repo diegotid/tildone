@@ -333,6 +333,13 @@ final class MacNoteWindow: NSWindow {
     private var detachedTitlebarAccessories: [NSTitlebarAccessoryViewController] = []
     weak var detachedNoteTitlebarAccessoryController: MacNoteTitlebarAccessoryController?
 
+    override func becomeKey() {
+        super.becomeKey()
+        // Floating notes can receive focus without AppKit raising them above
+        // their peers. Keep the stacking order in step with user focus.
+        orderFront(nil)
+    }
+
     var hasDetachedTitlebarAccessories: Bool {
         expandedStyleMask != nil
     }

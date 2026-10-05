@@ -1194,6 +1194,60 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testFocusedNoteOrdersAboveOtherNoteKinds() async throws {
+        let previousKeyWindow = NSApp.keyWindow
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let checklist = try await store.createNote()
+        _ = try await store.addTask(to: checklist.id, text: "Checklist task")
+        let memo = try await store.createNote()
+        _ = try await store.addTask(to: memo.id, text: "Memo")
+        _ = try await repository.setNoteKind(id: memo.id, kind: .singleTask)
+        try await store.reload()
+
+        var windows: [MacNoteWindow] = []
+        defer {
+            for window in windows {
+                window.contentView = nil
+                window.close()
+            }
+            previousKeyWindow?.makeKeyAndOrderFront(nil)
+        }
+        for noteID in [checklist.id, memo.id] {
+            let presentation = try XCTUnwrap(store.presentation(for: noteID))
+            let window = MacNoteWindow(
+                contentRect: NSRect(x: 100, y: 100, width: 360, height: 400),
+                styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+            )
+            window.setNoteStyle(noteColor: .yellow)
+            window.setNoteHostingContentView(NSHostingView(rootView:
+                Note(store: store, presentation: presentation, noteID: noteID)
+            ))
+            windows.append(window)
+            window.makeKeyAndOrderFront(nil)
+            window.contentView?.layoutSubtreeIfNeeded()
+        }
+        try await Swift.Task.sleep(for: .milliseconds(150))
+
+        for level in [NSWindow.Level.floating, .normal] {
+            for window in windows { window.level = level }
+            for index in [0, 1, 0, 1] {
+                let focused = windows[index]
+                let other = windows[1 - index]
+                other.orderFront(nil)
+                // Deliver AppKit's focus callback directly: a hosted test app
+                // need not be active for its window-ordering policy to be tested.
+                focused.becomeKey()
+                let ordered = NSApp.orderedWindows.filter { candidate in
+                    windows.contains(where: { $0 === candidate })
+                }
+                XCTAssertTrue(ordered.first === focused, "The last focused note must be in front")
+                XCTAssertEqual(focused.level, level, "Focus must preserve the privacy window level")
+            }
+        }
+    }
+
+    @MainActor
     func testStickyTitlebarGeometryAcrossWindowHeights() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)
