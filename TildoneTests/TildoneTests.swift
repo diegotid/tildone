@@ -1742,6 +1742,34 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(rightTarget.maxX, 1_000, accuracy: 0.0001)
     }
 
+    func testCompactRestorationPreservesLineUpPositionsBesideEveryDockEdge() {
+        let screenFrame = NSRect(x: -1440, y: 100, width: 1440, height: 900)
+        let size = NSSize(width: 96, height: 66)
+        for corner in [ArrangementCorner.bottomLeft, .bottomRight, .topLeft, .topRight] {
+            let origin = MacDesktopPlacement.origin(
+                for: size, on: screenFrame, corner: corner, horizontal: true,
+                position: 10, cornerMargin: 10, topReservedHeight: 24
+            )
+            let frame = NSRect(origin: origin, size: size)
+            XCTAssertEqual(MacDesktopPlacement.clampedOrigin(
+                for: frame, in: screenFrame, topReservedHeight: 24
+            ), origin, "Relaunch must preserve the physical-edge position from Line Up")
+        }
+        for usableFrame in [
+            NSRect(x: -1440, y: 170, width: 1440, height: 806), // Bottom Dock
+            NSRect(x: -1370, y: 100, width: 1370, height: 876), // Left Dock
+            NSRect(x: -1440, y: 100, width: 1370, height: 876) // Right Dock
+        ] {
+            let outside = NSRect(x: screenFrame.minX - 10, y: screenFrame.minY - 10, width: size.width, height: size.height)
+            let restored = MacDesktopPlacement.clampedOrigin(for: outside, in: usableFrame)
+            XCTAssertEqual(restored, usableFrame.origin, "The reserve-Dock-space setting must still be honored")
+        }
+        XCTAssertEqual(MacDesktopPlacement.clampedOrigin(
+            for: NSRect(x: 50, y: 2000, width: 96, height: 66),
+            in: screenFrame, topReservedHeight: 24
+        ), NSPoint(x: screenFrame.maxX - 96, y: screenFrame.maxY - 24 - 66))
+    }
+
     func testDesktopPlacementUsesThePhysicalScreenEdges() {
         let screenFrame = NSRect(x: -1_400, y: 0, width: 1_360, height: 860)
         let windowSize = NSSize(width: 200, height: 100)

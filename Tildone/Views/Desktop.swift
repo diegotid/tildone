@@ -26,6 +26,19 @@ enum MacNoteWindowGeometry {
 }
 
 enum MacDesktopPlacement {
+    static func clampedOrigin(
+        for windowFrame: NSRect,
+        in screenFrame: NSRect,
+        topReservedHeight: CGFloat = 0
+    ) -> NSPoint {
+        let maxX = max(screenFrame.minX, screenFrame.maxX - windowFrame.width)
+        let maxY = max(screenFrame.minY, screenFrame.maxY - topReservedHeight - windowFrame.height)
+        return NSPoint(
+            x: min(max(windowFrame.minX, screenFrame.minX), maxX),
+            y: min(max(windowFrame.minY, screenFrame.minY), maxY)
+        )
+    }
+
     static func origin(
         for windowSize: NSSize,
         on screenFrame: NSRect,
@@ -968,7 +981,11 @@ private extension Desktop {
             ), display: false)
             let screen = NSScreen.screens.first(where: { $0.frame.contains(NSPoint(x: window.frame.midX, y: window.frame.midY)) })
                 ?? destinationScreen
-            window.setFrameOrigin(clampedOrigin(for: window, desiredOrigin: window.frame.origin, on: screen))
+            window.setFrameOrigin(MacDesktopPlacement.clampedOrigin(
+                for: window.frame,
+                in: arrangementScreenFrame(for: screen),
+                topReservedHeight: preservesDockSpace ? 0 : menuBarHeight(on: screen)
+            ))
             window.ignoresMouseEvents = false
         }
         noteWindows[note.id] = window
