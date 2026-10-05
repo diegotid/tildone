@@ -41,6 +41,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.isEditable = true
         view.isSelectable = true
         view.allowsEditingTextAttributes = true
+        view.textColor = .label
         let lineHeight = UIFont.preferredFont(forTextStyle: .body).lineHeight
         let verticalInset = max(0, (Self.rowHeight - lineHeight) / 2)
         view.textContainerInset = UIEdgeInsets(
@@ -56,6 +57,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.returnKeyType = allowsMultipleLines ? .default : .done
         view.autocapitalizationType = .sentences
+        view.linkTextAttributes = [.foregroundColor: UIColor.label]
         view.adjustsFontForContentSizeCategory = true
         view.textAlignment = textAlignment
         view.accessibilityLabel = String(localized: "Task")
@@ -71,6 +73,8 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.textContainer.maximumNumberOfLines = allowsMultipleLines ? 0 : 1
         view.textContainer.lineBreakMode = allowsMultipleLines ? .byWordWrapping : .byTruncatingTail
         view.returnKeyType = allowsMultipleLines ? .default : .done
+        view.textColor = .label
+        view.linkTextAttributes = [.foregroundColor: UIColor.label]
         view.textAlignment = textAlignment
         let presentationChanged = context.coordinator.lastFontName != fontName
             || context.coordinator.lastTextStyle != textStyle
@@ -306,14 +310,14 @@ struct RichTaskTextEditor: UIViewRepresentable {
                         effectiveRange: nil
                     )
                     attributes[.link] = url
-                    attributes[.foregroundColor] = UIColor.tintColor
+                    attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
                     result.replaceCharacters(
                         in: match.range,
                         with: NSAttributedString(string: displayHost, attributes: attributes)
                     )
                 } else {
                     result.addAttributes(
-                        [.link: url, .foregroundColor: UIColor.tintColor],
+                        [.link: url, .underlineStyle: NSUnderlineStyle.single.rawValue],
                         range: match.range
                     )
                 }

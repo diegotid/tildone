@@ -554,6 +554,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
     }
 
     private static func configure(_ editor: NSTextView, cursorColor: NSColor) {
+        editor.linkTextAttributes = [:]
         let opaqueCursorColor = cursorColor.withAlphaComponent(1)
         if let editor = editor as? MouseSafeTaskFieldEditor {
             editor.enforceInsertionPointColor(opaqueCursorColor)
@@ -661,6 +662,23 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
             alignment: alignment,
             lineHeightMultiple: lineHeightMultiple
         ))
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let matches = detector.matches(
+                in: result.string,
+                range: NSRange(location: 0, length: result.length)
+            )
+            for match in matches {
+                guard let url = match.url,
+                      let scheme = url.scheme?.lowercased(),
+                      ["http", "https"].contains(scheme),
+                      let host = url.host,
+                      !host.isEmpty else { continue }
+                result.addAttributes([
+                    .link: url,
+                    .underlineStyle: NSUnderlineStyle.single.rawValue
+                ], range: match.range)
+            }
+        }
         guard !searchQuery.isEmpty else { return result }
 
         let text = result.string as NSString
@@ -900,7 +918,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                         effectiveRange: nil
                     )
                     attributes[.link] = url
-                    attributes[.foregroundColor] = NSColor.controlAccentColor
+                    attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
                     result.replaceCharacters(
                         in: match.range,
                         with: NSAttributedString(string: displayHost, attributes: attributes)
@@ -908,7 +926,7 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
                 } else {
                     result.addAttributes([
                         .link: url,
-                        .foregroundColor: NSColor.controlAccentColor
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
                     ], range: match.range)
                 }
             }

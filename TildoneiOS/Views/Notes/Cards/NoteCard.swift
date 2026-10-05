@@ -108,6 +108,7 @@ struct NoteCard: View {
     private func singleTaskText(_ task: NoteTaskPreview?, size: CGFloat, width: CGFloat) -> some View {
         Text(memoPreviewText(task, size: size))
             .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: size))
+            .tint(.black)
             .lineSpacing(SingleMemoTypography.lineSpacing(for: size))
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
