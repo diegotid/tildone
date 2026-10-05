@@ -118,6 +118,27 @@ public struct RichText: Codable, Hashable, Sendable {
         )
     }
 
+    /// Normalizes a leading HTTP URL scheme while preserving UTF-16 span offsets.
+    public func normalizingLeadingHTTPURLScheme() -> Self {
+        let prefixLength: Int
+        if text.prefix(8).lowercased() == "https://" {
+            prefixLength = 8
+        } else if text.prefix(7).lowercased() == "http://" {
+            prefixLength = 7
+        } else {
+            return self
+        }
+
+        let normalizedText = String(text.prefix(prefixLength)).lowercased()
+            + String(text.dropFirst(prefixLength))
+        guard normalizedText != text else { return self }
+        return Self(
+            text: normalizedText,
+            spans: spans,
+            representationVersion: representationVersion
+        )
+    }
+
     public func trimmingCharacters(in set: CharacterSet) -> Self {
         let trimmedText = text.trimmingCharacters(in: set)
         guard trimmedText != text else { return self }

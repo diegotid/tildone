@@ -374,10 +374,14 @@ extension Note {
         return true
     }
 
-    func handleTaskEdit(_ task: TildoneDomain.Task, to richText: RichText) {
+    func handleTaskEdit(
+        _ task: TildoneDomain.Task,
+        to richText: RichText,
+        capitalizingFirstLetter: Bool = true
+    ) {
         store.queueTaskTextEdit(
             task.id,
-            richText: richText.capitalizingFirstLetter()
+            richText: capitalizingFirstLetter ? richText.capitalizingFirstLetter() : richText
         ) { error in
             mutationErrorMessage = Self.mutationFailureMessage(
                 operation: "Error on task edit",

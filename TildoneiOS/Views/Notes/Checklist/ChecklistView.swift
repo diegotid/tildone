@@ -460,7 +460,7 @@ struct ChecklistView: View {
                         get: { singleTaskDraftID == task.id ? singleTaskDraft : task.richText },
                         set: { singleTaskDraftID = task.id; singleTaskDraft = $0 }
                     ),
-                    modelRichText: task.richText,
+                    modelRichText: task.richText.normalizingLeadingHTTPURLScheme(),
                     taskID: task.id,
                     focusedTask: $focusedTask,
                     isCompleted: task.isCompleted,
@@ -480,11 +480,16 @@ struct ChecklistView: View {
                 .focused($focusedTask, equals: task.id)
                 .onAppear {
                     singleTaskDraftID = task.id
-                    singleTaskDraft = task.richText
-                    focusedTask = task.id
+                    singleTaskDraft = task.richText.normalizingLeadingHTTPURLScheme()
+                    DispatchQueue.main.async {
+                        guard singleTaskDraftID == task.id else { return }
+                        focusedTask = task.id
+                    }
                 }
                 .onChange(of: task.richText) { _, value in
-                    if focusedTask != task.id { singleTaskDraft = value }
+                    if focusedTask != task.id {
+                        singleTaskDraft = value.normalizingLeadingHTTPURLScheme()
+                    }
                 }
             } else {
                 ProgressView()

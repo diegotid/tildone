@@ -56,7 +56,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.setContentHuggingPriority(.defaultLow, for: .horizontal)
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.returnKeyType = allowsMultipleLines ? .default : .done
-        view.autocapitalizationType = .sentences
+        view.autocapitalizationType = fitsSingleMemo ? .none : .sentences
         view.linkTextAttributes = [.foregroundColor: UIColor.label]
         view.adjustsFontForContentSizeCategory = true
         view.textAlignment = textAlignment
@@ -73,6 +73,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.textContainer.maximumNumberOfLines = allowsMultipleLines ? 0 : 1
         view.textContainer.lineBreakMode = allowsMultipleLines ? .byWordWrapping : .byTruncatingTail
         view.returnKeyType = allowsMultipleLines ? .default : .done
+        view.autocapitalizationType = fitsSingleMemo ? .none : .sentences
         view.textColor = .label
         view.linkTextAttributes = [.foregroundColor: UIColor.label]
         view.textAlignment = textAlignment

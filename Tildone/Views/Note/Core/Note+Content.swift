@@ -62,11 +62,10 @@ extension Note {
                         richText: Binding(
                             get: { liveRichText },
                             set: { value in
-                                let value = value.capitalizingFirstLetter()
                                 singleTaskDraftID = task.id
                                 singleTaskDraft = value
                                 if stagedSingleMemoTaskID != task.id {
-                                    handleTaskEdit(task, to: value)
+                                    handleTaskEdit(task, to: value, capitalizingFirstLetter: false)
                                 }
                             }
                         ),
