@@ -1,0 +1,40 @@
+{
+  "baseRevision": "06f75c15d87866efd783362d86a317fd9d3a5d3a",
+  "sourcePatchSHA256": "2ae8046a21d530f60deec3bdaa0c5774f354767d9c5f9aa76a43a83f315db0dd",
+  "artifactPath": "/tmp/tildone-step2-20261006/mac/Build/Products/Debug/Tildone.app",
+  "info": {
+    "CFBundleIdentifier": "studio.cuatro.tildone",
+    "CFBundleShortVersionString": "1.6.0",
+    "CFBundleVersion": "24",
+    "DTSDKName": "macosx27.0",
+    "DTXcodeBuild": "27A266a"
+  },
+  "effectiveEntitlements": {
+    "com.apple.application-identifier": "F6HFAVTS49.studio.cuatro.tildone",
+    "com.apple.developer.aps-environment": "development",
+    "com.apple.developer.icloud-container-environment": "Development",
+    "com.apple.developer.icloud-container-identifiers": [
+      "iCloud.studio.cuatro.tildone"
+    ],
+    "com.apple.developer.icloud-services": [
+      "CloudKit"
+    ],
+    "com.apple.developer.team-identifier": "F6HFAVTS49",
+    "com.apple.security.app-sandbox": true,
+    "com.apple.security.files.user-selected.read-only": true,
+    "com.apple.security.get-task-allow": true,
+    "com.apple.security.network.client": true
+  },
+  "profile": {
+    "name": "Mac Team Provisioning Profile: studio.cuatro.tildone",
+    "uuid": "44c02ba7-7035-4a17-a7ec-d7a7ddf8e5b9",
+    "expires": "2027-08-13T22:30:46",
+    "team": [
+      "F6HFAVTS49"
+    ]
+  },
+  "binarySHA256": {
+    "Tildone": "dd4f885ab868766ad664a7a8b5415c5650761418e363f26707630b9e2d287326",
+    "Tildone.debug.dylib": "85c647e85679172612754d0080827fce5b2f0ad0f65eb404b1c965e209958fc6"
+  }
+}

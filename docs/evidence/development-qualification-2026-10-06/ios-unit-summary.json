@@ -1,0 +1,69 @@
+{
+  "devicesAndConfigurations": [
+    {
+      "device": {
+        "architecture": "arm64",
+        "deviceId": "E28173F6-B86C-42E3-96C1-4BB961DFFD2F",
+        "deviceName": "iPhone 18 Pro",
+        "modelName": "iPhone 18 Pro",
+        "osBuildNumber": "24A434",
+        "osVersion": "27.0",
+        "platform": "iOS Simulator"
+      },
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "passedTests": 56,
+      "skippedTests": 0,
+      "testPlanConfiguration": {
+        "configurationId": "1",
+        "configurationName": "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription": "Tildone iOS \u00b7 Built with macOS 27.0.1",
+  "expectedFailures": 0,
+  "failedTests": 0,
+  "finishTime": 1791241565.027,
+  "passedTests": 56,
+  "result": "Passed",
+  "runtimeWarnings": [
+    {
+      "issueType": "Runtime Warning",
+      "message": "Accessing FocusState's value outside of the body of a View. This will result in a constant Binding of the initial value and will not update.",
+      "sourceURL": "file:///Users/diego/Code/Cuatro%20Studio/Tildone/tildone/TildoneiOSTests/TildoneiOSTests.swift"
+    },
+    {
+      "issueType": "Runtime Warning",
+      "message": "Accessing FocusState's value outside of the body of a View. This will result in a constant Binding of the initial value and will not update.",
+      "sourceURL": "file:///Users/diego/Code/Cuatro%20Studio/Tildone/tildone/TildoneiOSTests/TildoneiOSTests.swift"
+    },
+    {
+      "issueType": "Runtime Warning",
+      "message": "Accessing FocusState's value outside of the body of a View. This will result in a constant Binding of the initial value and will not update.",
+      "sourceURL": "file:///Users/diego/Code/Cuatro%20Studio/Tildone/tildone/TildoneiOSTests/TildoneiOSTests.swift"
+    },
+    {
+      "issueType": "Runtime Warning",
+      "message": "Accessing FocusState's value outside of the body of a View. This will result in a constant Binding of the initial value and will not update.",
+      "sourceURL": "file:///Users/diego/Code/Cuatro%20Studio/Tildone/tildone/TildoneiOSTests/TildoneiOSTests.swift"
+    },
+    {
+      "issueType": "Runtime Warning",
+      "message": "Accessing FocusState's value outside of the body of a View. This will result in a constant Binding of the initial value and will not update.",
+      "sourceURL": "file:///Users/diego/Code/Cuatro%20Studio/Tildone/tildone/TildoneiOSTests/TildoneiOSTests.swift"
+    }
+  ],
+  "skippedTests": 0,
+  "startTime": 1791241368.619,
+  "statistics": [],
+  "testFailures": [],
+  "title": "Test - Tildone iOS",
+  "topInsights": [
+    {
+      "category": "Longest Test Runs",
+      "impact": "51% of duration",
+      "text": "1 longest test run with outlier durations exceeding 1.66s (three standard deviations)"
+    }
+  ],
+  "totalTestCount": 56
+}

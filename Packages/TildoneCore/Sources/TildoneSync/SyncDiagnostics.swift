@@ -93,7 +93,76 @@ enum SyncFailureDiagnosticCategory: Equatable {
 /// Messages intentionally contain only lifecycle categories and aggregate
 /// counts. Record identifiers, account identifiers, titles, and task text are
 /// never accepted by this API.
-enum SyncDiagnostics {
+public enum SyncDiagnostics {
+    public enum Boundary: String {
+        case scheduled
+        case prepared
+        case acknowledged
+        case merged
+        case presented
+        case fetchStarted = "fetch-started"
+        case sendStarted = "send-started"
+        case zoneFetchStarted = "zone-fetch-started"
+        case zoneSendCompleted = "zone-send-completed"
+        case engineCreated = "engine-created"
+        case pauseCompleted = "pause-completed"
+        case fixtureNoteStored = "fixture-note-stored"
+        case fixtureTaskStored = "fixture-task-stored"
+        case fixtureTaskVisible = "fixture-task-visible"
+        case fixtureTaskPending = "fixture-task-pending"
+        case fixtureTaskAttempted = "fixture-task-attempted"
+        case fixtureTaskSystemFields = "fixture-task-system-fields"
+        case fixtureTaskPresented = "fixture-task-presented"
+        case fixtureInspectionFailed = "fixture-inspection-failed"
+    }
+
+    /// Counts and fixed categories only. This deliberately cannot accept record
+    /// names, workspace IDs, payloads, or error descriptions.
+    public static func boundary(_ boundary: Boundary, count: Int) {
+#if DEBUG
+        logger.debug("sync-boundary stage=\(boundary.rawValue, privacy: .public) count=\(count, privacy: .public)")
+        if ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") {
+            // The explicitly requested device console receives the same
+            // content-free breadcrumb, without broad OS activity logging.
+            print("TildoneQualification stage=\(boundary.rawValue) count=\(count)")
+        }
+#endif
+    }
+
+    /// Read-only inspection of the previously labelled synthetic fixture. No
+    /// record IDs or content leave this method; it never creates or repairs it.
+    /// The opt-in launch argument is inert in Release.
+    public static func inspectRetainedFixture(in repository: TildoneRepository) async {
+#if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") else { return }
+        do {
+            let notes = try await repository.allSyncNotes().filter { $0.title == "Stage12 Device Check" }
+            let noteIDs = Set(notes.map(\.id))
+            let visibleNoteIDs = Set(notes.filter { $0.lifecycle == .active }.map(\.id))
+            let tasks = try await repository.allSyncTasks().filter {
+                noteIDs.contains($0.noteID) && $0.text == "Paused count repair"
+            }
+            let taskIDs = Set(tasks.map { $0.id.stringValue })
+            let pending = try await repository.pendingMutations(includeSuperseded: true).filter {
+                taskIDs.contains($0.targetStableID)
+            }
+            let state = SyncPersistentState(data: try await repository.workspaceSnapshot().futureSyncEngineState)
+            boundary(.fixtureNoteStored, count: notes.count)
+            boundary(.fixtureTaskStored, count: tasks.count)
+            boundary(.fixtureTaskVisible, count: tasks.filter {
+                $0.lifecycle == .active && visibleNoteIDs.contains($0.noteID)
+            }.count)
+            boundary(.fixtureTaskPending, count: pending.count)
+            boundary(.fixtureTaskAttempted, count: pending.filter { $0.attemptCount > 0 }.count)
+            boundary(.fixtureTaskSystemFields, count: tasks.filter {
+                state.systemRecord(named: $0.id.recordName) != nil
+            }.count)
+        } catch {
+            boundary(.fixtureInspectionFailed, count: 1)
+        }
+#endif
+    }
+
 #if DEBUG
     private static let logger = Logger(
         subsystem: "studio.cuatro.tildone",

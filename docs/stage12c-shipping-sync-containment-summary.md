@@ -1,5 +1,7 @@
 # Stage 12C — Shipping sync containment and recovery UX summary
 
+> **2026-10-06 qualification update:** The implementation/evidence below remains the historical August baseline. [Current Development qualification](development-cloudkit-qualification-2026-10-06.md) records final-source local checks and selected instrumented physical-iPhone pause/restart evidence. Full current Mac/iPhone convergence, workspace identity comparison, account/historical fixtures, physical accessibility/language acceptance and owner/policy exit criteria remain open. Neither those partial results nor completion of step 2 alone closes Stage 12C.
+
 **Date:** 2026-08-09  
 **Repository boundary:** Stage 12B was already committed separately as `857e056` and the working tree was clean before Stage 12C began.  
 **Production actions:** none. Production CloudKit, Production entitlements/provisioning, archives, uploads, TestFlight, and App Store state were not inspected or changed.

@@ -1,5 +1,7 @@
 # Development real-device revalidation — 2026-10-05
 
+> **Follow-up, 2026-10-06:** The [new qualification report](development-cloudkit-qualification-2026-10-06.md) identifies the newer source and instrumented candidate, passing local checks and selected physical-iPhone observations. It does not erase the missing `Paused count repair` delivery/presentation failure below or establish a final-pair repair. Use its per-case statuses for the current attempt; this report remains historical evidence.
+
 **Verdict: verified with conditions for the initial selected current-build Development smoke; the full pre-12E Development gate remains blocked.** Signed Mac and physical-iPhone artifacts were verified and exercised. Two-way synthetic edits, completion, color, bold text, task indentation, memo kind/font and paused-restart recovery were observed. Manual Sync Now was needed for several remote updates, and the paused pending-count display became stale. The subsequent owner-authorized count repair and its recheck are recorded below. Stage 12E remains unauthorized.
 
 ## Scope and authorization

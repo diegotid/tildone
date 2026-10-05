@@ -1,0 +1,16 @@
+TildoneQualification stage=presented count=164
+TildoneQualification stage=fixture-task-presented count=1
+TildoneQualification stage=engine-created count=1
+TildoneQualification stage=scheduled count=0
+TildoneQualification stage=scheduled count=0
+TildoneQualification stage=fetch-started count=1
+TildoneQualification stage=send-started count=1
+TildoneQualification stage=fixture-note-stored count=1
+TildoneQualification stage=fixture-task-stored count=1
+TildoneQualification stage=fixture-task-visible count=1
+TildoneQualification stage=fixture-task-pending count=0
+TildoneQualification stage=fixture-task-attempted count=0
+TildoneQualification stage=fixture-task-system-fields count=1
+TildoneQualification stage=presented count=164
+TildoneQualification stage=fixture-task-presented count=1
+TildoneQualification stage=pause-completed count=1

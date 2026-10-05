@@ -165,6 +165,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             configuration.automaticallySync = true
             configuration.subscriptionID = TildoneCloudSchema.subscriptionIdentifier
             engine = CKSyncEngine(configuration)
+            SyncDiagnostics.boundary(.engineCreated, count: 1)
             try await bootstrapPendingChanges()
         }
     }
@@ -247,6 +248,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
                 _ = await fetchChanges(engine, retryAfterRecovery: retryAfterRecovery)
             }
         }
+        await SyncDiagnostics.inspectRetainedFixture(in: repository)
     }
 
     public func stop() async {
@@ -261,6 +263,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     public func pause() async {
         await coordinatorState.freeze()
         await engine?.cancelOperations()
+        SyncDiagnostics.boundary(.pauseCompleted, count: 1)
         let current = await statusModel.snapshot()
         let pending = (try? await pipeline.pendingCount()) ?? current.pendingMutationCount
         let retainsAttention = current.activity == .attentionNeeded || [
@@ -292,6 +295,15 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
 
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
         guard syncEngine === engine else { return }
+        // Observe operation starts even when cancellation has frozen the
+        // delegate. Otherwise a paused diagnostic window could conceal late
+        // work merely because its data callback was ignored.
+        switch event {
+        case .willFetchChanges: SyncDiagnostics.boundary(.fetchStarted, count: 1)
+        case .willFetchRecordZoneChanges: SyncDiagnostics.boundary(.zoneFetchStarted, count: 1)
+        case .willSendChanges: SyncDiagnostics.boundary(.sendStarted, count: 1)
+        default: break
+        }
         // Cancellation can race an already-delivered engine callback. Once
         // frozen, ignore every data/checkpoint event so pausing cannot apply a
         // fetch, serialize a newer checkpoint, or acknowledge durable outbox
@@ -339,7 +351,10 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             await coordinatorState.beginFetch()
             await refreshStatus(activity: .syncing)
 
-        case .willFetchRecordZoneChanges, .willSendChanges:
+        case .willSendChanges:
+            await refreshStatus(activity: .syncing)
+
+        case .willFetchRecordZoneChanges:
             await refreshStatus(activity: .syncing)
 
         case .didFetchRecordZoneChanges:
@@ -479,6 +494,7 @@ private extension TildoneSyncCoordinator {
         configuration.automaticallySync = true
         configuration.subscriptionID = TildoneCloudSchema.subscriptionIdentifier
         engine = CKSyncEngine(configuration)
+        SyncDiagnostics.boundary(.engineCreated, count: 1)
         try await bootstrapPendingChanges()
     }
 
@@ -527,6 +543,7 @@ private extension TildoneSyncCoordinator {
             changes.append(.saveRecord(clientRecordID))
         }
         engine.state.add(pendingRecordZoneChanges: changes)
+        SyncDiagnostics.boundary(.scheduled, count: changes.count)
     }
 
     func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange.ChangeType) async {
@@ -643,6 +660,10 @@ private extension TildoneSyncCoordinator {
     func handleSentDatabaseChanges(
         _ event: CKSyncEngine.Event.SentDatabaseChanges
     ) async {
+        SyncDiagnostics.boundary(
+            .zoneSendCompleted,
+            count: event.savedZones.count + event.failedZoneSaves.count + event.deletedZoneIDs.count
+        )
         if event.savedZones.contains(where: { $0.zoneID == TildoneCloudSchema.zoneID }) {
             do {
                 if try await coordinatorState.markZoneCreated() {

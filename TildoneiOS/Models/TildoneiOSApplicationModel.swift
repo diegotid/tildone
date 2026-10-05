@@ -985,6 +985,16 @@ final class TildoneiOSApplicationModel: ObservableObject {
             updatePresentation(snapshot)
         }
         refreshOverview()
+        SyncDiagnostics.boundary(.presented, count: notePresentations.values.reduce(0) {
+            $0 + $1.snapshot.tasks.count
+        })
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") {
+            SyncDiagnostics.boundary(.fixtureTaskPresented, count: notePresentations.values
+                .filter { $0.snapshot.note?.title == "Stage12 Device Check" }
+                .flatMap { $0.snapshot.tasks }.filter { $0.text == "Paused count repair" }.count)
+        }
+#endif
     }
 
     private func updatePresentation(_ snapshot: TildoneiOSNoteSnapshot) {

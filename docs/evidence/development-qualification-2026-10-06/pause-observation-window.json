@@ -1,0 +1,10 @@
+{
+  "restartFirstConfirmedUTC": "2026-10-05T23:09:45Z",
+  "pausedWindowEndUTC": "2026-10-05T23:14:23.121165+00:00",
+  "preRestartPauseConfirmedBeforeUTC": "2026-10-05T23:05:46Z",
+  "preRestartStillPausedUTC": "2026-10-05T23:08:41Z",
+  "postRestartDiagnostics": [
+    "TildoneQualification stage=presented count=165",
+    "TildoneQualification stage=fixture-task-presented count=1"
+  ]
+}

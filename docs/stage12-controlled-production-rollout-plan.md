@@ -2,6 +2,8 @@
 
 > This plan preserves its 2026-08-09 Stage 12B baseline. The separately authorized Stage 12D read-only inspection was captured on 2026-10-04 in the [Stage 12D inspection packet](production-cloudkit-inspection-12d.md). Stage 12E is not authorized. Use the source-generated [CloudKit contract manifest](development-cloudkit-contract-manifest.md) for the current field contract; the older version lists below are historical.
 
+> **2026-10-06 current qualification:** [Step 2 evidence](development-cloudkit-qualification-2026-10-06.md) records the clean starting revision, frozen diagnostic candidate, passing local checks, verified signed Development artifacts, and selected physical-iPhone pause/restart observations. Step 2 remains incomplete: the retained missing-task failure has no demonstrated cause/fix or final-pair recheck, and the full live matrix remains open. The owner approved continued current-account synthetic testing; an account B and isolated historical workspaces are still prerequisites for their respective cases. This does not close Stage 12C or authorize Stage 12E. The [isolated fixture plan](development-isolated-fixture-plan-2026-10-06.md) identifies historical artifacts without downgrading or resetting personal installations.
+
 **Plan reconciled:** 2026-08-09, after Stage 12B repository and Development revalidation
 **Authorization at the 2026-08-09 baseline:** repository-local work and the completed explicitly approved Development validation scopes only
 **Production authorization at that baseline:** none

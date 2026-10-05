@@ -1,5 +1,7 @@
 # Stage 12D — Read-only Production CloudKit inspection
 
+> **2026-10-06 prerequisite update:** [Current Development step 2 evidence](development-cloudkit-qualification-2026-10-06.md) supersedes earlier local results only for its identified diagnostic candidate and explicitly observed cases. The missing-task discrepancy and full live matrix remain unresolved. No Production view, Console record query, schema edit or Stage 12E action was performed during this attempt. This packet's earlier Console capture remains dated historical evidence; the final chosen diff still needs a separately authorized refresh/review before deployment.
+
 **Status:** Verified with conditions: the current source and Development field contract agree, and Production has no visible Tildone application schema or deployment history. This does not establish that a deployment never occurred. Stage 12E remains on hold pending the qualification evidence and decisions below; it needs separate authorization.
 
 **Source revision:** `bb8240d17c36dbf9afdc84fb8af1d55572a7d77a`.

@@ -1,0 +1,37 @@
+{
+  "baseRevision": "06f75c15d87866efd783362d86a317fd9d3a5d3a",
+  "sourcePatchSHA256": "2ae8046a21d530f60deec3bdaa0c5774f354767d9c5f9aa76a43a83f315db0dd",
+  "artifactPath": "/tmp/tildone-step2-20261006/ios/Build/Products/Debug-iphoneos/Tildone.app",
+  "info": {
+    "CFBundleIdentifier": "studio.cuatro.tildone",
+    "CFBundleShortVersionString": "1.0",
+    "CFBundleVersion": "1",
+    "DTSDKName": "iphoneos27.0",
+    "DTXcodeBuild": "27A266a"
+  },
+  "effectiveEntitlements": {
+    "application-identifier": "F6HFAVTS49.studio.cuatro.tildone",
+    "aps-environment": "development",
+    "com.apple.developer.icloud-container-environment": "Development",
+    "com.apple.developer.icloud-container-identifiers": [
+      "iCloud.studio.cuatro.tildone"
+    ],
+    "com.apple.developer.icloud-services": [
+      "CloudKit"
+    ],
+    "com.apple.developer.team-identifier": "F6HFAVTS49",
+    "get-task-allow": true
+  },
+  "profile": {
+    "name": "iOS Team Provisioning Profile: studio.cuatro.tildone",
+    "uuid": "aa5a13ad-6b3c-4f68-a809-a6f136eabbd5",
+    "expires": "2027-09-25T21:43:13",
+    "team": [
+      "F6HFAVTS49"
+    ]
+  },
+  "binarySHA256": {
+    "Tildone": "4d4c3f20f15e80b797bc7b41822ee43d61ef22ff9b10a7403b2210c868700c25",
+    "Tildone.debug.dylib": "80e9f3348b44619a8e4b4ef81f1ed5cea1676d5c7c4086d78f6da1947d3e143b"
+  }
+}

@@ -1510,6 +1510,14 @@ private extension MacSharedStore {
         if orderedNoteIDs != ids {
             orderedNoteIDs = ids
         }
+        SyncDiagnostics.boundary(.presented, count: snapshots.reduce(0) { $0 + $1.tasks.count })
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") {
+            SyncDiagnostics.boundary(.fixtureTaskPresented, count: snapshots
+                .filter { $0.note.title == "Stage12 Device Check" }
+                .flatMap(\.tasks).filter { $0.text == "Paused count repair" }.count)
+        }
+#endif
     }
 
     func publish(_ snapshot: MacNoteSnapshot) {

@@ -62,11 +62,13 @@ public actor SyncPipeline {
         case let .note(note): .note(note)
         case let .task(task): .task(task)
         }
+        SyncDiagnostics.boundary(.prepared, count: 1)
         return SyncOutboundMutation(mutationID: prepared.mutationID, record: record)
     }
 
     public func acknowledge(_ mutationIDs: Set<UUID>) async throws {
         try await repository.acknowledgeMutations(ids: mutationIDs)
+        SyncDiagnostics.boundary(.acknowledged, count: mutationIDs.count)
     }
 
     @discardableResult
@@ -90,6 +92,7 @@ public actor SyncPipeline {
             generated += result.generatedTombstoneMutationCount
             changedRecords.formUnion(result.changedRecords)
         }
+        SyncDiagnostics.boundary(.merged, count: changedRecords.count)
         return RemoteMergeResult(
             changed: changed,
             generatedTombstoneMutationCount: generated,
