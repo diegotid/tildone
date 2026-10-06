@@ -257,8 +257,18 @@ struct Desktop: View {
             .onReceive(NotificationCenter.default.publisher(for: .noteColorFilterChanged)) { _ in
                 reconcileNoteWindows()
             }
-            .onReceive(NotificationCenter.default.publisher(for: .arrangeMinimized)) { _ in
-                arrangeNotes(onlyMinimized: true)
+            .onReceive(NotificationCenter.default.publisher(for: .arrangeMinimized)) { notification in
+                if noteWindows.keys.contains(where: { NoteWindowManualPosition.isWheelPosition(for: $0) }),
+                   let noteID = notification.object as? NoteID,
+                   let window = noteWindows[noteID] {
+                    // The resized note invalidates Gather's cached frames, but
+                    // only this note should move to the minimization corner.
+                    resetCornerConvergence()
+                    NoteWindowManualPosition.setIsWheelPosition(false, for: noteID)
+                    positionOnScreen([window])
+                } else {
+                    arrangeNotes(onlyMinimized: true)
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .compactNoteScaleChanged)) { _ in
                 updateCompactNoteScale()

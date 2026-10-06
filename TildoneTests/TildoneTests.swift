@@ -2426,6 +2426,11 @@ final class TildoneTests: XCTestCase {
             try await Swift.Task.sleep(for: .milliseconds(20))
         }
         let firstWindow = try XCTUnwrap(noteWindow(compactNote))
+        let visibleFrame = try XCTUnwrap(firstWindow.screen).visibleFrame
+        firstWindow.setFrameOrigin(NSPoint(
+            x: visibleFrame.midX - firstWindow.frame.width / 2,
+            y: visibleFrame.midY - firstWindow.frame.height / 2
+        ))
         let expandedFrame = firstWindow.frame
         firstWindow.makeKeyAndOrderFront(nil)
         try await Swift.Task.sleep(for: .milliseconds(150))
@@ -4618,15 +4623,46 @@ final class TildoneTests: XCTestCase {
 
     @MainActor
     func testCreatingNotePreservesGatheredCompactAndExpandedPositions() async throws {
+        try await assertGatheredPositionsArePreserved(minimizingNote: false)
+    }
+
+    @MainActor
+    func testMinimizingNotePreservesOtherGatheredCompactAndExpandedPositions() async throws {
+        try await assertGatheredPositionsArePreserved(minimizingNote: true)
+    }
+
+    @MainActor
+    private func assertGatheredPositionsArePreserved(minimizingNote: Bool) async throws {
         let previousKeyWindow = NSApp.keyWindow
+        let defaults = UserDefaults.standard
+        let placementKeys = [ArrangementCorner.storageKey, ArrangementDockSpace.storageKey, ArrangementSpacing.cornerStorageKey]
+        let previousPlacement = placementKeys.map { defaults.object(forKey: $0) }
+        defaults.set(ArrangementCorner.bottomRight.rawValue, forKey: ArrangementCorner.storageKey)
+        defaults.set(false, forKey: ArrangementDockSpace.storageKey)
+        defaults.set(ArrangementSpacing.medium.rawValue, forKey: ArrangementSpacing.cornerStorageKey)
+        defer {
+            for (key, value) in zip(placementKeys, previousPlacement) {
+                if let value { defaults.set(value, forKey: key) }
+                else { defaults.removeObject(forKey: key) }
+            }
+        }
         let selectedColors = NoteColorDisplayFilter.selectedColors
         NoteColorDisplayFilter.setSelectedColors(Set(NoteColor.allCases))
         defer { NoteColorDisplayFilter.setSelectedColors(selectedColors) }
         let store = MacSharedStore(repository: try TildoneRepository(descriptor: .inMemory()))
-        let compact = try await store.createNote()
+        let createdAt = Date().addingTimeInterval(-Double.random(in: 1000...1000000))
+        let compact = try await store.createNote(createdAt: createdAt)
         _ = try await store.addTask(to: compact.id, text: "Compact fixture")
-        let expanded = try await store.createNote()
+        let expanded = try await store.createNote(createdAt: createdAt.addingTimeInterval(1))
         _ = try await store.addTask(to: expanded.id, text: "Expanded fixture")
+        let noteToMinimize: MacNoteSnapshot?
+        if minimizingNote {
+            let note = try await store.createNote(createdAt: createdAt.addingTimeInterval(2))
+            _ = try await store.addTask(to: note.id, text: "Minimize fixture")
+            noteToMinimize = note
+        } else {
+            noteToMinimize = nil
+        }
         NoteWindowMinimizationState.saveMinimized(true, for: compact.id)
         defer { NoteWindowMinimizationState.saveMinimized(false, for: compact.id) }
         let host = NSHostingView(rootView: Desktop(
@@ -4642,6 +4678,8 @@ final class TildoneTests: XCTestCase {
         defer {
             for note in store.notes {
                 NSApp.windows.first(where: { $0.title.hasSuffix(note.legacyWindowKey) })?.close()
+                NoteWindowMinimizationState.saveMinimized(false, for: note.id)
+                NSWindow.removeFrame(usingName: note.legacyWindowKey)
             }
             coordinator.contentView = nil
             coordinator.close()
@@ -4663,9 +4701,27 @@ final class TildoneTests: XCTestCase {
         }
         let compactFrame = compactWindow.frame
         let expandedFrame = expandedWindow.frame
-        NotificationCenter.default.post(name: .new, object: nil)
-        let created = try XCTUnwrap(store.notes.first { $0.id != compact.id && $0.id != expanded.id })
-        try await store.waitForNoteCreation(created.id)
+        if let noteToMinimize {
+            let window = try XCTUnwrap(NSApp.windows.first { $0.title == noteToMinimize.legacyWindowKey })
+            window.setFrameOrigin(NSPoint(x: screen.visibleFrame.midX + 20, y: screen.visibleFrame.midY + 20))
+            NoteWindowManualPosition.setIsWheelPosition(true, for: noteToMinimize.id)
+            defer { NoteWindowManualPosition.setIsWheelPosition(false, for: noteToMinimize.id) }
+            let button = try XCTUnwrap(window.standardWindowButton(.miniaturizeButton))
+            XCTAssertTrue(button.target is NoteWindowButtonActionController)
+            button.performClick(nil)
+            XCTAssertEqual(window.title, "_" + noteToMinimize.legacyWindowKey)
+            try await Swift.Task.sleep(for: .milliseconds(500))
+            let margin = CGFloat(ArrangementSpacing.medium.rawValue)
+            XCTAssertEqual(window.frame.origin, NSPoint(
+                x: screen.frame.maxX - margin - window.frame.width,
+                y: screen.frame.minY + margin
+            ), "Only the newly minimized note must move to the configured corner")
+            XCTAssertFalse(NoteWindowManualPosition.isWheelPosition(for: noteToMinimize.id))
+        } else {
+            NotificationCenter.default.post(name: .new, object: nil)
+            let created = try XCTUnwrap(store.notes.first { $0.id != compact.id && $0.id != expanded.id })
+            try await store.waitForNoteCreation(created.id)
+        }
         try await Swift.Task.sleep(for: .milliseconds(500))
         XCTAssertEqual(compactWindow.frame, compactFrame)
         XCTAssertEqual(expandedWindow.frame, expandedFrame)

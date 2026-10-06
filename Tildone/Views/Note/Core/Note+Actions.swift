@@ -28,7 +28,7 @@ extension Note {
         NoteWindowMinimizationState.saveMinimized(true, for: noteID, compactFrame: noteWindow.frame)
         noteWindow.ignoresMouseEvents = false
         updateWindowMenuTitle()
-        NotificationCenter.default.post(name: .arrangeMinimized, object: nil)
+        NotificationCenter.default.post(name: .arrangeMinimized, object: noteID)
     }
 
     func handleClose() {
