@@ -199,6 +199,7 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 ### Minimize and arrange
 
 - The standard minimize button is intercepted. It shrinks the same window to a 96×66 progress gauge rather than using macOS Dock minimization.
+- Dragging a compact note moves it without expanding; releasing near a visible screen edge snaps it to that edge. Compact movement preserves the expanded restoration frame. Each new minimization returns to the configured corner.
 - Clicking a gauge restores its previous in-memory frame. “Minimize All” and “Bring All Up” publish global notifications.
 - “Arrange Notes” groups windows by screen and lays them out horizontally or vertically from the selected corner with configured margins and spacing.
 - Minimized state and compact position are saved per stable note ID in installation-local preferences. Launch configures minimized notes before showing their windows; the normal AppKit autosaved frame remains the expansion target.

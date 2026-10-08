@@ -2439,7 +2439,11 @@ final class TildoneTests: XCTestCase {
         try await Swift.Task.sleep(for: .milliseconds(100))
         XCTAssertTrue(NoteWindowMinimizationState.savedIsMinimized(for: compactNote.id))
         XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: expandedNote.id))
+        // Moving a minimized note persists only the compact frame, including
+        // across relaunch; expanding must still recover the original frame.
+        firstWindow.setFrameOrigin(NSPoint(x: visibleFrame.midX, y: visibleFrame.midY))
         let compactFrame = firstWindow.frame
+        XCTAssertEqual(NoteWindowMinimizationState.savedCompactFrame(for: compactNote.id), compactFrame)
         host.rootView = AnyView(EmptyView())
         try await Swift.Task.sleep(for: .milliseconds(100))
         host.rootView = AnyView(desktop)
@@ -2458,6 +2462,37 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: compactNote.id))
         XCTAssertEqual(reopened.frame, expandedFrame)
         XCTAssertEqual(reopened.frameAutosaveName, compactNote.legacyWindowKey)
+    }
+
+    func testCompactDragUsesScreenCoordinatesWithoutChangingSize() {
+        let frame = NSRect(x: -800, y: 240, width: 96, height: 96)
+        let drag = NoteWindowMinimizationState.Drag(
+            startFrame: frame,
+            startMouseLocation: NSPoint(x: -780, y: 270)
+        )
+        XCTAssertEqual(
+            drag.frame(at: NSPoint(x: -500, y: 400)),
+            NSRect(x: -520, y: 370, width: 96, height: 96)
+        )
+        XCTAssertEqual(drag.frame(at: drag.startMouseLocation), frame)
+    }
+
+    func testCompactDragSnapsOnlyNearVisibleScreenEdges() {
+        let screen = NSRect(x: -1440, y: 40, width: 1440, height: 860)
+        let interior = NSRect(x: -700, y: 400, width: 96, height: 96)
+        XCTAssertEqual(NoteWindowMinimizationState.Drag.snappedFrame(interior, in: screen), interior)
+        XCTAssertEqual(
+            NoteWindowMinimizationState.Drag.snappedFrame(
+                NSRect(x: -1433, y: 46, width: 96, height: 96), in: screen
+            ),
+            NSRect(x: -1440, y: 40, width: 96, height: 96)
+        )
+        XCTAssertEqual(
+            NoteWindowMinimizationState.Drag.snappedFrame(
+                NSRect(x: -102, y: 809, width: 96, height: 96), in: screen
+            ),
+            NSRect(x: -96, y: 804, width: 96, height: 96)
+        )
     }
 
     func testRepeatedMinimizeAllKeepsTheFirstNormalFrameAndRestoresOnce() throws {

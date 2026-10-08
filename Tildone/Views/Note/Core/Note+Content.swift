@@ -433,8 +433,41 @@ extension Note {
                     }
             }
         }
-        .onDisappear { isHoveringMinimizedTaskList = false }
-        .onTapGesture(perform: handleBringUp)
+        .onDisappear {
+            isHoveringMinimizedTaskList = false
+            compactNoteDrag = nil
+        }
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    guard let window = noteWindow, isMinimized else { return }
+                    let mouseLocation = NSEvent.mouseLocation
+                    if compactNoteDrag == nil {
+                        // Use screen coordinates: local gesture coordinates move
+                        // with the window and would otherwise cause drift.
+                        compactNoteDrag = NoteWindowMinimizationState.Drag(
+                            startFrame: window.frame,
+                            startMouseLocation: NSPoint(
+                                x: mouseLocation.x - value.translation.width,
+                                y: mouseLocation.y + value.translation.height
+                            )
+                        )
+                    }
+                    guard let drag = compactNoteDrag else { return }
+                    window.setFrameOrigin(drag.frame(at: mouseLocation).origin)
+                }
+                .onEnded { _ in
+                    defer { compactNoteDrag = nil }
+                    guard compactNoteDrag != nil, let window = noteWindow, isMinimized else { return }
+                    if let screen = window.screen {
+                        window.setFrameOrigin(NoteWindowMinimizationState.Drag.snappedFrame(
+                            window.frame, in: screen.visibleFrame
+                        ).origin)
+                    }
+                    NoteWindowMinimizationState.saveCompactFrame(window.frame, for: noteID)
+                }
+                .exclusively(before: TapGesture().onEnded { handleBringUp() })
+        )
         .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
     }
 

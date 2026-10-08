@@ -32,6 +32,41 @@ final class TildoneUITests: XCTestCase {
         // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
+    func testMinimizedNoteCanDragWithoutExpandingAndClickToRestore() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"
+        app.launchArguments += ["--tildone-ui-test", "-showDockIcon", "YES"]
+        app.launch()
+        let topic = app.textFields["Note title"]
+        XCTAssertTrue(topic.waitForExistence(timeout: 5))
+        topic.click()
+        topic.typeText("Compact drag")
+        let window = app.windows.containing(.textField, identifier: "Note title").firstMatch
+        let expandedFrame = window.frame
+        app.menuBars.menuBarItems["Window"].click()
+        app.menuItems["Minimize All"].click()
+        XCTAssertTrue(topic.waitForNonExistence(timeout: 5))
+        let compact = app.windows.firstMatch
+        let cornerFrame = compact.frame
+        let start = compact.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // Move inward regardless of which corner the user has configured.
+        let dx: CGFloat = cornerFrame.midX < expandedFrame.midX ? 120 : -120
+        let dy: CGFloat = cornerFrame.midY < expandedFrame.midY ? 120 : -120
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: dx, dy: dy)))
+        XCTAssertFalse(topic.exists, "Dragging must leave the note minimized")
+        XCTAssertEqual(compact.frame.width, cornerFrame.width, accuracy: 1)
+        XCTAssertEqual(compact.frame.height, cornerFrame.height, accuracy: 1)
+        XCTAssertEqual(compact.frame.minX, cornerFrame.minX + dx, accuracy: 3)
+        XCTAssertEqual(compact.frame.minY, cornerFrame.minY + dy, accuracy: 3)
+        compact.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        XCTAssertTrue(topic.waitForExistence(timeout: 5))
+        XCTAssertEqual(window.frame, expandedFrame)
+        app.menuBars.menuBarItems["Window"].click()
+        app.menuItems["Minimize All"].click()
+        XCTAssertTrue(topic.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(compact.frame, cornerFrame, "A new minimization returns to the configured corner")
+    }
+
     func testProFeatureIndexNavigation() throws {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_TEST_USE_IN_MEMORY_LEGACY"] = "1"

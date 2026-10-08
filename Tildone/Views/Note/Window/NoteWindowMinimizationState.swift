@@ -12,6 +12,36 @@ struct NoteWindowMinimizationState: Equatable {
         let autosaveName: String
     }
 
+    struct Drag {
+        let startFrame: NSRect
+        let startMouseLocation: NSPoint
+
+        func frame(at mouseLocation: NSPoint) -> NSRect {
+            NSRect(
+                x: startFrame.minX + mouseLocation.x - startMouseLocation.x,
+                y: startFrame.minY + mouseLocation.y - startMouseLocation.y,
+                width: startFrame.width,
+                height: startFrame.height
+            )
+        }
+
+        static func snappedFrame(_ frame: NSRect, in visibleFrame: NSRect) -> NSRect {
+            let threshold: CGFloat = 12
+            var result = frame
+            if abs(frame.minX - visibleFrame.minX) <= threshold {
+                result.origin.x = visibleFrame.minX
+            } else if abs(frame.maxX - visibleFrame.maxX) <= threshold {
+                result.origin.x = visibleFrame.maxX - frame.width
+            }
+            if abs(frame.minY - visibleFrame.minY) <= threshold {
+                result.origin.y = visibleFrame.minY
+            } else if abs(frame.maxY - visibleFrame.maxY) <= threshold {
+                result.origin.y = visibleFrame.maxY - frame.height
+            }
+            return result
+        }
+    }
+
     private(set) var restoration: Restoration?
     private(set) var isRestoring = false
 

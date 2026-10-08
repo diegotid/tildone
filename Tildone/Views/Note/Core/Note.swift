@@ -106,6 +106,7 @@ struct Note: View {
     @State var windowAlpha = 1.0
     @State var contentWindowAlpha: CGFloat = 1
     @State var minimizationState = NoteWindowMinimizationState()
+    @State var compactNoteDrag: NoteWindowMinimizationState.Drag?
     @State var completionFade = CompletionFadeLifecycle()
     @State var fadeAwayProgress: TimeInterval = 0
     @State var completionFadeBaseWindowAlpha: CGFloat?
