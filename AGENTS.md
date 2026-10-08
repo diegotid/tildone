@@ -2,7 +2,7 @@
 
 ## Scope of this guide
 
-This file guides AI-assisted work on the Tildone macOS app, iPhone companion, shared local store, and Development-only CloudKit transport. It reflects the post-Stage-12C architecture while retaining released macOS 1.6.0 (build 24) compatibility. Keep statements labelled **Unresolved** or **Uncertain** as decisions, not requirements.
+This file guides AI-assisted work on the Tildone macOS app, iPhone companion, shared local store, and Development-only CloudKit transport. It reflects the shared-store architecture while retaining released macOS 1.6.0 (build 24) compatibility. Keep statements labelled **Unresolved** or **Uncertain** as decisions, not requirements.
 
 Before changing code, inspect the working tree. This repository may contain in-progress Xcode or asset changes; preserve unrelated work. When asked to commit, commit all uncommitted changes separately, with one well-named commit per feature or user request.
 
@@ -18,7 +18,7 @@ Every chat/task that adds or changes user-visible text must complete its localiz
 - Retain legacy identity mappings, source fingerprint evidence, and the legacy source through the approved rollback/cloud-seeding safety window.
 - Views use domain snapshots and repository operations, never shared stored-model objects or `ModelContext`.
 - Every shared content mutation must atomically save transport-neutral outbound-work evidence in the same local transaction.
-- The Mac process chooses its store once in `MacSharedStoreBootstrapper`: an existing destination must be activated, and a legacy source must first complete Stage 6 verification before activation. Do not reintroduce mixed legacy/shared windows.
+- The Mac process chooses its store once in `MacSharedStoreBootstrapper`: an existing destination must be activated, and a legacy source must first complete independent migration verification before activation. Do not reintroduce mixed legacy/shared windows.
 - XCTest-hosted Mac app launches must use the in-memory shared repository; test setup must not inspect, open, or migrate a live legacy store.
 - Shared user content sync uses `CKSyncEngine`, the private database of `iCloud.studio.cuatro.tildone`, and the `TildoneUserData` custom zone. Do not add public-database content or speculative record types.
 - A durable outbox mutation is acknowledged only after CloudKit confirms that exact save; remote delivery must remain deterministic and idempotent through the domain merge layer.
@@ -27,7 +27,7 @@ Every chat/task that adds or changes user-visible text must complete its localiz
 - Keep titles and task text out of record names, logs, diagnostics, sync status, and notification payloads.
 - Debug transport starts automatically outside tests. XCTest/UI-test launches are transport-off, and both macOS and iOS Release builds are explicitly transport-off until a later authorized stage. Workspace selection and local persistence must not be changed merely to pause transport.
 - Active/paused transport intent is an installation-local preference keyed by the opaque account workspace UUID. Pausing retains that account repository, outbox, tombstones, and serialized engine state and performs no CloudKit send/fetch; resuming revalidates the account before reconstructing the coordinator and draining durable work.
-- The current Development contract is `TDNote` V1/V2/V3/V4, `TDTask` V1/V2/V3, and advisory `TDClient` V1 in the private custom zone. Reconcile field changes with `docs/development-cloudkit-contract-manifest.md` and its source generator/tests.
+- The current Development contract is `TDNote` V1/V2/V3/V4, `TDTask` V1/V2/V3, and advisory `TDClient` V1 in the private custom zone. Reconcile field changes with `DevelopmentCloudKitContractManifest` and its generator/exact-key tests.
 - V2-to-V3 note-color backfill authority is fixed: an existing explicit V2 color wins; otherwise the legacy Mac per-note/global color wins over platform-default backfill, and implicit V1 yellow is lowest. Preserve the reserved migration-stamp encoding and atomic outbox write.
 - Production CloudKit inspection, schema deployment, entitlements, provisioning, records, zones, signing, archives, uploads, TestFlight, and App Store actions require separate explicit authorization. Development/local evidence never proves Production behavior.
 
@@ -109,13 +109,13 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - Signing: automatic signing with team `F6HFAVTS49`; hardened runtime enabled.
 - External dependencies: none. Do not add one when an Apple framework or small local implementation suffices; any dependency is a deliberate product/maintenance decision.
 - iOS minimum version: iOS 17.0 in the current project.
-- Tildone Pro uses one StoreKit 2 non-consumable ID, `studio.cuatro.tildone.pro`. CloudKit content is never purchase evidence; see `docs/tildone-pro-purchase-setup.md` for owner setup and the previous iOS bundle ID's local-data consequence.
+- Tildone Pro uses one StoreKit 2 non-consumable ID, `studio.cuatro.tildone.pro`. CloudKit content is never purchase evidence; owner purchase setup and any prior iOS bundle-ID data consequences require explicit review.
 
 ## Current architecture
 
 The Mac app remains a view-driven SwiftUI/AppKit utility, but shared content is now behind the domain and repository boundary.
 
-- `TildoneApp` waits for `MacSharedStoreBootstrapper`, which either opens an activated shared store or runs Stage 6 migration and atomically activates the independently verified destination before `Desktop` exists.
+- `TildoneApp` waits for `MacSharedStoreBootstrapper`, which either opens an activated shared store or runs verified legacy migration and atomically activates the independently verified destination before `Desktop` exists.
 - `MacSharedStore` is the only Mac presentation adapter for `TildoneRepository`. It publishes immutable `MacNoteSnapshot` values and translates UI CRUD requests into domain/repository operations.
 - `Desktop` reconciles snapshot IDs with manual `NSWindow` instances. `Note` receives a note ID plus the adapter, never a legacy/shared SwiftData model or `ModelContext`.
 - For each note, `Desktop.openWindow(for:)` creates an `NSWindow`, hosts `Note` in `NSHostingView`, configures window style/level, and retains the released creation-date autosave key for migrated notes.
@@ -176,7 +176,7 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 
 ### Launch and restore
 
-1. The main scene bootstraps the shared local-only repository and displays `Desktop` only after it is active; a legacy source is copied/verified by Stage 6 before cutover.
+1. The main scene bootstraps the shared local-only repository and displays `Desktop` only after it is active; a legacy source is copied and independently verified before cutover.
 2. `Desktop` opens one manual note window for every persisted list; if the store is empty, it creates one empty note.
 3. AppKit frame autosaving restores each non-new note’s size and position using its creation timestamp.
 4. On Mac, `UpdateChecker` opens What’s New after notes are ready for unacknowledged `WhatsNewRelease.contentID` content. The first step introduces iCloud and iPhone with native checklist previews, an App Store link, and a locally generated QR code. The centered footer counter shares the navigation row. Close opens a menu: “Show again next launch” leaves content unacknowledged; “Don't show until next version” suppresses presentation until `CFBundleShortVersionString` changes. Escape and native window close leave the content eligible. “Let’s get started” acknowledges it. Help or the menu-bar menu reopens the tour. The Mac tour has no vertical scroll container; all five steps must fit in English, Spanish, French, and Simplified Chinese.
@@ -196,7 +196,7 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 - Cancel resets fade progress and keeps the completed tasks available for unchecking.
 - Closing via the close button or Command-W is allowed only for empty or complete notes. Pending notes are deliberately persistent.
 
-- The on-note type menu offers Command-L for Task list and Command-T for Single memo. Shortcuts address the active expanded note and retain the multiple-task conversion restriction and Pro gate.
+- The on-note type menu offers Command-L for Task list and Command-T for Single memo. Shortcuts address the active expanded note and retain the multiple-task conversion restriction and Pro gate. The on-note formatting menu displays Command-B (bold), Command-I (italic), Command-U (underline), and Shift-Command-X (strikethrough), matching the app menu and shortcuts guide.
 
 ### Minimize and arrange
 
@@ -295,7 +295,7 @@ Current Development-only constraints:
 3. Transport pause retains the selected account workspace. The compact Mac status surface exposes active, paused, and attention states without user content. Note-location review and confirmation replace the status window's content in place rather than opening a second window. When the user explicitly chooses Mac notes, each note shows a neutral slashed-cloud button beside the color picker; it states that the note is only on this Mac and opens the existing note-location choices. This indicator is not used for transport pause. The menu-bar item retains the Tildone icon and overlays an attention badge when needed. Zone-reset and incompatible-data states provide preservation guidance only; no automatic or owner-approved destructive recovery action is defined.
 4. Release/update system notes, window geometry, minimized state, opacity, arrangement, launch-at-login, and Mac Focus behavior remain installation-local.
 5. Titles/tasks are private user content. They may enter the approved private CloudKit fields only, never record names, diagnostics, status, notifications, device-registration records, or logs.
-6. The exact Development schema is generated in `docs/development-cloudkit-contract-manifest.md`. Any encoder/decoder field change must update the manifest generator and exact-key regression test together.
+6. The exact Development schema is emitted by `TildoneCloudContractManifestGenerator` from mapper constants. Any encoder/decoder field change must update the manifest generator and exact-key regression test together.
 
 ## Settings and preferences
 
@@ -330,7 +330,7 @@ Launch at login comes from `SMAppService` state, not `UserDefaults`. Preserve ra
 - Both apps use native StoreKit review requests only after meaningful local engagement: seven elapsed days, three active days and ten distinct nonempty task completions. Synced/imported content is never engagement evidence.
 - `Shared/Discovery/AppReviewPolicy.swift` owns installation-local eligibility and request budgets; `AppReviewController.swift` waits 30 seconds beyond completion/undo and checks foreground editing/modal state. On Mac the active note supplies the StoreKit presentation environment.
 - At most one call per marketing version, 120 days between calls and three calls in a rolling year. Every call consumes budget even when Apple suppresses its UI. No rating/submission result is observable.
-- Debug, tests and previews disable automatic requests. About provides a localized voluntary App Store write-review link. No incentives, sentiment screening or analytics. See `docs/app-store-review-requests.md` and `AppReviewPolicyTests` in both test targets.
+- Debug, tests and previews disable automatic requests. About provides a localized voluntary App Store write-review link. No incentives, sentiment screening or analytics. See `AppReviewPolicyTests` in both test targets.
 
 ## Coding conventions
 
@@ -446,13 +446,13 @@ Assert that both tracked app schemes use Debug launch/Release archive configurat
 ./scripts/verify-release-configuration.sh
 ```
 
-Run the build command on the current tree before claiming application compilation. Stage 12C's shared Debug/Release package suites, four fresh generic Debug/Release platform builds, and Mac/iPhone hosted tests passed on 2026-08-09. These local results are not signed physical-device or live CloudKit evidence. Existing compiler warnings include explicit specialization of `getNestedSubviews()` in `Note.swift` and two never-mutated variables in `Desktop.clampedOrigin`; do not hide new warnings among them.
+Run the build command on the current tree before claiming application compilation. The shared Debug/Release package suites, four fresh generic Debug/Release platform builds, and Mac/iPhone hosted tests passed on 2026-08-09. These local results are not signed physical-device or live CloudKit evidence. Existing compiler warnings include explicit specialization of `getNestedSubviews()` in `Note.swift` and two never-mutated variables in `Desktop.clampedOrigin`; do not hide new warnings among them.
 
-The 2026-10-04 local repair qualification uses Xcode 27.0 (`27A266a`) on macOS 27.0.1 (`26A434`), without changing project format, deployment targets or signing. Its source patch and results are recorded in `docs/production-cloudkit-inspection-12d.md`; the August pass does not replace current qualification.
+The 2026-10-04 local repair qualification uses Xcode 27.0 (`27A266a`) on macOS 27.0.1 (`26A434`), without changing project format, deployment targets or signing. The August pass does not replace qualification of the current source.
 
 There is no repository-defined lint or formatting command. The repository has deterministic Release configuration assertions but no authorized archive/upload command. The shared schemes support Archive in Release configuration, and the project uses automatic signing, but App Store archive/upload steps and release-note/version policy are **Unresolved**; do not invent or automate them without owner confirmation.
 
-The iOS scheme is `Tildone iOS`. Use an available simulator destination for hosted/unit/UI tests and `generic/platform=iOS` for unsigned Debug/Release compilation. Record the exact resolved simulator/device and command in the stage evidence.
+The iOS scheme is `Tildone iOS`. Use an available simulator destination for hosted/unit/UI tests and `generic/platform=iOS` for unsigned Debug/Release compilation. Record the exact resolved simulator/device and command in local qualification evidence.
 
 ## Validation checklist for changes
 
@@ -494,7 +494,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 ## Known technical debt and risks
 
 - The released legacy models still use dates/indexes internally, but shared notes/tasks have stable UUIDs, versioned schemas, fractional order, tombstones, and frozen released/V1/V2 fixtures.
-- Any action that recreates or reseeds a reset Production zone remains an unresolved policy decision. Stage 12C intentionally supplies preservation guidance, not that action.
+- Any action that recreates or reseeds a reset Production zone remains an unresolved policy decision. Current containment supplies preservation guidance, not that action.
 - Production schema/signing/provisioning/privacy/distribution behavior is unverified and unauthorized.
 - The legacy Mac view/model implementation still contains direct persistence and `fatalError` paths outside the shared repository boundary.
 - `Note.swift` and `Desktop.swift` mix presentation, domain operations, persistence, timers, event routing, and AppKit lifecycle.
@@ -520,7 +520,7 @@ Do not answer these implicitly in implementation work:
 - What final privacy disclosures/policy language are required for private CloudKit while retaining the account-free product model and current App Store claims?
 - Should existing local Mac data automatically upload, and what recovery/rollback experience is required?
 - What shipping UX authorizes local-only Mac adoption, and what operator/user flow handles a Production zone reset without automatic reseed?
-- What explicit build/release control enables transport after Stage 12C while preserving the account workspace during containment?
+- What explicit build/release control enables transport after containment qualification while preserving the account workspace during containment?
 - What is the iPhone mechanism for pending-task visibility: app overview, widget, Live Activity, notifications, App Intents, or a deliberately smaller first release?
 - Should shared code be a local Swift package/framework or shared target membership? Decide after the domain/store boundary and deployment targets are known.
 - Which currently declared entitlements are genuinely required, and what is the intended signed release/archive process?

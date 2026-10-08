@@ -30,6 +30,5 @@ DerivedData
 *.xcuserstate
 *.xcworkspacedata
 
-# Local planning notes
-/docs/stage*.md
-!docs/stage12c-shipping-sync-containment-summary.md
+# Local files
+/docs/

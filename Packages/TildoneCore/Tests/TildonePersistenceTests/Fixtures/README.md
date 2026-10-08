@@ -2,7 +2,7 @@
 
 `TildoneSharedStoreV1` is an actual on-disk SwiftData store generated on
 2026-07-13 with Xcode 26.4.1 (build 17E202), the macOS 26.4 SDK, and the
-finalized `TildoneSchemaV1` in this Stage 5 hardening pass. Generation used
+finalized `TildoneSchemaV1`. Generation used
 only the public `TildoneRepository` API with fixed opaque identifiers, dates,
 and replica identity. The fixture contains one note, one task, active and
 superseded outbox rows, workspace state, and one content-free quarantine row.
@@ -15,8 +15,7 @@ artifact is never modified in place.
 This fixture proves V1 shared-store compatibility through the current
 `TildoneSchemaMigrationPlan`, including the additive V7 font sidecar. Its note
 has no font row and therefore decodes as Overlock. It is distinct from the
-released Tildone 1.6.0 legacy-store fixture, whose provenance is recorded in
-the Stage 5 summary.
+released Tildone 1.6.0 legacy-store fixture described below.
 
 `TildoneSharedStoreV2` is a real `TildoneSchemaV2` account workspace generated
 on 2026-08-07 with the opt-in fixture helper in
@@ -45,5 +44,5 @@ fixture covers a nil task index, duplicate indexes, completed and empty tasks,
 Unicode, and an installation-only system note. Its SQLite SHA-256 is
 `2ec613cc46f73561136daa025abe31f79186cdae8867abc8e0e0ff0c6811c5e4`.
 
-Stage 6 import/cutover is intentionally absent. Stage 5 treats the legacy
-fixture as immutable evidence and never opens it using `TildoneSchemaV1`.
+Legacy import/cutover is intentionally absent from the fixture. Tests treat it
+as immutable evidence and never open it using `TildoneSchemaV1`.

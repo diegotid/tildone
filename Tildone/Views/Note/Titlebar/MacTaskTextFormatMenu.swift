@@ -26,10 +26,10 @@ struct MacTaskTextFormatMenu: View {
 
     var body: some View {
         Menu {
-            formatButton("Bold", systemImage: "bold", format: .toggle(.bold))
-            formatButton("Italic", systemImage: "italic", format: .toggle(.italic))
-            formatButton("Underline", systemImage: "underline", format: .toggle(.underline))
-            formatButton("Strikethrough", systemImage: "strikethrough", format: .toggle(.strikethrough))
+            formatButton("Bold", systemImage: "bold", format: .toggle(.bold), shortcut: "b")
+            formatButton("Italic", systemImage: "italic", format: .toggle(.italic), shortcut: "i")
+            formatButton("Underline", systemImage: "underline", format: .toggle(.underline), shortcut: "u")
+            formatButton("Strikethrough", systemImage: "strikethrough", format: .toggle(.strikethrough), shortcut: "x", modifiers: [.command, .shift])
             Divider()
             colorMenu("Text color", systemImage: "textformat", isHighlight: false)
             colorMenu("Highlight", systemImage: "highlighter", isHighlight: true)
@@ -88,7 +88,9 @@ struct MacTaskTextFormatMenu: View {
     private func formatButton(
         _ title: LocalizedStringKey,
         systemImage: String,
-        format: RichTextFormat
+        format: RichTextFormat,
+        shortcut: KeyEquivalent,
+        modifiers: EventModifiers = .command
     ) -> some View {
         Button {
             guard ProEntitlement.shared.require(.textStyling, in: noteID) else { return }
@@ -98,6 +100,7 @@ struct MacTaskTextFormatMenu: View {
                 .labelStyle(.titleAndIcon)
         }
         .tint(.primary)
+        .keyboardShortcut(shortcut, modifiers: modifiers)
     }
 
     private func colorMenu(

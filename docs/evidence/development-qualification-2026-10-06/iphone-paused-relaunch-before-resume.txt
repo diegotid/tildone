@@ -1,2 +1,0 @@
-TildoneQualification stage=presented count=165
-TildoneQualification stage=fixture-task-presented count=1
