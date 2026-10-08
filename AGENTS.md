@@ -196,6 +196,8 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 - Cancel resets fade progress and keeps the completed tasks available for unchecking.
 - Closing via the close button or Command-W is allowed only for empty or complete notes. Pending notes are deliberately persistent.
 
+- The on-note type menu offers Command-L for Task list and Command-T for Single memo. Shortcuts address the active expanded note and retain the multiple-task conversion restriction and Pro gate.
+
 ### Minimize and arrange
 
 - The standard minimize button is intercepted. It shrinks the same window to a 96×66 progress gauge rather than using macOS Dock minimization.

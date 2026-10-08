@@ -72,6 +72,8 @@ struct KeyboardShortcutsHelp: View {
                         row("Line Up Notes", shortcut: lineUpShortcut.keySymbols)
                         row("Minimize All", shortcut: ["⇧", "⌘", "M"])
                         row("Bring All Up", shortcut: ["⇧", "⌘", "U"])
+                        row("Task list", shortcut: AppShortcuts.taskList.keySymbols)
+                        row("Single memo", shortcut: AppShortcuts.singleMemo.keySymbols)
                     }
 
                     Divider()

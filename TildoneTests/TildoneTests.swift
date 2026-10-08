@@ -4803,6 +4803,54 @@ final class TildoneTests: XCTestCase {
         try await store.waitForNoteCreation(note.id)
     }
 
+    func testNoteTypeShortcutsRequireExactModifiers() {
+        XCTAssertEqual(AppShortcuts.noteKind(keyCode: 37, modifiers: .command), .checklist)
+        XCTAssertEqual(AppShortcuts.noteKind(keyCode: 17, modifiers: .command), .singleTask)
+        XCTAssertEqual(AppShortcuts.noteKind(keyCode: 17, modifiers: [.command, .capsLock]), .singleTask)
+        for modifiers: NSEvent.ModifierFlags in [[], .option, [.command, .option], [.command, .shift], [.command, .control]] {
+            XCTAssertNil(AppShortcuts.noteKind(keyCode: 37, modifiers: modifiers))
+            XCTAssertNil(AppShortcuts.noteKind(keyCode: 17, modifiers: modifiers))
+        }
+        XCTAssertNil(AppShortcuts.noteKind(keyCode: 18, modifiers: [.command, .option]))
+        XCTAssertNil(AppShortcuts.noteKind(keyCode: 19, modifiers: [.command, .option]))
+        XCTAssertEqual(AppShortcuts.taskList.displayName, "⌘L")
+        XCTAssertEqual(AppShortcuts.singleMemo.displayName, "⌘T")
+    }
+
+    @MainActor
+    func testNoteTypeConversionKeepsMultipleTasksInList() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let first = try await store.addTask(to: note.id, text: "First")
+        let second = try await store.addTask(to: note.id, text: "Second")
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        let previousKeyWindow = NSApp.keyWindow
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 360, height: 500),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: AnyView(Note(store: store, presentation: presentation, noteID: note.id)))
+        window.setNoteHostingContentView(host)
+        window.makeKeyAndOrderFront(nil)
+        defer {
+            host.rootView = AnyView(EmptyView())
+            window.close()
+            previousKeyWindow?.makeKey()
+        }
+        for _ in 0..<50 {
+            host.layoutSubtreeIfNeeded()
+            if presentation.onKindChange != nil { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertNotNil(presentation.onKindChange)
+        presentation.requestKindChange(.singleTask)
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(presentation.snapshot.kind, .checklist)
+        XCTAssertEqual(presentation.snapshot.tasks.map(\.id), [first.id, second.id])
+    }
+
     @MainActor
     func testTitlebarMemoSwitchImmediatelyStagesAndMovesCaretFromTitleTail() async throws {
         for hasTask in [false, true] {

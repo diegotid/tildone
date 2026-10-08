@@ -166,6 +166,7 @@ extension Note {
 
     func handleNoteKindChange(_ kind: NoteKind) {
         guard noteKind != kind else { return }
+        guard kind != .singleTask || tasks.count <= 1 else { return }
         if kind == .singleTask && !ProEntitlement.shared.require(.singleMemo, in: noteID) { return }
         // End the native title edit before replacing its view. The titlebar
         // menu shares this handler with the keyboard conversion path.
@@ -473,6 +474,12 @@ extension Note {
         var awaitsSecondEmptyNoteReturn = false
         keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.window == noteWindow else { return event }
+            if !isMinimized, let kind = AppShortcuts.noteKind(
+                keyCode: event.keyCode, modifiers: event.modifierFlags
+            ) {
+                if !event.isARepeat { handleNoteKindChange(kind) }
+                return nil
+            }
             if event.keyCode != Keyboard.returnKey {
                 awaitsSecondEmptyNoteReturn = false
                 if shouldShowEmptySingleMemoHint {

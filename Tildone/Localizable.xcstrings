@@ -7908,6 +7908,12 @@
     },
     "Single memo" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Single memo"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8421,6 +8427,12 @@
     },
     "Task list" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task list"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",

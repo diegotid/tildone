@@ -65,6 +65,15 @@ enum AppShortcuts {
     static let defaultLineUp = MacAppShortcut(key: "l", keyCode: 37, modifiers: [.command, .shift])
     static let defaultNewNote = MacAppShortcut(key: "t", keyCode: 17, modifiers: [.command, .shift])
 
+    static let taskList = MacAppShortcut(key: "l", keyCode: 37, modifiers: [.command])
+    static let singleMemo = MacAppShortcut(key: "t", keyCode: 17, modifiers: [.command])
+
+    static func noteKind(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> NoteKind? {
+        if keyCode == taskList.keyCode, taskList.matches(modifiers) { return .checklist }
+        if keyCode == singleMemo.keyCode, singleMemo.matches(modifiers) { return .singleTask }
+        return nil
+    }
+
     static func opacity(from rawValue: Int) -> MacAppShortcut {
         let modifiers = NSEvent.ModifierFlags(rawValue: UInt(rawValue))
             .intersection(MacAppShortcut.significantModifiers)

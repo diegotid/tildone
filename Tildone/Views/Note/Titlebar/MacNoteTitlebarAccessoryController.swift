@@ -381,6 +381,7 @@ private struct MacNoteKindMenu: View {
                 Label("Task list", systemImage: "checklist")
                     .labelStyle(.titleAndIcon)
             }
+            .keyboardShortcut(KeyEquivalent(Character(AppShortcuts.taskList.key!)), modifiers: .command)
             Button { setKind(.singleTask) } label: {
                 if singleMemoUnavailable {
                     Label {
@@ -396,6 +397,7 @@ private struct MacNoteKindMenu: View {
                 }
             }
             .disabled(singleMemoUnavailable)
+            .keyboardShortcut(KeyEquivalent(Character(AppShortcuts.singleMemo.key!)), modifiers: .command)
         } label: {
             Image(systemName: presentation.snapshot.kind == .checklist ? "checklist" : "text.aligncenter")
                 .font(.system(size: 12, weight: .semibold))
