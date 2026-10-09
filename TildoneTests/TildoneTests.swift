@@ -2188,10 +2188,25 @@ final class TildoneTests: XCTestCase {
         )
         let picker = MacNoteTitlebarLayout.colorPickerFrame(in: bounds)
         XCTAssertEqual(picker.maxX, bounds.maxX - MacNoteTitlebarLayout.trailingMargin)
-        XCTAssertEqual(
-            MacNoteTitlebarLayout.kindControlFrame(alignedWith: picker).minY,
-            MacNoteTitlebarLayout.formatControlFrame(alignedWith: picker).minY
-        )
+        let controls = [
+            MacNoteTitlebarLayout.syncIndicatorFrame(alignedWith: picker),
+            MacNoteTitlebarLayout.kindControlFrame(alignedWith: picker),
+            MacNoteTitlebarLayout.focusPrivacyControlFrame(alignedWith: picker),
+            MacNoteTitlebarLayout.formatControlFrame(alignedWith: picker),
+            picker
+        ]
+        XCTAssertEqual(controls[0].midY, picker.midY, accuracy: 0.001)
+        for control in controls[1...3] {
+            XCTAssertEqual(control.minY, picker.midY - 1, accuracy: 0.001)
+        }
+        for control in controls {
+            XCTAssertGreaterThanOrEqual(control.minX, 0)
+            XCTAssertLessThanOrEqual(control.maxX, bounds.maxX)
+        }
+        XCTAssertEqual(controls[1].minX - controls[0].maxX, MacNoteTitlebarLayout.syncIndicatorTrailingSpacing)
+        XCTAssertEqual(controls[2].minX - controls[1].maxX, MacNoteTitlebarLayout.controlSpacing)
+        XCTAssertEqual(controls[3].minX - controls[2].maxX, MacNoteTitlebarLayout.controlSpacing + 2)
+        XCTAssertEqual(picker.minX, controls[3].maxX)
         XCTAssertEqual(MacNoteSyncIndicatorState.resolve(
             isUsingNotesOnMacByChoice: false,
             syncNeedsAttention: false
@@ -2248,6 +2263,81 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testHostedNoteWarningFitsBesideStickyTitle() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let snapshot = try await store.createNote()
+        try await store.renameNote(snapshot.id, to: "Stage12 Mac Offline 2 — long title")
+        for index in 1...20 {
+            _ = try await store.addTask(to: snapshot.id, text: "Fixture task \(index)")
+        }
+        let presentation = try XCTUnwrap(store.presentation(for: snapshot.id))
+        let previousKeyWindow = NSApp.keyWindow
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 360, height: 300),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false
+        )
+        defer {
+            window.close()
+            previousKeyWindow?.makeKey()
+        }
+        window.setNoteStyle(noteColor: .green)
+        window.titleVisibility = .hidden
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: snapshot.id))
+        window.setNoteHostingContentView(host)
+        let picker = NoteColorPickerTitlebarControl(store: store, presentation: presentation, noteID: snapshot.id)
+        let accessory = MacNoteTitlebarAccessoryController(
+            colorPicker: picker, syncIndicatorState: .hidden,
+            store: store, presentation: presentation, noteID: snapshot.id
+        )
+        window.addTitlebarAccessoryViewController(accessory)
+        window.makeKeyAndOrderFront(nil)
+        func settle() async throws {
+            for _ in 0..<6 {
+                window.contentView?.layoutSubtreeIfNeeded()
+                try await Swift.Task.sleep(for: .milliseconds(50))
+            }
+        }
+        func descendants(_ view: NSView) -> [NSView] {
+            view.subviews.flatMap { [$0] + descendants($0) }
+        }
+        try await settle()
+        let scroll = try XCTUnwrap(descendants(host).compactMap { $0 as? NSScrollView }.first)
+        window.makeFirstResponder(nil)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 200))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            window.appearance = NSAppearance(named: appearance)
+            for width: CGFloat in [320, 360, 500] {
+                window.setFrame(NSRect(x: 100, y: 100, width: width, height: 300), display: true)
+                for state in [MacNoteSyncIndicatorState.hidden, .attentionNeeded, .onlyOnThisMac, .hidden] {
+                    accessory.setSyncIndicatorState(state)
+                    try await settle()
+                    let root = try XCTUnwrap(window.contentView)
+                    let pickerFrame = picker.convert(picker.bounds, to: root)
+                    for control in accessory.view.subviews {
+                        let frame = control.convert(control.bounds, to: root)
+                        let expectedOffset: CGFloat = control === picker || control is MacNoteSyncTitlebarControl ? 0 : 10
+                        XCTAssertEqual(frame.midY, pickerFrame.midY + expectedOffset, accuracy: 0.01)
+                        XCTAssertGreaterThanOrEqual(frame.minX, root.bounds.maxX - MacNoteTitlebarLayout.accessoryWidth)
+                    }
+                    if state == .attentionNeeded {
+                        let frameView = try XCTUnwrap(root.superview)
+                        let bitmap = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds))
+                        frameView.cacheDisplay(in: frameView.bounds, to: bitmap)
+                        let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                        let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+                        attachment.name = "titlebar-warning-\(appearance.rawValue)-\(Int(width))"
+                        attachment.lifetime = .keepAlways
+                        add(attachment)
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
     func testMacNoteControlsUseSupportedTitlebarAccessoryHierarchy() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)
@@ -2283,8 +2373,20 @@ final class TildoneTests: XCTestCase {
 
         accessory.setSyncIndicatorState(.onlyOnThisMac)
         XCTAssertEqual(accessory.view.subviews.compactMap { $0 as? MacNoteSyncTitlebarControl }.count, 1)
+        accessory.setSyncIndicatorState(.attentionNeeded)
+        let warning = try XCTUnwrap(
+            accessory.view.subviews.compactMap { $0 as? MacNoteSyncTitlebarControl }.first
+        )
+        let warningFrame = warning.frame
+        accessory.view.needsLayout = true
+        accessory.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(warning.frame, warningFrame)
+        XCTAssertEqual(warning.frame.midY, picker.frame.midY, accuracy: 0.001)
+        XCTAssertGreaterThanOrEqual(warning.frame.minX, accessory.view.bounds.minX)
+        XCTAssertEqual(picker.frame, pickerFrame)
         accessory.setSyncIndicatorState(.hidden)
         XCTAssertFalse(accessory.view.subviews.contains(where: { $0 is MacNoteSyncTitlebarControl }))
+        XCTAssertEqual(picker.frame, pickerFrame)
 
         var restoreCount = 0
         accessory.setColorPickerHidden(true)

@@ -19,11 +19,15 @@ enum MacNoteTitlebarLayout {
     static let controlHeight: CGFloat = 22
     static let controlSpacing: CGFloat = 2
     static let titleControlSpacing: CGFloat = 6
+    static let syncIndicatorTrailingSpacing: CGFloat = 8
 
+    // Reserve the cloud slot even when hidden so status changes cannot overlap
+    // the title or shift the remaining controls.
     static var accessoryWidth: CGFloat {
-        trailingMargin + colorPickerWidth
-            + controlSpacing + formatControlWidth + controlSpacing + kindControlWidth
-            + controlSpacing + focusPrivacyControlWidth
+        trailingMargin + colorPickerWidth + formatControlWidth
+            + controlSpacing + 2 + focusPrivacyControlWidth
+            + controlSpacing + kindControlWidth
+            + syncIndicatorTrailingSpacing + syncIndicatorWidth
     }
 
     static var titleTrailingInset: CGFloat {
@@ -33,7 +37,9 @@ enum MacNoteTitlebarLayout {
     static func colorPickerFrame(in bounds: NSRect) -> NSRect {
         return NSRect(
             x: bounds.maxX - colorPickerWidth - trailingMargin,
-            y: bounds.maxY - controlHeight - colorPickerTopMargin,
+            // Match AppKit’s autoresizing rounding so a status refresh keeps
+            // the picker and explicitly positioned controls on the same center.
+            y: (bounds.maxY - controlHeight - colorPickerTopMargin).rounded(),
             width: colorPickerWidth,
             height: controlHeight
         )
@@ -41,8 +47,8 @@ enum MacNoteTitlebarLayout {
 
     static func syncIndicatorFrame(alignedWith pickerFrame: NSRect) -> NSRect {
         NSRect(
-            x: kindControlFrame(alignedWith: pickerFrame).minX - controlSpacing - syncIndicatorWidth,
-            y: pickerFrame.midY - 1,
+            x: kindControlFrame(alignedWith: pickerFrame).minX - syncIndicatorTrailingSpacing - syncIndicatorWidth,
+            y: pickerFrame.midY - controlHeight / 2,
             width: syncIndicatorWidth,
             height: controlHeight
         )

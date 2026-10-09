@@ -12,6 +12,7 @@ final class MacNoteSyncTitlebarControl: NSHostingView<MacNoteSyncTitlebarIcon> {
     required init(rootView: MacNoteSyncTitlebarIcon) {
         state = rootView.state
         super.init(rootView: rootView)
+        sizingOptions = []
         toolTip = state.status
         setAccessibilityElement(true)
         setAccessibilityLabel(state.status)
