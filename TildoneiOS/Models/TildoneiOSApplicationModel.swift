@@ -14,6 +14,7 @@ import TildoneSync
 final class TildoneiOSApplicationModel: ObservableObject {
     typealias RepositoryFactory = (WorkspaceIdentity) async throws -> TildoneRepository
     typealias InitialSyncRunner = (TildoneRepository, UUID) async throws -> SyncStatus
+    typealias NoteSnapshotsLoader = (TildoneRepository) async throws -> [VisibleNoteSnapshot]
 
     let overviewPresentation = TildoneiOSOverviewPresentation()
     let syncPresentation = TildoneiOSSyncPresentation()
@@ -47,6 +48,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private let repositoryFactory: RepositoryFactory
     private let accountResolver: () async -> CloudAccountSnapshot
     private let initialSyncRunner: InitialSyncRunner?
+    private let noteSnapshotsLoader: NoteSnapshotsLoader
     private let synchronizationEnabled: Bool
     private let transportStateStore: SyncTransportStateStore
     private let defaults: UserDefaults
@@ -67,8 +69,12 @@ final class TildoneiOSApplicationModel: ObservableObject {
     private var pendingPresentationMutationRevisions: [NoteID: UInt64] = [:]
     private var latestFullReloadRevision: UInt64 = 0
     private var latestNoteReloadRevisions: [NoteID: UInt64] = [:]
-    private var remoteReloadTask: Swift.Task<Void, Never>?
+    private var remoteReloadTask: Swift.Task<Void, Error>?
     private var remoteReloadRequested = false
+    private var remoteReloadGeneration: UInt64 = 0
+#if DEBUG
+    private let qualificationRefreshFault = SyncQualificationFaultInjector()
+#endif
 
     init(
         repositoryFactory: @escaping RepositoryFactory = TildoneiOSApplicationModel.makeRepository,
@@ -78,7 +84,10 @@ final class TildoneiOSApplicationModel: ObservableObject {
         synchronizationEnabled: Bool = TildoneiOSSyncBootstrapper.featureEnabled,
         transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
         defaults: UserDefaults = .standard,
-        initialSyncRunner: InitialSyncRunner? = nil
+        initialSyncRunner: InitialSyncRunner? = nil,
+        noteSnapshotsLoader: @escaping NoteSnapshotsLoader = { repository in
+            try await repository.visibleNoteSnapshots()
+        }
     ) {
         self.repositoryFactory = repositoryFactory
         self.accountResolver = accountResolver
@@ -86,6 +95,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         self.transportStateStore = transportStateStore
         self.defaults = defaults
         self.initialSyncRunner = initialSyncRunner
+        self.noteSnapshotsLoader = noteSnapshotsLoader
     }
 
     deinit {
@@ -265,7 +275,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         guard let repository else { return }
         let reloadRevision = nextRevision()
         latestFullReloadRevision = reloadRevision
-        let visibleSnapshots = try await repository.visibleNoteSnapshots()
+        let visibleSnapshots = try await noteSnapshotsLoader(repository)
         let snapshots = visibleSnapshots.map {
             TildoneiOSNoteSnapshot(note: $0.note, tasks: $0.tasks)
         }
@@ -1120,6 +1130,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                     lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
                     activeDeviceSummary: current.activeDeviceSummary, issue: current.issue
                 )
+                await SyncDiagnostics.inspectQualificationState(in: repository, phase: .pausedMutation)
             case .failure:
                 syncStatus = SyncStatus(
                     availability: current.availability, activity: .attentionNeeded,
@@ -1230,6 +1241,9 @@ final class TildoneiOSApplicationModel: ObservableObject {
         // CloudKit establishes whether this account has notes to download.
         isResolvingWorkspace = false
         isCheckingCloudForNotes = false
+        if transportState == .paused {
+            await SyncDiagnostics.inspectQualificationState(in: accountRepository, phase: .pausedLaunch)
+        }
         await Swift.Task.yield()
         if SyncTransportActivationPolicy.shouldActivate(
             enabledByDefault: synchronizationEnabled,
@@ -1301,7 +1315,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
                 }
             },
             onRemoteChange: { [weak self] remoteChange in
-                await self?.requestRemoteContentReload(
+                try await self?.requestRemoteContentReload(
                     for: workspaceID,
                     changedRecords: remoteChange.changedRecords
                 )
@@ -1342,6 +1356,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
         remoteReloadTask?.cancel()
         remoteReloadTask = nil
         remoteReloadRequested = false
+        remoteReloadGeneration &+= 1
         if let coordinator { await coordinator.stop() }
         coordinator = nil
         repository = nil
@@ -1360,53 +1375,65 @@ final class TildoneiOSApplicationModel: ObservableObject {
         syncStatus = status
     }
 
-    private func reloadRemoteContent(for workspaceID: UUID) async {
+    private func reloadRemoteContent(for workspaceID: UUID) async throws {
         guard activeWorkspace == workspaceID, let repository else { return }
-        do {
-            try await repository.migrateMissingNoteColors(
-                colorsByNoteID: [:],
-                authority: .platformDefault
-            )
-            try await reloadNotes()
-        } catch {
-            syncStatus = SyncStatus(
-                availability: .available,
-                activity: .attentionNeeded,
-                pendingMutationCount: syncStatus.pendingMutationCount,
-                lastSuccessfulSyncAt: syncStatus.lastSuccessfulSyncAt,
-                issue: .unknown
-            )
-        }
+        try await repository.migrateMissingNoteColors(
+            colorsByNoteID: [:],
+            authority: .platformDefault
+        )
+        try Swift.Task.checkCancellation()
+        guard activeWorkspace == workspaceID else { throw CancellationError() }
+        // The coordinator must see this failure so it freezes its checkpoint
+        // and keeps attention instead of later publishing healthy idle.
+        try await reloadNotes()
     }
 
-    private func requestRemoteContentReload(
+    func requestRemoteContentReload(
         for workspaceID: UUID,
         changedRecords: Set<DomainRecordID>
-    ) async {
+    ) async throws {
         guard activeWorkspace == workspaceID else { return }
         discardUndoIfAffected(by: changedRecords)
+#if DEBUG
+        if let repository {
+            try await qualificationRefreshFault.check(in: repository, changedRecords: changedRecords)
+        }
+#endif
         remoteReloadRequested = true
-        let task: Swift.Task<Void, Never>
+        let task: Swift.Task<Void, Error>
         if let remoteReloadTask {
             task = remoteReloadTask
         } else {
+            remoteReloadGeneration &+= 1
+            let generation = remoteReloadGeneration
             task = Swift.Task { [weak self] in
                 await Swift.Task.yield()
-                await self?.drainRemoteContentReloads(for: workspaceID)
+                try await self?.drainRemoteContentReloads(
+                    for: workspaceID, generation: generation
+                )
             }
             remoteReloadTask = task
         }
-        await task.value
+        try await task.value
     }
 
-    private func drainRemoteContentReloads(for workspaceID: UUID) async {
+    private func drainRemoteContentReloads(
+        for workspaceID: UUID,
+        generation: UInt64
+    ) async throws {
+        defer {
+            // An old cancelled workspace reload must not clear a newer task.
+            if remoteReloadGeneration == generation {
+                remoteReloadTask = nil
+                remoteReloadRequested = false
+            }
+        }
         while remoteReloadRequested,
               !Swift.Task.isCancelled,
               activeWorkspace == workspaceID {
             remoteReloadRequested = false
-            await reloadRemoteContent(for: workspaceID)
+            try await reloadRemoteContent(for: workspaceID)
         }
-        remoteReloadTask = nil
     }
 
     private nonisolated static func makeRepository(

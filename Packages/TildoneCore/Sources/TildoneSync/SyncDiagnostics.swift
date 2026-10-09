@@ -94,7 +94,25 @@ enum SyncFailureDiagnosticCategory: Equatable {
 /// counts. Record identifiers, account identifiers, titles, and task text are
 /// never accepted by this API.
 public enum SyncDiagnostics {
+    public enum QualificationPhase: String {
+        case checkpoint
+        case fetched
+        case sent
+        case paused
+        case pausedLaunch = "paused-launch"
+        case pausedMutation = "paused-mutation"
+    }
+
+    public static func inspectQualificationState(
+        in repository: TildoneRepository, phase: QualificationPhase
+    ) async {
+#if DEBUG
+        await SyncQualificationAudit.inspect(in: repository, phase: phase)
+#endif
+    }
+
     public enum Boundary: String {
+        case refreshFailureInjected = "refresh-failure-injected"
         case scheduled
         case prepared
         case acknowledged
@@ -105,7 +123,20 @@ public enum SyncDiagnostics {
         case zoneFetchStarted = "zone-fetch-started"
         case zoneSendCompleted = "zone-send-completed"
         case engineCreated = "engine-created"
+        case automaticSchedulingEnabled = "automatic-scheduling-enabled"
         case pauseCompleted = "pause-completed"
+        case noteFocusCheckpointRequested = "note-focus-checkpoint-requested"
+        case appActivationCheckpointRequested = "app-activation-checkpoint-requested"
+        case appResignedActive = "app-resigned-active"
+        case macActiveAtCoordinatorStart = "mac-active-at-coordinator-start"
+        case explicitCheckpointRequested = "explicit-checkpoint-requested"
+        case resumeRequested = "resume-requested"
+        case fetchReasonManual = "fetch-reason-manual"
+        case fetchReasonScheduled = "fetch-reason-scheduled"
+        case fetchReasonUnknown = "fetch-reason-unknown"
+        case unfetchedZoneCount = "unfetched-zone-count"
+        case fetchedDatabaseModificationCount = "fetched-database-modification-count"
+        case fetchedDatabaseDeletionCount = "fetched-database-deletion-count"
         case fixtureNoteStored = "fixture-note-stored"
         case fixtureTaskStored = "fixture-task-stored"
         case fixtureTaskVisible = "fixture-task-visible"
@@ -114,6 +145,7 @@ public enum SyncDiagnostics {
         case fixtureTaskSystemFields = "fixture-task-system-fields"
         case fixtureTaskPresented = "fixture-task-presented"
         case fixtureInspectionFailed = "fixture-inspection-failed"
+        case qualificationInspectionFailed = "qualification-inspection-failed"
     }
 
     /// Counts and fixed categories only. This deliberately cannot accept record
@@ -121,7 +153,8 @@ public enum SyncDiagnostics {
     public static func boundary(_ boundary: Boundary, count: Int) {
 #if DEBUG
         logger.debug("sync-boundary stage=\(boundary.rawValue, privacy: .public) count=\(count, privacy: .public)")
-        if ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") {
+        if ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") ||
+            ProcessInfo.processInfo.arguments.contains("--inspect-stage12-synthetic-state") {
             // The explicitly requested device console receives the same
             // content-free breadcrumb, without broad OS activity logging.
             print("TildoneQualification stage=\(boundary.rawValue) count=\(count)")

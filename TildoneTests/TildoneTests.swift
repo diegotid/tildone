@@ -4555,6 +4555,53 @@ final class TildoneTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    @MainActor
+    func testMacQueuedEmptyEditDeletionCannotLeaveRemoteBlankTaskAfterStaleSave() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let receiver = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let outbound = SyncPipeline(repository: repository)
+        let inbound = SyncPipeline(repository: receiver)
+        let mapper = CloudKitRecordMapper()
+        let date = Date(timeIntervalSince1970: 2_000)
+        let note = try await store.createNote()
+        let keeper = try await store.addTask(to: note.id, text: "Keep pending")
+        let disposable = try await store.addTask(to: note.id, text: "Delete this synthetic task")
+
+        func transfer() async throws {
+            for name in try await outbound.pendingRecordNames() {
+                guard let mutation = try await outbound.prepareOutboundMutation(recordName: name, at: date) else { continue }
+                let decoded = try mapper.syncRecord(from: mapper.record(from: mutation.record))
+                _ = try await inbound.apply([decoded], at: date)
+                try await outbound.acknowledge([mutation.mutationID])
+            }
+        }
+        try await transfer()
+
+        var editFailure: Error?
+        let worker = store.queueTaskTextEdit(disposable.id, text: "") { editFailure = $0 }
+        await worker.value
+        let preparedBlank = try await outbound.prepareOutboundMutation(
+            recordName: disposable.id.recordName, at: date
+        )
+        let staleBlank = try XCTUnwrap(preparedBlank)
+        try await store.deleteTask(disposable.id)
+        try await transfer()
+        // A late acknowledgement/delivery of the earlier clear cannot replace
+        // the independent lifecycle tombstone or hide its newer outbox work.
+        let decodedBlank = try mapper.syncRecord(from: mapper.record(from: staleBlank.record))
+        _ = try await inbound.apply([decodedBlank], at: date)
+        try await outbound.acknowledge([staleBlank.mutationID])
+        let received = try await receiver.orderedTasks(in: note.id)
+        let tombstone = try await receiver.task(id: disposable.id, includingDeleted: true)
+        let pending = try await outbound.pendingCount()
+        XCTAssertNil(editFailure)
+        XCTAssertEqual(received.map(\.id), [keeper.id])
+        XCTAssertEqual(tombstone.lifecycle, .deleted)
+        XCTAssertEqual(pending, 0)
+        XCTAssertEqual(store.note(note.id)?.tasks.map(\.id), [keeper.id])
+    }
+
     func testSingleMemoCloseActionCompletesPendingMemoBeforeDeletion() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),

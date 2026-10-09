@@ -50,6 +50,9 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     private var syncCoordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
     private var pausedPendingCountRevision: UInt64 = 0
+#if DEBUG
+    private let qualificationRefreshFault = SyncQualificationFaultInjector()
+#endif
 
     init(
         transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
@@ -154,6 +157,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     persistedState: transportState
                 ) else {
                     self.syncStatus = await pausedStatus(repository: accountRepository)
+                    await SyncDiagnostics.inspectQualificationState(in: accountRepository, phase: .pausedLaunch)
                     return
                 }
                 try await startCoordinator(
@@ -206,6 +210,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
               let repository = accountRepository,
               let container = cloudContainer,
               let store else { return }
+        SyncDiagnostics.boundary(.resumeRequested, count: 1)
         isTransportActionInProgress = true
         Swift.Task {
             let account = await CloudAccountResolver().resolve(container: container)
@@ -239,6 +244,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
 
     func syncNow() {
         guard transportState == .active, let syncCoordinator else { return }
+        SyncDiagnostics.boundary(.explicitCheckpointRequested, count: 1)
         Swift.Task { await syncCoordinator.start() }
     }
 
@@ -524,6 +530,9 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         store: MacSharedStore
     ) async throws {
         statusTask?.cancel()
+#if DEBUG
+        let qualificationRefreshFault = self.qualificationRefreshFault
+#endif
         let coordinator = try await TildoneSyncCoordinator(
             repository: repository,
             container: container,
@@ -542,6 +551,11 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                         try await Self.migrateSharedNoteColors(in: repository)
                     },
                     reloadSnapshots: {
+#if DEBUG
+                        try await qualificationRefreshFault.check(
+                            in: repository, changedRecords: remoteChange.changedRecords
+                        )
+#endif
                         try await store?.reloadAfterRemoteChange()
                     }
                 )
@@ -558,6 +572,10 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 self?.syncStatus = status
             }
         }
+        SyncDiagnostics.boundary(
+            .macActiveAtCoordinatorStart,
+            count: NSApplication.shared.isActive ? 1 : 0
+        )
         await coordinator.start()
     }
 
@@ -595,6 +613,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     lastSuccessfulSyncAt: current.lastSuccessfulSyncAt,
                     activeDeviceSummary: current.activeDeviceSummary, issue: current.issue
                 )
+                await SyncDiagnostics.inspectQualificationState(in: repository, phase: .pausedMutation)
             case .failure:
                 syncStatus = SyncStatus(
                     availability: current.availability, activity: .attentionNeeded,

@@ -160,6 +160,13 @@ actor SyncCoordinatorState {
 
     func isFrozen() -> Bool { frozen }
 
+    /// Use the most recent committed checkpoint when changing scheduling mode.
+    /// A paused, invalidated or reset session must never acquire a new engine.
+    func stateForAutomaticScheduling() -> SyncPersistentState? {
+        guard !frozen, !persistent.zoneResetRequired else { return nil }
+        return persistent
+    }
+
     func requiresFullReconciliation() -> Bool {
         persistent.fullReconciliationRequired
     }

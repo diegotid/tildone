@@ -134,6 +134,132 @@ final class DevelopmentQualificationTests: XCTestCase {
         XCTAssertEqual(final.clientRegistration(replicaID: replicaID)?.platform, .mac)
     }
 
+    func testAutomaticSchedulingHandoffUsesCommittedFetchStateWithoutDroppingQueuedDeletion() async throws {
+        let repository = try makeRepository()
+        let noteID = NoteID()
+        let taskID = TaskID()
+        _ = try await repository.createNote(id: noteID, createdAt: date, title: "Scheduling handoff")
+        _ = try await repository.addTask(id: taskID, to: noteID, createdAt: date,
+                                        text: "Queued deletion", orderToken: OrderToken(rawValue: "m"))
+        try await repository.deleteTask(id: taskID)
+        let queuedBefore = try await repository.pendingMutations(includeSuperseded: true)
+        let tombstonesBefore = try await repository.allSyncTasks()
+        let workspaceBefore = try await repository.workspaceSnapshot()
+        let systemRecord = CloudKitRecordMapper().clientRecord(
+            replicaID: workspaceBefore.replicaID, platform: .mac
+        )
+        var initial = SyncPersistentState()
+        initial.zoneCreated = true
+        initial.completedReconciliationVersion = SyncPersistentState.currentReconciliationVersion
+        initial.engineSerialization = Data([1, 2, 3])
+        try initial.storeSystemFields(for: systemRecord)
+        let state = SyncCoordinatorState(persistent: initial, repository: repository)
+
+        await state.beginFetch()
+        try await state.updateEncodedEngineSerialization(Data([4, 5, 6]))
+        let beforeCommit = await state.stateForAutomaticScheduling()
+        XCTAssertEqual(beforeCommit?.engineSerialization, Data([1, 2, 3]))
+        try await state.completeFetch()
+        let handoff = await state.stateForAutomaticScheduling()
+        let captured = try XCTUnwrap(handoff)
+        let persisted = SyncPersistentState(data: try await repository.workspaceSnapshot().futureSyncEngineState)
+        XCTAssertEqual(captured.engineSerialization, Data([4, 5, 6]))
+        XCTAssertEqual(captured, persisted)
+        XCTAssertEqual(captured.systemFieldsByRecordName, initial.systemFieldsByRecordName)
+        XCTAssertTrue(captured.zoneCreated)
+        XCTAssertFalse(captured.fullReconciliationRequired)
+        let queuedAfter = try await repository.pendingMutations(includeSuperseded: true)
+        let tombstonesAfter = try await repository.allSyncTasks()
+        let workspaceAfter = try await repository.workspaceSnapshot()
+        XCTAssertEqual(queuedAfter, queuedBefore)
+        XCTAssertEqual(tombstonesAfter, tombstonesBefore)
+        XCTAssertEqual(workspaceAfter.opaqueWorkspaceID, workspaceBefore.opaqueWorkspaceID)
+        XCTAssertEqual(workspaceAfter.replicaID, workspaceBefore.replicaID)
+        XCTAssertEqual(workspaceAfter.logicalCounter, workspaceBefore.logicalCounter)
+    }
+
+    func testPausedOrFailedRefreshCannotHandOffToAutomaticScheduling() async throws {
+        let repository = try makeRepository()
+        var persistent = SyncPersistentState()
+        persistent.zoneCreated = true
+        persistent.engineSerialization = Data([7, 8, 9])
+        try await repository.storeFutureSyncEngineState(persistent.encoded())
+        let savedBefore = try await repository.workspaceSnapshot().futureSyncEngineState
+        let state = SyncCoordinatorState(persistent: persistent, repository: repository)
+        await state.beginFetch()
+        try await state.updateEncodedEngineSerialization(Data([10, 11, 12]))
+        // Pause or a local presentation failure freezes before fetch completion.
+        await state.freeze()
+        let handoff = await state.stateForAutomaticScheduling()
+        XCTAssertNil(handoff)
+        let savedAfter = try await repository.workspaceSnapshot().futureSyncEngineState
+        XCTAssertEqual(savedAfter, savedBefore)
+        let retained = await state.snapshot()
+        XCTAssertEqual(retained.engineSerialization, Data([7, 8, 9]))
+    }
+
+#if DEBUG
+    func testQualificationFaultIsSyntheticOnlyOneShotAndDoesNotChangeSavedState() async throws {
+        let repository = try makeRepository()
+        let fixture = TildoneRepository.QualificationFixture.offline
+        let note = try await repository.createNote(id: NoteID(), createdAt: date, title: fixture.title)
+        let marker = try await repository.addTask(
+            id: TaskID(), to: note.id, createdAt: date,
+            text: "Stage12 refresh failure 20261009", orderToken: OrderToken(rawValue: "m")
+        )
+        let unrelated = try await repository.createNote(
+            id: NoteID(), createdAt: date, title: "Unrelated isolated fixture"
+        )
+        let before = try await repository.qualificationSnapshot(fixture)
+        let injector = SyncQualificationFaultInjector(armed: true)
+        // A mixed delivery containing unrelated data must never inject.
+        try await injector.check(in: repository, changedRecords: [.task(marker.id), .note(unrelated.id)])
+        try await SyncQualificationFaultInjector(armed: false).check(
+            in: repository, changedRecords: [.task(marker.id)]
+        )
+        do {
+            try await injector.check(in: repository, changedRecords: [.task(marker.id)])
+            XCTFail("Expected the explicitly armed synthetic failure")
+        } catch {
+            XCTAssertEqual(error as? SyncQualificationFaultInjector.Fault, .syntheticRemoteRefresh)
+        }
+        try await injector.check(in: repository, changedRecords: [.task(marker.id)])
+        let after = try await repository.qualificationSnapshot(fixture)
+        XCTAssertEqual(after.notes, before.notes)
+        XCTAssertEqual(after.tasks, before.tasks)
+        XCTAssertEqual(after.pending, before.pending)
+        XCTAssertEqual(after.workspace, before.workspace)
+    }
+
+    func testQualificationSnapshotIncludesOnlyNamedFixtureAndItsDeletedChildren() async throws {
+        let repository = try makeRepository()
+        let fixture = TildoneRepository.QualificationFixture.offline
+        let note = try await repository.createNote(id: NoteID(), createdAt: date, title: fixture.title)
+        let task = try await repository.addTask(id: TaskID(), to: note.id, createdAt: date,
+                                                text: "Synthetic tombstone", orderToken: OrderToken(rawValue: "m"))
+        try await repository.deleteTask(id: task.id)
+        let unrelated = try await repository.createNote(id: NoteID(), createdAt: date, title: "Unrelated fixture")
+        _ = try await repository.addTask(id: TaskID(), to: unrelated.id, createdAt: date,
+                                        text: "Excluded payload", orderToken: OrderToken(rawValue: "m"))
+        let before = try await repository.workspaceSnapshot()
+        let captured = try await repository.qualificationSnapshot(fixture)
+        XCTAssertEqual(captured.notes.map(\.id), [note.id])
+        XCTAssertEqual(captured.tasks.map(\.id), [task.id])
+        XCTAssertEqual(captured.tasks.first?.lifecycle, .deleted)
+        XCTAssertTrue(captured.pending.allSatisfy {
+            [note.id.stringValue, task.id.stringValue].contains($0.targetStableID)
+        })
+        XCTAssertFalse(captured.pending.isEmpty)
+        XCTAssertEqual(captured.workspace, before)
+        let after = try await repository.workspaceSnapshot()
+        XCTAssertEqual(after, before)
+        let absent = try await repository.qualificationSnapshot(.memo)
+        XCTAssertTrue(absent.notes.isEmpty)
+        XCTAssertTrue(absent.tasks.isEmpty)
+        XCTAssertTrue(absent.pending.isEmpty)
+    }
+#endif
+
     private func makeRepository() throws -> TildoneRepository {
         try TildoneRepository(descriptor: .inMemory(workspace: .account(UUID())), now: { self.date })
     }

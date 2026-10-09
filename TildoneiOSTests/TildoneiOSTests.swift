@@ -1509,6 +1509,87 @@ final class TildoneiOSTests: XCTestCase {
         XCTAssertEqual(accountLookups, 0, "Refreshing local queue status must not resume transport")
     }
 
+    func testRemoteReloadFailureReachesCallbackAndRetryPublishesRetainedData() async throws {
+        enum FixtureError: Error { case snapshotRead }
+        let workspace = UUID()
+        let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))
+        var shouldFail = false
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { _ in repository }, synchronizationEnabled: false,
+            noteSnapshotsLoader: { repository in
+                if shouldFail { throw FixtureError.snapshotRead }
+                return try await repository.visibleNoteSnapshots()
+            }
+        )
+        try await model.openForTesting(workspaceID: workspace)
+        let note = try await repository.createNote(
+            id: NoteID(), createdAt: Date(timeIntervalSince1970: 100),
+            title: "Retained remote fixture"
+        )
+        shouldFail = true
+        do {
+            try await model.requestRemoteContentReload(
+                for: workspace, changedRecords: [.note(note.id)]
+            )
+            XCTFail("A failed presentation refresh must reach the coordinator callback")
+        } catch {
+            XCTAssertTrue(error is FixtureError)
+        }
+        XCTAssertTrue(model.notes.isEmpty, "Do not publish a snapshot whose read failed")
+        let retained = try await repository.note(id: note.id)
+        XCTAssertEqual(retained.title, "Retained remote fixture")
+        shouldFail = false
+        try await model.requestRemoteContentReload(for: workspace, changedRecords: [.note(note.id)])
+        XCTAssertEqual(model.notes.map(\.id), [note.id], "Retry must discard the failed reload task")
+    }
+
+    func testCoalescedRemoteReloadWaitersAllReceiveFailureAndCanRetry() async throws {
+        enum FixtureError: Error { case snapshotRead }
+        let workspace = UUID()
+        let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspace)))
+        var shouldFail = false
+        var reads = 0
+        var releaseRead: CheckedContinuation<Void, Never>?
+        let model = TildoneiOSApplicationModel(
+            repositoryFactory: { _ in repository }, synchronizationEnabled: false,
+            noteSnapshotsLoader: { repository in
+                reads += 1
+                if shouldFail {
+                    await withCheckedContinuation { releaseRead = $0 }
+                    throw FixtureError.snapshotRead
+                }
+                return try await repository.visibleNoteSnapshots()
+            }
+        )
+        try await model.openForTesting(workspaceID: workspace)
+        shouldFail = true
+        let first = Swift.Task {
+            try await model.requestRemoteContentReload(for: workspace, changedRecords: [])
+        }
+        for _ in 0..<100 where releaseRead == nil { await Swift.Task.yield() }
+        XCTAssertNotNil(releaseRead)
+        var secondRequested = false
+        let second = Swift.Task {
+            secondRequested = true
+            try await model.requestRemoteContentReload(for: workspace, changedRecords: [])
+        }
+        for _ in 0..<100 where !secondRequested { await Swift.Task.yield() }
+        XCTAssertTrue(secondRequested)
+        releaseRead?.resume()
+        for waiter in [first, second] {
+            do {
+                try await waiter.value
+                XCTFail("Every coalesced caller must receive the refresh failure")
+            } catch {
+                XCTAssertTrue(error is FixtureError)
+            }
+        }
+        XCTAssertEqual(reads, 2, "One startup read and one shared failing read")
+        shouldFail = false
+        try await model.requestRemoteContentReload(for: workspace, changedRecords: [])
+        XCTAssertEqual(reads, 3)
+    }
+
     func testPausedPendingCountRefreshPreservesAttention() async throws {
         let suiteName = "TildoneiOSPausedAttention-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
