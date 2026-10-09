@@ -380,7 +380,8 @@ final class TildoneiOSTests: XCTestCase {
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let previousKeyWindow = scene.windows.first(where: \.isKeyWindow)
             let window = UIWindow(windowScene: scene)
-            window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            // Hosted keyboard geometry must use the scene's actual viewport.
+            window.frame = scene.coordinateSpace.bounds
             window.rootViewController = host
             window.makeKeyAndVisible()
             host.view.layoutIfNeeded()

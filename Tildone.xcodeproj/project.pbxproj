@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F12E00000000000000000001 /* Stage12IsolatedCloudKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */; };
+		F12E00000000000000000002 /* Stage12IsolatedCloudKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */; };
+		F12E00000000000000000003 /* TildoneSharedStoreV2 in Resources */ = {isa = PBXBuildFile; fileRef = F12E00000000000000000012 /* TildoneSharedStoreV2 */; };
+		F12E00000000000000000004 /* TildoneSharedStoreV2 in Resources */ = {isa = PBXBuildFile; fileRef = F12E00000000000000000012 /* TildoneSharedStoreV2 */; };
 		F51E11000000000000000203 /* TaskSpellChecking.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000103 /* TaskSpellChecking.swift */; };
 		F51E11000000000000000202 /* TaskSpellingMarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000102 /* TaskSpellingMarksView.swift */; };
 		F51E11000000000000000201 /* TaskSpellingMarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000101 /* TaskSpellingMarks.swift */; };
@@ -284,6 +288,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stage12IsolatedCloudKitTests.swift; sourceTree = "<group>"; };
+		F12E00000000000000000012 /* TildoneSharedStoreV2 */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Packages/TildoneCore/Tests/TildonePersistenceTests/Fixtures/TildoneSharedStoreV2; sourceTree = SOURCE_ROOT; };
 		F51E11000000000000000103 /* TaskSpellChecking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellChecking.swift; sourceTree = "<group>"; };
 		F51E11000000000000000102 /* TaskSpellingMarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellingMarksView.swift; sourceTree = "<group>"; };
 		F51E11000000000000000101 /* TaskSpellingMarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellingMarks.swift; sourceTree = "<group>"; };
@@ -549,6 +555,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F12E00000000000000000021 /* TestSupport */ = {
+			isa = PBXGroup;
+			children = (
+				F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */,
+				F12E00000000000000000012 /* TildoneSharedStoreV2 */,
+			);
+			path = TestSupport;
+			sourceTree = "<group>";
+		};
 		A10000000000000000000051 /* TildoneiOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -1141,6 +1156,7 @@
 		S10000000000000000000021 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				F12E00000000000000000021 /* TestSupport */,
 				S10000000000000000000011 /* SingleMemoTypography.swift */,
 				B92900000000000000000001 /* Discovery */,
 				P10000000000000000000011 /* ProEntitlement.swift */,
@@ -1398,6 +1414,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F12E00000000000000000004 /* TildoneSharedStoreV2 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1439,6 +1456,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F12E00000000000000000003 /* TildoneSharedStoreV2 in Resources */,
 				P10000000000000000000005 /* TildonePro.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1530,6 +1548,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F12E00000000000000000002 /* Stage12IsolatedCloudKitTests.swift in Sources */,
 				A94000000000000000000303 /* AppReviewPolicyTests.swift in Sources */,
 				A10000000000000000000005 /* TildoneiOSTests.swift in Sources */,
 			);
@@ -1674,6 +1693,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F12E00000000000000000001 /* Stage12IsolatedCloudKitTests.swift in Sources */,
 				B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */,
 				F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */,
 				A94000000000000000000203 /* AppReviewPolicyTests.swift in Sources */,

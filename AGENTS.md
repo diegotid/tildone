@@ -403,6 +403,8 @@ No privacy manifest is present, and no third-party SDK is linked. User task text
 
 Current automated coverage includes the complete `TildoneCore` domain/persistence/sync suite, real released/V1/V2 store fixtures, Mac and iPhone hosted/unit tests, and isolated Mac/iPhone UI smoke tests. Preserve exact fixture hashes and distinguish local/simulator evidence from signed Development and physical-device evidence.
 
+`Shared/TestSupport/Stage12IsolatedCloudKitTests.swift` belongs only to the Mac/iPhone test targets. Its frozen V2 resource is copied and checksum-verified before opening; it never resolves an installed content store. Application transport stays off in the test host. Four direct SDK fixture tests skip unless the exact `TILDONE_STAGE12_ISOLATED_RECORD_TESTS=iCloud.studio.cuatro.tildone:Development:fixture-records-only` opt-in is separately authorized and the effective signed Development identity is verified. They use only newly generated known record IDs in the existing private zone, refuse an existing ID, never query records, create/reset a zone or permanently delete data, and retain the synthetic fixtures. SDK/mapper/pipeline conflict evidence does not by itself prove autonomous `CKSyncEngine` callback scheduling or a historical app-binary upgrade. The physical iPhone suite excludes the existing source-file inspection test because it requires the Mac checkout; the complete simulator suite must still run that check. Hosted Mac screenshot evidence uses the sandbox's temporary directory.
+
 Continue prioritizing:
 
 - Model completeness/emptiness/deletability and pending progress.

@@ -80,7 +80,7 @@ final class TildoneTests: XCTestCase {
 
     @MainActor
     func testProFeaturePreviewsRenderRealControlsInBothAppearances() throws {
-        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/mac", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let englishMemo = ProPreviewContent(feature: .singleMemo, locale: Locale(identifier: "en")).tasks.first?.text
         for language in ["en", "es", "fr", "zh-Hans"] {
@@ -198,7 +198,7 @@ final class TildoneTests: XCTestCase {
         let suite = "AllProPreviewSettings-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/mac", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for feature in [ProFeature.singleMemo, .textStyling, .subtasks, .blur, .background] {
             var images = Set<Data>()
@@ -259,7 +259,7 @@ final class TildoneTests: XCTestCase {
         let suite = "ProPreviewSettings-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/mac", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for feature in [ProFeature.dimming, .gathering] {
             var images = [Data]()
@@ -329,7 +329,7 @@ final class TildoneTests: XCTestCase {
         let meanDifference = totalDifference / Double(rowByteCount * stillStart.pixelsHigh)
         XCTAssertLessThan(meanDifference, 0.5, "Reduce Motion must stop visible movement in the demonstration.")
         XCTAssertEqual(ProFeature.focusPrivacy.previewFeatures, [.blur, .background])
-        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/mac", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try png(at: 3).write(to: directory.appendingPathComponent("blur-hovering-en-light.png"))
     }
@@ -339,7 +339,7 @@ final class TildoneTests: XCTestCase {
         let pro = ProEntitlement.shared
         pro.setTestOverride(false)
         defer { pro.setTestOverride(nil) }
-        let directory = URL(fileURLWithPath: "/tmp/TildoneProPreviewEvidence/mac")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("TildoneProPreviewEvidence/mac", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for language in ["en", "es", "fr", "zh-Hans"] {
             var indexSize: CGSize?
