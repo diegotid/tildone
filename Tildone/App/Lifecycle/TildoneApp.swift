@@ -42,6 +42,12 @@ struct TildoneApp: App {
     }
 
     private var noteSyncIndicatorState: MacNoteSyncIndicatorState {
+#if DEBUG
+        // Presentation only: does not alter the account, workspace, or transport.
+        if ProcessInfo.processInfo.arguments.contains("--tildone-preview-sync-warning") {
+            return .attentionNeeded
+        }
+#endif
         let displayState = MacSyncPresentation.state(
             status: sharedStoreBootstrapper.syncStatus,
             transportState: sharedStoreBootstrapper.transportState,
