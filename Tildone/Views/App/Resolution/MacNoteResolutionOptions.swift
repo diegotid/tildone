@@ -10,6 +10,21 @@ struct MacNoteResolutionOptions: View {
     let onClose: () -> Void
     @State private var pendingAction: MacNoteResolutionAction?
 
+    init(bootstrapper: MacSharedStoreBootstrapper, onClose: @escaping () -> Void) {
+        self.bootstrapper = bootstrapper
+        self.onClose = onClose
+    }
+
+#if DEBUG
+    /// Renders the actual confirmation without operating a live repository.
+    init(isolatedConfirmation action: MacNoteResolutionAction, bootstrapper: MacSharedStoreBootstrapper) {
+        precondition(!MacSharedStoreBootstrapper.transportEnabledByDefault)
+        self.bootstrapper = bootstrapper
+        self.onClose = {}
+        self._pendingAction = State(initialValue: action)
+    }
+#endif
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if let pendingAction {

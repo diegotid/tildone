@@ -52,6 +52,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     private var pausedPendingCountRevision: UInt64 = 0
 #if DEBUG
     private let qualificationRefreshFault = SyncQualificationFaultInjector()
+    private var isolatedAccountSnapshot: CloudAccountSnapshot?
 #endif
 
     init(
@@ -61,9 +62,55 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         self.transportStateStore = transportStateStore
         self.localAdoptionStateStore = MacLocalAdoptionStateStore(defaults: defaults)
         self.noteLocationChoiceStore = MacNoteLocationChoiceStore(defaults: defaults)
+
     }
 
     deinit { statusTask?.cancel() }
+
+#if DEBUG
+    /// Hosted tests provide their own repositories and account identity. This
+    /// cannot run in a normal app process or construct a sync coordinator.
+    static func isolatedPresentation(
+        localRepository: TildoneRepository,
+        accountRepository: TildoneRepository,
+        workspaceID: UUID,
+        defaults: UserDefaults,
+        status: SyncStatus,
+        resolvedAccount: CloudAccountSnapshot? = nil
+    ) async throws -> MacSharedStoreBootstrapper {
+        precondition(isTestProcess && !transportEnabledByDefault)
+        let model = MacSharedStoreBootstrapper(
+            transportStateStore: SyncTransportStateStore(defaults: defaults),
+            defaults: defaults
+        )
+        model.localRepository = localRepository
+        model.accountRepository = accountRepository
+        model.accountWorkspaceID = workspaceID
+        if resolvedAccount == nil {
+            model.cloudContainer = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
+        }
+        model.isolatedAccountSnapshot = resolvedAccount ?? CloudAccountSnapshot(state: .available, workspaceID: workspaceID)
+        model.hasResolvedAccountWorkspace = true
+        model.transportState = .paused
+        let choice = model.noteLocationChoiceStore.choice(for: workspaceID)
+        let localHasContent = try await localRepository.hasSyncContent()
+        let accountHasContent = try await accountRepository.hasSyncContent()
+        model.hasUnadoptedLocalWorkspace = localHasContent && choice == nil
+        model.hasNotesOnMacAndICloud = localHasContent && accountHasContent
+        model.canAdoptLocalWorkspace = model.hasUnadoptedLocalWorkspace && !accountHasContent
+        let usesAccount = MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+            localNeedsAdoption: model.hasUnadoptedLocalWorkspace, explicitChoice: choice
+        )
+        model.selectedRepository = usesAccount ? accountRepository : localRepository
+        model.isUsingAccountWorkspace = usesAccount
+        model.isUsingNotesOnMacByChoice = !usesAccount && choice == .thisMac
+        let store = MacSharedStore(repository: usesAccount ? accountRepository : localRepository)
+        try await store.reload()
+        model.store = store
+        model.syncStatus = status
+        return model
+    }
+#endif
 
     static var transportEnabledByDefault: Bool {
         TransportDefaultPolicy.isEnabled(
@@ -459,8 +506,20 @@ final class MacSharedStoreBootstrapper: ObservableObject {
 #endif
     }
 
+    private func resolveAccount(container: CKContainer?) async -> CloudAccountSnapshot {
+#if DEBUG
+        if Self.isTestProcess, let isolatedAccountSnapshot {
+            return isolatedAccountSnapshot
+        }
+#endif
+        guard let container else {
+            return CloudAccountSnapshot(state: .couldNotDetermine, workspaceID: nil)
+        }
+        return await CloudAccountResolver().resolve(container: container)
+    }
+
     private func revalidateAccount(workspaceID: UUID, container: CKContainer) async -> Bool {
-        let account = await CloudAccountResolver().resolve(container: container)
+        let account = await resolveAccount(container: container)
         guard account.state == .available, account.workspaceID == workspaceID else {
             await stopCoordinatorForRepositoryTransition()
             invalidateForAccountChange()
