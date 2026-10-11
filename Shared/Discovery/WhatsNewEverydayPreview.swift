@@ -16,7 +16,7 @@ struct WhatsNewEverydayPreview: View {
 
     private var noteColor: NoteColor { NoteColor(legacyRawValue: noteColorRawValue) ?? .yellow }
     #else
-    @FocusState private var previewFocusedTask: TaskID?
+    @State private var previewFocusedTask: TaskID?
     #endif
 
     var body: some View {

@@ -36,7 +36,9 @@ struct ChecklistView: View {
     @State private var isShowingCompletion = false
     @State private var completionExitTask: Swift.Task<Void, Never>?
     @State private var hasLeftDetail = false
-    @FocusState private var focusedTask: TaskID?
+    // UIKit owns task-editor focus; a regular binding keeps one selected row
+    // even though these editors are not SwiftUI focusable text fields.
+    @State private var focusedTask: TaskID?
     @FocusState private var isAddingTask: Bool
     @FocusState private var isAddingTaskAbove: Bool
     @FocusState private var isEditingTitle: Bool
@@ -133,7 +135,7 @@ struct ChecklistView: View {
                                 onBeginEditing: {
                                     isAddingTask = false
                                     isAddingTaskAbove = false
-                                    focusedTask = task.id
+                                    focusTask(task.id)
                                 },
                                 onCommit: { value in
                                     try? await appModel.edit(taskID: task.id, richText: value)
@@ -336,6 +338,15 @@ struct ChecklistView: View {
                 showsInsertionHint = false
             }
         }
+        .onChange(of: isAddingTask) { _, isFocused in
+            if isFocused { focusTask(nil) }
+        }
+        .onChange(of: isAddingTaskAbove) { _, isFocused in
+            if isFocused { focusTask(nil) }
+        }
+        .onChange(of: isEditingTitle) { _, isFocused in
+            if isFocused { focusTask(nil) }
+        }
         .onDisappear {
             hasLeftDetail = true
             completionExitTask?.cancel()
@@ -368,7 +379,7 @@ struct ChecklistView: View {
                 return
             }
 
-            focusedTask = nil
+            focusTask(nil)
             isAddingTask = false
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.35)) {
                 isShowingCompletion = true
@@ -477,13 +488,12 @@ struct ChecklistView: View {
                     }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .focused($focusedTask, equals: task.id)
                 .onAppear {
                     singleTaskDraftID = task.id
                     singleTaskDraft = task.richText.normalizingLeadingHTTPURLScheme()
                     DispatchQueue.main.async {
                         guard singleTaskDraftID == task.id else { return }
-                        focusedTask = task.id
+                        focusTask(task.id)
                     }
                 }
                 .onChange(of: task.richText) { _, value in
@@ -610,7 +620,7 @@ struct ChecklistView: View {
             isRenamingTitle = false
             isEditingTitle = false
         } else {
-            focusedTask = nil
+            focusTask(nil)
             isAddingTask = false
             isAddingTaskAbove = false
             isRenamingTitle = true
@@ -644,19 +654,26 @@ struct ChecklistView: View {
 
     private func addTaskFromHeader(scrollProxy: ScrollViewProxy) {
         showsInsertionHint = newTaskText.isEmpty
-        focusedTask = nil
+        focusTask(nil)
         withAnimation {
             scrollProxy.scrollTo(Self.newTaskSlotID, anchor: .bottom)
         }
         isAddingTask = true
     }
 
+    private func focusTask(_ taskID: TaskID?) {
+        if focusedTask != taskID {
+            RichTaskTextEditor.Coordinator.endCurrentTaskEditing()
+        }
+        focusedTask = taskID
+    }
+
     private func advanceFocusFromTitle() {
         DispatchQueue.main.async {
-            focusedTask = nil
+            focusTask(nil)
             if let firstTask = visibleTasks.first?.task.id {
                 isAddingTask = false
-                focusedTask = firstTask
+                focusTask(firstTask)
             } else {
                 isAddingTask = true
             }
@@ -666,9 +683,9 @@ struct ChecklistView: View {
     private func advanceFocus(after taskID: TaskID) {
         if let index = visibleTasks.firstIndex(where: { $0.task.id == taskID }),
            visibleTasks.indices.contains(index + 1) {
-            focusedTask = visibleTasks[index + 1].task.id
+            focusTask(visibleTasks[index + 1].task.id)
         } else {
-            focusedTask = nil
+            focusTask(nil)
             isAddingTask = true
         }
     }
@@ -684,7 +701,7 @@ struct ChecklistView: View {
 
     private func beginAddingTask(above taskID: TaskID) {
         saveTaskAboveIfNeeded()
-        focusedTask = nil
+        focusTask(nil)
         taskInsertionText = ""
         pendingTaskInsertionID = taskID
         Swift.Task {
@@ -857,7 +874,7 @@ struct ChecklistView: View {
             let subtree = TaskHierarchy.subtreeRange(startingAt: index, in: tasks)
             if let focusedTask,
                tasks[subtree].dropFirst().contains(where: { $0.id == focusedTask }) {
-                self.focusedTask = nil
+                focusTask(nil)
             }
             collapsedTaskIDs.insert(taskID)
         }

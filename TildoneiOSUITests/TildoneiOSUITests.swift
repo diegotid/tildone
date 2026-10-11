@@ -99,6 +99,75 @@ final class TildoneiOSUITests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
     }
 
+    func testSwitchingTaskRowsKeepsOnlyOneEditorAndSavesEachDraft() {
+        let app = XCUIApplication()
+        app.launchEnvironment["TILDONE_UI_TESTING"] = "1"
+        app.launch()
+        app.buttons["Create note"].tap()
+        let titleField = app.textFields["Note title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 3))
+        titleField.typeText("Focus regression")
+        app.navigationBars.buttons["Done"].tap()
+
+        let newTaskField = app.textFields["New task"]
+        XCTAssertTrue(newTaskField.waitForExistence(timeout: 3))
+        newTaskField.tap()
+        newTaskField.typeText("First row\n")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "First"))
+            .firstMatch.waitForExistence(timeout: 3))
+        newTaskField.tap()
+        newTaskField.typeText("Second row\n")
+
+        func taskButton(_ text: String) -> XCUIElement {
+            app.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        }
+        func assertOnlyEditor(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+            let editors = app.textViews.matching(identifier: "Task")
+            let matches = NSPredicate { _, _ in
+                editors.count == 1 && editors.firstMatch.value as? String == text
+            }
+            XCTAssertTrue(
+                XCTWaiter.wait(for: [expectation(for: matches, evaluatedWith: app)], timeout: 3) == .completed,
+                "Expected one editor with \(text); found \(editors.allElementsBoundByIndex.map { $0.value as? String ?? "" }).",
+                file: file, line: line
+            )
+        }
+
+        XCTAssertTrue(taskButton("First").waitForExistence(timeout: 3))
+        taskButton("First").tap()
+        assertOnlyEditor("First row")
+        app.textViews["Task"].typeText(" edited")
+        let firstDraft = app.textViews["Task"].value as? String ?? ""
+        XCTAssertTrue(firstDraft.localizedCaseInsensitiveContains("edited"))
+
+        taskButton("Second").tap()
+        assertOnlyEditor("Second row")
+        XCTAssertTrue(taskButton("First").waitForExistence(timeout: 3))
+        app.textViews["Task"].typeText(" edited")
+        let secondDraft = app.textViews["Task"].value as? String ?? ""
+        XCTAssertTrue(secondDraft.localizedCaseInsensitiveContains("edited"))
+
+        taskButton("First").tap()
+        assertOnlyEditor(firstDraft)
+        XCTAssertTrue(taskButton("Second").waitForExistence(timeout: 3))
+
+        newTaskField.tap()
+        let noEditors = NSPredicate { _, _ in app.textViews.matching(identifier: "Task").count == 0 }
+        XCTAssertTrue(XCTWaiter.wait(for: [expectation(for: noEditors, evaluatedWith: app)], timeout: 3) == .completed)
+        newTaskField.typeText("Third row\n")
+        XCTAssertTrue(taskButton("Third").waitForExistence(timeout: 3))
+        taskButton("First").tap()
+        assertOnlyEditor(firstDraft)
+        app.textViews["Task"].typeText("\n")
+        assertOnlyEditor(secondDraft)
+        app.textViews["Task"].typeText("\n")
+        assertOnlyEditor("Third row")
+        app.textViews["Task"].typeText("\n")
+        XCTAssertTrue(XCTWaiter.wait(for: [expectation(for: noEditors, evaluatedWith: app)], timeout: 3) == .completed)
+        newTaskField.typeText("Fourth row\n")
+        XCTAssertTrue(taskButton("Fourth").waitForExistence(timeout: 3))
+    }
+
     func testFinalTaskShowsDoneThenFadesFromNotesWithUndo() {
         let app = XCUIApplication()
         app.launchEnvironment["TILDONE_UI_TESTING"] = "1"

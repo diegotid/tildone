@@ -16,7 +16,7 @@ struct TaskRow: View {
     let subtasksExpanded: Bool?
     let canIndent: Bool
     let canOutdent: Bool
-    var focusedTask: FocusState<TaskID?>.Binding
+    var focusedTask: Binding<TaskID?>
     let onBeginEditing: () -> Void
     let onCommit: (RichText) async -> Void
     let onSubmit: () -> Void
@@ -27,7 +27,6 @@ struct TaskRow: View {
     let onMoveUp: () async -> Void
     let onMoveDown: () async -> Void
     @State private var draft = RichText(text: "")
-    @State private var isEditingTask = false
 
     private var isVisuallyCompleted: Bool {
         task.isCompleted || subtaskProgress?.fraction == 1
@@ -50,10 +49,9 @@ struct TaskRow: View {
             }
             .frame(width: 32, height: 33)
 
-            if focusedTask.wrappedValue != task.id && !isEditingTask {
+            if focusedTask.wrappedValue != task.id {
                 if linkedTaskText == nil {
                     Button {
-                        isEditingTask = true
                         onBeginEditing()
                     } label: {
                         taskDisplayText
@@ -64,7 +62,6 @@ struct TaskRow: View {
                         .simultaneousGesture(
                             TapGesture(count: 2)
                                 .onEnded {
-                                    isEditingTask = true
                                     onBeginEditing()
                                 }
                         )
@@ -76,7 +73,6 @@ struct TaskRow: View {
                     taskID: task.id,
                     focusedTask: focusedTask,
                     isCompleted: isVisuallyCompleted,
-                    forceFocus: isEditingTask,
                     onSubmit: onSubmit,
                     onCommit: commit
                 )
@@ -100,9 +96,6 @@ struct TaskRow: View {
         .onAppear { draft = task.richText }
         .onChange(of: task.richText) { _, remoteText in
             if focusedTask.wrappedValue != task.id { draft = remoteText }
-        }
-        .onChange(of: focusedTask.wrappedValue) { _, focusedID in
-            if focusedID != task.id { isEditingTask = false }
         }
         .accessibilityElement(children: .contain)
         .accessibilityActions {

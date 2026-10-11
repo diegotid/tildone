@@ -18,12 +18,11 @@ struct RichTaskTextEditor: UIViewRepresentable {
     @Binding var richText: RichText
     let modelRichText: RichText
     let taskID: TaskID
-    var focusedTask: FocusState<TaskID?>.Binding
+    var focusedTask: Binding<TaskID?>
     let isCompleted: Bool
     var allowsMultipleLines = false
     var fontName: String? = nil
     var fitsSingleMemo = false
-    var forceFocus = false
     var textStyle: UIFont.TextStyle = .body
     var textAlignment: NSTextAlignment = .natural
     var lineHeightMultiple: CGFloat? = nil
@@ -111,7 +110,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         context.coordinator.lastTextStyle = textStyle
         context.coordinator.lastTextAlignment = textAlignment
         context.coordinator.lastLineHeightMultiple = lineHeightMultiple
-        if focusedTask.wrappedValue == taskID || forceFocus {
+        if focusedTask.wrappedValue == taskID {
             if !view.isFirstResponder { view.becomeFirstResponder() }
             context.coordinator.placeInitialCaretIfNeeded(view)
         } else if view.isFirstResponder {
@@ -121,6 +120,16 @@ struct RichTaskTextEditor: UIViewRepresentable {
         view.setNeedsLayout()
     }
 
+    static func dismantleUIView(_ view: UITextView, coordinator: Coordinator) {
+        // Replacing the selected row removes its editor. End editing while
+        // the delegate is still attached so the outgoing draft is committed.
+        view.resignFirstResponder()
+        // UIKit can detach a list cell before delivering its end-editing
+        // callback. Finish that session explicitly; repeated callbacks are safe.
+        coordinator.textViewDidEndEditing(view)
+        view.delegate = nil
+    }
+
     final class Coordinator: NSObject, UITextViewDelegate {
         private static weak var formattingTarget: Coordinator?
 
@@ -128,6 +137,7 @@ struct RichTaskTextEditor: UIViewRepresentable {
         weak var view: UITextView?
         private var lastSelection = NSRange(location: 0, length: 0)
         private var lastCommittedRichText: RichText?
+        private var hasActiveEditingSession = false
         private var hasLocalEdits = false
         private var hasPlacedInitialCaret = false
         private var formatObserver: NSObjectProtocol?
@@ -164,13 +174,26 @@ struct RichTaskTextEditor: UIViewRepresentable {
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
+            hasActiveEditingSession = true
             Self.formattingTarget = self
             parent.focusedTask.wrappedValue = parent.taskID
             lastSelection = textView.selectedRange
             hasLocalEdits = false
         }
 
+        static func endCurrentTaskEditing() {
+            guard let target = formattingTarget,
+                  target.hasActiveEditingSession,
+                  let view = target.view else { return }
+            // Commit before changing the SwiftUI selection can remove or
+            // update the outgoing list cell's native editor.
+            target.textViewDidEndEditing(view)
+            view.resignFirstResponder()
+        }
+
         func textViewDidEndEditing(_ textView: UITextView) {
+            guard hasActiveEditingSession else { return }
+            hasActiveEditingSession = false
             if hasLocalEdits {
                 let finalRichText = RichTaskTextEditor.richText(from: textView.attributedText)
                 parent.richText = finalRichText
@@ -219,8 +242,13 @@ struct RichTaskTextEditor: UIViewRepresentable {
         ) -> Bool {
             guard text == "\n", !parent.allowsMultipleLines else { return true }
             textView.resignFirstResponder()
-            DispatchQueue.main.async { [weak self] in
-                self?.parent.onSubmit()
+            let onSubmit = parent.onSubmit
+            let focusedTask = parent.focusedTask
+            let taskID = parent.taskID
+            DispatchQueue.main.async {
+                // The row may already have been dismantled after resigning.
+                guard focusedTask.wrappedValue == nil || focusedTask.wrappedValue == taskID else { return }
+                onSubmit()
             }
             return false
         }
@@ -254,8 +282,11 @@ struct RichTaskTextEditor: UIViewRepresentable {
             lastCommittedRichText = formatted
             hasLocalEdits = false
             parent.focusedTask.wrappedValue = parent.taskID
-            DispatchQueue.main.async { [weak view] in
-                guard let view, !view.isFirstResponder else { return }
+            DispatchQueue.main.async { [weak self, weak view] in
+                guard let self, let view, view.window != nil,
+                      Self.formattingTarget === self,
+                      self.parent.focusedTask.wrappedValue == self.parent.taskID,
+                      !view.isFirstResponder else { return }
                 view.becomeFirstResponder()
                 view.selectedRange = selection
             }

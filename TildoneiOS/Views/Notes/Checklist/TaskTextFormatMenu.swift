@@ -47,7 +47,7 @@ struct TaskTextFormatMenu: View {
             Image(systemName: "textformat")
         }
         // Keep the control visually enabled. UIKit can briefly lag the
-        // FocusState update while installing the selection; the editor itself
+        // selected-task update while installing the selection; the editor itself
         // remains the authority for whether a command has a target.
         .foregroundStyle(.primary)
         .accessibilityLabel("Format task text")

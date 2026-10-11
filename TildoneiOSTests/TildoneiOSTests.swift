@@ -17,12 +17,12 @@ import TildoneSync
 @MainActor
 final class TildoneiOSTests: XCTestCase {
     func testSingleMemoReturnAllowsLineBreakWithoutSubmitting() {
-        let focus = FocusState<TaskID?>()
+        var focus: TaskID?
         var draft = RichText(text: "FirstSecond")
         let parent = RichTaskTextEditor(
             richText: Binding(get: { draft }, set: { draft = $0 }),
             modelRichText: RichText(text: "FirstSecond"),
-            taskID: TaskID(), focusedTask: focus.projectedValue, isCompleted: false,
+            taskID: TaskID(), focusedTask: Binding(get: { focus }, set: { focus = $0 }), isCompleted: false,
             allowsMultipleLines: true, fitsSingleMemo: true, onCommit: { _ in }
         )
         let coordinator = parent.makeCoordinator()
@@ -231,11 +231,11 @@ final class TildoneiOSTests: XCTestCase {
     func testMemoInitialCaretFollowsUnicodeTitleAndDoesNotResetSelection() {
         let title = "🛒 Shopping"
         let value = RichText(text: "\(title): Buy fruit")
-        let focusState = FocusState<TaskID?>()
+        var focusState: TaskID?
         let editor = RichTaskTextEditor(
             initialCaretUTF16Offset: title.utf16.count,
             richText: .constant(value), modelRichText: value, taskID: TaskID(),
-            focusedTask: focusState.projectedValue, isCompleted: false, onCommit: { _ in }
+            focusedTask: Binding(get: { focusState }, set: { focusState = $0 }), isCompleted: false, onCommit: { _ in }
         )
         let coordinator = RichTaskTextEditor.Coordinator(parent: editor)
         let previousKeyWindow = UIApplication.shared.connectedScenes
@@ -265,7 +265,7 @@ final class TildoneiOSTests: XCTestCase {
         let taskID = TaskID()
         var value = RichText(text: "Format selected text")
         var committed: RichText?
-        var focusState = FocusState<TaskID?>()
+        var focusState: TaskID?
         let editor = RichTaskTextEditor(
             richText: Binding(
                 get: { value },
@@ -273,7 +273,7 @@ final class TildoneiOSTests: XCTestCase {
             ),
             modelRichText: value,
             taskID: taskID,
-            focusedTask: focusState.projectedValue,
+            focusedTask: Binding(get: { focusState }, set: { focusState = $0 }),
             isCompleted: false,
             onCommit: { committed = $0 }
         )
@@ -307,7 +307,7 @@ final class TildoneiOSTests: XCTestCase {
         )
         var draft = plain
         var commits: [RichText] = []
-        var focusState = FocusState<TaskID?>()
+        var focusState: TaskID?
         func editor(model: RichText) -> RichTaskTextEditor {
             RichTaskTextEditor(
                 richText: Binding(
@@ -316,7 +316,7 @@ final class TildoneiOSTests: XCTestCase {
                 ),
                 modelRichText: model,
                 taskID: taskID,
-                focusedTask: focusState.projectedValue,
+                focusedTask: Binding(get: { focusState }, set: { focusState = $0 }),
                 isCompleted: false,
                 onCommit: { commits.append($0) }
             )
@@ -338,7 +338,7 @@ final class TildoneiOSTests: XCTestCase {
         let taskID = TaskID()
         var draft = RichText(text: "Before")
         var committed: RichText?
-        var focusState = FocusState<TaskID?>()
+        var focusState: TaskID?
         let editor = RichTaskTextEditor(
             richText: Binding(
                 get: { draft },
@@ -346,7 +346,7 @@ final class TildoneiOSTests: XCTestCase {
             ),
             modelRichText: draft,
             taskID: taskID,
-            focusedTask: focusState.projectedValue,
+            focusedTask: Binding(get: { focusState }, set: { focusState = $0 }),
             isCompleted: false,
             onCommit: { committed = $0 }
         )
@@ -365,6 +365,61 @@ final class TildoneiOSTests: XCTestCase {
 
         XCTAssertEqual(draft, RichText(text: "Before typing"))
         XCTAssertEqual(committed, RichText(text: "Before typing"))
+    }
+
+    func testOutgoingTaskEditorCommitsWithoutClearingTheNextRowsSelection() {
+        let firstID = TaskID()
+        let secondID = TaskID()
+        var focusedTask: TaskID?
+        var firstDraft = RichText(text: "First")
+        var commits: [RichText] = []
+        let focus = Binding(get: { focusedTask }, set: { focusedTask = $0 })
+        let first = RichTaskTextEditor.Coordinator(parent: RichTaskTextEditor(
+            richText: Binding(get: { firstDraft }, set: { firstDraft = $0 }),
+            modelRichText: firstDraft, taskID: firstID, focusedTask: focus,
+            isCompleted: false, onCommit: { commits.append($0) }
+        ))
+        let second = RichTaskTextEditor.Coordinator(parent: RichTaskTextEditor(
+            richText: .constant(RichText(text: "Second")),
+            modelRichText: RichText(text: "Second"), taskID: secondID, focusedTask: focus,
+            isCompleted: false, onCommit: { _ in }
+        ))
+        let firstView = UITextView()
+        let secondView = UITextView()
+        first.textViewDidBeginEditing(firstView)
+        firstView.attributedText = NSAttributedString(string: "First edited")
+        first.textViewDidChange(firstView)
+        second.textViewDidBeginEditing(secondView)
+        // A removed list cell may no longer be first responder when SwiftUI
+        // dismantles it, so UIKit will not deliver the callback on resign.
+        RichTaskTextEditor.dismantleUIView(firstView, coordinator: first)
+        XCTAssertEqual(focusedTask, secondID)
+        XCTAssertEqual(firstDraft.text, "First edited")
+        XCTAssertEqual(commits, [RichText(text: "First edited")])
+
+        first.textViewDidEndEditing(firstView)
+        XCTAssertEqual(firstDraft.text, "First edited")
+        XCTAssertEqual(commits.count, 1)
+    }
+
+    func testTaskReturnAdvancesAfterTheOutgoingEditorIsReleased() async {
+        let submitted = expectation(description: "Return advances to the next row")
+        var focusedTask: TaskID?
+        var coordinator: RichTaskTextEditor.Coordinator? = RichTaskTextEditor.Coordinator(
+            parent: RichTaskTextEditor(
+                richText: .constant(RichText(text: "First")),
+                modelRichText: RichText(text: "First"), taskID: TaskID(),
+                focusedTask: Binding(get: { focusedTask }, set: { focusedTask = $0 }),
+                isCompleted: false, onSubmit: { submitted.fulfill() }, onCommit: { _ in }
+            )
+        )
+        weak let releasedCoordinator = coordinator
+        XCTAssertFalse(coordinator!.textView(
+            UITextView(), shouldChangeTextIn: NSRange(location: 5, length: 0), replacementText: "\n"
+        ))
+        coordinator = nil
+        XCTAssertNil(releasedCoordinator)
+        await fulfillment(of: [submitted], timeout: 1)
     }
 
     func testSingleMemoHostedEditorKeepsTypedTextAndCaretInsideViewport() async throws {
