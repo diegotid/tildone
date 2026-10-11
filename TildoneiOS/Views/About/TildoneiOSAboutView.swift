@@ -45,6 +45,7 @@ struct TildoneiOSAboutView: View {
 
             Section {
                 Link("Rate Tildone", destination: CompanionAppLink.writeReview)
+                Link("Privacy Policy", destination: URL(string: "https://www.cuatro.studio/privacy")!)
                 Button("Welcome to Tildone") { showsWelcome = true }
                 Button("Get Tildone for Mac") { showsMacDownload = true }
                 NavigationLink("Font Attributions") {

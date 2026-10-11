@@ -24,7 +24,7 @@ enum Id {
 
 enum Frame {
     static let aboutWindowWidth: CGFloat = 240
-    static let aboutWindowHeight: CGFloat = 310
+    static let aboutWindowHeight: CGFloat = 330
     static let aboutIconSize: CGFloat = 100
 }
 

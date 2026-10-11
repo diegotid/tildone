@@ -397,7 +397,7 @@ The sync status surfaces and some controls have explicit accessibility modifiers
 
 Do not remove or expand entitlements casually: compare Debug/Release signing, App Store provisioning, Focus Filters, launch at login, StoreKit receipts, and the intended sync design. The iOS and Mac application targets now use the same bundle ID for the intended universal purchase, with separate target entitlements. Both use the Development CloudKit container; Production schema/deployment remains separately authorized.
 
-No privacy manifest is present, and no third-party SDK is linked. User task text should remain out of diagnostics and network payloads except the explicitly chosen private sync system. Several product/README links use plain HTTP; review transport/security before relying on them for new functionality.
+Both app targets embed `PrivacyInfo.xcprivacy` to declare app-local preferences and elapsed-event timing; the Mac app also declares metadata inspection for its retained local store. No third-party SDK is linked. Required-reason declarations do not settle App Store data-collection answers or replace the published privacy policy. User task text should remain out of diagnostics and network payloads except the explicitly chosen private sync system. Several product/README links use plain HTTP; review transport/security before relying on them for new functionality.
 
 ## Testing strategy
 

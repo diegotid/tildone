@@ -40,6 +40,9 @@ struct About: View {
             }
             Link("Rate Tildone", destination: CompanionAppLink.writeReview)
                 .font(.caption)
+            Link("Privacy Policy", destination: URL(string: "https://www.cuatro.studio/privacy")!)
+                .font(.caption)
+                .multilineTextAlignment(.center)
             Button("Font Attributions") {
                 openWindow(id: Id.fontAttributionsWindow)
             }

@@ -254,6 +254,9 @@
 		A94000000000000000000302 /* AppReviewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000102 /* AppReviewController.swift */; };
 		A94000000000000000000203 /* AppReviewPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000103 /* AppReviewPolicyTests.swift */; };
 		A94000000000000000000303 /* AppReviewPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94000000000000000000103 /* AppReviewPolicyTests.swift */; };
+		F12F00000000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000011 /* PrivacyInfo.xcprivacy */; };
+		F12F00000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000012 /* PrivacyInfo.xcprivacy */; };
+		F12F00000000000000000003 /* SyncProductQualificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000013 /* SyncProductQualificationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -501,6 +504,9 @@
 		A94000000000000000000101 /* AppReviewPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewPolicy.swift; sourceTree = "<group>"; };
 		A94000000000000000000102 /* AppReviewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewController.swift; sourceTree = "<group>"; };
 		A94000000000000000000103 /* AppReviewPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppReviewPolicyTests.swift; sourceTree = "<group>"; };
+		F12F00000000000000000011 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F12F00000000000000000012 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F12F00000000000000000013 /* SyncProductQualificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProductQualificationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -573,6 +579,7 @@
 				C10000000000000000000026 /* Extensions */,
 				A10000000000000000000013 /* Assets.xcassets */,
 				C10000000000000000000041 /* Localizable.xcstrings */,
+				F12F00000000000000000012 /* PrivacyInfo.xcprivacy */,
 				A1000000000000000000001A /* Info.plist */,
 				A10000000000000000000015 /* TildoneiOS.entitlements */,
 				A10000000000000000000054 /* Preview Content */,
@@ -1067,6 +1074,7 @@
 				F166704C2AF711ED000B76A5 /* Assets.xcassets */,
 				F15A835D2F5200B600231A3F /* TildoneIcon.icon */,
 				F13428132B535EA40045343D /* Localizable.xcstrings */,
+				F12F00000000000000000011 /* PrivacyInfo.xcprivacy */,
 				F16670512AF711ED000B76A5 /* Tildone.entitlements */,
 				F16670732AF7122F000B76A5 /* Models */,
 				F16670742AF71273000B76A5 /* Views */,
@@ -1091,6 +1099,7 @@
 			isa = PBXGroup;
 			children = (
 				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
+				F12F00000000000000000013 /* SyncProductQualificationTests.swift */,
 				A94000000000000000000103 /* AppReviewPolicyTests.swift */,
 				B92900000000000000000107 /* WhatsNewReleaseTests.swift */,
 				B60000000000000000000014 /* LegacyMigrationTests.swift */,
@@ -1389,6 +1398,7 @@
 			files = (
 				A10000000000000000000003 /* Assets.xcassets in Resources */,
 				C10000000000000000000040 /* Localizable.xcstrings in Resources */,
+				F12F00000000000000000002 /* PrivacyInfo.xcprivacy in Resources */,
 				F18A88B2301EC9FB002DF4C2 /* TildoneIcon.icon in Resources */,
 				A10000000000000000000004 /* Preview Assets.xcassets in Resources */,
 				S10000000000000000000005 /* Tildone/Resources/Fonts/Overlock-Regular.ttf in Resources */,
@@ -1432,6 +1442,7 @@
 				F16670502AF711ED000B76A5 /* Preview Assets.xcassets in Resources */,
 				F166704D2AF711ED000B76A5 /* Assets.xcassets in Resources */,
 				F13428142B535EA40045343D /* Localizable.xcstrings in Resources */,
+				F12F00000000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
 				F15A835E2F5200B600231A3F /* TildoneIcon.icon in Resources */,
 				S10000000000000000000003 /* Tildone/Resources/Fonts/Overlock-Regular.ttf in Resources */,
 				S10000000000000000000004 /* Tildone/Resources/Fonts/Overlock-OFL.txt in Resources */,
@@ -1696,6 +1707,7 @@
 				F12E00000000000000000001 /* Stage12IsolatedCloudKitTests.swift in Sources */,
 				B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */,
 				F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */,
+				F12F00000000000000000003 /* SyncProductQualificationTests.swift in Sources */,
 				A94000000000000000000203 /* AppReviewPolicyTests.swift in Sources */,
 				B92900000000000000000207 /* WhatsNewReleaseTests.swift in Sources */,
 			);
