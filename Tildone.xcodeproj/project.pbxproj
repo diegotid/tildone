@@ -257,6 +257,7 @@
 		F12F00000000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000011 /* PrivacyInfo.xcprivacy */; };
 		F12F00000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000012 /* PrivacyInfo.xcprivacy */; };
 		F12F00000000000000000003 /* SyncProductQualificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000013 /* SyncProductQualificationTests.swift */; };
+		F12F00000000000000000004 /* SyncProductQualificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12F00000000000000000014 /* SyncProductQualificationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -507,6 +508,7 @@
 		F12F00000000000000000011 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F12F00000000000000000012 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F12F00000000000000000013 /* SyncProductQualificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProductQualificationTests.swift; sourceTree = "<group>"; };
+		F12F00000000000000000014 /* SyncProductQualificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProductQualificationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -591,6 +593,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000017 /* TildoneiOSTests.swift */,
+				F12F00000000000000000014 /* SyncProductQualificationTests.swift */,
 			);
 			path = TildoneiOSTests;
 			sourceTree = "<group>";
@@ -1562,6 +1565,7 @@
 				F12E00000000000000000002 /* Stage12IsolatedCloudKitTests.swift in Sources */,
 				A94000000000000000000303 /* AppReviewPolicyTests.swift in Sources */,
 				A10000000000000000000005 /* TildoneiOSTests.swift in Sources */,
+				F12F00000000000000000004 /* SyncProductQualificationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

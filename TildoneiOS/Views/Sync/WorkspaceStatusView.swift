@@ -12,18 +12,23 @@ struct WorkspaceStatusView: View {
     let retry: () -> Void
 
     var body: some View {
-        ContentUnavailableView {
-            Label(
-                SyncStatusPresentation.title(for: status),
-                systemImage: SyncStatusPresentation.symbol(for: status)
-            )
-        } description: {
-            Text(SyncStatusPresentation.detail(for: status) ?? String(localized: "Tildone cannot open your notes right now."))
-        } actions: {
-            if status.availability == .temporarilyUnavailable {
-                Button("Try Again", action: retry)
+        GeometryReader { geometry in
+            ScrollView {
+                ContentUnavailableView {
+                    Label(
+                        SyncStatusPresentation.title(for: status),
+                        systemImage: SyncStatusPresentation.symbol(for: status)
+                    )
+                } description: {
+                    Text(SyncStatusPresentation.detail(for: status) ?? String(localized: "Tildone cannot open your notes right now."))
+                } actions: {
+                    if status.availability == .temporarilyUnavailable {
+                        Button("Try Again", action: retry)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
         }
-        .padding()
     }
 }
