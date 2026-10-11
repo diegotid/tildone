@@ -33,6 +33,7 @@ struct NoteTitleTextField: NSViewRepresentable {
             coordinator?.parent.onFocus()
         }
         field.delegate = context.coordinator
+        field.stringValue = text
         field.placeholderString = placeholder
         field.font = font
         field.textColor = textColor
@@ -78,8 +79,19 @@ struct NoteTitleTextField: NSViewRepresentable {
         let isEditing = context.coordinator.isEditing
             || (editor != nil && field.window?.firstResponder === editor)
         field.cell?.isScrollable = isEditing
-        if !isEditing, field.stringValue != text {
+        // New notes can receive automatic title focus before the iPhone's
+        // rename arrives. Focus alone must not hold back that remote title.
+        if (!isEditing || !context.coordinator.hasEditedText), field.stringValue != text {
             field.stringValue = text
+            if isEditing, let editor = editor as? NSTextView {
+                let selection = editor.selectedRange()
+                editor.string = text
+                let location = min(selection.location, text.utf16.count)
+                editor.setSelectedRange(NSRange(
+                    location: location,
+                    length: min(selection.length, text.utf16.count - location)
+                ))
+            }
         }
         // A model refresh must not reclaim focus after the user clicks a row.
         if isFocused, !context.coordinator.lastRequestedFocus {
@@ -95,6 +107,7 @@ struct NoteTitleTextField: NSViewRepresentable {
         var parent: NoteTitleTextField
         weak var field: MouseSafeTaskNSTextField?
         var isEditing = false
+        var hasEditedText = false
         var lastRequestedFocus = false
 
         init(parent: NoteTitleTextField) {
@@ -103,17 +116,24 @@ struct NoteTitleTextField: NSViewRepresentable {
 
         func controlTextDidBeginEditing(_ notification: Notification) {
             isEditing = true
+            hasEditedText = false
             parent.onFocus()
         }
 
         func controlTextDidChange(_ notification: Notification) {
             guard let field = notification.object as? NSTextField else { return }
+            hasEditedText = true
             parent.text = field.stringValue
             parent.onTextChange()
         }
 
         func controlTextDidEndEditing(_ notification: Notification) {
             isEditing = false
+            hasEditedText = false
+            // A remote snapshot skipped during typing may not trigger another
+            // SwiftUI update when editing ends. Reconcile the field here too.
+            field?.stringValue = parent.text
+            field?.cell?.isScrollable = false
             parent.onBlur()
         }
 

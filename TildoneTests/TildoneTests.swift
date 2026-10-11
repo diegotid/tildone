@@ -3234,6 +3234,72 @@ final class TildoneTests: XCTestCase {
         XCTAssertFalse(field.cell?.isScrollable ?? true)
     }
 
+    @MainActor
+    func testRemoteTitleAppearsInUntouchedFocusedMacNote() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        let previousKeyWindow = NSApp.keyWindow
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 360, height: 500),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: note.id))
+        window.setNoteHostingContentView(host)
+        window.makeKeyAndOrderFront(nil)
+        defer {
+            window.contentView = nil
+            window.close()
+            previousKeyWindow?.makeKey()
+        }
+        func fields(_ view: NSView) -> [MouseSafeTaskNSTextField] {
+            (view as? MouseSafeTaskNSTextField).map { [$0] } ?? view.subviews.flatMap(fields)
+        }
+        try await Swift.Task.sleep(for: .milliseconds(200))
+        host.layoutSubtreeIfNeeded()
+        let field = try XCTUnwrap(fields(host).first(where: \.isNoteTitleField))
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        XCTAssertEqual(editor.string, "")
+
+        // Deliver the later title snapshot while the new Mac note still has
+        // automatic title focus; no local typing should block remote content.
+        _ = try await repository.renameNote(id: note.id, to: "Prueba", editedAt: Date())
+        _ = try await repository.addTask(
+            id: TaskID(), to: note.id, createdAt: Date(), text: "Una de 1 x 2",
+            orderToken: try .between(nil, nil)
+        )
+        try await store.reloadAfterRemoteChange()
+        try await Swift.Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(presentation.snapshot.title, "Prueba")
+        XCTAssertEqual(field.stringValue, "Prueba")
+        XCTAssertEqual(editor.string, "Prueba")
+        XCTAssertTrue(window.firstResponder === editor)
+
+        XCTAssertTrue(window.makeFirstResponder(nil))
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(field.stringValue, "Prueba")
+        let persisted = try await repository.note(id: note.id)
+        XCTAssertEqual(persisted.title, "Prueba")
+
+        XCTAssertTrue(window.makeFirstResponder(field))
+        let localEditor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        localEditor.insertText("Local draft", replacementRange: NSRange(location: 0, length: localEditor.string.utf16.count))
+        try await Swift.Task.sleep(for: .milliseconds(200))
+        _ = try await repository.renameNote(id: note.id, to: "Remote rename", editedAt: Date())
+        try await store.reloadAfterRemoteChange()
+        try await Swift.Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(presentation.snapshot.title, "Remote rename")
+        XCTAssertEqual(localEditor.string, "Local draft", "Remote updates must preserve active local typing")
+        XCTAssertTrue(window.makeFirstResponder(nil))
+        try await Swift.Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(field.stringValue, "Remote rename", "Ending the edit must reveal the latest snapshot")
+        let afterBlur = try await repository.note(id: note.id)
+        XCTAssertEqual(afterBlur.title, "Remote rename", "Blur must not write the stale draft back")
+    }
+
     func testPastedMemoParagraphAlignmentOverridesTheCenteredMemoDefault() throws {
         let left = NSMutableParagraphStyle()
         left.alignment = .left
