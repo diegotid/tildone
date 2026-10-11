@@ -50,6 +50,8 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     private var syncCoordinator: TildoneSyncCoordinator?
     private var statusTask: Swift.Task<Void, Never>?
     private var pausedPendingCountRevision: UInt64 = 0
+    private var accountChangeObserver: NSObjectProtocol?
+    private var accountValidationRevision: UInt64 = 0
 #if DEBUG
     private let qualificationRefreshFault = SyncQualificationFaultInjector()
     private var isolatedAccountSnapshot: CloudAccountSnapshot?
@@ -62,10 +64,23 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         self.transportStateStore = transportStateStore
         self.localAdoptionStateStore = MacLocalAdoptionStateStore(defaults: defaults)
         self.noteLocationChoiceStore = MacNoteLocationChoiceStore(defaults: defaults)
-
+        // Account privacy must not depend on a running CKSyncEngine. Pausing
+        // destroys that coordinator, but the presented account can still change.
+        accountChangeObserver = NotificationCenter.default.addObserver(
+            forName: .CKAccountChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            Swift.Task { @MainActor [weak self] in
+                await self?.revalidateAccountPresentation()
+            }
+        }
     }
 
-    deinit { statusTask?.cancel() }
+    deinit {
+        statusTask?.cancel()
+        if let accountChangeObserver {
+            NotificationCenter.default.removeObserver(accountChangeObserver)
+        }
+    }
 
 #if DEBUG
     /// Hosted tests provide their own repositories and account identity. This
@@ -293,6 +308,35 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         guard transportState == .active, let syncCoordinator else { return }
         SyncDiagnostics.boundary(.explicitCheckpointRequested, count: 1)
         Swift.Task { await syncCoordinator.start() }
+    }
+
+    func refreshAccountAndSync() {
+        Swift.Task { [weak self] in
+            guard let self else { return }
+            await revalidateAccountPresentation()
+            syncNow()
+        }
+    }
+
+    /// Checks identity without starting transport or changing durable work.
+    /// Transient service uncertainty is not a confirmed account transition.
+    func revalidateAccountPresentation() async {
+        guard let workspaceID = accountWorkspaceID else { return }
+        accountValidationRevision &+= 1
+        let revision = accountValidationRevision
+        let account = await resolveAccount(container: cloudContainer)
+        guard accountValidationRevision == revision, accountWorkspaceID == workspaceID else { return }
+        switch account.state {
+        case .available:
+            guard let currentID = account.workspaceID, currentID != workspaceID else { return }
+        case .noAccount, .restricted:
+            break
+        case .temporarilyUnavailable, .couldNotDetermine:
+            return
+        }
+        await stopCoordinatorForRepositoryTransition()
+        guard accountValidationRevision == revision, accountWorkspaceID == workspaceID else { return }
+        invalidateForAccountChange()
     }
 
     /// Confirmation is owned by the calling UI. Every action preserves both
@@ -685,6 +729,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     }
 
     private func invalidateForAccountChange() {
+        accountValidationRevision &+= 1
         pausedPendingCountRevision &+= 1
         statusTask?.cancel()
         statusTask = nil

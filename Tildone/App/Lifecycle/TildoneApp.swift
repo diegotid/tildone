@@ -128,11 +128,10 @@ struct TildoneApp: App {
     private var notificationHandlingDesktopContent: some View {
         observedDesktopContent
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                // Foreground catch-up must not depend on a background CloudKit
-                // notification. The existing checkpoint keeps pause/test/Release
-                // transport guards and serialized operation handling intact.
+                // Recheck the presented account even while transport is paused;
+                // a missed account notification must not expose cached notes.
                 SyncDiagnostics.boundary(.appActivationCheckpointRequested, count: 1)
-                sharedStoreBootstrapper.syncNow()
+                sharedStoreBootstrapper.refreshAccountAndSync()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
                 SyncDiagnostics.boundary(.appResignedActive, count: 1)
@@ -142,7 +141,7 @@ struct TildoneApp: App {
                 // A floating note's keyboard focus is a separate entry point
                 // from application activation. Use the same guarded checkpoint.
                 SyncDiagnostics.boundary(.noteFocusCheckpointRequested, count: 1)
-                sharedStoreBootstrapper.syncNow()
+                sharedStoreBootstrapper.refreshAccountAndSync()
             }
             .onReceive(NotificationCenter.default.publisher(for: .pauseSync)) { _ in
                 sharedStoreBootstrapper.pauseTransport()

@@ -8,6 +8,95 @@ import TildoneSync
 
 @MainActor
 final class SyncProductQualificationTests: XCTestCase {
+    func testPausedAccountNotificationHidesPreviousAccountAndRetainsDurableWork() async throws {
+        for state in [CloudAccountState.noAccount, .restricted, .available] {
+            try await verifyPausedAccountBoundary(
+                resolvedAccount: CloudAccountSnapshot(state: state, workspaceID: state == .available ? UUID() : nil),
+                useNotification: true, shouldInvalidate: true
+            )
+        }
+    }
+
+    func testPausedForegroundAccountCheckKeepsSameAccountAndTransientOfflineWork() async throws {
+        for state in [CloudAccountState.available, .temporarilyUnavailable, .couldNotDetermine] {
+            try await verifyPausedAccountBoundary(
+                resolvedAccount: CloudAccountSnapshot(state: state, workspaceID: nil),
+                useNotification: false, shouldInvalidate: false
+            )
+        }
+        try await verifyPausedAccountBoundary(
+            resolvedAccount: CloudAccountSnapshot(state: .noAccount, workspaceID: nil),
+            useNotification: false, shouldInvalidate: true
+        )
+    }
+
+    private func verifyPausedAccountBoundary(
+        resolvedAccount: CloudAccountSnapshot, useNotification: Bool, shouldInvalidate: Bool
+    ) async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("PausedAccountBoundary-\(UUID())")
+        let suite = "PausedAccountBoundary.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: root)
+        }
+        let workspaceID = UUID()
+        let descriptor = PersistenceStoreDescriptor.persistent(baseDirectory: root, workspace: .account(workspaceID))
+        let local = try TildoneRepository(descriptor: .inMemory())
+        var account: TildoneRepository? = try TildoneRepository(descriptor: descriptor)
+        let note = try await account!.createNote(id: NoteID(), createdAt: Date(), title: "Synthetic paused account")
+        _ = try await account!.addTask(id: TaskID(), to: note.id, createdAt: Date(), text: "Retain unsent work", orderToken: OrderToken.between(nil, nil))
+        let deleted = try await account!.addTask(id: TaskID(), to: note.id, createdAt: Date(), text: "Retain tombstone", orderToken: OrderToken(rawValue: "z"))
+        try await account!.deleteTask(id: deleted.id)
+        try await account!.storeFutureSyncEngineState(Data("Synthetic retained envelope".utf8))
+        let before = try await MacNoteResolutionService.fingerprint(repository: account!)
+        let pending = try await account!.pendingMutations(includeSuperseded: true)
+        let workspace = try await account!.workspaceSnapshot()
+        XCTAssertFalse(pending.isEmpty)
+        SyncTransportStateStore(defaults: defaults).set(.paused, for: workspaceID)
+        let snapshot = resolvedAccount.state == .available && !shouldInvalidate
+            ? CloudAccountSnapshot(state: .available, workspaceID: workspaceID)
+            : resolvedAccount
+        var model: MacSharedStoreBootstrapper? = try await .isolatedPresentation(
+            localRepository: local, accountRepository: account!, workspaceID: workspaceID,
+            defaults: defaults, status: SyncStatus(availability: .available, activity: .paused),
+            resolvedAccount: snapshot
+        )
+        XCTAssertNotNil(model!.store)
+        if useNotification {
+            NotificationCenter.default.post(name: .CKAccountChanged, object: nil)
+            for _ in 0..<200 where model!.store != nil {
+                try await Swift.Task.sleep(for: .milliseconds(10))
+            }
+        } else {
+            await model!.revalidateAccountPresentation()
+        }
+        XCTAssertEqual(model!.store == nil, shouldInvalidate)
+        XCTAssertEqual(model!.hasResolvedAccountWorkspace, !shouldInvalidate)
+        XCTAssertEqual(model!.isUsingAccountWorkspace, !shouldInvalidate)
+        XCTAssertEqual(model!.transportState, .paused)
+        XCTAssertFalse(model!.canControlTransport)
+        if shouldInvalidate {
+            XCTAssertEqual(model!.syncStatus.availability, .accountChanged)
+            XCTAssertNotNil(model!.error)
+        } else {
+            XCTAssertEqual(model!.syncStatus.activity, .paused)
+            XCTAssertNil(model!.error)
+        }
+        model = nil
+        account = nil
+        let reopened = try TildoneRepository(descriptor: descriptor)
+        let after = try await MacNoteResolutionService.fingerprint(repository: reopened)
+        let pendingAfter = try await reopened.pendingMutations(includeSuperseded: true)
+        let workspaceAfter = try await reopened.workspaceSnapshot()
+        XCTAssertEqual(after, before)
+        XCTAssertEqual(pendingAfter, pending)
+        XCTAssertEqual(workspaceAfter, workspace)
+        XCTAssertEqual(SyncTransportStateStore(defaults: defaults).state(for: workspaceID), .paused)
+        let localNotes = try await local.allSyncNotes()
+        XCTAssertTrue(localNotes.isEmpty, "No adoption or copying of the account cache into local storage")
+    }
+
     func testConfirmedLocationChoicesRetainBothStoresAcrossReopen() async throws {
         XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)
         for action in [MacNoteResolutionAction.useThisMac, .useICloud, .combine] {
