@@ -19,6 +19,7 @@ Every chat/task that adds or changes user-visible text must complete its localiz
 - Views use domain snapshots and repository operations, never shared stored-model objects or `ModelContext`.
 - Every shared content mutation must atomically save transport-neutral outbound-work evidence in the same local transaction.
 - The Mac process chooses its store once in `MacSharedStoreBootstrapper`: an existing destination must be activated, and a legacy source must first complete independent migration verification before activation. Do not reintroduce mixed legacy/shared windows.
+- A native Mac local-only workspace records a replica-bound activation receipt while completely empty, before presentation can write notes. Reopening it requires that receipt when no legacy source or migration state exists. An unmarked populated store, mismatched/corrupt receipt, or retained legacy identity mappings must not be admitted through this native path; native admission never substitutes for verified legacy migration.
 - XCTest-hosted Mac app launches must use the in-memory shared repository; test setup must not inspect, open, or migrate a live legacy store.
 - Shared user content sync uses `CKSyncEngine`, the private database of `iCloud.studio.cuatro.tildone`, and the `TildoneUserData` custom zone. Do not add public-database content or speculative record types.
 - A durable outbox mutation is acknowledged only after CloudKit confirms that exact save; remote delivery must remain deterministic and idempotent through the domain merge layer.

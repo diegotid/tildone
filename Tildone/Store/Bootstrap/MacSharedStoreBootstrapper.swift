@@ -472,10 +472,11 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             }
             return repository!
         } catch LegacyMigrationPersistenceError.stateMissing {
-            let existingNotes = try await repository!.visibleNotes()
             let sourceURL = legacySourceURL ?? LegacyStoreFileSet.releasedShippingURL()
             if !FileManager.default.fileExists(atPath: sourceURL.path) {
-                guard existingNotes.isEmpty else { throw MacSharedStoreBootstrapError.unverifiedSharedStore }
+                try await MacLocalStoreActivationReceipt.validateOrCreate(
+                    for: repository!, descriptor: descriptor
+                )
                 return repository!
             }
             repository = nil

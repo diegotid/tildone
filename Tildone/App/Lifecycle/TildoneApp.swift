@@ -70,12 +70,7 @@ struct TildoneApp: App {
             )
             .id(ObjectIdentifier(store))
         } else if sharedStoreBootstrapper.error != nil {
-            VStack(spacing: 12) {
-                Text("Tildone could not open your notes.").font(.headline)
-                Text("Your existing notes have not been changed. Tildone needs your help before it can open them.")
-                    .foregroundStyle(.secondary)
-            }
-            .padding(24)
+            MacBootstrapFailureView()
         } else {
             Color.clear
                 .frame(width: 0, height: 0)
