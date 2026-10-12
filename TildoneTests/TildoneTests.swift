@@ -2566,6 +2566,83 @@ final class TildoneTests: XCTestCase {
         XCTAssertEqual(reopened.frameAutosaveName, compactNote.legacyWindowKey)
     }
 
+    @MainActor
+    func testFindRestoresMatchingMinimizedNotesToTheirExpandedFrames() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let createdAt = Date().addingTimeInterval(-Double.random(in: 1000...1000000))
+        let titleMatch = try await store.createNote(createdAt: createdAt)
+        try await store.renameNote(titleMatch.id, to: "Search fixture title")
+        let taskMatch = try await store.createNote(createdAt: createdAt.addingTimeInterval(1))
+        _ = try await store.addTask(to: taskMatch.id, text: "Search fixture task")
+        let nonMatch = try await store.createNote(createdAt: createdAt.addingTimeInterval(2))
+        try await store.renameNote(nonMatch.id, to: "Unrelated note")
+        let notes = [titleMatch, taskMatch, nonMatch]
+        let previousKeyWindow = NSApp.keyWindow
+        defer {
+            for note in notes {
+                NoteWindowMinimizationState.saveMinimized(false, for: note.id)
+                NSWindow.removeFrame(usingName: note.legacyWindowKey)
+            }
+            previousKeyWindow?.makeKeyAndOrderFront(nil)
+        }
+        let desktop = Desktop(store: store, noteSyncIndicatorState: .hidden, foregroundNoteID: .constant(nil))
+        let host = NSHostingView(rootView: AnyView(desktop))
+        let coordinator = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        coordinator.isReleasedWhenClosed = false
+        coordinator.contentView = host
+        coordinator.orderFront(nil)
+        defer { host.rootView = AnyView(EmptyView()); coordinator.close() }
+        func noteWindow(_ note: MacNoteSnapshot) -> NSWindow? {
+            NSApp.windows.first { $0.title == note.legacyWindowKey || $0.title == "_" + note.legacyWindowKey }
+        }
+        for _ in 0..<50 {
+            host.layoutSubtreeIfNeeded()
+            if notes.allSatisfy({ noteWindow($0)?.standardWindowButton(.miniaturizeButton)?.target is NoteWindowButtonActionController }) { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        var expandedFrames: [NoteID: NSRect] = [:]
+        for (index, note) in notes.enumerated() {
+            let window = try XCTUnwrap(noteWindow(note))
+            let visibleFrame = try XCTUnwrap(window.screen).visibleFrame
+            window.setFrame(NSRect(
+                x: visibleFrame.midX - 180 + CGFloat(index) * 30,
+                y: visibleFrame.midY - 140 + CGFloat(index) * 30,
+                width: 360 + CGFloat(index) * 20, height: 280 + CGFloat(index) * 20
+            ), display: true)
+            expandedFrames[note.id] = window.frame
+            window.makeKeyAndOrderFront(nil)
+            try await Swift.Task.sleep(for: .milliseconds(150))
+            let button = try XCTUnwrap(window.standardWindowButton(.miniaturizeButton))
+            XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(button.action), to: button.target, from: button))
+            XCTAssertTrue(NoteWindowMinimizationState.savedIsMinimized(for: note.id))
+        }
+        try await Swift.Task.sleep(for: .milliseconds(150))
+        NotificationCenter.default.post(name: .findQueryChanged, object: "Search fixture")
+        try await Swift.Task.sleep(for: .milliseconds(450))
+        for note in [titleMatch, taskMatch] {
+            let window = try XCTUnwrap(noteWindow(note))
+            XCTAssertEqual(window.frame, expandedFrames[note.id])
+            XCTAssertFalse(window.title.hasPrefix("_"))
+            XCTAssertFalse(NoteWindowMinimizationState.savedIsMinimized(for: note.id))
+            XCTAssertEqual(window.frameAutosaveName, note.legacyWindowKey)
+            XCTAssertTrue(window.isVisible)
+        }
+        let unrelatedWindow = try XCTUnwrap(noteWindow(nonMatch))
+        XCTAssertTrue(unrelatedWindow.title.hasPrefix("_"))
+        XCTAssertTrue(NoteWindowMinimizationState.savedIsMinimized(for: nonMatch.id))
+        XCTAssertFalse(unrelatedWindow.isVisible)
+        NotificationCenter.default.post(name: .findQueryChanged, object: "")
+        XCTAssertTrue(unrelatedWindow.isVisible)
+        XCTAssertTrue(unrelatedWindow.title.hasPrefix("_"))
+        for note in [titleMatch, taskMatch] {
+            XCTAssertEqual(try XCTUnwrap(noteWindow(note)).frame, expandedFrames[note.id])
+        }
+    }
+
     func testCompactDragUsesScreenCoordinatesWithoutChangingSize() {
         let frame = NSRect(x: -800, y: 240, width: 96, height: 96)
         let drag = NoteWindowMinimizationState.Drag(

@@ -18,6 +18,7 @@ extension Notification.Name {
     static let arrange = Notification.Name("arrange")
     static let arrangeMinimized = Notification.Name("arrangeMinimized")
     static let minimizeAll = Notification.Name("minimizeAll")
+    static let bringUpNote = Notification.Name("bringUpNote")
     static let bringAllUp = Notification.Name("bringAllUp")
     static let visibility = Notification.Name("visibility")
     static let noteFocusPrivacyChanged = Notification.Name("noteFocusPrivacyChanged")

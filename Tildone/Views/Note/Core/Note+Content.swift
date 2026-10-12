@@ -469,6 +469,10 @@ extension Note {
                 .exclusively(before: TapGesture().onEnded { handleBringUp() })
         )
         .onReceive(NotificationCenter.default.publisher(for: .bringAllUp)) { _ in handleBringUp() }
+        .onReceive(NotificationCenter.default.publisher(for: .bringUpNote)) { notification in
+            guard notification.object as? NoteID == noteID else { return }
+            handleBringUp()
+        }
     }
 
     private func minimizedTaskPreview(_ note: MacNoteSnapshot, foreground: Color) -> some View {

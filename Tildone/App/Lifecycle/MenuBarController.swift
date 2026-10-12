@@ -47,7 +47,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         statusItem.menu = makeMenu()
         findPopover.behavior = .transient
         findPopover.delegate = self
-        findPopover.contentViewController = NSHostingController(rootView: MacFindInputView())
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(showFindPopover),
@@ -373,41 +372,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         NSApplication.shared.activate()
         DispatchQueue.main.async { [weak self] in
             guard let self, let button = self.statusItem.button else { return }
+            guard !self.findPopover.isShown else { return }
+            // A transient popover can retain its hosted SwiftUI state after closing.
+            // Start each presentation with a fresh query and focus lifecycle.
+            self.findPopover.contentViewController = NSHostingController(rootView: MacFindInputView())
             self.findPopover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }
 
     func popoverDidClose(_ notification: Notification) {
         NotificationCenter.default.post(name: .findQueryChanged, object: "")
-    }
-}
-
-private struct MacFindInputView: View {
-    @State private var query = ""
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Find in Notes")
-                .font(.headline)
-            TextField("Search Notes and Tasks", text: $query)
-                .textFieldStyle(.roundedBorder)
-                .focused($isFocused)
-                .onChange(of: query) { _, newQuery in
-                    NotificationCenter.default.post(
-                        name: .findQueryChanged,
-                        object: newQuery.count >= 3 ? newQuery : ""
-                    )
-                }
-            Text("Enter at least 3 characters to start searching notes and tasks.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(14)
-        .frame(width: 320, alignment: .leading)
-        .onAppear { isFocused = true }
-        .onDisappear { query = "" }
     }
 }
 

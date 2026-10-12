@@ -411,8 +411,14 @@ private extension Desktop {
         }
         for note in store.notes where matchingIDs.contains(note.id) {
             guard let window = noteWindows[note.id] else { continue }
+            let wasMinimized = window.title.starts(with: "_")
+            if wasMinimized {
+                NotificationCenter.default.post(name: .bringUpNote, object: note.id)
+            }
             window.orderFrontRegardless()
-            pulse(window)
+            // Restoration can finish after this notification returns. A pulse
+            // here would capture and later reapply the old compact frame.
+            if !wasMinimized { pulse(window) }
         }
     }
 

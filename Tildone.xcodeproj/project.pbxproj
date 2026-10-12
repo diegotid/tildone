@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F11300000000000000000202 /* MacFindSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000102 /* MacFindSearchField.swift */; };
+		F11300000000000000000201 /* MacFindInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000101 /* MacFindInputView.swift */; };
 		D71E00000000000000000203 /* MacBootstrapFailureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000103 /* MacBootstrapFailureView.swift */; };
 		D71E00000000000000000202 /* NativeLocalStoreBootstrapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000102 /* NativeLocalStoreBootstrapTests.swift */; };
 		D71E00000000000000000201 /* MacLocalStoreActivationReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000101 /* MacLocalStoreActivationReceipt.swift */; };
@@ -295,6 +297,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F11300000000000000000102 /* MacFindSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindSearchField.swift; sourceTree = "<group>"; };
+		F11300000000000000000101 /* MacFindInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindInputView.swift; sourceTree = "<group>"; };
 		D71E00000000000000000103 /* MacBootstrapFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBootstrapFailureView.swift; sourceTree = "<group>"; };
 		D71E00000000000000000102 /* NativeLocalStoreBootstrapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLocalStoreBootstrapTests.swift; sourceTree = "<group>"; };
 		D71E00000000000000000101 /* MacLocalStoreActivationReceipt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacLocalStoreActivationReceipt.swift; sourceTree = "<group>"; };
@@ -826,6 +830,8 @@
 			children = (
 				D50000000000000000000103 /* CoordinatorWindowVisibility.swift */,
 				D71E00000000000000000103 /* MacBootstrapFailureView.swift */,
+				F11300000000000000000102 /* MacFindSearchField.swift */,
+				F11300000000000000000101 /* MacFindInputView.swift */,
 			);
 			path = Coordinator;
 			sourceTree = "<group>";
@@ -1639,6 +1645,8 @@
 				D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */,
 				D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */,
 				D71E00000000000000000203 /* MacBootstrapFailureView.swift in Sources */,
+				F11300000000000000000202 /* MacFindSearchField.swift in Sources */,
+				F11300000000000000000201 /* MacFindInputView.swift in Sources */,
 				D40000000000000000000201 /* MacSyncDisplayState.swift in Sources */,
 				D20000000000000000000202 /* MacSyncPresentation.swift in Sources */,
 				D20000000000000000000203 /* MacSyncStatusView.swift in Sources */,
