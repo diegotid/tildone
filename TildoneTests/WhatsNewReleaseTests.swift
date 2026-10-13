@@ -2,6 +2,7 @@ import XCTest
 import SwiftUI
 import TipKit
 import CoreImage
+import AppKit
 @testable import Tildone
 
 final class WhatsNewReleaseTests: XCTestCase {
@@ -18,6 +19,32 @@ final class WhatsNewReleaseTests: XCTestCase {
         defaults.removePersistentDomain(forName: suiteName)
         defaults = nil
         super.tearDown()
+    }
+
+    @MainActor
+    func testWelcomeWindowBecomesKeyAfterAttachment() async throws {
+        let previousKeyWindow = NSApp.keyWindow
+        let window = NSWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 320, height: 240),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer {
+            window.close()
+            previousKeyWindow?.makeKey()
+        }
+        window.contentView = MacWelcomeWindowForeground.AttachmentView()
+        for _ in 0..<20 {
+            if window.isKeyWindow && window.isVisible { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertTrue(window.isVisible)
+        XCTAssertTrue(window.isKeyWindow)
+        // Updating the welcome content must not repeatedly steal focus.
+        window.orderOut(nil)
+        window.contentView?.viewDidMoveToWindow()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertFalse(window.isVisible)
     }
 
     func testOldPendingReleaseNoteIsRetiredWithoutConsumingNewHighlights() {

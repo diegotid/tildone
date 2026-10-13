@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F13000000000000000000201 /* MacWelcomeWindowForeground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13000000000000000000101 /* MacWelcomeWindowForeground.swift */; };
 		F11300000000000000000202 /* MacFindSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000102 /* MacFindSearchField.swift */; };
 		F11300000000000000000201 /* MacFindInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000101 /* MacFindInputView.swift */; };
 		D71E00000000000000000203 /* MacBootstrapFailureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000103 /* MacBootstrapFailureView.swift */; };
@@ -297,6 +298,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F13000000000000000000101 /* MacWelcomeWindowForeground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWelcomeWindowForeground.swift; sourceTree = "<group>"; };
 		F11300000000000000000102 /* MacFindSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindSearchField.swift; sourceTree = "<group>"; };
 		F11300000000000000000101 /* MacFindInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindInputView.swift; sourceTree = "<group>"; };
 		D71E00000000000000000103 /* MacBootstrapFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBootstrapFailureView.swift; sourceTree = "<group>"; };
@@ -832,6 +834,7 @@
 			isa = PBXGroup;
 			children = (
 				D50000000000000000000103 /* CoordinatorWindowVisibility.swift */,
+				F13000000000000000000101 /* MacWelcomeWindowForeground.swift */,
 				D71E00000000000000000103 /* MacBootstrapFailureView.swift */,
 				F11300000000000000000102 /* MacFindSearchField.swift */,
 				F11300000000000000000101 /* MacFindInputView.swift */,
@@ -1648,6 +1651,7 @@
 				D50000000000000000000201 /* FocusFilterHelpStep.swift in Sources */,
 				D50000000000000000000202 /* MacNoteResolutionOptionButtonStyle.swift in Sources */,
 				D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */,
+				F13000000000000000000201 /* MacWelcomeWindowForeground.swift in Sources */,
 				D71E00000000000000000203 /* MacBootstrapFailureView.swift in Sources */,
 				F11300000000000000000202 /* MacFindSearchField.swift in Sources */,
 				F11300000000000000000201 /* MacFindInputView.swift in Sources */,

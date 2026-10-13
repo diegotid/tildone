@@ -299,6 +299,7 @@ struct TildoneApp: App {
             WhatsNewView {
                 dismissWindow(id: Id.whatsNewWindow)
             }
+            .background(MacWelcomeWindowForeground())
         }
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
