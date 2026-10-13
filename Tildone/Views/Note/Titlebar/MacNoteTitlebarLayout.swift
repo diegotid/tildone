@@ -21,6 +21,15 @@ enum MacNoteTitlebarLayout {
     static let titleControlSpacing: CGFloat = 6
     static let syncIndicatorTrailingSpacing: CGFloat = 8
 
+    // Borderless SwiftUI menus use different vertical insets before Liquid
+    // Glass. Sequoia needs four points less lift than the newer menu style.
+    static var menuControlVerticalOffset: CGFloat {
+        if #available(macOS 26.0, *) {
+            return 10
+        }
+        return 6
+    }
+
     // Reserve the cloud slot even when hidden so status changes cannot overlap
     // the title or shift the remaining controls.
     static var accessoryWidth: CGFloat {
@@ -57,7 +66,7 @@ enum MacNoteTitlebarLayout {
     static func formatControlFrame(alignedWith pickerFrame: NSRect) -> NSRect {
         NSRect(
             x: pickerFrame.minX - formatControlWidth,
-            y: pickerFrame.midY - 1,
+            y: pickerFrame.minY + menuControlVerticalOffset,
             width: formatControlWidth,
             height: controlHeight
         )
@@ -67,7 +76,7 @@ enum MacNoteTitlebarLayout {
         let focusPrivacyFrame = focusPrivacyControlFrame(alignedWith: pickerFrame)
         return NSRect(
             x: focusPrivacyFrame.minX - kindControlWidth - controlSpacing,
-            y: pickerFrame.midY - 1,
+            y: pickerFrame.minY + menuControlVerticalOffset,
             width: kindControlWidth,
             height: controlHeight
         )
@@ -77,7 +86,7 @@ enum MacNoteTitlebarLayout {
         let formatFrame = formatControlFrame(alignedWith: pickerFrame)
         return NSRect(
             x: formatFrame.minX - focusPrivacyControlWidth - controlSpacing - 2,
-            y: pickerFrame.midY - 1,
+            y: pickerFrame.minY + menuControlVerticalOffset,
             width: focusPrivacyControlWidth,
             height: controlHeight
         )

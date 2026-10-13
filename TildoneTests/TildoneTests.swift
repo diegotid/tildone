@@ -2225,7 +2225,7 @@ final class TildoneTests: XCTestCase {
         ]
         XCTAssertEqual(controls[0].midY, picker.midY, accuracy: 0.001)
         for control in controls[1...3] {
-            XCTAssertEqual(control.minY, picker.midY - 1, accuracy: 0.001)
+            XCTAssertEqual(control.minY, picker.minY + MacNoteTitlebarLayout.menuControlVerticalOffset, accuracy: 0.001)
         }
         for control in controls {
             XCTAssertGreaterThanOrEqual(control.minX, 0)
@@ -2346,7 +2346,8 @@ final class TildoneTests: XCTestCase {
                     let pickerFrame = picker.convert(picker.bounds, to: root)
                     for control in accessory.view.subviews {
                         let frame = control.convert(control.bounds, to: root)
-                        let expectedOffset: CGFloat = control === picker || control is MacNoteSyncTitlebarControl ? 0 : 10
+                        let expectedOffset: CGFloat = control === picker || control is MacNoteSyncTitlebarControl
+                            ? 0 : MacNoteTitlebarLayout.menuControlVerticalOffset
                         XCTAssertEqual(frame.midY, pickerFrame.midY + expectedOffset, accuracy: 0.01)
                         XCTAssertGreaterThanOrEqual(frame.minX, root.bounds.maxX - MacNoteTitlebarLayout.accessoryWidth)
                     }
