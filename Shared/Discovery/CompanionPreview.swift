@@ -28,8 +28,12 @@ struct CompanionPreview: View {
             if showsPhone {
                 Image(systemName: "icloud")
                     .font(.system(size: 33, weight: .regular))
+                    #if os(macOS)
+                    .foregroundStyle(.primary)
+                    #else
                     .foregroundStyle(.white.opacity(0.85))
                     .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+                    #endif
                     .offset(x: 96, y: -2)
                 phoneBezel
                     .scaleEffect(0.9)
