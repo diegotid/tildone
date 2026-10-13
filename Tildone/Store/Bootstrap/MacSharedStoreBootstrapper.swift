@@ -101,9 +101,6 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         model.localRepository = localRepository
         model.accountRepository = accountRepository
         model.accountWorkspaceID = workspaceID
-        if resolvedAccount == nil {
-            model.cloudContainer = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
-        }
         model.isolatedAccountSnapshot = resolvedAccount ?? CloudAccountSnapshot(state: .available, workspaceID: workspaceID)
         model.hasResolvedAccountWorkspace = true
         model.transportState = .paused
@@ -355,8 +352,9 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         guard !isTransportActionInProgress,
               let localRepository,
               let accountRepository,
-              let accountWorkspaceID,
-              let container = cloudContainer else { return }
+              let accountWorkspaceID else { return }
+        let container = cloudContainer
+        guard container != nil || hasIsolatedAccountContext else { return }
         store?.discardUndo()
         isTransportActionInProgress = true
         didJustChooseNotesOnMac = false
@@ -569,7 +567,15 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         return await CloudAccountResolver(environment: Self.cloudKitEnvironment).resolve(container: container)
     }
 
-    private func revalidateAccount(workspaceID: UUID, container: CKContainer) async -> Bool {
+    private var hasIsolatedAccountContext: Bool {
+#if DEBUG
+        Self.isTestProcess && isolatedAccountSnapshot != nil
+#else
+        false
+#endif
+    }
+
+    private func revalidateAccount(workspaceID: UUID, container: CKContainer?) async -> Bool {
         let account = await resolveAccount(container: container)
         guard account.state == .available, account.workspaceID == workspaceID else {
             await stopCoordinatorForRepositoryTransition()
@@ -592,7 +598,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         _ repository: TildoneRepository,
         isAccountRepository: Bool,
         workspaceID: UUID,
-        container: CKContainer
+        container: CKContainer?
     ) async throws {
         let nextStore: MacSharedStore
         if selectedRepository === repository, let store {
@@ -625,6 +631,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             syncStatus = await pausedStatus(repository: repository)
             return
         }
+        guard let container else { throw PersistenceError.invalidWorkspace }
         try await startCoordinator(
             repository: repository,
             workspaceID: workspaceID,
