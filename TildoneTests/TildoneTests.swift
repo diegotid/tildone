@@ -2038,6 +2038,34 @@ final class TildoneTests: XCTestCase {
     @MainActor
     func testMacTransportIsDisabledUnderTests() {
         XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)
+        XCTAssertEqual(MacSharedStoreBootstrapper.cloudKitEnvironment, .development)
+    }
+
+    @MainActor
+    func testMacNoteLocationAndAdoptionPreferencesDoNotCrossCloudEnvironments() throws {
+        let suite = "TildoneEnvironmentPreferences.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let development = CloudAccountResolver.opaqueWorkspaceID(
+            containerIdentifier: TildoneCloudSchema.containerIdentifier,
+            userRecordName: "same-private-user", environment: .development
+        )
+        let production = CloudAccountResolver.opaqueWorkspaceID(
+            containerIdentifier: TildoneCloudSchema.containerIdentifier,
+            userRecordName: "same-private-user", environment: .production
+        )
+        let locations = MacNoteLocationChoiceStore(defaults: defaults)
+        let adoptions = MacLocalAdoptionStateStore(defaults: defaults)
+        locations.set(.thisMac, for: development)
+        adoptions.setFingerprint("synthetic-development-fingerprint", for: development)
+        XCTAssertNil(locations.choice(for: production))
+        XCTAssertNil(adoptions.fingerprint(for: production))
+        locations.set(.iCloud, for: production)
+        adoptions.setFingerprint("synthetic-production-fingerprint", for: production)
+        XCTAssertEqual(locations.choice(for: development), .thisMac)
+        XCTAssertEqual(adoptions.fingerprint(for: development), "synthetic-development-fingerprint")
+        XCTAssertEqual(locations.choice(for: production), .iCloud)
+        XCTAssertEqual(adoptions.fingerprint(for: production), "synthetic-production-fingerprint")
     }
 
     @MainActor

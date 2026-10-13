@@ -14,6 +14,11 @@ public enum CloudAccountState: String, Codable, Hashable, Sendable {
     case couldNotDetermine
 }
 
+public enum CloudKitEnvironment: String, Hashable, Sendable {
+    case development = "Development"
+    case production = "Production"
+}
+
 public struct CloudAccountSnapshot: Hashable, Sendable {
     public let state: CloudAccountState
     /// Stable, content-free workspace key derived from CloudKit's private user
@@ -27,7 +32,11 @@ public struct CloudAccountSnapshot: Hashable, Sendable {
 }
 
 public struct CloudAccountResolver: Sendable {
-    public init() {}
+    public let environment: CloudKitEnvironment
+
+    public init(environment: CloudKitEnvironment) {
+        self.environment = environment
+    }
 
     public func resolve(
         container: CKContainer = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
@@ -40,7 +49,8 @@ public struct CloudAccountResolver: Sendable {
                     state: .available,
                     workspaceID: Self.opaqueWorkspaceID(
                         containerIdentifier: TildoneCloudSchema.containerIdentifier,
-                        userRecordName: userID.recordName
+                        userRecordName: userID.recordName,
+                        environment: environment
                     )
                 )
             case .noAccount:
@@ -61,9 +71,16 @@ public struct CloudAccountResolver: Sendable {
 
     public static func opaqueWorkspaceID(
         containerIdentifier: String,
-        userRecordName: String
+        userRecordName: String,
+        environment: CloudKitEnvironment = .development
     ) -> UUID {
-        let digest = SHA256.hash(data: Data((containerIdentifier + "\u{0}" + userRecordName).utf8))
+        // Preserve the existing Development UUID, paths and preferences. Give
+        // Production a distinct namespace even if CloudKit returns the same
+        // private user ID, so it cannot reuse Development cursors or receipts.
+        let namespace = environment == .development
+            ? containerIdentifier
+            : containerIdentifier + "\u{0}" + environment.rawValue
+        let digest = SHA256.hash(data: Data((namespace + "\u{0}" + userRecordName).utf8))
         var bytes = Array(digest.prefix(16))
         // RFC 4122-compatible deterministic UUID namespace/version bits.
         bytes[6] = (bytes[6] & 0x0f) | 0x50

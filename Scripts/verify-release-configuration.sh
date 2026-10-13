@@ -36,6 +36,27 @@ assert_setting() {
 assert_scheme "Tildone"
 assert_scheme "Tildone iOS"
 
+assert_entitlement() {
+  local file=$1
+  local key=$2
+  local expected=$3
+  local actual
+  actual=$(/usr/libexec/PlistBuddy -c "Print :$key" "$repository_root/$file")
+  [[ "$actual" = "$expected" ]] || {
+    echo "incorrect entitlement $key in $file" >&2
+    exit 1
+  }
+}
+
+assert_entitlement Tildone/Tildone.entitlements com.apple.developer.icloud-container-environment Development
+assert_entitlement TildoneiOS/TildoneiOS.entitlements com.apple.developer.icloud-container-environment Development
+assert_entitlement Tildone/Tildone.Release.entitlements com.apple.developer.icloud-container-environment Production
+assert_entitlement TildoneiOS/TildoneiOS.Release.entitlements com.apple.developer.icloud-container-environment Production
+assert_entitlement Tildone/Tildone.entitlements com.apple.developer.aps-environment development
+assert_entitlement TildoneiOS/TildoneiOS.entitlements aps-environment development
+assert_entitlement Tildone/Tildone.Release.entitlements com.apple.developer.aps-environment production
+assert_entitlement TildoneiOS/TildoneiOS.Release.entitlements aps-environment production
+
 cd "$repository_root"
 CLANG_MODULE_CACHE_PATH="$scratch/clang" \
 SWIFT_MODULECACHE_PATH="$scratch/swift" \
@@ -51,12 +72,36 @@ SWIFT_MODULECACHE_PATH="$scratch/swift" \
 
 assert_setting "$scratch/mac-settings.txt" 'CONFIGURATION = Release'
 assert_setting "$scratch/mac-settings.txt" 'PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone'
-assert_setting "$scratch/mac-settings.txt" 'CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.entitlements'
+assert_setting "$scratch/mac-settings.txt" 'CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.Release.entitlements'
 assert_setting "$scratch/mac-settings.txt" 'MACOSX_DEPLOYMENT_TARGET = 14.0'
 assert_setting "$scratch/ios-settings.txt" 'CONFIGURATION = Release'
 assert_setting "$scratch/ios-settings.txt" 'PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone'
-assert_setting "$scratch/ios-settings.txt" 'CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements'
+assert_setting "$scratch/ios-settings.txt" 'CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.Release.entitlements'
 assert_setting "$scratch/ios-settings.txt" 'IPHONEOS_DEPLOYMENT_TARGET = 17.0'
+
+for platform in mac ios; do
+  if [[ "$platform" = mac ]]; then
+    scheme=Tildone
+    destination='generic/platform=macOS'
+    entitlement=Tildone/Tildone.entitlements
+  else
+    scheme='Tildone iOS'
+    destination='generic/platform=iOS'
+    entitlement=TildoneiOS/TildoneiOS.entitlements
+  fi
+  CLANG_MODULE_CACHE_PATH="$scratch/clang" \
+  SWIFT_MODULECACHE_PATH="$scratch/swift" \
+  /usr/bin/xcodebuild -project "$project" -scheme "$scheme" -configuration Debug \
+    -destination "$destination" -derivedDataPath "$scratch/$platform" \
+    CODE_SIGNING_ALLOWED=NO -showBuildSettings > "$scratch/$platform-debug-settings.txt"
+  assert_setting "$scratch/$platform-debug-settings.txt" 'CONFIGURATION = Debug'
+  assert_setting "$scratch/$platform-debug-settings.txt" "CODE_SIGN_ENTITLEMENTS = $entitlement"
+  /usr/bin/grep -Eq '^[[:space:]]*SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*DEBUG' \
+    "$scratch/$platform-debug-settings.txt" || {
+    echo "a Debug app target does not define DEBUG" >&2
+    exit 1
+  }
+done
 
 if /usr/bin/grep -Eq '^[[:space:]]*SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*DEBUG' \
   "$scratch/mac-settings.txt" "$scratch/ios-settings.txt"; then

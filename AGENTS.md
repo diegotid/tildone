@@ -24,6 +24,7 @@ Every chat/task that adds or changes user-visible text must complete its localiz
 - Shared user content sync uses `CKSyncEngine`, the private database of `iCloud.studio.cuatro.tildone`, and the `TildoneUserData` custom zone. Do not add public-database content or speculative record types.
 - A durable outbox mutation is acknowledged only after CloudKit confirms that exact save; remote delivery must remain deterministic and idempotent through the domain merge layer.
 - Never expose or reuse one confirmed iCloud account's cached workspace for another account. Confirmed sign-out, account switch, and custom-zone reset are safety boundaries that freeze the current sync session.
+- Development keeps its historical opaque workspace UUID and paths. Production uses a separate environment namespace even when CloudKit supplies the same private user record ID. Resolve accounts with the explicit build-selected environment on both platforms; never reuse Development stores, engine state, receipts or account preferences in Production. A Development-to-Production content transfer requires explicit approval and independent preservation verification; selecting Production never performs that transfer.
 - Never auto-upload a local-only workspace or auto-reseed a deleted custom zone. Both operations require an explicit approved recovery/adoption policy.
 - Keep titles and task text out of record names, logs, diagnostics, sync status, and notification payloads.
 - Debug transport starts automatically outside tests. XCTest/UI-test launches are transport-off, and both macOS and iOS Release builds are explicitly transport-off until a later authorized stage. Workspace selection and local persistence must not be changed merely to pause transport.
@@ -395,9 +396,9 @@ The sync status surfaces and some controls have explicit accessibility modifiers
 - CloudKit service and `iCloud.studio.cuatro.tildone` container identifiers.
 - The Development CloudKit container environment.
 
-`TildoneiOS/TildoneiOS.entitlements` declares the same Development CloudKit container and Development APNs environment. The iPhone plist declares `remote-notification`. These are Development source capabilities, not evidence of effective Production signing or runtime success.
+`TildoneiOS/TildoneiOS.entitlements` declares the same Development CloudKit container and Development APNs environment. Debug continues to select these existing files. Release selects `Tildone/Tildone.Release.entitlements` and `TildoneiOS/TildoneiOS.Release.entitlements`, with the same capabilities/container and explicit Production CloudKit/production APNs values. Release transport remains OFF during preparation. The iPhone plist declares `remote-notification`. Source selections do not prove effective signed entitlements, distribution provisioning or Production runtime success.
 
-Do not remove or expand entitlements casually: compare Debug/Release signing, App Store provisioning, Focus Filters, launch at login, StoreKit receipts, and the intended sync design. The iOS and Mac application targets now use the same bundle ID for the intended universal purchase, with separate target entitlements. Both use the Development CloudKit container; Production schema/deployment remains separately authorized.
+Do not remove or expand entitlements casually: compare Debug/Release signing, App Store provisioning, Focus Filters, launch at login, StoreKit receipts, and the intended sync design. The iOS and Mac application targets use the same bundle ID for the intended universal purchase, with separate platform and configuration entitlements. Automatic signing is retained; the Mac Release configuration has no fixed Development identity override. Distribution signing/profile resolution, archives and uploads still require separate approval; unsigned builds do not qualify those actions.
 
 Both app targets embed `PrivacyInfo.xcprivacy` to declare app-local preferences and elapsed-event timing; the Mac app also declares metadata inspection for its retained local store. No third-party SDK is linked. Required-reason declarations do not settle App Store data-collection answers or replace the published privacy policy. User task text should remain out of diagnostics and network payloads except the explicitly chosen private sync system. Several product/README links use plain HTTP; review transport/security before relying on them for new functionality.
 
@@ -499,7 +500,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 
 - The released legacy models still use dates/indexes internally, but shared notes/tasks have stable UUIDs, versioned schemas, fractional order, tombstones, and frozen released/V1/V2 fixtures.
 - Any action that recreates or reseeds a reset Production zone remains an unresolved policy decision. Current containment supplies preservation guidance, not that action.
-- Production schema/signing/provisioning/privacy/distribution behavior is unverified and unauthorized.
+- Production account/schema metadata and local Release configuration preparation have been separately approved. Effective Production signing/provisioning, live runtime and distribution artifacts remain unverified and require their exact later authorization.
 - The legacy Mac view/model implementation still contains direct persistence and `fatalError` paths outside the shared repository boundary.
 - `Note.swift` and `Desktop.swift` mix presentation, domain operations, persistence, timers, event routing, and AppKit lifecycle.
 - Global stringly typed `NotificationCenter` events and window-title identity are fragile.
@@ -510,7 +511,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 - The title prefix identifies compact windows at runtime. A local per-note preference restores minimized state and compact position across launches, while AppKit frame autosave preserves the expanded restoration frame.
 - Accessibility is largely unimplemented for custom controls and visuals; focus rings are globally suppressed.
 - Localization gaps include color help labels; the catalog and release-note content require manual care.
-- App entitlements intentionally remain Development-only; effective Production capabilities have not been inspected or configured.
+- Production capabilities and managed signing certificates have been inspected account-side, and Release source selects Production entitlements. Effective signed Production capabilities and runtime remain unverified; Release transport stays OFF.
 - Plain HTTP links remain in About, update notes, previews, and README.
 - The app target includes preview mocks; there is no dedicated shared/test support module.
 - There is no CI, linting, formatting, or authorized App Store release pipeline.

@@ -8,6 +8,15 @@
 public enum TransportBuildMode: Hashable, Sendable {
     case debug
     case release
+
+    /// Matches the platform's Debug/Release entitlement selection. This does
+    /// not enable transport; Release remains off during preparation.
+    public var cloudKitEnvironment: CloudKitEnvironment {
+        switch self {
+        case .debug: .development
+        case .release: .production
+        }
+    }
 }
 
 public enum TransportDefaultPolicy {

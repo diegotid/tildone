@@ -313,6 +313,7 @@
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		A10000000000000000000015 /* TildoneiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TildoneiOS.entitlements; sourceTree = "<group>"; };
+		88522A4517412304BCC11359 /* TildoneiOS.Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TildoneiOS.Release.entitlements; sourceTree = "<group>"; };
 		A10000000000000000000016 /* TildoneiOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneiOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000017 /* TildoneiOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* TildoneiOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneiOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -450,6 +451,7 @@
 		F166704C2AF711ED000B76A5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F166704F2AF711ED000B76A5 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F16670512AF711ED000B76A5 /* Tildone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tildone.entitlements; sourceTree = "<group>"; };
+		9A180B83DEC0661F115A141A /* Tildone.Release.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tildone.Release.entitlements; sourceTree = "<group>"; };
 		F16670562AF711EE000B76A5 /* TildoneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F166705A2AF711EE000B76A5 /* TildoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneTests.swift; sourceTree = "<group>"; };
 		F16670602AF711EE000B76A5 /* TildoneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TildoneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -594,6 +596,7 @@
 				F12F00000000000000000012 /* PrivacyInfo.xcprivacy */,
 				A1000000000000000000001A /* Info.plist */,
 				A10000000000000000000015 /* TildoneiOS.entitlements */,
+				88522A4517412304BCC11359 /* TildoneiOS.Release.entitlements */,
 				A10000000000000000000054 /* Preview Content */,
 			);
 			path = TildoneiOS;
@@ -1093,6 +1096,7 @@
 				F13428132B535EA40045343D /* Localizable.xcstrings */,
 				F12F00000000000000000011 /* PrivacyInfo.xcprivacy */,
 				F16670512AF711ED000B76A5 /* Tildone.entitlements */,
+				9A180B83DEC0661F115A141A /* Tildone.Release.entitlements */,
 				F16670732AF7122F000B76A5 /* Models */,
 				F16670742AF71273000B76A5 /* Views */,
 				F1D300192B51F16A00654241 /* Services */,
@@ -1807,7 +1811,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = TildoneIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TildoneiOS/Preview Content\"";
@@ -2066,8 +2070,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = TildoneIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_ENTITLEMENTS = Tildone/Tildone.Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 24;

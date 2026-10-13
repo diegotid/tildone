@@ -8,6 +8,10 @@ import Foundation
 import TildoneSync
 
 enum TildoneiOSSyncBootstrapper {
+    static var cloudKitEnvironment: CloudKitEnvironment {
+        compiledBuildMode.cloudKitEnvironment
+    }
+
     static var featureEnabled: Bool {
         TransportDefaultPolicy.isEnabled(
             buildMode: compiledBuildMode,

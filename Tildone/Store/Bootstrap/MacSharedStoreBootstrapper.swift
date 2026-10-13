@@ -134,6 +134,10 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         )
     }
 
+    static var cloudKitEnvironment: CloudKitEnvironment {
+        compiledBuildMode.cloudKitEnvironment
+    }
+
     var canControlTransport: Bool {
         Self.transportEnabledByDefault && hasResolvedAccountWorkspace && isUsingAccountWorkspace
     }
@@ -156,7 +160,8 @@ final class MacSharedStoreBootstrapper: ObservableObject {
 
                 let container = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
                 self.cloudContainer = container
-                let account = await CloudAccountResolver().resolve(container: container)
+                let account = await CloudAccountResolver(environment: Self.cloudKitEnvironment)
+                    .resolve(container: container)
                 guard account.state == .available, let workspaceID = account.workspaceID else {
                     self.syncStatus = Self.status(for: account.state)
                     let store = MacSharedStore(repository: localRepository)
@@ -275,7 +280,8 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         SyncDiagnostics.boundary(.resumeRequested, count: 1)
         isTransportActionInProgress = true
         Swift.Task {
-            let account = await CloudAccountResolver().resolve(container: container)
+            let account = await CloudAccountResolver(environment: Self.cloudKitEnvironment)
+                .resolve(container: container)
             guard account.state == .available, account.workspaceID == workspaceID else {
                 invalidateForAccountChange()
                 isTransportActionInProgress = false
@@ -560,7 +566,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         guard let container else {
             return CloudAccountSnapshot(state: .couldNotDetermine, workspaceID: nil)
         }
-        return await CloudAccountResolver().resolve(container: container)
+        return await CloudAccountResolver(environment: Self.cloudKitEnvironment).resolve(container: container)
     }
 
     private func revalidateAccount(workspaceID: UUID, container: CKContainer) async -> Bool {

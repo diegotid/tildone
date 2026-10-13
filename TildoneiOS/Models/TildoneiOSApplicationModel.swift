@@ -79,7 +79,7 @@ final class TildoneiOSApplicationModel: ObservableObject {
     init(
         repositoryFactory: @escaping RepositoryFactory = TildoneiOSApplicationModel.makeRepository,
         accountResolver: @escaping () async -> CloudAccountSnapshot = {
-            await CloudAccountResolver().resolve()
+            await CloudAccountResolver(environment: TildoneiOSSyncBootstrapper.cloudKitEnvironment).resolve()
         },
         synchronizationEnabled: Bool = TildoneiOSSyncBootstrapper.featureEnabled,
         transportStateStore: SyncTransportStateStore = SyncTransportStateStore(),
