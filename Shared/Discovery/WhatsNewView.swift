@@ -70,29 +70,27 @@ struct WhatsNewView: View {
             Spacer(minLength: 12)
 
             Divider()
-            HStack(spacing: 12) {
-                Menu("Close") {
-                    Button("Show again next launch", action: close)
-                        .accessibilityIdentifier("whats-new-remind")
-                    Button("Don't show until next version") {
-                        WhatsNewRelease.suppressUntilNextVersion()
-                        close()
-                    }
-                    .accessibilityIdentifier("whats-new-suppress")
-                }
-                .accessibilityIdentifier("whats-new-close")
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-            Button("Get Tildone for iPhone") { openURL(CompanionAppLink.appStore) }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .tint(.accentColor)
-                .accessibilityIdentifier("whats-new-get-iphone")
-                Spacer()
+            HStack(spacing: 8) {
+                closeControl
+                    .fixedSize()
+                Button("Get Tildone for iPhone") { openURL(CompanionAppLink.appStore) }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(.accentColor)
+                    .fixedSize()
+                    .accessibilityIdentifier("whats-new-get-iphone")
+                Spacer(minLength: 0)
+                Text("\(stepIndex + 1) of \(WhatsNewRelease.steps.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                    .accessibilityIdentifier("whats-new-progress")
+                Spacer(minLength: 0)
                 if stepIndex > 0 {
                     Button("Back") { navigate(to: stepIndex - 1) }
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
+                        .fixedSize()
                         .accessibilityIdentifier("whats-new-back")
                 }
                 Button(primaryActionTitle) {
@@ -103,15 +101,12 @@ struct WhatsNewView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
+                .fixedSize()
                 .accessibilityIdentifier(isLastStep ? "whats-new-done" : "whats-new-next")
                 .keyboardShortcut(.defaultAction)
             }
-            .overlay {
-                Text("\(stepIndex + 1) of \(WhatsNewRelease.steps.count)")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("whats-new-progress")
-            }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 24)
         }
         .onAppear { stepIndex = WhatsNewRelease.steps.firstIndex(of: startingStep) ?? 0 }
         .onExitCommand(perform: close)
@@ -119,6 +114,28 @@ struct WhatsNewView: View {
         #if os(macOS)
         .background(WindowChromeHider())
         #endif
+    }
+
+    private var closeControl: some View {
+        Menu("Close") { closeActions }
+            .menuStyle(.button)
+            .accessibilityIdentifier("whats-new-close")
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+    }
+
+    private var closeActions: some View {
+        Group {
+            Button("Show again next launch") {
+                close()
+            }
+            .accessibilityIdentifier("whats-new-remind")
+            Button("Don't show until next version") {
+                WhatsNewRelease.suppressUntilNextVersion()
+                close()
+            }
+            .accessibilityIdentifier("whats-new-suppress")
+        }
     }
 
     #if os(macOS)

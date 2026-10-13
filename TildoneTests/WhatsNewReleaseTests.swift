@@ -161,6 +161,7 @@ final class WhatsNewReleaseTests: XCTestCase {
             for step in WhatsNewRelease.steps {
                 let view = WhatsNewView(startingAt: step, close: {})
                     .environment(\.locale, Locale(identifier: language))
+                    .background(Color(nsColor: .windowBackgroundColor))
                 let host = NSHostingView(rootView: view)
                 let window = NSWindow(contentRect: NSRect(x: -10_000, y: -10_000, width: 760, height: 700),
                                       styleMask: .borderless, backing: .buffered, defer: false)
