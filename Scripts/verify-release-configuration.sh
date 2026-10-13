@@ -78,6 +78,10 @@ assert_setting "$scratch/ios-settings.txt" 'CONFIGURATION = Release'
 assert_setting "$scratch/ios-settings.txt" 'PRODUCT_BUNDLE_IDENTIFIER = studio.cuatro.tildone'
 assert_setting "$scratch/ios-settings.txt" 'CODE_SIGN_ENTITLEMENTS = TildoneiOS/TildoneiOS.Release.entitlements'
 assert_setting "$scratch/ios-settings.txt" 'IPHONEOS_DEPLOYMENT_TARGET = 17.0'
+assert_setting "$scratch/mac-settings.txt" 'MARKETING_VERSION = 2.0'
+assert_setting "$scratch/mac-settings.txt" 'CURRENT_PROJECT_VERSION = 25'
+assert_setting "$scratch/ios-settings.txt" 'MARKETING_VERSION = 1.0'
+assert_setting "$scratch/ios-settings.txt" 'CURRENT_PROJECT_VERSION = 1'
 
 for platform in mac ios; do
   if [[ "$platform" = mac ]]; then

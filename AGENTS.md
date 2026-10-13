@@ -109,7 +109,7 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - macOS deployment target: macOS 14.0 in project and target configurations, matching the App Store listing.
 - Targets: `Tildone`, `TildoneTests`, and `TildoneUITests` for macOS; separate `TildoneiOS`, `TildoneiOSTests`, and `TildoneiOSUITests` targets for iOS.
 - Mac and iOS application bundle ID: `studio.cuatro.tildone`, for one App Store app record and universal purchase. The test bundles remain distinct.
-- Version in the project: marketing version 1.6.0, build 24.
+- Mac version in the project: marketing version 2.0, build 25; iPhone version 1.0, build 1. Released Mac 1.6.0/build 24 remains the historical compatibility reference.
 - Signing: automatic signing with team `F6HFAVTS49`; hardened runtime enabled.
 - External dependencies: none. Do not add one when an Apple framework or small local implementation suffices; any dependency is a deliberate product/maintenance decision.
 - iOS minimum version: iOS 17.0 in the current project.
