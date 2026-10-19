@@ -2038,7 +2038,11 @@ final class TildoneTests: XCTestCase {
     @MainActor
     func testMacTransportIsDisabledUnderTests() {
         XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)
+#if DEBUG
         XCTAssertEqual(MacSharedStoreBootstrapper.cloudKitEnvironment, .development)
+#else
+        XCTAssertEqual(MacSharedStoreBootstrapper.cloudKitEnvironment, .production)
+#endif
     }
 
     @MainActor

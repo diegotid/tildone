@@ -508,7 +508,11 @@ final class TildoneiOSTests: XCTestCase {
 
     func testIPhoneTransportIsDisabledUnderTests() {
         XCTAssertFalse(TildoneiOSSyncBootstrapper.featureEnabled)
+#if DEBUG
         XCTAssertEqual(TildoneiOSSyncBootstrapper.cloudKitEnvironment, .development)
+#else
+        XCTAssertEqual(TildoneiOSSyncBootstrapper.cloudKitEnvironment, .production)
+#endif
     }
 
     func testLaunchKeepsEmptyStatePendingUntilWorkspaceCheckCompletes() async {

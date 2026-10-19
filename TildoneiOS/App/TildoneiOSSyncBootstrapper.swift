@@ -28,14 +28,11 @@ enum TildoneiOSSyncBootstrapper {
     }
 
     static var isTestProcess: Bool {
-#if DEBUG
         let environment = ProcessInfo.processInfo.environment
-        return environment["XCTestConfigurationFilePath"] != nil ||
+        return environment["TILDONE_UI_TESTING"] == "1" ||
+            environment["XCTestConfigurationFilePath"] != nil ||
             environment["XCTestBundlePath"] != nil ||
             environment["XCInjectBundleInto"] != nil ||
             NSClassFromString("XCTestCase") != nil
-#else
-        false
-#endif
     }
 }

@@ -704,7 +704,6 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     }
 
     private static var isTestProcess: Bool {
-#if DEBUG
         let environment = ProcessInfo.processInfo.environment
         return environment["TILDONE_TEST_USE_IN_MEMORY_SHARED"] == "1" ||
             ProcessInfo.processInfo.arguments.contains("--tildone-ui-test") ||
@@ -712,9 +711,6 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             environment["XCTestBundlePath"] != nil ||
             environment["XCInjectBundleInto"] != nil ||
             NSClassFromString("XCTestCase") != nil
-#else
-        false
-#endif
     }
 
     private static var compiledBuildMode: TransportBuildMode {
