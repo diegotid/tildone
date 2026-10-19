@@ -2,7 +2,7 @@
 
 ## Scope of this guide
 
-This file guides AI-assisted work on the Tildone macOS app, iPhone companion, shared local store, and Development-only CloudKit transport. It reflects the shared-store architecture while retaining released macOS 1.6.0 (build 24) compatibility. Keep statements labelled **Unresolved** or **Uncertain** as decisions, not requirements.
+This file guides AI-assisted work on the Tildone macOS app, iPhone companion, shared local store, and explicitly selected Development/Production CloudKit transport. It reflects the shared-store architecture while retaining released macOS 1.6.0 (build 24) compatibility. Keep statements labelled **Unresolved** or **Uncertain** as decisions, not requirements.
 
 Before changing code, inspect the working tree. This repository may contain in-progress Xcode or asset changes; preserve unrelated work. When asked to commit, commit all uncommitted changes separately, with one well-named commit per feature or user request.
 
@@ -31,7 +31,7 @@ Every chat/task that adds or changes user-visible text must complete its localiz
 - Development keeps its historical opaque workspace UUID and paths. Production uses a separate environment namespace even when CloudKit supplies the same private user record ID. Resolve accounts with the explicit build-selected environment on both platforms; never reuse Development stores, engine state, receipts or account preferences in Production. A Development-to-Production content transfer requires explicit approval and independent preservation verification; selecting Production never performs that transfer.
 - Never auto-upload a local-only workspace or auto-reseed a deleted custom zone. Both operations require an explicit approved recovery/adoption policy.
 - Keep titles and task text out of record names, logs, diagnostics, sync status, and notification payloads.
-- Debug transport starts automatically outside tests. XCTest/UI-test launches are transport-off, and both macOS and iOS Release builds are explicitly transport-off until a later authorized stage. Workspace selection and local persistence must not be changed merely to pause transport.
+- Both platform Debug and Release transports default to active outside tests, subject to the installation-local account pause preference and account safety gates. Debug selects Development; Release selects Production. XCTest/UI-test launches remain transport-off. Workspace selection and local persistence must not be changed merely to pause transport. Source enablement does not authorize signing, installation, Production operations, upload, submission or publication.
 - Active/paused transport intent is an installation-local preference keyed by the opaque account workspace UUID. Pausing retains that account repository, outbox, tombstones, and serialized engine state and performs no CloudKit send/fetch; resuming revalidates the account before reconstructing the coordinator and draining durable work.
 - Mac account presentation is revalidated independently of transport on CloudKit account-change notifications and application/note activation. Confirmed sign-out, switch or restriction invalidates cached account presentation even while paused; transient account-service uncertainty retains offline work. These identity checks never resume paused transport or adopt/reseed content.
 - The current Development contract is `TDNote` V1/V2/V3/V4, `TDTask` V1/V2/V3, and advisory `TDClient` V1 in the private custom zone. Reconcile field changes with `DevelopmentCloudKitContractManifest` and its generator/exact-key tests.
@@ -295,9 +295,9 @@ The iPhone companion now supports full note/task CRUD, reordering, completion, o
 
 Synchronization is implemented as a local-first SwiftData replica plus a durable transport-neutral outbox and `CKSyncEngine`; automatic SwiftData CloudKit mirroring remains forbidden. Stable UUIDs, field-level Lamport versions, fractional order tokens, lifecycle tombstones, account-keyed workspaces, custom-zone reset latching, and remote Mac/iPhone presentation refresh are existing contracts.
 
-Current Development-only constraints:
+Current synchronization constraints:
 
-1. Debug transport is automatic outside test processes. Release transport is off on both platforms; enabling shipping transport is not authorized by source entitlement presence.
+1. Both platform Debug and Release transports default to active outside test processes, subject to persisted account pause and safety gates. Tests remain transport-off. Environment selection remains Debug Development / Release Production. Any live qualification or distribution action still requires its separately approved scope; source defaults and entitlement presence are not runtime evidence.
 2. Mac local-only adoption and note-location changes are explicit and confirmation-gated. An empty account can receive a retained-source copy. When both locations contain notes, the user may combine them through the established stable-ID field merge, show iCloud notes, or keep showing Mac notes; all three retain both repositories. The account is revalidated before any account operation, and no choice may auto-delete, reset, or overwrite either repository.
 3. Transport pause retains the selected account workspace. The compact Mac status surface exposes active, paused, and attention states without user content. Note-location review and confirmation replace the status window's content in place rather than opening a second window. When the user explicitly chooses Mac notes, each note shows a neutral slashed-cloud button beside the color picker; it states that the note is only on this Mac and opens the existing note-location choices. This indicator is not used for transport pause. The menu-bar item retains the Tildone icon and overlays an attention badge when needed. Zone-reset and incompatible-data states provide preservation guidance only; no automatic or owner-approved destructive recovery action is defined.
 4. Release/update system notes, window geometry, minimized state, opacity, arrangement, launch-at-login, and Mac Focus behavior remain installation-local.
@@ -400,7 +400,7 @@ The sync status surfaces and some controls have explicit accessibility modifiers
 - CloudKit service and `iCloud.studio.cuatro.tildone` container identifiers.
 - The Development CloudKit container environment.
 
-`TildoneiOS/TildoneiOS.entitlements` declares the same Development CloudKit container and Development APNs environment. Debug continues to select these existing files. Release selects `Tildone/Tildone.Release.entitlements` and `TildoneiOS/TildoneiOS.Release.entitlements`, with the same capabilities/container and explicit Production CloudKit/production APNs values. Release transport remains OFF during preparation. The iPhone plist declares `remote-notification`. Source selections do not prove effective signed entitlements, distribution provisioning or Production runtime success.
+`TildoneiOS/TildoneiOS.entitlements` declares the same Development CloudKit container and Development APNs environment. Debug continues to select these existing files. Release selects `Tildone/Tildone.Release.entitlements` and `TildoneiOS/TildoneiOS.Release.entitlements`, with the same capabilities/container and explicit Production CloudKit/production APNs values. Release transport defaults to active outside tests, subject to persisted pause and account safety gates. The iPhone plist declares `remote-notification`. Source selections do not prove effective signed entitlements, distribution provisioning or Production runtime success.
 
 Do not remove or expand entitlements casually: compare Debug/Release signing, App Store provisioning, Focus Filters, launch at login, StoreKit receipts, and the intended sync design. The iOS and Mac application targets use the same bundle ID for the intended universal purchase, with separate platform and configuration entitlements. Automatic signing is retained; the Mac Release configuration has no fixed Development identity override. Distribution signing/profile resolution, archives and uploads still require separate approval; unsigned builds do not qualify those actions.
 
@@ -504,7 +504,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 
 - The released legacy models still use dates/indexes internally, but shared notes/tasks have stable UUIDs, versioned schemas, fractional order, tombstones, and frozen released/V1/V2 fixtures.
 - Any action that recreates or reseeds a reset Production zone remains an unresolved policy decision. Current containment supplies preservation guidance, not that action.
-- Production account/schema metadata and local Release configuration preparation have been separately approved. Effective Production signing/provisioning, live runtime and distribution artifacts remain unverified and require their exact later authorization.
+- Accepted Production metadata/schema and scoped Mac runtime qualification retain their documented evidence. Current physical iPhone/Mac–iPhone qualification, distribution/APNs runtime and exact final artifact provenance require their own evidence and separately approved execution scopes.
 - The legacy Mac view/model implementation still contains direct persistence and `fatalError` paths outside the shared repository boundary.
 - `Note.swift` and `Desktop.swift` mix presentation, domain operations, persistence, timers, event routing, and AppKit lifecycle.
 - Global stringly typed `NotificationCenter` events and window-title identity are fragile.
@@ -515,7 +515,7 @@ Apply the subset relevant to the change; sync/persistence/window changes require
 - The title prefix identifies compact windows at runtime. A local per-note preference restores minimized state and compact position across launches, while AppKit frame autosave preserves the expanded restoration frame.
 - Accessibility is largely unimplemented for custom controls and visuals; focus rings are globally suppressed.
 - Localization gaps include color help labels; the catalog and release-note content require manual care.
-- Production capabilities and managed signing certificates have been inspected account-side, and Release source selects Production entitlements. Effective signed Production capabilities and runtime remain unverified; Release transport stays OFF.
+- Release source selects Production entitlements and active transport outside tests, subject to pause and safety gates. Earlier signed artifacts and Mac qualification retain their exact scope; they do not establish the effective permissions or runtime behavior of a newer final artifact.
 - Plain HTTP links remain in About, update notes, previews, and README.
 - The app target includes preview mocks; there is no dedicated shared/test support module.
 - There is no CI, linting, formatting, or authorized App Store release pipeline.
@@ -529,7 +529,6 @@ Do not answer these implicitly in implementation work:
 - What final privacy disclosures/policy language are required for private CloudKit while retaining the account-free product model and current App Store claims?
 - Should existing local Mac data automatically upload, and what recovery/rollback experience is required?
 - What shipping UX authorizes local-only Mac adoption, and what operator/user flow handles a Production zone reset without automatic reseed?
-- What explicit build/release control enables transport after containment qualification while preserving the account workspace during containment?
 - What is the iPhone mechanism for pending-task visibility: app overview, widget, Live Activity, notifications, App Intents, or a deliberately smaller first release?
 - Should shared code be a local Swift package/framework or shared target membership? Decide after the domain/store boundary and deployment targets are known.
 - Which currently declared entitlements are genuinely required, and what is the intended signed release/archive process?

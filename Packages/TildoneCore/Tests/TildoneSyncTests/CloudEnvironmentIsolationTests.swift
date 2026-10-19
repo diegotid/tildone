@@ -38,11 +38,11 @@ final class CloudEnvironmentIsolationTests: XCTestCase {
         ))
     }
 
-    func testReleaseSelectsProductionWithoutEnablingTransport() {
+    func testReleaseSelectsProductionWhileTestProcessesKeepTransportOff() {
         XCTAssertEqual(TransportBuildMode.debug.cloudKitEnvironment, .development)
         XCTAssertEqual(TransportBuildMode.release.cloudKitEnvironment, .production)
         for testProcess in [false, true] {
-            XCTAssertFalse(TransportDefaultPolicy.isEnabled(buildMode: .release, isTestProcess: testProcess))
+            XCTAssertEqual(TransportDefaultPolicy.isEnabled(buildMode: .release, isTestProcess: testProcess), !testProcess)
         }
         XCTAssertFalse(TransportDefaultPolicy.isEnabled(buildMode: .debug, isTestProcess: true))
     }

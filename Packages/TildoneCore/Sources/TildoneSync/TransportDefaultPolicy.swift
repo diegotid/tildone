@@ -9,8 +9,8 @@ public enum TransportBuildMode: Hashable, Sendable {
     case debug
     case release
 
-    /// Matches the platform's Debug/Release entitlement selection. This does
-    /// not enable transport; Release remains off during preparation.
+    /// Matches the platform's Debug/Release entitlement selection independently
+    /// of installation-local transport intent.
     public var cloudKitEnvironment: CloudKitEnvironment {
         switch self {
         case .debug: .development
@@ -20,12 +20,11 @@ public enum TransportBuildMode: Hashable, Sendable {
 }
 
 public enum TransportDefaultPolicy {
-    /// Debug apps synchronize automatically except under XCTest/UI testing.
-    /// Release transport stays off until a later, explicitly authorized stage.
+    /// Both build configurations synchronize except in test processes.
     public static func isEnabled(
         buildMode: TransportBuildMode,
         isTestProcess: Bool
     ) -> Bool {
-        buildMode == .debug && !isTestProcess
+        !isTestProcess
     }
 }

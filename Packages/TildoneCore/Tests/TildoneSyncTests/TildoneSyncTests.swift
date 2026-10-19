@@ -11,7 +11,7 @@ import TildonePersistence
 final class TildoneSyncTests: XCTestCase {
     private let date = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
-    func testTransportDefaultsAreAutomaticOnlyForNonTestDebugBuilds() {
+    func testTransportDefaultsAreAutomaticOnlyOutsideTestProcesses() {
         XCTAssertTrue(TransportDefaultPolicy.isEnabled(
             buildMode: .debug,
             isTestProcess: false
@@ -20,7 +20,7 @@ final class TildoneSyncTests: XCTestCase {
             buildMode: .debug,
             isTestProcess: true
         ))
-        XCTAssertFalse(TransportDefaultPolicy.isEnabled(
+        XCTAssertTrue(TransportDefaultPolicy.isEnabled(
             buildMode: .release,
             isTestProcess: false
         ))
@@ -45,7 +45,7 @@ final class TildoneSyncTests: XCTestCase {
         ))
     }
 
-    func testTransportPreferencePersistsPerAccountAndCannotEnableRelease() throws {
+    func testTransportPreferencePersistsPerAccountAndCannotOverrideDisabledDefault() throws {
         let suiteName = "TildoneTransportStateTests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
