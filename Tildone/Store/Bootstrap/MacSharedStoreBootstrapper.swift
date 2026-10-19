@@ -22,6 +22,8 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             store?.setUndoEnabled(!Self.requiresAttention(syncStatus))
         }
     }
+    enum StartupAccountState: Equatable { case idle, checking, waiting, unresolved }
+    @Published private(set) var startupAccountState: StartupAccountState = .idle
     @Published private(set) var error: Error?
     @Published private(set) var syncStatus: SyncStatus = .disabled {
         didSet {
@@ -52,6 +54,17 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     private var pausedPendingCountRevision: UInt64 = 0
     private var accountChangeObserver: NSObjectProtocol?
     private var accountValidationRevision: UInt64 = 0
+    private var startupStatusHasBeenVisible = false
+    private var startupRevision: UInt64 = 0
+    private var startupTask: Swift.Task<Void, Never>?
+    private var startupLocalOpenTask: Swift.Task<TildoneRepository, Error>?
+    private var startupWaitTask: Swift.Task<Void, Never>?
+    private var startupWaitNanoseconds: UInt64 = 2_000_000_000
+#if DEBUG
+    private var isolatedStartupResolver: (() async -> CloudAccountSnapshot)?
+    private var isolatedStartupAccountRepository: ((UUID) async throws -> TildoneRepository)?
+    private var isolatedStartupBeforePresentation: (() async -> Void)?
+#endif
 #if DEBUG
     private let qualificationRefreshFault = SyncQualificationFaultInjector()
     private var isolatedAccountSnapshot: CloudAccountSnapshot?
@@ -70,12 +83,15 @@ final class MacSharedStoreBootstrapper: ObservableObject {
             forName: .CKAccountChanged, object: nil, queue: .main
         ) { [weak self] _ in
             Swift.Task { @MainActor [weak self] in
-                await self?.revalidateAccountPresentation()
+                await self?.handleAccountChangeNotification()
             }
         }
     }
 
     deinit {
+        startupTask?.cancel()
+        startupWaitTask?.cancel()
+        startupLocalOpenTask?.cancel()
         statusTask?.cancel()
         if let accountChangeObserver {
             NotificationCenter.default.removeObserver(accountChangeObserver)
@@ -139,98 +155,252 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         Self.transportEnabledByDefault && hasResolvedAccountWorkspace && isUsingAccountWorkspace
     }
 
+    var showsStartupAccountStatus: Bool {
+        store == nil && error == nil &&
+            (startupAccountState == .waiting || startupAccountState == .unresolved ||
+             (startupAccountState == .checking && startupStatusHasBeenVisible))
+    }
+
+    var showsCoordinatorWindow: Bool { error != nil || showsStartupAccountStatus }
+
+    func retryStartupAccount() {
+        guard store == nil, error == nil,
+              startupAccountState == .waiting || startupAccountState == .unresolved else { return }
+        // Supersede the logical attempt. The SDK request may still reply later;
+        // its revision cannot publish anything after this explicit retry.
+        startupRevision &+= 1
+        startupTask?.cancel()
+        startupTask = nil
+        startupWaitTask?.cancel()
+        startupWaitTask = nil
+        start()
+    }
+
+    /// Notifications supersede an unfinished startup before an old reply can
+    /// choose a workspace. Application activation alone does not start another
+    /// request while the authoritative account check is still pending.
+    func handleAccountChangeNotification() async {
+        if store == nil, startupTask != nil {
+            startupRevision &+= 1
+            startupTask?.cancel()
+            startupTask = nil
+            startupWaitTask?.cancel()
+            startupWaitTask = nil
+            startupStatusHasBeenVisible = true
+            startupAccountState = .unresolved
+            return
+        }
+        await revalidateAccountPresentation()
+    }
+
+    private func isCurrentStartup(_ revision: UInt64) -> Bool {
+        startupRevision == revision && !Swift.Task.isCancelled
+    }
+
+    private var hasIsolatedStartupResolver: Bool {
+#if DEBUG
+        Self.isTestProcess && isolatedStartupResolver != nil
+#else
+        false
+#endif
+    }
+
+#if DEBUG
+    /// Explicit in-memory startup dependencies; no CloudKit container exists
+    /// in this test path, and transport remains off in the hosted process.
+    static func isolatedStartup(
+        localRepository: TildoneRepository,
+        resolveAccount: @escaping () async -> CloudAccountSnapshot,
+        openAccount: @escaping (UUID) async throws -> TildoneRepository,
+        defaults: UserDefaults,
+        waitNanoseconds: UInt64 = 0,
+        beforePresentation: (() async -> Void)? = nil
+    ) -> MacSharedStoreBootstrapper {
+        precondition(isTestProcess && !transportEnabledByDefault)
+        let model = MacSharedStoreBootstrapper(
+            transportStateStore: SyncTransportStateStore(defaults: defaults), defaults: defaults
+        )
+        model.localRepository = localRepository
+        model.isolatedStartupResolver = resolveAccount
+        model.isolatedStartupAccountRepository = openAccount
+        model.isolatedStartupBeforePresentation = beforePresentation
+        model.startupWaitNanoseconds = waitNanoseconds
+        return model
+    }
+#endif
+
+    private func resolveStartupAccount() async -> CloudAccountSnapshot {
+#if DEBUG
+        if Self.isTestProcess, let isolatedStartupResolver {
+            return await isolatedStartupResolver()
+        }
+#endif
+        let container = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
+        cloudContainer = container
+        return await CloudAccountResolver(environment: Self.cloudKitEnvironment).resolve(container: container)
+    }
+
+    private func openStartupAccount(_ workspaceID: UUID) async throws -> TildoneRepository {
+#if DEBUG
+        if Self.isTestProcess, let isolatedStartupAccountRepository {
+            return try await isolatedStartupAccountRepository(workspaceID)
+        }
+#endif
+        return try TildoneRepository(descriptor: .persistent(
+            baseDirectory: Self.applicationSupportDirectory(), workspace: .account(workspaceID)
+        ))
+    }
+
+    private func revealAccountWait(after revision: UInt64) {
+        startupAccountState = .checking
+        let delay = startupWaitNanoseconds
+        startupWaitTask?.cancel()
+        startupWaitTask = Swift.Task { [weak self] in
+            do { try await Swift.Task.sleep(nanoseconds: delay) }
+            catch { return }
+            guard let self, isCurrentStartup(revision), startupAccountState == .checking else { return }
+            startupStatusHasBeenVisible = true
+            startupAccountState = .waiting
+        }
+    }
+
     func start() {
-        guard store == nil, error == nil else { return }
-        Swift.Task {
+        guard store == nil, error == nil, startupTask == nil else { return }
+        startupRevision &+= 1
+        let revision = startupRevision
+        startupAccountState = startupStatusHasBeenVisible ? .checking : .idle
+        startupTask = Swift.Task {
+            defer {
+                if startupRevision == revision {
+                    startupTask = nil
+                    startupWaitTask?.cancel()
+                    startupWaitTask = nil
+                }
+            }
             do {
-                let localRepository = try await (Self.isTestProcess
-                    ? TildoneRepository(descriptor: .inMemory())
-                    : Self.openRepository())
-                self.localRepository = localRepository
-                if Self.isTestProcess {
-                    let store = MacSharedStore(repository: localRepository)
-                    try await store.prepareForPresentation()
-                    self.selectedRepository = localRepository
-                    self.store = store
+                let local: TildoneRepository
+                if let localRepository { local = localRepository }
+                else {
+                    // Reuse one local opening operation if an account-change
+                    // notification supersedes startup while migration awaits.
+                    if startupLocalOpenTask == nil {
+                        startupLocalOpenTask = Swift.Task {
+                            try await (Self.isTestProcess
+                                ? TildoneRepository(descriptor: .inMemory())
+                                : Self.openRepository())
+                        }
+                    }
+                    local = try await startupLocalOpenTask!.value
+                    guard isCurrentStartup(revision) else { return }
+                    localRepository = local
+                    startupLocalOpenTask = nil
+                }
+                if Self.isTestProcess && !hasIsolatedStartupResolver {
+                    let next = MacSharedStore(repository: local)
+                    try await next.prepareForPresentation(whileValid: { self.isCurrentStartup(revision) })
+                    guard isCurrentStartup(revision) else { return }
+                    selectedRepository = local
+                    store = next
                     return
                 }
 
-                let container = CKContainer(identifier: TildoneCloudSchema.containerIdentifier)
-                self.cloudContainer = container
-                let account = await CloudAccountResolver(environment: Self.cloudKitEnvironment)
-                    .resolve(container: container)
+                revealAccountWait(after: revision)
+                let account = await resolveStartupAccount()
+                guard isCurrentStartup(revision) else { return }
+                startupWaitTask?.cancel()
+                startupWaitTask = nil
+                switch account.state {
+                case .temporarilyUnavailable, .couldNotDetermine:
+                    startupStatusHasBeenVisible = true
+                    startupAccountState = .unresolved
+                    return
+                case .available where account.workspaceID == nil:
+                    startupStatusHasBeenVisible = true
+                    startupAccountState = .unresolved
+                    return
+                default: break
+                }
+                startupAccountState = .idle
                 guard account.state == .available, let workspaceID = account.workspaceID else {
-                    self.syncStatus = Self.status(for: account.state)
-                    let store = MacSharedStore(repository: localRepository)
-                    try await store.prepareForPresentation()
-                    self.selectedRepository = localRepository
-                    self.store = store
+                    let next = MacSharedStore(repository: local)
+                    try await next.prepareForPresentation(whileValid: { self.isCurrentStartup(revision) })
+                    guard isCurrentStartup(revision) else { return }
+                    syncStatus = Self.status(for: account.state)
+                    selectedRepository = local
+                    store = next
                     return
                 }
 
-                let base = try Self.applicationSupportDirectory()
-                let accountRepository = try TildoneRepository(descriptor: .persistent(
-                    baseDirectory: base,
-                    workspace: .account(workspaceID)
-                ))
+                let accountRepository = try await openStartupAccount(workspaceID)
+                guard isCurrentStartup(revision) else { return }
                 try await Self.migrateSharedNoteColors(in: accountRepository)
-                self.accountRepository = accountRepository
-                self.accountWorkspaceID = workspaceID
-                self.hasResolvedAccountWorkspace = true
-                self.transportState = transportStateStore.state(for: workspaceID)
-
-                let localHasContent = try await localRepository.hasSyncContent()
+                guard isCurrentStartup(revision) else { return }
+                let localHasContent = try await local.hasSyncContent()
+                guard isCurrentStartup(revision) else { return }
                 let accountHasContent = try await accountRepository.hasSyncContent()
+                guard isCurrentStartup(revision) else { return }
                 let localFingerprint = localHasContent
-                    ? try await MacNoteResolutionService.fingerprint(repository: localRepository)
+                    ? try await MacNoteResolutionService.fingerprint(repository: local)
                     : nil
+                guard isCurrentStartup(revision) else { return }
                 let localNeedsAdoption = localFingerprint.map {
                     localAdoptionStateStore.fingerprint(for: workspaceID) != $0
                 } ?? false
                 let explicitChoice = noteLocationChoiceStore.choice(for: workspaceID)
-                self.hasUnadoptedLocalWorkspace = localNeedsAdoption && explicitChoice == nil
-                self.canAdoptLocalWorkspace = MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
-                    localNeedsAdoption: hasUnadoptedLocalWorkspace,
-                    accountHasContent: accountHasContent
-                )
-                self.hasNotesOnMacAndICloud = localHasContent && accountHasContent
-                let selectedRepository = MacWorkspaceSelectionPolicy.usesAccountWorkspace(
-                    localNeedsAdoption: localNeedsAdoption,
-                    explicitChoice: explicitChoice
-                ) ? accountRepository : localRepository
-                self.selectedRepository = selectedRepository
-                self.isUsingAccountWorkspace = selectedRepository === accountRepository
-                self.isUsingNotesOnMacByChoice = selectedRepository === localRepository &&
-                    explicitChoice == .thisMac
-
-                let store = MacSharedStore(repository: selectedRepository)
-                try await store.prepareForPresentation()
-                self.store = store
-                guard Self.transportEnabledByDefault else {
-                    self.syncStatus = .disabled
-                    return
+                let unadopted = localNeedsAdoption && explicitChoice == nil
+                let selected = MacWorkspaceSelectionPolicy.usesAccountWorkspace(
+                    localNeedsAdoption: localNeedsAdoption, explicitChoice: explicitChoice
+                ) ? accountRepository : local
+#if DEBUG
+                if Self.isTestProcess, let isolatedStartupBeforePresentation {
+                    await isolatedStartupBeforePresentation()
+                    guard isCurrentStartup(revision) else { return }
                 }
-                guard selectedRepository === accountRepository else {
-                    self.syncStatus = hasUnadoptedLocalWorkspace
-                        ? SyncStatus(availability: .adoptionRequired, activity: .attentionNeeded)
-                        : .disabled
+#endif
+                let next = MacSharedStore(repository: selected)
+                try await next.prepareForPresentation(whileValid: { self.isCurrentStartup(revision) })
+                guard isCurrentStartup(revision) else { return }
+                // Publish the chosen identity and presentation together only
+                // after every awaited preparation has kept this attempt current.
+                self.accountRepository = accountRepository
+                accountWorkspaceID = workspaceID
+                hasResolvedAccountWorkspace = true
+                transportState = transportStateStore.state(for: workspaceID)
+                hasUnadoptedLocalWorkspace = unadopted
+                canAdoptLocalWorkspace = MacWorkspaceSelectionPolicy.canAdoptLocalWorkspace(
+                    localNeedsAdoption: unadopted, accountHasContent: accountHasContent
+                )
+                hasNotesOnMacAndICloud = localHasContent && accountHasContent
+                selectedRepository = selected
+                isUsingAccountWorkspace = selected === accountRepository
+                isUsingNotesOnMacByChoice = selected === local && explicitChoice == .thisMac
+#if DEBUG
+                if Self.isTestProcess { isolatedAccountSnapshot = account }
+#endif
+                store = next
+                guard Self.transportEnabledByDefault else { syncStatus = .disabled; return }
+                guard selected === accountRepository else {
+                    syncStatus = hasUnadoptedLocalWorkspace
+                        ? SyncStatus(availability: .adoptionRequired, activity: .attentionNeeded) : .disabled
                     return
                 }
                 guard SyncTransportActivationPolicy.shouldActivate(
-                    enabledByDefault: Self.transportEnabledByDefault,
-                    persistedState: transportState
+                    enabledByDefault: Self.transportEnabledByDefault, persistedState: transportState
                 ) else {
-                    self.syncStatus = await pausedStatus(repository: accountRepository)
+                    let status = await pausedStatus(repository: accountRepository)
+                    guard isCurrentStartup(revision), self.accountWorkspaceID == workspaceID else { return }
+                    syncStatus = status
                     await SyncDiagnostics.inspectQualificationState(in: accountRepository, phase: .pausedLaunch)
                     return
                 }
+                guard let container = cloudContainer else { return }
                 try await startCoordinator(
-                    repository: accountRepository,
-                    workspaceID: workspaceID,
-                    container: container,
-                    store: store
+                    repository: accountRepository, workspaceID: workspaceID,
+                    container: container, store: next
                 )
             } catch {
+                guard isCurrentStartup(revision) else { return }
+                startupAccountState = .idle
                 self.error = error
             }
         }
@@ -646,6 +816,10 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         container: CKContainer,
         store: MacSharedStore
     ) async throws {
+        guard accountWorkspaceID == workspaceID, accountRepository === repository,
+              selectedRepository === repository, self.store === store,
+              transportState == .active else { return }
+        let startupSessionRevision = startupRevision
         statusTask?.cancel()
 #if DEBUG
         let qualificationRefreshFault = self.qualificationRefreshFault
@@ -678,6 +852,13 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                 )
             }
         )
+        guard startupRevision == startupSessionRevision,
+              accountWorkspaceID == workspaceID, accountRepository === repository,
+              selectedRepository === repository, self.store === store,
+              transportState == .active else {
+            await coordinator.pause()
+            return
+        }
         syncCoordinator = coordinator
         store.attachSyncCoordinator(coordinator)
         statusTask = Swift.Task { [weak self, weak coordinator] in
@@ -743,6 +924,12 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     }
 
     private func invalidateForAccountChange() {
+        startupRevision &+= 1
+        startupTask?.cancel()
+        startupTask = nil
+        startupWaitTask?.cancel()
+        startupWaitTask = nil
+        startupAccountState = .idle
         accountValidationRevision &+= 1
         pausedPendingCountRevision &+= 1
         statusTask?.cancel()

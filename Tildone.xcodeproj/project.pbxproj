@@ -11,7 +11,9 @@
 		F11300000000000000000202 /* MacFindSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000102 /* MacFindSearchField.swift */; };
 		F11300000000000000000201 /* MacFindInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000101 /* MacFindInputView.swift */; };
 		D71E00000000000000000203 /* MacBootstrapFailureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000103 /* MacBootstrapFailureView.swift */; };
+		D72000000000000000000201 /* MacAccountStartupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72000000000000000000101 /* MacAccountStartupView.swift */; };
 		D71E00000000000000000202 /* NativeLocalStoreBootstrapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000102 /* NativeLocalStoreBootstrapTests.swift */; };
+		D72000000000000000000202 /* AccountStartupPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D72000000000000000000102 /* AccountStartupPresentationTests.swift */; };
 		D71E00000000000000000201 /* MacLocalStoreActivationReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = D71E00000000000000000101 /* MacLocalStoreActivationReceipt.swift */; };
 		F12E00000000000000000001 /* Stage12IsolatedCloudKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */; };
 		F12E00000000000000000002 /* Stage12IsolatedCloudKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */; };
@@ -302,7 +304,9 @@
 		F11300000000000000000102 /* MacFindSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindSearchField.swift; sourceTree = "<group>"; };
 		F11300000000000000000101 /* MacFindInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindInputView.swift; sourceTree = "<group>"; };
 		D71E00000000000000000103 /* MacBootstrapFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBootstrapFailureView.swift; sourceTree = "<group>"; };
+		D72000000000000000000101 /* MacAccountStartupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAccountStartupView.swift; sourceTree = "<group>"; };
 		D71E00000000000000000102 /* NativeLocalStoreBootstrapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLocalStoreBootstrapTests.swift; sourceTree = "<group>"; };
+		D72000000000000000000102 /* AccountStartupPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStartupPresentationTests.swift; sourceTree = "<group>"; };
 		D71E00000000000000000101 /* MacLocalStoreActivationReceipt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacLocalStoreActivationReceipt.swift; sourceTree = "<group>"; };
 		F12E00000000000000000011 /* Stage12IsolatedCloudKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stage12IsolatedCloudKitTests.swift; sourceTree = "<group>"; };
 		F12E00000000000000000012 /* TildoneSharedStoreV2 */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Packages/TildoneCore/Tests/TildonePersistenceTests/Fixtures/TildoneSharedStoreV2; sourceTree = SOURCE_ROOT; };
@@ -836,6 +840,7 @@
 				D50000000000000000000103 /* CoordinatorWindowVisibility.swift */,
 				F13000000000000000000101 /* MacWelcomeWindowForeground.swift */,
 				D71E00000000000000000103 /* MacBootstrapFailureView.swift */,
+				D72000000000000000000101 /* MacAccountStartupView.swift */,
 				F11300000000000000000102 /* MacFindSearchField.swift */,
 				F11300000000000000000101 /* MacFindInputView.swift */,
 			);
@@ -1124,6 +1129,7 @@
 			children = (
 				F166705A2AF711EE000B76A5 /* TildoneTests.swift */,
 				D71E00000000000000000102 /* NativeLocalStoreBootstrapTests.swift */,
+				D72000000000000000000102 /* AccountStartupPresentationTests.swift */,
 				F12F00000000000000000013 /* SyncProductQualificationTests.swift */,
 				A94000000000000000000103 /* AppReviewPolicyTests.swift */,
 				B92900000000000000000107 /* WhatsNewReleaseTests.swift */,
@@ -1653,6 +1659,7 @@
 				D50000000000000000000203 /* CoordinatorWindowVisibility.swift in Sources */,
 				F13000000000000000000201 /* MacWelcomeWindowForeground.swift in Sources */,
 				D71E00000000000000000203 /* MacBootstrapFailureView.swift in Sources */,
+				D72000000000000000000201 /* MacAccountStartupView.swift in Sources */,
 				F11300000000000000000202 /* MacFindSearchField.swift in Sources */,
 				F11300000000000000000201 /* MacFindInputView.swift in Sources */,
 				D40000000000000000000201 /* MacSyncDisplayState.swift in Sources */,
@@ -1739,6 +1746,7 @@
 				B60000000000000000000005 /* LegacyMigrationTests.swift in Sources */,
 				F166705B2AF711EE000B76A5 /* TildoneTests.swift in Sources */,
 				D71E00000000000000000202 /* NativeLocalStoreBootstrapTests.swift in Sources */,
+				D72000000000000000000202 /* AccountStartupPresentationTests.swift in Sources */,
 				F12F00000000000000000003 /* SyncProductQualificationTests.swift in Sources */,
 				A94000000000000000000203 /* AppReviewPolicyTests.swift in Sources */,
 				B92900000000000000000207 /* WhatsNewReleaseTests.swift in Sources */,

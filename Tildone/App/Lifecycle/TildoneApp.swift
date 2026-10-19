@@ -71,6 +71,11 @@ struct TildoneApp: App {
             .id(ObjectIdentifier(store))
         } else if sharedStoreBootstrapper.error != nil {
             MacBootstrapFailureView()
+        } else if sharedStoreBootstrapper.showsStartupAccountStatus {
+            MacAccountStartupView(
+                state: sharedStoreBootstrapper.startupAccountState,
+                onRetry: sharedStoreBootstrapper.retryStartupAccount
+            )
         } else {
             Color.clear
                 .frame(width: 0, height: 0)
@@ -86,10 +91,10 @@ struct TildoneApp: App {
             }
             .onAppear {
                 appDelegate.setCoordinatorWindowVisible(
-                    sharedStoreBootstrapper.error != nil
+                    sharedStoreBootstrapper.showsCoordinatorWindow
                 )
             }
-            .onChange(of: sharedStoreBootstrapper.error != nil) { _, isVisible in
+            .onChange(of: sharedStoreBootstrapper.showsCoordinatorWindow) { _, isVisible in
                 appDelegate.setCoordinatorWindowVisible(isVisible)
             }
             .onAppear { updateMenuBarSyncPresentation() }
@@ -182,7 +187,7 @@ struct TildoneApp: App {
     }
 
     var body: some Scene {
-        TildonePrimaryScene(isVisible: sharedStoreBootstrapper.error != nil) {
+        TildonePrimaryScene(isVisible: sharedStoreBootstrapper.showsCoordinatorWindow) {
             primarySceneContent
         }
         .windowStyle(HiddenTitleBarWindowStyle())

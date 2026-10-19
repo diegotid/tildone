@@ -179,14 +179,19 @@ final class MacSharedStore: ObservableObject {
     /// Removes empty windows left behind by an interrupted or forced quit before
     /// the desktop reconciles persisted notes. Completed notes are intentionally
     /// retained here so their visible grace period is owned by `Note`.
-    func prepareForPresentation() async throws {
+    func prepareForPresentation(whileValid: () -> Bool = { true }) async throws {
+        guard whileValid() else { return }
         try await reload()
+        guard whileValid() else { return }
         let emptyNoteIDs = notes.lazy.filter(\.isEmpty).map(\.id)
         guard !emptyNoteIDs.isEmpty else { return }
         for id in emptyNoteIDs {
+            guard whileValid() else { return }
             try await repository.deleteNote(id: id)
+            guard whileValid() else { return }
         }
         try await reload()
+        guard whileValid() else { return }
         scheduleSyncNotification()
     }
 
