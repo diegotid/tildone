@@ -67,9 +67,10 @@ enum SyncFetchRecoveryPolicy {
 enum SyncZoneBootstrapPolicy {
     static func shouldScheduleRecordChanges(
         zoneCreated: Bool,
-        zoneResetRequired: Bool
+        zoneResetRequired: Bool,
+        fullReconciliationRequired: Bool = false
     ) -> Bool {
-        zoneCreated && !zoneResetRequired
+        zoneCreated && !zoneResetRequired && !fullReconciliationRequired
     }
 
     static func shouldLatchMissingZone(zoneCreated: Bool) -> Bool {
@@ -123,7 +124,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
     private let onRemoteChange: RemoteChangeHandler
     private let checkpointGate = SyncCheckpointGate()
     private var engine: CKSyncEngine?
-    private var needsAutomaticSchedulingHandoff: Bool
+    private var needsStartupCheckpointCompletion: Bool
 
     public init(
         repository: TildoneRepository,
@@ -145,7 +146,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         self.now = now
         clientReplicaID = workspace.replicaID
         self.clientPlatform = clientPlatform
-        needsAutomaticSchedulingHandoff = true
+        needsStartupCheckpointCompletion = true
         self.onAccountChange = onAccountChange
         self.onRemoteChange = onRemoteChange
 
@@ -164,9 +165,9 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
                 stateSerialization: persistent.decodedEngineSerialization,
                 delegate: self
             )
-            // Complete the first checkpoint manually before registering
-            // automatic scheduling; retain its existing cursor and durable work.
-            configuration.automaticallySync = !needsAutomaticSchedulingHandoff
+            // Keep one automatically scheduled engine for this coordinator. The
+            // explicit startup checkpoint uses this same engine and saved cursor.
+            configuration.automaticallySync = true
             configuration.subscriptionID = TildoneCloudSchema.subscriptionIdentifier
             engine = CKSyncEngine(configuration)
             SyncDiagnostics.boundary(.engineCreated, count: 1)
@@ -203,11 +204,24 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         await checkpointGate.run { [weak self] in
             guard let self else { return }
             await self.runCheckpoint(retryAfterRecovery: true)
-            await self.enableAutomaticSchedulingAfterStartup()
+            await self.completeAutomaticStartupCheckpoint()
         }
     }
 
     private func runCheckpoint(retryAfterRecovery: Bool) async {
+        await SyncCheckpointRecoveryDriver.run(
+            retryAfterRecovery: retryAfterRecovery,
+            attempt: { [weak self] in await self?.runCheckpointAttempt() },
+            recoveryIsRequired: { [weak self] in
+                guard let self else { return false }
+                let required = await self.coordinatorState.requiresFullReconciliation()
+                let frozen = await self.coordinatorState.isFrozen()
+                return required && !frozen
+            }
+        )
+    }
+
+    private func runCheckpointAttempt() async {
         if await coordinatorState.requiresFullReconciliation() {
             do {
                 try await rebuildEngineForFullReconciliation()
@@ -237,7 +251,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
             zoneResetRequired: persistent.zoneResetRequired
         )
         if fetchesFirst,
-           !(await fetchChanges(engine, retryAfterRecovery: retryAfterRecovery)) {
+           !(await fetchChanges(engine)) {
             return
         }
 
@@ -251,7 +265,7 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
                 zoneCreated: updated.zoneCreated,
                 zoneResetRequired: updated.zoneResetRequired
             ) {
-                _ = await fetchChanges(engine, retryAfterRecovery: retryAfterRecovery)
+                _ = await fetchChanges(engine)
             }
         }
         await SyncDiagnostics.inspectRetainedFixture(in: repository)
@@ -367,12 +381,23 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         case .willFetchRecordZoneChanges:
             await refreshStatus(activity: .syncing)
 
-        case .didFetchRecordZoneChanges:
-            break
+        case let .didFetchRecordZoneChanges(result):
+            if result.zoneID == TildoneCloudSchema.zoneID {
+                await coordinatorState.recordRequiredZoneFetchCompletion(
+                    succeeded: result.error == nil
+                )
+                if let error = result.error { await apply(error: error) }
+            }
 
         case .didFetchChanges:
             do {
-                try await coordinatorState.completeFetch()
+                let requiredFullFetch = await coordinatorState.requiresFullReconciliation()
+                guard try await coordinatorState.completeFetch() else { return }
+                if requiredFullFetch {
+                    // Release durable work only after the required zone and its
+                    // cursor have committed. This also wakes automatic scheduling.
+                    try await refreshPendingEngineChanges()
+                }
                 await markFetchCheckpointComplete()
                 await SyncDiagnostics.inspectQualificationState(in: repository, phase: .fetched)
             } catch {
@@ -410,12 +435,10 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         _ context: CKSyncEngine.SendChangesContext,
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
-        guard !(await coordinatorState.isFrozen()) else { return nil }
-        let persistent = await coordinatorState.snapshot()
-        guard SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
-            zoneCreated: persistent.zoneCreated,
-            zoneResetRequired: persistent.zoneResetRequired
-        ) else { return nil }
+        guard syncEngine === engine else { return nil }
+        guard await coordinatorState.canScheduleRecordChanges() else {
+            return nil
+        }
         let pending = TildoneSyncBatchPolicy.bounded(
             syncEngine.state.pendingRecordZoneChanges.filter {
                 context.options.scope.contains($0)
@@ -424,6 +447,8 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         var records: [CKRecord] = []
         var stale: [CKSyncEngine.PendingRecordZoneChange] = []
         for change in pending {
+            guard syncEngine === engine,
+                  await coordinatorState.canScheduleRecordChanges() else { return nil }
             guard case let .saveRecord(recordID) = change,
                   recordID.zoneID == TildoneCloudSchema.zoneID else { continue }
             if let replicaID = SyncClientRegistration.replicaID(
@@ -463,15 +488,15 @@ public final class TildoneSyncCoordinator: CKSyncEngineDelegate, @unchecked Send
         }
         if !stale.isEmpty { syncEngine.state.remove(pendingRecordZoneChanges: stale) }
         guard !records.isEmpty else { return nil }
+        guard syncEngine === engine,
+              await coordinatorState.canScheduleRecordChanges() else { return nil }
         return CKSyncEngine.RecordZoneChangeBatch(recordsToSave: records, atomicByZone: false)
     }
 }
 
 private extension TildoneSyncCoordinator {
-    func fetchChanges(
-        _ engine: CKSyncEngine,
-        retryAfterRecovery: Bool
-    ) async -> Bool {
+
+    func fetchChanges(_ engine: CKSyncEngine) async -> Bool {
         let startedAt = ProcessInfo.processInfo.systemUptime
         SyncDiagnostics.phaseStarted(.fetch)
         do {
@@ -484,9 +509,9 @@ private extension TildoneSyncCoordinator {
             )
             return true
         } catch {
-            if await requireFullReconciliation(forFetchError: error), retryAfterRecovery {
-                await runCheckpoint(retryAfterRecovery: false)
-            }
+            // The outer driver retries only after this frame and its engine
+            // parameter have returned. Never rebuild recursively from here.
+            _ = await requireFullReconciliation(forFetchError: error)
             return false
         }
     }
@@ -508,9 +533,15 @@ private extension TildoneSyncCoordinator {
     }
 
     func rebuildEngineForFullReconciliation() async throws {
-        let previousEngine = engine
-        engine = nil
-        await previousEngine?.cancelOperations()
+        _ = try await SyncEngineRetirement.retire(
+            takeEngine: { [self] in
+                let previous = engine
+                engine = nil
+                return previous
+            },
+            cancel: { await $0.cancelOperations() },
+            freezeSession: { [self] in await coordinatorState.freeze() }
+        )
 
         let persistent = await coordinatorState.snapshot()
         guard persistent.fullReconciliationRequired,
@@ -521,45 +552,25 @@ private extension TildoneSyncCoordinator {
             stateSerialization: nil,
             delegate: self
         )
-        configuration.automaticallySync = !needsAutomaticSchedulingHandoff
+        configuration.automaticallySync = true
         configuration.subscriptionID = TildoneCloudSchema.subscriptionIdentifier
         engine = CKSyncEngine(configuration)
         SyncDiagnostics.boundary(.engineCreated, count: 1)
         try await bootstrapPendingChanges()
     }
 
-    func enableAutomaticSchedulingAfterStartup() async {
-        guard needsAutomaticSchedulingHandoff,
-              !(await coordinatorState.isFrozen()) else { return }
-        let previousEngine = engine
-        engine = nil
-        // Explicit fetch/send have finished processing their delegate events.
-        // Ignore any late old-engine callbacks while obtaining the newest state.
-        await previousEngine?.cancelOperations()
-        guard let persistent = await coordinatorState.stateForAutomaticScheduling() else {
-            return
-        }
-        var configuration = CKSyncEngine.Configuration(
-            database: database,
-            stateSerialization: persistent.decodedEngineSerialization,
-            delegate: self
-        )
-        configuration.automaticallySync = true
-        configuration.subscriptionID = TildoneCloudSchema.subscriptionIdentifier
-        let automaticEngine = CKSyncEngine(configuration)
-        engine = automaticEngine
-        needsAutomaticSchedulingHandoff = false
-        SyncDiagnostics.boundary(.engineCreated, count: 1)
+    func completeAutomaticStartupCheckpoint() async {
+        guard needsStartupCheckpointCompletion,
+              engine != nil,
+              !(await coordinatorState.isFrozen()),
+              await coordinatorState.stateForAutomaticScheduling() != nil else { return }
+        needsStartupCheckpointCompletion = false
+        // Automatic scheduling was enabled on this same engine from construction.
+        // Completing an explicit checkpoint must not cancel or replace it.
         SyncDiagnostics.boundary(.automaticSchedulingEnabled, count: 1)
-        // Pause/account invalidation may have raced the awaited cancellation.
-        // Its frozen state takes precedence over restoring scheduling.
-        guard !(await coordinatorState.isFrozen()) else {
-            await automaticEngine.cancelOperations()
-            return
-        }
         do {
-            // Edits made during the initial checkpoint remain in the same
-            // durable outbox; rehydrate them into the new automatic engine.
+            // Rehydrate edits made during the explicit checkpoint into the same
+            // automatically scheduled engine without replacing it.
             try await bootstrapPendingChanges()
         } catch {
             await apply(error: error)
@@ -590,10 +601,7 @@ private extension TildoneSyncCoordinator {
     func refreshPendingEngineChanges() async throws {
         guard let engine, !(await coordinatorState.isFrozen()) else { return }
         let persistent = await coordinatorState.snapshot()
-        guard SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
-            zoneCreated: persistent.zoneCreated,
-            zoneResetRequired: persistent.zoneResetRequired
-        ) else { return }
+        guard await coordinatorState.canScheduleRecordChanges() else { return }
         let recordIDs = try await pipeline.pendingRecordNames().map {
             CKRecord.ID(recordName: $0, zoneID: TildoneCloudSchema.zoneID)
         }
@@ -610,6 +618,8 @@ private extension TildoneSyncCoordinator {
             )
             changes.append(.saveRecord(clientRecordID))
         }
+        guard engine === self.engine,
+              await coordinatorState.canScheduleRecordChanges() else { return }
         engine.state.add(pendingRecordZoneChanges: changes)
         SyncDiagnostics.boundary(.scheduled, count: changes.count)
     }

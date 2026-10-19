@@ -149,6 +149,8 @@ actor SyncCoordinatorState {
     private let repository: TildoneRepository
     private var fetchInProgress = false
     private var stagedEngineSerialization: Data?
+    private var requiredZoneFetched = false
+    private var requiredZoneFetchFailed = false
 
     init(persistent: SyncPersistentState, repository: TildoneRepository) {
         self.persistent = persistent
@@ -174,6 +176,22 @@ actor SyncCoordinatorState {
     func beginFetch() {
         fetchInProgress = true
         stagedEngineSerialization = nil
+        requiredZoneFetched = false
+        requiredZoneFetchFailed = false
+    }
+
+    func recordRequiredZoneFetchCompletion(succeeded: Bool) {
+        guard fetchInProgress, !frozen else { return }
+        requiredZoneFetched = requiredZoneFetched || succeeded
+        requiredZoneFetchFailed = requiredZoneFetchFailed || !succeeded
+    }
+
+    func canScheduleRecordChanges() -> Bool {
+        !frozen && SyncZoneBootstrapPolicy.shouldScheduleRecordChanges(
+            zoneCreated: persistent.zoneCreated,
+            zoneResetRequired: persistent.zoneResetRequired,
+            fullReconciliationRequired: persistent.fullReconciliationRequired
+        )
     }
 
     func systemRecord(named name: String) -> CKRecord? {
@@ -240,17 +258,29 @@ actor SyncCoordinatorState {
         }
     }
 
-    func completeFetch() async throws {
-        // Domain records are applied before didFetchChanges reaches this
-        // method. Persisting the staged cursor now means a crash can replay
-        // records, but can never leave the cursor ahead of local content.
-        if let stagedEngineSerialization {
-            persistent.engineSerialization = stagedEngineSerialization
+    @discardableResult
+    func completeFetch() async throws -> Bool {
+        guard fetchInProgress, !frozen else { return false }
+        defer {
+            fetchInProgress = false
+            stagedEngineSerialization = nil
+            requiredZoneFetched = false
+            requiredZoneFetchFailed = false
         }
-        persistent.completeFullReconciliation()
-        fetchInProgress = false
-        stagedEngineSerialization = nil
-        try await persist()
+        guard !requiredZoneFetchFailed,
+              !persistent.fullReconciliationRequired || requiredZoneFetched else {
+            return false
+        }
+        // A database-only or failed zone fetch cannot complete reconciliation.
+        // Keep the outgoing fence closed until the new checkpoint is durable.
+        var committed = persistent
+        if let stagedEngineSerialization {
+            committed.engineSerialization = stagedEngineSerialization
+        }
+        committed.completeFullReconciliation()
+        try await repository.storeFutureSyncEngineState(committed.encoded())
+        persistent = committed
+        return true
     }
 
     func requireFullReconciliation() async throws {
