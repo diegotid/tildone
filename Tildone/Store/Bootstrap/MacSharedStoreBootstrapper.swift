@@ -36,6 +36,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
     @Published private(set) var hasUnadoptedLocalWorkspace = false
     @Published private(set) var canAdoptLocalWorkspace = false
     @Published private(set) var hasNotesOnMacAndICloud = false
+    @Published private(set) var canReviewNoteLocations = false
     @Published private(set) var isUsingNotesOnMacByChoice = false
     @Published private(set) var didJustChooseNotesOnMac = false
     @Published private(set) var resolutionActionFailed = false
@@ -125,6 +126,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         let accountHasContent = try await accountRepository.hasSyncContent()
         model.hasUnadoptedLocalWorkspace = localHasContent && choice == nil
         model.hasNotesOnMacAndICloud = localHasContent && accountHasContent
+        model.canReviewNoteLocations = localHasContent
         model.canAdoptLocalWorkspace = model.hasUnadoptedLocalWorkspace && !accountHasContent
         let usesAccount = MacWorkspaceSelectionPolicy.usesAccountWorkspace(
             localNeedsAdoption: model.hasUnadoptedLocalWorkspace, explicitChoice: choice
@@ -371,6 +373,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
                     localNeedsAdoption: unadopted, accountHasContent: accountHasContent
                 )
                 hasNotesOnMacAndICloud = localHasContent && accountHasContent
+                canReviewNoteLocations = localHasContent
                 selectedRepository = selected
                 isUsingAccountWorkspace = selected === accountRepository
                 isUsingNotesOnMacByChoice = selected === local && explicitChoice == .thisMac
@@ -939,6 +942,7 @@ final class MacSharedStoreBootstrapper: ObservableObject {
         hasUnadoptedLocalWorkspace = false
         canAdoptLocalWorkspace = false
         hasNotesOnMacAndICloud = false
+        canReviewNoteLocations = false
         isUsingAccountWorkspace = false
         if wasPresentingAccount {
             selectedRepository = nil

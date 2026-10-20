@@ -95,7 +95,7 @@ struct MacSyncStatusView: View {
                 }
             }
 
-            if bootstrapper.hasNotesOnMacAndICloud {
+            if bootstrapper.canReviewNoteLocations {
                 Button(
                     bootstrapper.hasUnadoptedLocalWorkspace
                         ? "Review Options…"

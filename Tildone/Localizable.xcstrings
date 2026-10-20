@@ -7289,6 +7289,12 @@
     },
     "Review Options…" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review Options…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",

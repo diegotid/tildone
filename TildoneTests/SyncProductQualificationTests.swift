@@ -168,6 +168,84 @@ final class SyncProductQualificationTests: XCTestCase {
         }
     }
 
+    func testEmptyAccountCanUseICloudWithoutCopyingRetainedMacNotesAcrossReopen() async throws {
+        XCTAssertFalse(MacSharedStoreBootstrapper.transportEnabledByDefault)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("EmptyAccountLocation-\(UUID())")
+        let suite = "EmptyAccountLocation.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: root)
+        }
+        let accountID = UUID()
+        let localDescriptor = PersistenceStoreDescriptor.persistent(baseDirectory: root, workspace: .localOnly)
+        let accountDescriptor = PersistenceStoreDescriptor.persistent(baseDirectory: root, workspace: .account(accountID))
+        var local: TildoneRepository? = try TildoneRepository(descriptor: localDescriptor)
+        var account: TildoneRepository? = try TildoneRepository(descriptor: accountDescriptor)
+        for index in 0..<3 {
+            let note = try await local!.createNote(id: NoteID(), createdAt: Date(), title: "Synthetic retained source \(index)")
+            _ = try await local!.addTask(id: TaskID(), to: note.id, createdAt: Date(), text: "Retain pending work", orderToken: OrderToken.between(nil, nil))
+            let removed = try await local!.addTask(id: TaskID(), to: note.id, createdAt: Date(), text: "Retain tombstone", orderToken: OrderToken(rawValue: "z"))
+            try await local!.deleteTask(id: removed.id)
+        }
+        try await local!.storeFutureSyncEngineState(Data("Synthetic retained engine state".utf8))
+        let localFingerprint = try await MacNoteResolutionService.fingerprint(repository: local!)
+        let localPending = try await local!.pendingMutations(includeSuperseded: true)
+        let localWorkspace = try await local!.workspaceSnapshot()
+        let accountFingerprint = try await MacNoteResolutionService.fingerprint(repository: account!)
+        let accountPending = try await account!.pendingMutations(includeSuperseded: true)
+        let accountWorkspace = try await account!.workspaceSnapshot()
+        var model: MacSharedStoreBootstrapper? = try await .isolatedPresentation(
+            localRepository: local!, accountRepository: account!, workspaceID: accountID,
+            defaults: defaults, status: SyncStatus(availability: .adoptionRequired, activity: .attentionNeeded)
+        )
+        XCTAssertTrue(model!.hasUnadoptedLocalWorkspace)
+        XCTAssertFalse(model!.hasNotesOnMacAndICloud)
+        XCTAssertTrue(model!.canAdoptLocalWorkspace)
+        XCTAssertTrue(model!.canReviewNoteLocations, "An empty account must not force copying the retained Mac notes")
+        XCTAssertEqual(model!.store?.notes.count, 3)
+        try render(MacSyncStatusView(bootstrapper: model!, showsResolutionOptions: .constant(false)),
+                   name: "empty-account-status", appearance: .light, larger: false)
+
+        model!.resolveNotesAfterConfirmation(.useICloud)
+        for _ in 0..<200 where model!.isTransportActionInProgress {
+            try await Swift.Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertFalse(model!.isTransportActionInProgress)
+        XCTAssertFalse(model!.resolutionActionFailed)
+        XCTAssertTrue(model!.isUsingAccountWorkspace)
+        XCTAssertEqual(model!.store?.notes.count, 0)
+        XCTAssertTrue(model!.canReviewNoteLocations, "Retained Mac notes must remain selectable even while iCloud is empty")
+        XCTAssertFalse(model!.canControlTransport)
+        XCTAssertEqual(MacNoteLocationChoiceStore(defaults: defaults).choice(for: accountID), .iCloud)
+        model = nil
+        local = nil
+        account = nil
+
+        let reopenedLocal = try TildoneRepository(descriptor: localDescriptor)
+        let reopenedAccount = try TildoneRepository(descriptor: accountDescriptor)
+        let localFingerprintAfter = try await MacNoteResolutionService.fingerprint(repository: reopenedLocal)
+        let localPendingAfter = try await reopenedLocal.pendingMutations(includeSuperseded: true)
+        let localWorkspaceAfter = try await reopenedLocal.workspaceSnapshot()
+        let accountFingerprintAfter = try await MacNoteResolutionService.fingerprint(repository: reopenedAccount)
+        let accountPendingAfter = try await reopenedAccount.pendingMutations(includeSuperseded: true)
+        let accountWorkspaceAfter = try await reopenedAccount.workspaceSnapshot()
+        XCTAssertEqual(localFingerprintAfter, localFingerprint)
+        XCTAssertEqual(localPendingAfter, localPending)
+        XCTAssertEqual(localWorkspaceAfter, localWorkspace)
+        XCTAssertEqual(accountFingerprintAfter, accountFingerprint)
+        XCTAssertEqual(accountPendingAfter, accountPending)
+        XCTAssertEqual(accountWorkspaceAfter, accountWorkspace)
+        let relaunched = try await MacSharedStoreBootstrapper.isolatedPresentation(
+            localRepository: reopenedLocal, accountRepository: reopenedAccount, workspaceID: accountID,
+            defaults: try XCTUnwrap(UserDefaults(suiteName: suite)), status: .disabled
+        )
+        XCTAssertTrue(relaunched.isUsingAccountWorkspace)
+        XCTAssertFalse(relaunched.hasUnadoptedLocalWorkspace)
+        XCTAssertTrue(relaunched.canReviewNoteLocations)
+        XCTAssertEqual(relaunched.store?.notes.count, 0)
+    }
+
     func testRecoveryAndLocationViewsRenderInBothAppearancesAndLargerBodyText() async throws {
         let language = Bundle.main.preferredLocalizations.first ?? "en"
         if let expected = ProcessInfo.processInfo.environment["TILDONE_EXPECTED_PRODUCT_LANGUAGE"] {

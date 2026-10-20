@@ -30,6 +30,7 @@ Every chat/task that adds or changes user-visible text must complete its localiz
 - Never expose or reuse one confirmed iCloud account's cached workspace for another account. Confirmed sign-out, account switch, and custom-zone reset are safety boundaries that freeze the current sync session.
 - Development keeps its historical opaque workspace UUID and paths. Production uses a separate environment namespace even when CloudKit supplies the same private user record ID. Resolve accounts with the explicit build-selected environment on both platforms; never reuse Development stores, engine state, receipts or account preferences in Production. A Development-to-Production content transfer requires explicit approval and independent preservation verification; selecting Production never performs that transfer.
 - Never auto-upload a local-only workspace or auto-reseed a deleted custom zone. Both operations require an explicit approved recovery/adoption policy.
+- When retained Mac notes exist, keep note-location review available even if the iCloud account is empty. Choosing iCloud only must preserve the local notes and their pending work, including after an independent reopen; it must not require copying or combining them first.
 - Keep titles and task text out of record names, logs, diagnostics, sync status, and notification payloads.
 - Both platform Debug and Release transports default to active outside tests, subject to the installation-local account pause preference and account safety gates. Debug selects Development; Release selects Production. XCTest/UI-test launches remain transport-off. Workspace selection and local persistence must not be changed merely to pause transport. Source enablement does not authorize signing, installation, Production operations, upload, submission or publication.
 - Platform test-process detection must remain compiled in Release. Detect the existing XCTest markers and platform UI-test flags before choosing a persistent workspace or registering for remote notifications; Release test hosts must not resolve a live account or store.
@@ -113,7 +114,7 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - macOS deployment target: macOS 14.0 in project and target configurations, matching the App Store listing.
 - Targets: `Tildone`, `TildoneTests`, and `TildoneUITests` for macOS; separate `TildoneiOS`, `TildoneiOSTests`, and `TildoneiOSUITests` targets for iOS.
 - Mac and iOS application bundle ID: `studio.cuatro.tildone`, for one App Store app record and universal purchase. The test bundles remain distinct.
-- Mac version in the project: marketing version 2.0, build 25; iPhone version 1.0, build 1. Released Mac 1.6.0/build 24 remains the historical compatibility reference.
+- Mac version in the project: marketing version 2.0, build 26; iPhone version 1.0, build 1. Released Mac 1.6.0/build 24 remains the historical compatibility reference.
 - Signing: automatic signing with team `F6HFAVTS49`; hardened runtime enabled.
 - External dependencies: none. Do not add one when an Apple framework or small local implementation suffices; any dependency is a deliberate product/maintenance decision.
 - iOS minimum version: iOS 17.0 in the current project.
