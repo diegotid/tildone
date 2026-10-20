@@ -2371,6 +2371,39 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testTitlebarMenusFollowAccessoryResizeBeforeAndAfterStatusRefresh() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let snapshot = try await store.createNote()
+        let presentation = try XCTUnwrap(store.presentation(for: snapshot.id))
+        let picker = NSView()
+        let accessory = MacNoteTitlebarAccessoryController(
+            colorPicker: picker, syncIndicatorState: .hidden,
+            store: store, presentation: presentation, noteID: snapshot.id
+        )
+        accessory.loadViewIfNeeded()
+        let menuHosts = accessory.view.subviews.filter { $0 !== picker }
+        XCTAssertEqual(menuHosts.count, 3)
+        let initialOffsets = menuHosts.map { NSPoint(x: $0.frame.minX - picker.frame.minX, y: $0.frame.minY - picker.frame.minY) }
+        // Real AppKit expands the initial 22-point accessory to 32 points.
+        // Measure before calling setSyncIndicatorState: that call relayouts
+        // everything and previously concealed the broken initial resize.
+        for state in [MacNoteSyncIndicatorState.hidden, .attentionNeeded, .onlyOnThisMac, .hidden] {
+            for size in [NSSize(width: 129.5, height: 32), NSSize(width: 160, height: 30),
+                         NSSize(width: 129.5, height: 22)] {
+                accessory.view.setFrameSize(size)
+                accessory.view.layoutSubtreeIfNeeded()
+                for (host, offset) in zip(menuHosts, initialOffsets) {
+                    XCTAssertEqual(host.frame.minY - picker.frame.minY, offset.y, accuracy: 0.01)
+                    XCTAssertEqual(host.frame.minX - picker.frame.minX, offset.x, accuracy: 0.01)
+                }
+            }
+            accessory.setSyncIndicatorState(state)
+            accessory.setFormatControlForeground(.black)
+        }
+    }
+
+    @MainActor
     func testMacNoteControlsUseSupportedTitlebarAccessoryHierarchy() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)

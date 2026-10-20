@@ -68,7 +68,12 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
             height: MacNoteTitlebarLayout.controlHeight
         ))
         view = container
+        // AppKit can grow the accessory after loadView (22 to 32 points).
+        // Every control must follow that resize before any status refresh.
         colorPicker.autoresizingMask = [.minXMargin, .minYMargin]
+        formatControl.autoresizingMask = [.minXMargin, .minYMargin]
+        kindControl.autoresizingMask = [.minXMargin, .minYMargin]
+        focusPrivacyControl.autoresizingMask = [.minXMargin, .minYMargin]
         container.addSubview(colorPicker)
         container.addSubview(formatControl)
         container.addSubview(kindControl)
