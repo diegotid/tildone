@@ -2341,7 +2341,7 @@ final class TildoneTests: XCTestCase {
         scroll.reflectScrolledClipView(scroll.contentView)
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             window.appearance = NSAppearance(named: appearance)
-            for width: CGFloat in [320, 360, 500] {
+            for width: CGFloat in [250, 320, 360, 500] {
                 window.setFrame(NSRect(x: 100, y: 100, width: width, height: 300), display: true)
                 for state in [MacNoteSyncIndicatorState.hidden, .attentionNeeded, .onlyOnThisMac, .hidden] {
                     accessory.setSyncIndicatorState(state)

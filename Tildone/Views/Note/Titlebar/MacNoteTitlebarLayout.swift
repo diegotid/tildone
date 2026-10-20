@@ -21,11 +21,12 @@ enum MacNoteTitlebarLayout {
     static let titleControlSpacing: CGFloat = 6
     static let syncIndicatorTrailingSpacing: CGFloat = 8
 
-    // Borderless SwiftUI menus use different vertical insets before Liquid
-    // Glass. Sequoia needs four points less lift than the newer menu style.
+    // Modern borderless menus already center their labels in the hosting view.
+    // A sync-status refresh must not lift them above the neighboring controls.
+    // Retain the older menu style's existing inset compensation.
     static var menuControlVerticalOffset: CGFloat {
         if #available(macOS 26.0, *) {
-            return 10
+            return 0
         }
         return 6
     }

@@ -362,6 +362,7 @@ Follow the codebase’s existing Swift style unless a scoped refactor establishe
 - Pending notes stay visible and cannot be casually closed; this is central macOS product behavior.
 - Retain immediate editing and keyboard efficiency on macOS. Verify topic/new-task initial focus, Return/Tab insertion, arrow navigation, delete/backspace, Command-W, copy/paste, and menu shortcuts after relevant changes.
 - Inactive Mac note topics must tail-truncate with an ellipsis. Keep their `NSTextFieldCell` non-scrollable until editing, and preserve the regression test in `TildoneTests`; scrollable inactive cells clip the title instead of drawing the ellipsis.
+- Modern Mac titlebar menu hosts stay centered with the color picker after every sync-status refresh. Do not reapply a vertical lift used by an older menu style. Retain Sequoia's existing inset compensation.
 - Keep animation calm and functional. Completion must retain a clear way to cancel before destructive removal.
 - Note windows have minimal chrome, translucent colored material, fixed minimum size (180×240), default size (250×300), and a compact progress form (96×66).
 - Normal note color and opacity are global settings. System release notes are retired; What’s New reuses the settings-aware Pro previews and real note components for free-feature examples.
