@@ -79,6 +79,11 @@ struct NoteTitleTextField: NSViewRepresentable {
         let isEditing = context.coordinator.isEditing
             || (editor != nil && field.window?.firstResponder === editor)
         field.cell?.isScrollable = isEditing
+        if !isEditing {
+            // Ending native editing can replace the cell's paragraph style with
+            // clipping. Restore truncation after configuring its scroll state.
+            field.lineBreakMode = .byTruncatingTail
+        }
         // New notes can receive automatic title focus before the iPhone's
         // rename arrives. Focus alone must not hold back that remote title.
         if (!isEditing || !context.coordinator.hasEditedText), field.stringValue != text {
@@ -134,6 +139,7 @@ struct NoteTitleTextField: NSViewRepresentable {
             // SwiftUI update when editing ends. Reconcile the field here too.
             field?.stringValue = parent.text
             field?.cell?.isScrollable = false
+            field?.lineBreakMode = .byTruncatingTail
             parent.onBlur()
         }
 

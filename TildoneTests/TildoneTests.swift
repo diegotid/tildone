@@ -3314,6 +3314,85 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testLongNoteTitleAndTitlebarFitNarrowWindowAfterEditing() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let snapshot = try await store.createNote()
+        let title = "Final release Mac 20261020 — a deliberately long title"
+        try await store.renameNote(snapshot.id, to: title)
+        _ = try await store.addTask(to: snapshot.id, text: "Keep this task pending")
+        let presentation = try XCTUnwrap(store.presentation(for: snapshot.id))
+        let previousKeyWindow = NSApp.keyWindow
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 250, height: 300),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered, defer: false
+        )
+        window.setNoteStyle(noteColor: .green)
+        window.titleVisibility = .hidden
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: snapshot.id))
+        window.setNoteHostingContentView(host)
+        let picker = NoteColorPickerTitlebarControl(store: store, presentation: presentation, noteID: snapshot.id)
+        let accessory = MacNoteTitlebarAccessoryController(
+            colorPicker: picker, syncIndicatorState: .hidden,
+            store: store, presentation: presentation, noteID: snapshot.id
+        )
+        window.addTitlebarAccessoryViewController(accessory)
+        defer {
+            window.contentView = nil
+            window.close()
+            previousKeyWindow?.makeKey()
+        }
+        func descendants(_ view: NSView) -> [NSView] {
+            view.subviews.flatMap { [$0] + descendants($0) }
+        }
+        func settle() async throws {
+            for _ in 0..<6 {
+                window.contentView?.layoutSubtreeIfNeeded()
+                try await Swift.Task.sleep(for: .milliseconds(40))
+            }
+        }
+        window.makeKeyAndOrderFront(nil)
+        try await settle()
+        let field = try XCTUnwrap(descendants(host).compactMap { $0 as? MouseSafeTaskNSTextField }
+            .first { $0.isNoteTitleField })
+        // Exercise the real edit-to-inactive transition, not just initial cell flags.
+        window.makeFirstResponder(field)
+        try await settle()
+        XCTAssertNotNil(field.currentEditor())
+        window.makeFirstResponder(nil)
+        try await settle()
+        for width: CGFloat in [250, 180, 360, 250] {
+            window.setContentSize(NSSize(width: width, height: 300))
+            // Normal sync presentation refreshes must keep the custom menus on
+            // the same center as the color picker, including at default width.
+            accessory.setSyncIndicatorState(.hidden)
+            try await settle()
+            let frame = field.convert(field.bounds, to: host)
+            XCTAssertLessThanOrEqual(frame.maxX, host.bounds.maxX - 2)
+            XCTAssertEqual(field.stringValue, title)
+            XCTAssertFalse(field.cell?.isScrollable ?? true)
+            XCTAssertEqual(field.cell?.lineBreakMode, .byTruncatingTail)
+            let root = try XCTUnwrap(window.contentView)
+            let pickerFrame = picker.convert(picker.bounds, to: root)
+            for control in accessory.view.subviews where control !== picker {
+                let frame = control.convert(control.bounds, to: root)
+                if #available(macOS 26.0, *) {
+                    XCTAssertEqual(frame.midY, pickerFrame.midY, accuracy: 0.01)
+                }
+            }
+            let frameView = try XCTUnwrap(root.superview)
+            let bitmap = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds))
+            frameView.cacheDisplay(in: frameView.bounds, to: bitmap)
+            let attachment = XCTAttachment(data: try XCTUnwrap(bitmap.representation(using: .png, properties: [:])),
+                                           uniformTypeIdentifier: "public.png")
+            attachment.name = "long-title-controls-\(Int(width))"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
+    @MainActor
     func testInactiveNoteTopicUsesTailTruncationInsteadOfScrolling() throws {
         let topic = NoteTitleTextField(
             text: .constant("A deliberately long topic that exceeds the note width"),

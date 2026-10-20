@@ -114,7 +114,7 @@ Do not turn the iPhone app into a direct copy of floating macOS windows. Preserv
 - macOS deployment target: macOS 14.0 in project and target configurations, matching the App Store listing.
 - Targets: `Tildone`, `TildoneTests`, and `TildoneUITests` for macOS; separate `TildoneiOS`, `TildoneiOSTests`, and `TildoneiOSUITests` targets for iOS.
 - Mac and iOS application bundle ID: `studio.cuatro.tildone`, for one App Store app record and universal purchase. The test bundles remain distinct.
-- Mac version in the project: marketing version 2.0, build 26; iPhone version 1.0, build 1. Released Mac 1.6.0/build 24 remains the historical compatibility reference.
+- Mac version in the project: marketing version 2.0, build 27; iPhone version 1.0, build 1. Released Mac 1.6.0/build 24 remains the historical compatibility reference.
 - Signing: automatic signing with team `F6HFAVTS49`; hardened runtime enabled.
 - External dependencies: none. Do not add one when an Apple framework or small local implementation suffices; any dependency is a deliberate product/maintenance decision.
 - iOS minimum version: iOS 17.0 in the current project.
@@ -361,7 +361,7 @@ Follow the codebase’s existing Swift style unless a scoped refactor establishe
 
 - Pending notes stay visible and cannot be casually closed; this is central macOS product behavior.
 - Retain immediate editing and keyboard efficiency on macOS. Verify topic/new-task initial focus, Return/Tab insertion, arrow navigation, delete/backspace, Command-W, copy/paste, and menu shortcuts after relevant changes.
-- Inactive Mac note topics must tail-truncate with an ellipsis. Keep their `NSTextFieldCell` non-scrollable until editing, and preserve the regression test in `TildoneTests`; scrollable inactive cells clip the title instead of drawing the ellipsis.
+- Inactive Mac note topics must tail-truncate with an ellipsis. Keep their `NSTextFieldCell` non-scrollable until editing, and restore tail truncation after native editing ends as well as during inactive updates; AppKit can replace it with clipping. Preserve hosted edit/blur/resize regression coverage in `TildoneTests`.
 - Modern Mac titlebar menu hosts stay centered with the color picker after every sync-status refresh. Do not reapply a vertical lift used by an older menu style. Retain Sequoia's existing inset compensation.
 - Keep animation calm and functional. Completion must retain a clear way to cancel before destructive removal.
 - Note windows have minimal chrome, translucent colored material, fixed minimum size (180×240), default size (250×300), and a compact progress form (96×66).
