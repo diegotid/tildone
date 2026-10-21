@@ -433,6 +433,17 @@ Generated legacy edge-case fixtures must be frozen with the test helper's SQLite
 
 ## Build and test commands
 
+### Isolated marketing capture
+
+`Scripts/build-marketing-preview.py` builds an unsigned private app with the
+`MARKETING_CAPTURE` condition and bundle ID
+`studio.cuatro.tildone.marketing-preview`. Its separate entry point runs real
+Mac note windows against an explicit in-memory repository, never the normal
+bootstrapper, CloudKit, StoreKit, or customer app delegate. Ordinary builds
+compile out all capture code. See `Marketing/Preview/README.md` for the supplied
+wallpaper, current-process-only recording and verified video export workflow.
+Keep generated media out of git and preserve the private bundle-ID guard.
+
 Run commands from the repository root (the directory containing `Tildone.xcodeproj`). The verified local toolchain during this analysis was Xcode 26.4.1; the project was originally created with Xcode 15-era settings, so do not silently raise deployment or project format versions.
 
 Inspect targets and schemes:

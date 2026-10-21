@@ -8,7 +8,9 @@ import SwiftUI
 import TildoneDomain
 import TildoneSync
 
+#if !MARKETING_CAPTURE
 @main
+#endif
 struct TildoneApp: App {
     @State private var foregroundNoteID: NoteID?
     @State private var showsSyncResolutionOptions = false

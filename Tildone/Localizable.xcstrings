@@ -1,6 +1,756 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Done. Off your mind.": {
+      "comment": "Marketing preview completion caption: relief from remembering finished tasks.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done. Off your mind."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hecho. Una cosa menos en la cabeza."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminé. L’esprit libéré."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成了。放下心来。"
+          }
+        }
+      }
+    },
+    "Mail": {
+      "comment": "Private marketing capture: window title for a fictional email client.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "邮件"
+          }
+        }
+      }
+    },
+    "Inbox": {
+      "comment": "Private marketing capture: fictional email client background, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inbox"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bandeja de entrada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boîte de réception"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收件箱"
+          }
+        }
+      }
+    },
+    "Your tickets are ready": {
+      "comment": "Private marketing capture: fictional email client background, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your tickets are ready"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus billetes están listos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos billets sont prêts"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "您的车票已准备就绪"
+          }
+        }
+      }
+    },
+    "Your gallery receipt": {
+      "comment": "Private marketing capture: fictional email client background, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your gallery receipt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu recibo de la galería"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre reçu de la galerie"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "您的画廊收据"
+          }
+        }
+      }
+    },
+    "This week in design": {
+      "comment": "Private marketing capture: fictional email client background, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This week in design"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta semana en diseño"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette semaine dans le design"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周设计资讯"
+          }
+        }
+      }
+    },
+    "To: Alex": {
+      "comment": "Private marketing capture: fictional email client background, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To: Alex"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para: Alex"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À : Alex"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收件人：Alex"
+          }
+        }
+      }
+    },
+    "Hello Alex,\n\nYour tickets are attached. Have a wonderful journey!\n\nCoast Rail": {
+      "comment": "Private marketing capture: fictional email client background, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hello Alex,\n\nYour tickets are attached. Have a wonderful journey!\n\nCoast Rail"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hola, Alex:\n\nTus billetes están adjuntos. ¡Que tengas un buen viaje!\n\nCoast Rail"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonjour Alex,\n\nVos billets sont en pièce jointe. Bon voyage !\n\nCoast Rail"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alex，您好！\n\n车票已附上。祝您旅途愉快！\n\nCoast Rail"
+          }
+        }
+      }
+    },
+    "Project outline": {
+      "comment": "Private marketing capture: fictional background document, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project outline"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esquema del proyecto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan du projet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "项目大纲"
+          }
+        }
+      }
+    },
+    "A simple plan for the next few weeks.\n\nKeep the first version focused.\nLeave room for feedback.": {
+      "comment": "Private marketing capture: fictional background document, not a Tildone feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A simple plan for the next few weeks.\n\nKeep the first version focused.\nLeave room for feedback."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un plan sencillo para las próximas semanas.\n\nCentrar la primera versión en lo esencial.\nDejar espacio para los comentarios."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un plan simple pour les prochaines semaines.\n\nGarder la première version ciblée.\nLaisser de la place aux retours."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未来几周的简单计划。\n\n让首个版本专注于核心。\n为反馈留出空间。"
+          }
+        }
+      }
+    },
+    "Quit Tildone Preview Studio" : {
+      "comment" : "Private marketing capture app menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit Tildone Preview Studio"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir de Tildone Preview Studio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter Tildone Preview Studio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出 Tildone Preview Studio"
+          }
+        }
+      }
+    },
+    "A little less on your mind." : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A little less on your mind."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una cosa menos en la cabeza."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un peu moins à garder en tête."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "少一点牵挂。"
+          }
+        }
+      }
+    },
+    "Sticky to-dos for your Mac." : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sticky to-dos for your Mac."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tareas en notas adhesivas para tu Mac."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Des tâches sur des notes adhésives pour votre Mac."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 上的便笺待办。"
+          }
+        }
+      }
+    },
+    "Write it down. Keep it in sight." : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write it down. Keep it in sight."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apúntalo. Tenlo a la vista."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notez-le. Gardez-le en vue."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随手记下，始终看见。"
+          }
+        }
+      }
+    },
+    "More room to focus." : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More room to focus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más espacio para concentrarte."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus de place pour se concentrer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为专注腾出空间。"
+          }
+        }
+      }
+    },
+    "Finished lists fade away." : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finished lists fade away."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las listas terminadas se desvanecen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les listes terminées s’effacent en douceur."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成的清单会逐渐淡出。"
+          }
+        }
+      }
+    },
+    "Keep your next step in sight." : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep your next step in sight."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ten tu próximo paso a la vista."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gardez la prochaine étape en vue."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让下一步始终在眼前。"
+          }
+        }
+      }
+    },
+    "Weekend" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekend"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin de semana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week-end"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "周末"
+          }
+        }
+      }
+    },
+    "Review the draft" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review the draft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisar el borrador"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relire le brouillon"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "审阅草稿"
+          }
+        }
+      }
+    },
+    "Confirm the meeting" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm the meeting"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirmar la reunión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirmer la réunion"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确认会议"
+          }
+        }
+      }
+    },
+    "Send the proposal" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send the proposal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar la propuesta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyer la proposition"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送提案"
+          }
+        }
+      }
+    },
+    "Call the electrician" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Call the electrician"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llamar al electricista"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appeler l’électricien"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "联系电工"
+          }
+        }
+      }
+    },
+    "Pick up the parcel" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick up the parcel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recoger el paquete"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récupérer le colis"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取包裹"
+          }
+        }
+      }
+    },
+    "Choose a walking route" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a walking route"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir una ruta para pasear"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un itinéraire de promenade"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择散步路线"
+          }
+        }
+      }
+    },
+    "Book the vet" : {
+      "comment" : "Marketing preview caption or disposable sample content.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book the vet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pedir cita con el veterinario"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prendre rendez-vous chez le vétérinaire"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预约兽医"
+          }
+        }
+      }
+    },
     "Privacy Policy" : {
       "localizations" : {
         "en" : {

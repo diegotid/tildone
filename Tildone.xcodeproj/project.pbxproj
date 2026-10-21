@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F22000000000000000000206 /* MarketingCaptureMail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000106 /* MarketingCaptureMail.swift */; };
+		F22000000000000000000205 /* MarketingCaptureNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000105 /* MarketingCaptureNote.swift */; };
+		F22000000000000000000204 /* MarketingCaptureBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000104 /* MarketingCaptureBackdrop.swift */; };
+		F22000000000000000000203 /* MarketingCaptureRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000103 /* MarketingCaptureRecorder.swift */; };
+		F22000000000000000000202 /* MarketingCaptureDirector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000102 /* MarketingCaptureDirector.swift */; };
+		F22000000000000000000201 /* MarketingCaptureMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000101 /* MarketingCaptureMain.swift */; };
 		F21000000000000000000201 /* MacNoteWindowOpeningQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */; };
 		F13000000000000000000201 /* MacWelcomeWindowForeground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13000000000000000000101 /* MacWelcomeWindowForeground.swift */; };
 		F11300000000000000000202 /* MacFindSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000102 /* MacFindSearchField.swift */; };
@@ -301,6 +307,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F22000000000000000000106 /* MarketingCaptureMail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureMail.swift; sourceTree = "<group>"; };
+		F22000000000000000000105 /* MarketingCaptureNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureNote.swift; sourceTree = "<group>"; };
+		F22000000000000000000104 /* MarketingCaptureBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureBackdrop.swift; sourceTree = "<group>"; };
+		F22000000000000000000103 /* MarketingCaptureRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureRecorder.swift; sourceTree = "<group>"; };
+		F22000000000000000000102 /* MarketingCaptureDirector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureDirector.swift; sourceTree = "<group>"; };
+		F22000000000000000000101 /* MarketingCaptureMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureMain.swift; sourceTree = "<group>"; };
 		F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteWindowOpeningQueue.swift; sourceTree = "<group>"; };
 		F13000000000000000000101 /* MacWelcomeWindowForeground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWelcomeWindowForeground.swift; sourceTree = "<group>"; };
 		F11300000000000000000102 /* MacFindSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindSearchField.swift; sourceTree = "<group>"; };
@@ -777,6 +789,9 @@
 		D60000000000000000000003 /* Scenes */ = {
 			isa = PBXGroup;
 			children = (
+				F22000000000000000000103 /* MarketingCaptureRecorder.swift */,
+				F22000000000000000000102 /* MarketingCaptureDirector.swift */,
+				F22000000000000000000101 /* MarketingCaptureMain.swift */,
 				D20000000000000000000105 /* TildonePrimaryScene.swift */,
 			);
 			path = Scenes;
@@ -1031,6 +1046,9 @@
 		E92500000000000000000401 /* Pro */ = {
 			isa = PBXGroup;
 			children = (
+				F22000000000000000000106 /* MarketingCaptureMail.swift */,
+				F22000000000000000000105 /* MarketingCaptureNote.swift */,
+				F22000000000000000000104 /* MarketingCaptureBackdrop.swift */,
 				E92500000000000000000104 /* ProPreviewScene.swift */,
 				E92500000000000000000105 /* MacProPreviewNote.swift */,
 			);
@@ -1613,6 +1631,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F22000000000000000000206 /* MarketingCaptureMail.swift in Sources */,
+				F22000000000000000000205 /* MarketingCaptureNote.swift in Sources */,
+				F22000000000000000000204 /* MarketingCaptureBackdrop.swift in Sources */,
+				F22000000000000000000203 /* MarketingCaptureRecorder.swift in Sources */,
+				F22000000000000000000202 /* MarketingCaptureDirector.swift in Sources */,
+				F22000000000000000000201 /* MarketingCaptureMain.swift in Sources */,
 				S10000000000000000000001 /* SingleMemoTypography.swift in Sources */,
 				P10000000000000000000001 /* ProEntitlement.swift in Sources */,
 				P10000000000000000000003 /* ProPaywallView.swift in Sources */,
