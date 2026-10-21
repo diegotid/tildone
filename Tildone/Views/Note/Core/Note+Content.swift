@@ -194,20 +194,26 @@ extension Note {
     }
 
     func taskList(_ note: MacNoteSnapshot) -> some View {
-        ZStack {
+        let subtaskProgresses = TaskHierarchy.subtaskProgresses(in: tasks)
+        return ZStack {
             Group {
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 0) {
+                        LazyVStack(spacing: 0) {
                             topicListItem().id(Id.findTopicAnchor)
                             taskDropTarget(at: 0)
                             ForEach(visibleTaskEntries, id: \.task.id) { entry in
-                                taskRow(entry.task, at: entry.index)
+                                taskRow(
+                                    entry.task, at: entry.index,
+                                    subtaskProgress: subtaskProgresses[entry.task.id]
+                                )
                                     .id(entry.task.id)
                                 taskDropTarget(at: entry.index + 1)
                             }
-                            newListItem().opacity(isDone || isContentBlurred || isInsertedNewTaskFocused ? 0 : 1)
-                            Spacer().id(Id.bottomAnchor)
+                            newListItem()
+                                .opacity(isDone || isContentBlurred || isInsertedNewTaskFocused ? 0 : 1)
+                                .id(Id.bottomAnchor)
+                            Spacer()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .animation(
@@ -226,7 +232,7 @@ extension Note {
                         .onAppear {
                             isTopicHidden = false
                             DispatchQueue.main.async {
-                                guard noteKind == .checklist else { return }
+                                guard noteKind == .checklist, !hasRequestedEditorFocus else { return }
                                 if note.title == nil { focusOnTopic() } else { focusOnNewTask() }
                                 applyInitialFocusIfNeeded()
                             }
@@ -236,6 +242,15 @@ extension Note {
                             pasteIntoNewTask()
                         }
                         .onReceive(NotificationCenter.default.publisher(for: .minimizeAll)) { _ in handleMinimize() }
+                    }
+                    .onChange(of: focusedField) { _, field in
+                        if field == .newTask {
+                            scrollToBottomAfterLayout(using: scroll)
+                        } else if field == .topic {
+                            DispatchQueue.main.async {
+                                scroll.scrollTo(Id.findTopicAnchor, anchor: .top)
+                            }
+                        }
                     }
                     .onChange(of: focusedTaskID) { _, taskID in
                         if taskID != keyboardFocusedTaskID {
@@ -543,7 +558,10 @@ extension Note {
                             updateTopicVisibility()
                         },
                         onBlur: { updateTopicVisibility() },
-                        onTextChange: { updateTopicVisibility() },
+                        onTextChange: {
+                            hasRequestedEditorFocus = true
+                            updateTopicVisibility()
+                        },
                         onSubmit: {
                             if let task = pendingTasks.first {
                                 focusTaskUsingKeyboard(task.id)
@@ -618,7 +636,10 @@ extension Note {
                     isNoteTitleField: false,
                     font: .systemFont(ofSize: CGFloat(fontSize)),
                     textColor: NSColor(noteForeground),
-                    onFocus: { focusedField = .newTask },
+                    onFocus: {
+                        hasRequestedEditorFocus = true
+                        focusedField = .newTask
+                    },
                     onBlur: { handleNewTaskCommit() },
                     onTextChange: {},
                     onSubmit: { handleNewTaskCommit() },
@@ -705,7 +726,11 @@ extension Note {
             .padding(.bottom, max(0, taskFontSize - 10))
     }
 
-    func taskRow(_ task: TildoneDomain.Task, at index: Int) -> TaskRow {
+    func taskRow(
+        _ task: TildoneDomain.Task,
+        at index: Int,
+        subtaskProgress: TaskSubtaskProgress?
+    ) -> TaskRow {
         TaskRow(
             task: task,
             dragPayload: MacTaskDragPayload(noteID: noteID, taskID: task.id),
@@ -724,7 +749,7 @@ extension Note {
             isShowingRowControls: hoveredTaskID == task.id,
             hasSubtasks: TaskHierarchy.hasSubtasks(at: index, in: tasks),
             isSubtasksCollapsed: collapsedTaskIDs.contains(task.id),
-            subtaskProgress: TaskHierarchy.subtaskProgress(at: index, in: tasks),
+            subtaskProgress: subtaskProgress,
             checkboxChecked: optimisticTaskCompletions[task.id] ?? task.isCompleted,
             isTaskCompletionPending: optimisticTaskCompletions[task.id] != nil,
             focusedTaskID: $focusedTaskID,

@@ -1011,9 +1011,13 @@ extension Note {
     }
 
     func applyInitialFocusIfNeeded() {
-        guard !didSetInitialFocus, let note, note.tasks.isEmpty, note.title == nil, noteWindow != nil else { return }
+        guard !didSetInitialFocus, !hasRequestedEditorFocus,
+              let note, note.tasks.isEmpty, note.title == nil, noteWindow != nil else { return }
         didSetInitialFocus = true
-        DispatchQueue.main.async { focusOnTopic() }
+        DispatchQueue.main.async {
+            guard !hasRequestedEditorFocus else { return }
+            focusOnTopic()
+        }
     }
 
     func convertLegacyFontSizeSettingIfNeeded() {
@@ -1021,6 +1025,7 @@ extension Note {
     }
 
     func focusTaskUsingKeyboard(_ taskID: TaskID) {
+        hasRequestedEditorFocus = true
         focusedField = nil
         nativeFocusedTaskID = taskID
         keyboardFocusedTaskID = taskID
@@ -1028,6 +1033,7 @@ extension Note {
     }
 
     func activateNativeTask(_ taskID: TaskID) {
+        hasRequestedEditorFocus = true
         focusedField = nil
         nativeFocusedTaskID = taskID
         focusedTaskID = taskID
@@ -1063,6 +1069,7 @@ extension Note {
     }
 
     func focusOnTopic() {
+        hasRequestedEditorFocus = true
         nativeFocusedTaskID = nil
         keyboardFocusedTaskID = nil
         focusedTaskID = nil
@@ -1081,6 +1088,7 @@ extension Note {
         }
     }
     func focusOnNewTask() {
+        hasRequestedEditorFocus = true
         nativeFocusedTaskID = nil
         keyboardFocusedTaskID = nil
         focusedTaskID = nil

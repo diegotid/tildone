@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F21000000000000000000201 /* MacNoteWindowOpeningQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */; };
 		F13000000000000000000201 /* MacWelcomeWindowForeground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13000000000000000000101 /* MacWelcomeWindowForeground.swift */; };
 		F11300000000000000000202 /* MacFindSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000102 /* MacFindSearchField.swift */; };
 		F11300000000000000000201 /* MacFindInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11300000000000000000101 /* MacFindInputView.swift */; };
@@ -300,6 +301,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteWindowOpeningQueue.swift; sourceTree = "<group>"; };
 		F13000000000000000000101 /* MacWelcomeWindowForeground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacWelcomeWindowForeground.swift; sourceTree = "<group>"; };
 		F11300000000000000000102 /* MacFindSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindSearchField.swift; sourceTree = "<group>"; };
 		F11300000000000000000101 /* MacFindInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFindInputView.swift; sourceTree = "<group>"; };
@@ -942,6 +944,7 @@
 		D60000000000000000000011 /* Window */ = {
 			isa = PBXGroup;
 			children = (
+				F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */,
 				D70000000000000000000103 /* NSView+NestedSubviews.swift */,
 				D70000000000000000000101 /* NoteWindowButtonActionController.swift */,
 				D80000000000000000000101 /* NoteCornerConvergence.swift */,
@@ -1675,6 +1678,7 @@
 				D10000000000000000000201 /* MacTaskDragPayload.swift in Sources */,
 				E91600000000000000000201 /* MacNoteStickyTitlebar.swift in Sources */,
 				D10000000000000000000202 /* MacNoteTitlebarLayout.swift in Sources */,
+				F21000000000000000000201 /* MacNoteWindowOpeningQueue.swift in Sources */,
 				D10000000000000000000203 /* NoteWindowFrameAutosavePolicy.swift in Sources */,
 				D10000000000000000000204 /* NoteWindowMinimizationState.swift in Sources */,
 				D80000000000000000000201 /* NoteCornerConvergence.swift in Sources */,

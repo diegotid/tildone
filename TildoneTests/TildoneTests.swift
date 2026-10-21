@@ -4734,6 +4734,223 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testRestoringColorGroupOpensFirstNoteBeforeReturningAndPreservesTypedInput() async throws {
+        let previousKeyWindow = NSApp.keyWindow
+        let selectedColors = NoteColorDisplayFilter.selectedColors
+        NoteColorDisplayFilter.setSelectedColors(Set(NoteColor.allCases).subtracting([.blue]))
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        var grouped: [MacNoteSnapshot] = []
+        let createdAt = Date().addingTimeInterval(-Double.random(in: 100_000...200_000))
+        for index in 0..<4 {
+            let note = try await store.createNote(
+                createdAt: createdAt.addingTimeInterval(Double(index) * 5), color: .blue
+            )
+            try await store.renameNote(note.id, to: "Grouped fixture \(index)")
+            _ = try await store.addTask(to: note.id, text: "Retained pending task")
+            grouped.append(try XCTUnwrap(store.note(note.id)))
+        }
+        for index in [1, 2] {
+            NoteWindowMinimizationState.saveMinimized(true, for: grouped[index].id)
+        }
+        let other = try await store.createNote(createdAt: createdAt.addingTimeInterval(100), color: .yellow)
+        _ = try await store.addTask(to: other.id, text: "Other color stays pending")
+        let host = NSHostingView(rootView: Desktop(
+            store: store, noteSyncIndicatorState: .hidden, foregroundNoteID: .constant(nil)
+        ))
+        let coordinator = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        coordinator.isReleasedWhenClosed = false
+        coordinator.contentView = host
+        coordinator.orderFront(nil)
+        defer {
+            coordinator.contentView = nil
+            coordinator.close()
+            for note in store.notes {
+                NSApp.windows.first { $0.title.hasSuffix(note.legacyWindowKey) }?.close()
+                NSWindow.removeFrame(usingName: note.legacyWindowKey)
+            }
+            for note in grouped { NoteWindowMinimizationState.saveMinimized(false, for: note.id) }
+            NoteColorDisplayFilter.setSelectedColors(selectedColors)
+            previousKeyWindow?.makeKeyAndOrderFront(nil)
+        }
+        host.layoutSubtreeIfNeeded()
+        try await Swift.Task.sleep(for: .milliseconds(150))
+        let groupedKeys = Set(grouped.map(\.legacyWindowKey))
+        func visibleGroupWindows() -> [NSWindow] {
+            NSApp.windows.filter { $0.isVisible && groupedKeys.contains($0.title.hasPrefix("_") ? String($0.title.dropFirst()) : $0.title) }
+        }
+        XCTAssertTrue(visibleGroupWindows().isEmpty)
+        NoteColorDisplayFilter.setSelectedColors(Set(NoteColor.allCases))
+        XCTAssertEqual(visibleGroupWindows().count, 1,
+                       "A group restore must return after the first note, before building the rest")
+        let first = try XCTUnwrap(visibleGroupWindows().first)
+        first.contentView?.layoutSubtreeIfNeeded()
+        let fields: [MouseSafeTaskNSTextField] = first.contentView?.getNestedSubviews() ?? []
+        let capture = try XCTUnwrap(fields.first(where: \.isNewTaskField))
+        XCTAssertTrue(first.makeFirstResponder(capture))
+        let editor = try XCTUnwrap(capture.currentEditor() as? NSTextView)
+        editor.insertText("Group capture", replacementRange: NSRange(location: 0, length: 0))
+        try await Swift.Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(visibleGroupWindows().count, grouped.count)
+        let compactWindows = visibleGroupWindows().filter { $0.title.hasPrefix("_") }
+        XCTAssertEqual(compactWindows.count, 2)
+        if compactWindows.count == 2, compactWindows.allSatisfy(\.isOnActiveSpace) {
+            XCTAssertNotEqual(compactWindows[0].frame.origin, compactWindows[1].frame.origin,
+                              "Visible compact notes must finish the group layout")
+        }
+        XCTAssertTrue(first.firstResponder === editor)
+        // XCTest may leave this accessory app inactive (keyWindow == nil).
+        // Its capture can commit on deactivation; verify the input is retained
+        // either as a draft or a saved task, without asserting OS activation.
+        editor.insertNewline(nil)
+        try await Swift.Task.sleep(for: .milliseconds(150))
+        let editedNote = try XCTUnwrap(grouped.first { $0.legacyWindowKey == first.title })
+        let tasks = try await repository.orderedTasks(in: editedNote.id)
+        XCTAssertEqual(tasks.map(\.text), ["Retained pending task", "Group capture"])
+    }
+
+    @MainActor
+    func testWindowOpeningYieldsToInputAndCancelsSupersededBatches() async throws {
+        let queue = MacNoteWindowOpeningQueue()
+        let original = (0..<12).map { _ in NoteID() }
+        let replacement = (0..<3).map { _ in NoteID() }
+        var opened: [NoteID] = []
+        var completed: [String] = []
+        queue.replace(with: original, onCompletion: { completed.append("original") }) { opened.append($0) }
+        XCTAssertEqual(opened, [original[0]], "The first note is immediately available")
+        // A second user action in this event supersedes the queued background
+        // work; none of its unopened windows may appear afterward.
+        queue.replace(with: replacement, onCompletion: { completed.append("replacement") }) { opened.append($0) }
+        XCTAssertEqual(opened, [original[0], replacement[0]])
+        for _ in 0..<100 where opened.count < 1 + replacement.count || completed.isEmpty {
+            try await Swift.Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(opened, [original[0]] + replacement)
+        XCTAssertEqual(completed, ["replacement"], "Superseded layout work must not run")
+        queue.replace(with: original, onCompletion: { completed.append("original") }) { opened.append($0) }
+        queue.cancel()
+        let beforeClose = opened
+        try await Swift.Task.sleep(for: .milliseconds(30))
+        XCTAssertEqual(opened, beforeClose, "Desktop closure must cancel pending openings")
+        XCTAssertEqual(completed, ["replacement"])
+    }
+
+    @MainActor
+    func testCrowdedNoteBuildsOnlyVisibleEditorsAndAcceptsInputDuringWindowOpening() async throws {
+        let previousKeyWindow = NSApp.keyWindow
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date())
+        try await store.renameNote(note.id, to: "Crowded fixture")
+        let taskCount = 240
+        for index in 0..<taskCount {
+            _ = try await repository.addTask(
+                id: TaskID(), to: note.id, createdAt: Date(), text: "Fixture row \(index)",
+                orderToken: OrderToken(rawValue: String(format: "%04da", index))
+            )
+        }
+        try await store.reload()
+        let presentation = try XCTUnwrap(store.presentation(for: note.id))
+        let window = MacNoteWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 300, height: 350),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless],
+            backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.setNoteStyle(noteColor: .yellow)
+        let host = NSHostingView(rootView: Note(store: store, presentation: presentation, noteID: note.id))
+        window.setNoteHostingContentView(host)
+        window.makeKeyAndOrderFront(nil)
+        let queue = MacNoteWindowOpeningQueue()
+        defer {
+            queue.cancel()
+            window.contentView = nil
+            window.close()
+            previousKeyWindow?.makeKeyAndOrderFront(nil)
+        }
+        for _ in 0..<6 {
+            host.layoutSubtreeIfNeeded()
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        let fields: [MouseSafeTaskNSTextField] = host.getNestedSubviews()
+        let taskEditors = fields.filter { $0.taskID != nil }
+        print("RESPONSIVENESS native editors \(taskEditors.count) / \(taskCount) tasks")
+        XCTAssertLessThan(taskEditors.count, taskCount / 2,
+                          "Offscreen tasks must not each construct a native editor")
+        var captureField = fields.first(where: \.isNewTaskField)
+        let scrollViews: [NSScrollView] = host.getNestedSubviews()
+        let scroller = try XCTUnwrap(scrollViews.first)
+        // A lazy capture row has no native field until it is in the viewport.
+        // Scroll like a user instead of focusing an offscreen eager control.
+        for _ in 0..<80 where captureField == nil {
+            if let document = scroller.documentView {
+                let bottom = document.isFlipped
+                    ? max(document.bounds.minY, document.bounds.maxY - scroller.contentView.bounds.height)
+                    : document.bounds.minY
+                scroller.contentView.scroll(to: NSPoint(x: 0, y: bottom))
+                scroller.reflectScrolledClipView(scroller.contentView)
+            }
+            host.layoutSubtreeIfNeeded()
+            let visibleFields: [MouseSafeTaskNSTextField] = host.getNestedSubviews()
+            captureField = visibleFields.first(where: \.isNewTaskField)
+            if captureField != nil { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        let capture = try XCTUnwrap(captureField)
+        let noteIDs = (0..<12).map { _ in NoteID() }
+        var opened: [NoteID] = []
+        queue.replace(with: noteIDs) { opened.append($0) }
+        XCTAssertEqual(opened.count, 1)
+        XCTAssertTrue(window.makeFirstResponder(capture))
+        let editor = try XCTUnwrap(capture.currentEditor() as? NSTextView)
+        editor.insertText("Interactive capture", replacementRange: NSRange(location: 0, length: 0))
+        XCTAssertEqual(editor.string, "Interactive capture")
+        XCTAssertEqual(opened.count, 1, "Typing must run before the remaining window work")
+        editor.insertNewline(nil)
+        for _ in 0..<15 {
+            host.layoutSubtreeIfNeeded()
+            if store.note(note.id)?.tasks.contains(where: { $0.text == "Interactive capture" }) == true {
+                break
+            }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        let inserted = try XCTUnwrap(store.note(note.id)?.tasks.first { $0.text == "Interactive capture" })
+        var persisted = try await repository.orderedTasks(in: note.id)
+        for _ in 0..<30 where !persisted.contains(where: { $0.id == inserted.id }) {
+            try await Swift.Task.sleep(for: .milliseconds(20))
+            persisted = try await repository.orderedTasks(in: note.id)
+        }
+        XCTAssertEqual(persisted.count, taskCount + 1)
+        XCTAssertEqual(persisted.last?.text, "Interactive capture")
+        var insertedEditor: MouseSafeTaskNSTextField?
+        for _ in 0..<40 {
+            host.layoutSubtreeIfNeeded()
+            let editingFields: [MouseSafeTaskNSTextField] = host.getNestedSubviews()
+            insertedEditor = editingFields.first { $0.taskID == inserted.id }
+            if insertedEditor != nil { break }
+            try await Swift.Task.sleep(for: .milliseconds(20))
+        }
+        let insertedField = try XCTUnwrap(insertedEditor)
+        XCTAssertTrue(window.makeFirstResponder(insertedField))
+        let taskEditor = try XCTUnwrap(insertedField.currentEditor() as? NSTextView)
+        taskEditor.setSelectedRange(NSRange(location: taskEditor.string.utf16.count, length: 0))
+        taskEditor.insertText(" while saving", replacementRange: taskEditor.selectedRange())
+        XCTAssertEqual(taskEditor.string, "Interactive capture while saving")
+        var saved = try await repository.task(id: inserted.id)
+        for _ in 0..<30 where saved.text != "Interactive capture while saving" {
+            try await Swift.Task.sleep(for: .milliseconds(20))
+            saved = try await repository.task(id: inserted.id)
+        }
+        XCTAssertEqual(saved.text, "Interactive capture while saving")
+        XCTAssertEqual((window.firstResponder as? NSTextView)?.string, "Interactive capture while saving")
+        try await Swift.Task.sleep(for: .milliseconds(80))
+        XCTAssertEqual(opened, noteIDs, "Background work must still finish")
+    }
+
+    @MainActor
     func testRapidTypingCoalescesWithoutReloadingOlderTaskOrTitleText() async throws {
         let repository = try TildoneRepository(
             descriptor: .inMemory(),

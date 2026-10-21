@@ -104,6 +104,8 @@ struct Desktop: View {
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
     @State private var noteWindows: [NoteID: NSWindow] = [:]
+    @State private var windowOpeningQueue = MacNoteWindowOpeningQueue()
+    @State private var queuedCompactLayoutFrames: [NoteID: NSRect]?
     @State private var colorFolderWindows: [NoteColor: NSPanel] = [:]
     @State private var colorFolderOrigins: [NoteColor: NSPoint] = [:]
     @State private var closedNoteIDs: Set<NoteID> = []
@@ -255,7 +257,7 @@ struct Desktop: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .arrange)) { _ in arrangeNotes() }
             .onReceive(NotificationCenter.default.publisher(for: .noteColorFilterChanged)) { _ in
-                reconcileNoteWindows()
+                reconcileNoteWindows(activatesFirstMissing: true)
             }
             .onReceive(NotificationCenter.default.publisher(for: .arrangeMinimized)) { notification in
                 if noteWindows.keys.contains(where: { NoteWindowManualPosition.isWheelPosition(for: $0) }),
@@ -368,6 +370,8 @@ private extension Desktop {
     }
 
     func closeManagedNoteWindows() {
+        windowOpeningQueue.cancel()
+        queuedCompactLayoutFrames = nil
         resetCornerConvergence()
         setClickThroughHoveredNote(nil)
         setClickThroughCommandInteractionNote(nil)
@@ -647,11 +651,11 @@ private extension Desktop {
         if store.notes.isEmpty {
             createAndShowNewNote(at: randomPositionOnScreen())
         } else {
-            reconcileNoteWindows()
+            reconcileNoteWindows(activatesFirstMissing: true)
         }
     }
 
-    func reconcileNoteWindows() {
+    func reconcileNoteWindows(activatesFirstMissing: Bool = false) {
         let activeIDs = Set(store.notes.map(\.id))
         for (id, window) in noteWindows where !activeIDs.contains(id) {
             if id == hoveredClickThroughNoteID {
@@ -677,11 +681,42 @@ private extension Desktop {
             window.close()
             noteWindows[noteID] = nil
         }
-        for note in store.notes where selectedColors.contains(note.color)
-            && noteWindows[note.id] == nil && !closedNoteIDs.contains(note.id) {
-            openWindow(for: note)
+        let missingNotes = store.notes.filter {
+            selectedColors.contains($0.color)
+                && noteWindows[$0.id] == nil && !closedNoteIDs.contains($0.id)
+        }
+        var activatesNext = activatesFirstMissing
+        let hiddenColors = Set(store.notes.filter { !selectedColors.contains($0.color) }.map(\.color))
+        let folderMembershipChanges = Set(colorFolderWindows.keys) != hiddenColors
+        if folderMembershipChanges { queuedCompactLayoutFrames = [:] }
+        windowOpeningQueue.replace(with: missingNotes.map(\.id), onCompletion: {
+            finishQueuedCompactLayout()
+        }) { noteID in
+            guard let note = store.note(noteID),
+                  NoteColorDisplayFilter.selectedColors.contains(note.color),
+                  noteWindows[noteID] == nil, !closedNoteIDs.contains(noteID) else { return }
+            openWindow(for: note, activates: activatesNext)
+            if let window = noteWindows[noteID], window.title.starts(with: "_") {
+                queuedCompactLayoutFrames?[noteID] = window.frame
+            }
+            activatesNext = false
         }
         reconcileColorFolderWindows(selectedColors: selectedColors)
+        if folderMembershipChanges {
+            queuedCompactLayoutFrames = noteWindows.compactMapValues { window in
+                window.title.starts(with: "_") ? window.frame : nil
+            }
+        }
+        if missingNotes.isEmpty { finishQueuedCompactLayout() }
+    }
+
+    func finishQueuedCompactLayout() {
+        guard let frames = queuedCompactLayoutFrames else { return }
+        queuedCompactLayoutFrames = nil
+        // A save can reconcile again during typing. Retain the pending layout
+        // across that reconciliation, without undoing a user's intervening drag.
+        guard frames.allSatisfy({ noteWindows[$0.key]?.frame == $0.value }) else { return }
+        arrangeNotes(onlyMinimized: true)
     }
 
     func createAndShowNewNote(at position: CGPoint, color: NoteColor? = nil) {
@@ -906,7 +941,7 @@ private extension Desktop {
             })
     }
 
-    func openWindow(for note: MacNoteSnapshot, position: CGPoint? = nil) {
+    func openWindow(for note: MacNoteSnapshot, position: CGPoint? = nil, activates: Bool = true) {
         if let existingWindow = noteWindows[note.id] {
             foregroundNoteID = note.id
             foregroundWindow = existingWindow
@@ -1007,9 +1042,15 @@ private extension Desktop {
         noteWindows[note.id] = window
         updateClickThroughHoverAppearance()
         closedNoteIDs.remove(note.id)
-        foregroundNoteID = note.id
-        foregroundWindow = window
-        window.makeKeyAndOrderFront(nil)
+        if activates {
+            foregroundNoteID = note.id
+            foregroundWindow = window
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            // Remaining group members must not cover the first note or take
+            // focus from typing that started while the group was opening.
+            window.orderBack(nil)
+        }
         NoteWindowMenuTitle.apply(to: window, noteTitle: note.title)
     }
 
