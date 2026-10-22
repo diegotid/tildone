@@ -10,6 +10,9 @@ import TildonePersistence
 final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, ObservableObject {
     @Published var headline = "A little less on your mind."
     @Published private(set) var compactNoteID: NoteID?
+    var localeIdentifier: String {
+        Bundle.main.object(forInfoDictionaryKey: "MarketingLocale") as? String ?? "en-US"
+    }
     private var stage: NSWindow!
     private var windows: [MacNoteWindow] = []
     private var noteIDs: [NoteID] = []
@@ -89,7 +92,8 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
         stage.isReleasedWhenClosed = false
         stage.title = "Tildone Marketing Preview"
         stage.appearance = NSAppearance(named: .aqua)
-        stage.contentView = NSHostingView(rootView: MarketingCaptureBackdrop(director: self, wallpaper: wallpaper))
+        stage.contentView = NSHostingView(rootView: MarketingCaptureBackdrop(director: self, wallpaper: wallpaper)
+            .environment(\.locale, Locale(identifier: localeIdentifier)))
         stage.orderFront(nil)
         for (index, note) in notes.enumerated() {
             let windowScale: CGFloat = index == 0 ? 1.15 : (index == 1 ? 0.85 : 1)
@@ -136,7 +140,8 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
         backgroundDocument.tabbingMode = .disallowed
         backgroundDocument.level = .normal
         backgroundDocument.alphaValue = 0.82
-        let host = NSHostingView(rootView: MarketingCaptureMail())
+        let host = NSHostingView(rootView: MarketingCaptureMail()
+            .environment(\.locale, Locale(identifier: localeIdentifier)))
         host.sizingOptions = []
         backgroundDocument.contentView = host
         backgroundDocument.setFrame(NSRect(
@@ -167,7 +172,7 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
         let presentation = store.presentation(for: note.id)!
         window.setNoteHostingContentView(NSHostingView(rootView: MarketingCaptureNote(
             director: self, store: store, presentation: presentation, noteID: note.id
-        )))
+        ).environment(\.locale, Locale(identifier: localeIdentifier))))
         let accessory = MacNoteTitlebarAccessoryController(
             colorPicker: NoteColorPickerTitlebarControl(store: store, presentation: presentation, noteID: note.id),
             syncIndicatorState: .hidden, store: store, presentation: presentation, noteID: note.id)
@@ -247,6 +252,8 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
         try await recorder.stop()
         let payload: [String: Any] = [
             "status": "complete", "mockDataOnly": true, "cloudKitStarted": false,
+            "locale": localeIdentifier,
+            "preferredLocalizations": Bundle.main.preferredLocalizations,
             "width": 1920, "height": 1080, "fps": 30,
             "headlineScale": 1.875, "expandedNoteScale": expandedNoteScale,
             "headlinePointSize": 82.5, "subtitlePointSize": 33.75,

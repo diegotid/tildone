@@ -1005,6 +1005,7 @@ struct MinimizedNoteSummary: View {
                 .padding(.bottom, 13)
                 .frame(maxWidth: 54, alignment: .leading)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .truncationMode(.tail)
         }
         .padding(.top, 20)

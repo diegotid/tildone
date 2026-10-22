@@ -1,6 +1,936 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "One less thing to keep in your head.": {
+      "comment": "Preview 2: outcome-led continuity caption or active-device pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One less thing to keep in your head."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una cosa menos que recordar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une chose de moins à garder en tête."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "少一件需要挂心的事。"
+          }
+        }
+      }
+    },
+    "Your next step is already waiting.": {
+      "comment": "Preview 2: outcome-led continuity caption or active-device pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your next step is already waiting."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu próximo paso ya te espera."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La prochaine étape vous attend déjà."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一步，已在手边。"
+          }
+        }
+      }
+    },
+    "Less to remember. More room for your day.": {
+      "comment": "Preview 2: outcome-led continuity caption or active-device pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Less to remember. More room for your day."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menos que recordar. Más espacio para tu día."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moins à retenir. Plus de place pour votre journée."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "少些挂心，多些从容。"
+          }
+        }
+      }
+    },
+    "On your iPhone": {
+      "comment": "Preview 2: outcome-led continuity caption or active-device pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On your iPhone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En tu iPhone"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur votre iPhone"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你的 iPhone 上"
+          }
+        }
+      }
+    },
+    "Ready on your Mac": {
+      "comment": "Preview 2: outcome-led continuity caption or active-device pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready on your Mac"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo en tu Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible sur votre Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在你的 Mac 就绪"
+          }
+        }
+      }
+    },
+    "Ready on your iPhone": {
+      "comment": "Preview 2: outcome-led continuity caption or active-device pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready on your iPhone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo en tu iPhone"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible sur votre iPhone"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在你的 iPhone 就绪"
+          }
+        }
+      }
+    },
+    "Capture it wherever you are.": {
+      "comment": "Marketing sync preview: visible iPhone-to-Mac capture and Mac-to-iPhone completion.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture it wherever you are."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apúntalo estés donde estés."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notez-le, où que vous soyez."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无论在哪，随手记下。"
+          }
+        }
+      }
+    },
+    "Add on iPhone. Find it on Mac.": {
+      "comment": "Marketing sync preview: visible iPhone-to-Mac capture and Mac-to-iPhone completion.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add on iPhone. Find it on Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añádelo en el iPhone. Tenlo en el Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez sur iPhone. Retrouvez sur Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 iPhone 添加，在 Mac 查看。"
+          }
+        }
+      }
+    },
+    "Complete on Mac. Pick up on iPhone.": {
+      "comment": "Marketing sync preview: visible iPhone-to-Mac capture and Mac-to-iPhone completion.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete on Mac. Pick up on iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complétalo en el Mac. Sigue en el iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cochez sur Mac. Retrouvez sur iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Mac 完成，在 iPhone 接着做。"
+          }
+        }
+      }
+    },
+    "On your Mac": {
+      "comment": "Marketing sync preview: visible iPhone-to-Mac capture and Mac-to-iPhone completion.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On your Mac"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En tu Mac"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur votre Mac"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你的 Mac 上"
+          }
+        }
+      }
+    },
+    "Pick up where you left off.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick up where you left off."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retoma lo que estabas haciendo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reprenez là où vous en étiez."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随时接着做。"
+          }
+        }
+      }
+    },
+    "Your notes. On Mac and iPhone.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your notes. On Mac and iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus notas. En Mac y iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos notes. Sur Mac et iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的便笺，在 Mac 和 iPhone 上。"
+          }
+        }
+      }
+    },
+    "iCloud sync": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud sync"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronización con iCloud"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisation iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 同步"
+          }
+        }
+      }
+    },
+    "Your notes come with you.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your notes come with you."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus notas van contigo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos notes vous accompagnent."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "便笺随你同行。"
+          }
+        }
+      }
+    },
+    "Captured on iPhone. Ready on Mac.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captured on iPhone. Ready on Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo apuntas en el iPhone. Lo tienes en el Mac."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noté sur iPhone. Disponible sur Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 iPhone 记录，在 Mac 接着做。"
+          }
+        }
+      }
+    },
+    "From your iPhone": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your iPhone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde tu iPhone"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depuis votre iPhone"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自你的 iPhone"
+          }
+        }
+      }
+    },
+    "Same notes. Same progress.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Same notes. Same progress."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mismas notas. Mismo progreso."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mêmes notes. Même progression."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相同便笺，相同进度。"
+          }
+        }
+      }
+    },
+    "Notes, tasks and progress sync with iCloud.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes, tasks and progress sync with iCloud."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notas, tareas y progreso se sincronizan con iCloud."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes, tâches et progression se synchronisent avec iCloud."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过 iCloud 同步便笺、任务和进度。"
+          }
+        }
+      }
+    },
+    "Updated on iPhone": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated on iPhone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizado en el iPhone"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mis à jour sur iPhone"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在 iPhone 更新"
+          }
+        }
+      }
+    },
+    "Keep going. Even offline.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep going. Even offline."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue adelante. Incluso sin conexión."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuez. Même hors ligne."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离线也能继续。"
+          }
+        }
+      }
+    },
+    "Edit now. Sync when you reconnect.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit now. Sync when you reconnect."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edita ahora. Sincroniza al volver a conectarte."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifiez maintenant. Synchronisez à la reconnexion."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随时编辑，联网后同步。"
+          }
+        }
+      }
+    },
+    "Offline editing": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline editing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edición sin conexión"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modification hors ligne"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "离线编辑"
+          }
+        }
+      }
+    },
+    "Check the train times": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the train times"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consultar los horarios del tren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier les horaires du train"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看火车时刻"
+          }
+        }
+      }
+    },
+    "Pack the raincoat": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pack the raincoat"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meter el chubasquero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparer l’imperméable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "带上雨衣"
+          }
+        }
+      }
+    },
+    "Reconnected": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De nuevo en línea"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion rétablie"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已重新联网"
+          }
+        }
+      }
+    },
+    "Ready on both.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready on both."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo en los dos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible sur les deux."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两台设备，都已就绪。"
+          }
+        }
+      }
+    },
+    "Your notes and progress, together.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your notes and progress, together."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus notas y tu progreso, juntos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos notes et votre progression, ensemble."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "便笺与进度，始终相随。"
+          }
+        }
+      }
+    },
+    "Mac and iPhone": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac and iPhone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac y iPhone"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac et iPhone"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac 和 iPhone"
+          }
+        }
+      }
+    },
+    "On your Mac. On your iPhone.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On your Mac. On your iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En tu Mac. En tu iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur votre Mac. Sur votre iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在你的 Mac，在你的 iPhone。"
+          }
+        }
+      }
+    },
+    "iCloud sync included. No Pro required.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud sync included. No Pro required."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronización con iCloud incluida. No requiere Pro."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisation iCloud incluse. Sans Pro."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 同步免费，无需 Pro。"
+          }
+        }
+      }
+    },
+    "Use the same Apple Account on Mac and iPhone.": {
+      "comment": "Marketing preview 2: Mac/iPhone continuity, shared progress and offline editing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use the same Apple Account on Mac and iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa la misma cuenta de Apple en Mac y iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisez le même compte Apple sur Mac et iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Mac 和 iPhone 上使用同一 Apple 账户。"
+          }
+        }
+      }
+    },
     "Done. Off your mind.": {
       "comment": "Marketing preview completion caption: relief from remembering finished tasks.",
       "extractionState": "manual",
@@ -14,7 +944,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hecho. Una cosa menos en la cabeza."
+            "value": "Hecho. Una cosa menos."
           }
         },
         "fr": {
@@ -524,7 +1454,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fin de semana"
+            "value" : "Finde"
           }
         },
         "fr" : {
@@ -3677,7 +4607,21 @@
     },
     "Fading out…" : {
       "comment" : "A description of the fading-out animation.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Fading out…" }
+        },
+        "es" : {
+          "stringUnit" : { "state" : "translated", "value" : "Desapareciendo…" }
+        },
+        "fr" : {
+          "stringUnit" : { "state" : "translated", "value" : "Disparition…" }
+        },
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "正在淡出…" }
+        }
+      }
     },
     "Find in Notes" : {
       "localizations" : {
@@ -7054,18 +7998,19 @@
       }
     },
     "pending" : {
+      "comment" : "Compact note status below its task count. Keep short and number-neutral.",
       "extractionState" : "manual",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "pendiente"
+            "value" : "por hacer"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "incomplète"
+            "value" : "à faire"
           }
         },
         "zh-Hans" : {
