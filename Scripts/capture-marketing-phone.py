@@ -2,6 +2,7 @@
 """Run from a GUI Terminal session; capture only a newly created mock simulator."""
 import argparse
 import json
+import plistlib
 import signal
 import shutil
 import subprocess
@@ -13,6 +14,9 @@ parser.add_argument("--app", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 args = parser.parse_args()
 app = args.app.resolve(strict=True)
+app_info = plistlib.loads((app / "Info.plist").read_bytes())
+locale = app_info.get("MarketingLocale", "en-US")
+assert locale in {"en-US", "es-ES", "fr-FR", "zh-Hans"}, locale
 output = args.output.resolve()
 output.mkdir(parents=True, exist_ok=True)
 bundle = "studio.cuatro.tildone.marketing-phone"
@@ -45,7 +49,8 @@ try:
     simctl("status_bar", device, "override", "--time", "9:41", "--dataNetwork", "wifi",
            "--wifiMode", "active", "--wifiBars", "3", "--batteryState", "charged", "--batteryLevel", "100")
     simctl("install", device, app)
-    simctl("launch", device, bundle)
+    simctl("launch", device, bundle, "-AppleLanguages", f"({locale})",
+           "-AppleLocale", locale.replace("-", "_"))
     container = Path(simctl("get_app_container", device, bundle, "data").strip()) / "Documents"
     def wait_for_phase(phase, timeout=120):
         deadline = time.monotonic() + timeout
@@ -55,6 +60,8 @@ try:
                 shutil.copy2(error_path, output / "phone-capture-error.txt")
                 for frame in container.glob("phone-*.png"):
                     shutil.copy2(frame, output / frame.name)
+                if (container / "capture-events.json").exists():
+                    shutil.copy2(container / "capture-events.json", output / "phone-failed-events.json")
                 raise RuntimeError(error_path.read_text())
             try:
                 state = json.loads((container / "capture-phase.json").read_text())
@@ -100,6 +107,11 @@ try:
     assert [len(state["taskTexts"]) for state in states] == [0, 0, 0, 1, 2, 2], states
     assert [len(state["completedTexts"]) for state in states] == [0, 0, 0, 0, 1, 1], states
     assert all(state["mockDataOnly"] and not state["cloudKitStarted"] for state in states), states
+    assert all(state["locale"] == locale for state in states), states
+    if locale != "en-US":
+        assert all(state.get("localizedInputVerified") for state in states if state["phase"] >= 2), states
+        language = {"es-ES": "es", "fr-FR": "fr", "zh-Hans": "zh-Hans"}[locale]
+        assert all(state["preferredLocalizations"][0] == language for state in states), states
     assert states[-1]["keyboardSuppressedFields"] >= 2, states
     assert states[-1]["maxSoftwareKeyboardHeight"] < 100, states
     assert all(state["nativeTitleVisible"] for state in states if state["phase"] >= 2), states
@@ -111,6 +123,7 @@ try:
         "softwareKeyboardHidden": True,
         "nativeTitleVisible": True, "titlePresentation": "native-creation-field",
         "phoneSyncIndicatorConnected": True,
+        "localizedInputVerified": all(state.get("localizedInputVerified") for state in states if state["phase"] >= 2),
         "runtime": runtime["identifier"], "deviceType": device_type["identifier"],
         "mockDataOnly": True, "cloudKitStarted": False, "states": states
     }, ensure_ascii=False, indent=2) + "\n")

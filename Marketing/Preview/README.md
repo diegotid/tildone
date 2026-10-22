@@ -14,8 +14,9 @@ the real navigation action, and types its title and first task into native field
 Capture-only notifications invoke the existing view actions and are compiled out
 of ordinary builds. In the private phone capture app, editing fields use an empty
 input view to keep the software keyboard hidden while native text entry remains
-active. Title submission follows the existing title field's Return action,
-which retains the native title row during note creation. It does not tap the
+active. Title submission explicitly calls the existing title-save action before
+releasing focus, and the fixture waits for the model to confirm the localized title. This
+retains the native title row as the field's Return action does. It does not tap the
 toolbar Done action that removes that row and switches to a navigation title.
 Revision 5's unsuccessful scroll/nav-bar override has been removed. The fixture
 checks the title field's font, visible frame and full text width after title
@@ -26,6 +27,9 @@ The fixture injects an available/idle sync presentation so the native overview
 button shows its normal unslashed cloud. Each recorded phase verifies this state
 and the production symbol mapping. Only presentation is mocked; the fixture's
 live CloudKit transport remains disabled.
+The private phone fields disable text correction for the supplied translated
+mock strings, and the simulator launches the app with its language arguments
+already set before UIKit starts.
 No live CloudKit transport is started. The Mac checkbox and
 editor use the production components. The bezel, arrows and device pills are
 marketing overlays; the header/subtitles describe outcomes, with no offline scene.
@@ -78,6 +82,17 @@ The private app selects its own language before AppKit launches and explicitly
 supplies the locale to SwiftUI; system and customer app language settings stay
 unchanged. The exporter validates the resolved language and names the video
 using its capture locale.
+
+To record several prepared sync-preview languages in one GUI session, run
+`python3 Scripts/record-marketing-localizations.py --apps /path/to/es.app
+/path/to/fr.app /path/to/zh.app`. Each private Mac app must point to its own
+matching-locale private iPhone app and output directory. The batch records both
+native apps, exports and verifies each 30-second MP4, and copies the finished
+videos to `Marketing/Preview/Output/macOS-App-Store`. Wait for
+`ALL RECORDINGS FINISHED` before reporting completion. Each Mac capture has its
+own ten-second warning. The approved binaries can be copied with only their
+capture Info.plist locale and output paths changed; their existing localized
+resources supply native captions, controls and fixture text.
 
 Launch the printed `TildonePreviewStudio.app` through Finder. It stages the
 wallpaper in its own window without changing the system wallpaper. It records

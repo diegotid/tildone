@@ -18,6 +18,7 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
     private var keyboardSuppressedFields: Set<ObjectIdentifier> = []
     private var maxSoftwareKeyboardHeight: CGFloat = 0
     private var titleVisibleWhileTypingTask = false
+    private var localizedInputVerified = false
     private var directory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
@@ -68,9 +69,15 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
             try await typeIntoFocusedField(String(localized: "Weekend"))
             try await wait(until: 5.5)
             post("TildoneMarketingSubmitTitle")
+            let titleDeadline = Date().addingTimeInterval(1.5)
+            while model.presentation(for: created.id).snapshot.note?.title != String(localized: "Weekend"),
+                  Date() < titleDeadline {
+                try await Swift.Task.sleep(for: .milliseconds(50))
+            }
             try await wait(until: 6.1)
             guard model.presentation(for: created.id).snapshot.note?.title == String(localized: "Weekend") else {
-                throw NSError(domain: "MarketingPhoneCapture", code: 2)
+                throw NSError(domain: "MarketingPhoneCapture", code: 2,
+                              userInfo: [NSLocalizedDescriptionKey: "The localized title was not committed by the native editor."])
             }
             try publish(phase: 2, name: "titled")
             post("TildoneMarketingFocusNewTask")
@@ -97,6 +104,9 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
             try await wait(until: 30.5)
             try publish(phase: 5, name: "complete")
         } catch {
+            try? saveFrame(name: "failure")
+            try? JSONSerialization.data(withJSONObject: events, options: [.prettyPrinted, .sortedKeys])
+                .write(to: directory.appendingPathComponent("capture-events.json"), options: .atomic)
             try? String(describing: error).write(to: directory.appendingPathComponent("capture-error.txt"), atomically: true, encoding: .utf8)
         }
     }
@@ -114,6 +124,11 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
             field.sendActions(for: .editingChanged)
             try await Swift.Task.sleep(for: .milliseconds(90))
         }
+        guard field.text == text, field.autocorrectionType == .no, field.spellCheckingType == .no else {
+            throw NSError(domain: "MarketingPhoneCapture", code: 9,
+                          userInfo: [NSLocalizedDescriptionKey: "The native input did not preserve the localized fixture text."])
+        }
+        localizedInputVerified = true
     }
 
     private func descendants(_ view: UIView) -> [UIView] { [view] + view.subviews.flatMap { descendants($0) } }
@@ -159,6 +174,10 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
         // capture app supplies an empty input view to omit the software keyboard.
         field.inputView = UIView(frame: .zero)
         field.inputAccessoryView = UIView(frame: .zero)
+        // The fixture types complete, already-localized mock strings. Prevent
+        // the simulator's default keyboard dictionary from rewriting them.
+        field.autocorrectionType = .no
+        field.spellCheckingType = .no
         field.inputAssistantItem.leadingBarButtonGroups = []
         field.inputAssistantItem.trailingBarButtonGroups = []
         field.reloadInputViews()
@@ -198,6 +217,8 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
             "syncActivity": syncStatus.activity.rawValue,
             "syncSymbol": syncSymbol,
             "titleVisibleWhileTypingTask": titleVisibleWhileTypingTask,
+            "localizedInputVerified": localizedInputVerified,
+            "preferredLocalizations": Bundle.main.preferredLocalizations,
             "locale": Bundle.main.infoDictionary?["MarketingLocale"] as? String ?? "en-US"
         ]
         events.append(payload)

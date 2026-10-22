@@ -11,6 +11,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--app", type=Path, required=True)
+parser.add_argument("--batch", action="store_true", help="Let a batch launcher report final completion.")
 args = parser.parse_args()
 app = args.app.resolve(strict=True)
 info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
@@ -33,6 +34,7 @@ if info.get("MarketingStory") == "sync":
     cached = json.loads(verification_path.read_text()) if verification_path.exists() else {}
     valid = (cached.get("phoneAppFingerprint") == fingerprint and cached.get("storyRevision") == 7
              and cached.get("nativeTitleVisible") and cached.get("phoneSyncIndicatorConnected")
+             and (info["MarketingLocale"] == "en-US" or cached.get("localizedInputVerified"))
              and (frames / "phone-native.mp4").exists())
     if not valid:
         subprocess.run([sys.executable, str(Path(__file__).with_name("capture-marketing-phone.py")),
@@ -50,7 +52,10 @@ deadline = time.monotonic() + 90
 while time.monotonic() < deadline:
     status = (output / "capture-status.txt").read_text()
     if status == "COMPLETE":
-        print("Capture finished. You can use other apps again. Tell ChatGPT: recorded.", flush=True)
+        if args.batch:
+            print(f"Capture finished for {info['MarketingLocale']}.", flush=True)
+        else:
+            print("Capture finished. You can use other apps again. Tell ChatGPT: recorded.", flush=True)
         break
     if status.startswith("ERROR"):
         raise RuntimeError(status)

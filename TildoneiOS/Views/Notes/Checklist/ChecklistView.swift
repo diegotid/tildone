@@ -340,8 +340,10 @@ struct ChecklistView: View {
         }
 #if MARKETING_CAPTURE
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingSubmitTitle"))) { _ in
-            // Match the title field's onSubmit action. During note creation
-            // its native row stays visible when focus moves to the first task.
+            // Commit explicitly instead of depending on a focus-loss callback
+            // while the capture supplies an empty keyboard view.
+            // Keep the initial title row visible while moving to the first task.
+            finishTitleEditing()
             isEditingTitle = false
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingFocusNewTask"))) { _ in
