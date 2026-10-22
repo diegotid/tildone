@@ -1,5 +1,62 @@
 # macOS App Store preview
 
+## Preview 2: continuity
+
+Build the separate sync story with `--story sync --output Marketing/Preview/Output/sync/revision-7/en-US`.
+The default `--story desktop` retains preview one's composition and timeline.
+Both stories support the same four capture locales.
+
+The sync story uses two explicitly in-memory repositories, with the real domain
+remote-merge operations and Mac presentation refresh. Revision 7 includes a native
+iPhone video of the real `NotesListView` and `ChecklistView`, in a separate private
+simulator app. It starts with one existing Home note, creates a new note through
+the real navigation action, and types its title and first task into native fields.
+Capture-only notifications invoke the existing view actions and are compiled out
+of ordinary builds. In the private phone capture app, editing fields use an empty
+input view to keep the software keyboard hidden while native text entry remains
+active. Title submission follows the existing title field's Return action,
+which retains the native title row during note creation. It does not tap the
+toolbar Done action that removes that row and switches to a navigation title.
+Revision 5's unsuccessful scroll/nav-bar override has been removed. The fixture
+checks the title field's font, visible frame and full text width after title
+submission, while typing the first task, after task submission and after the
+remote update. Both title visibility and recorded keyboard-frame evidence are
+required before composing the clip. The shipping app's navigation is unchanged.
+The fixture injects an available/idle sync presentation so the native overview
+button shows its normal unslashed cloud. Each recorded phase verifies this state
+and the production symbol mapping. Only presentation is mocked; the fixture's
+live CloudKit transport remains disabled.
+No live CloudKit transport is started. The Mac checkbox and
+editor use the production components. The bezel, arrows and device pills are
+marketing overlays; the header/subtitles describe outcomes, with no offline scene.
+
+Build the phone app with `python3 Scripts/build-marketing-phone.py --output
+Marketing/Preview/Output/sync/revision-7/en-US` and the same `--locale` as Mac.
+Run `Scripts/record-marketing-preview.command` from a GUI Finder/Terminal session.
+The launcher creates its own disposable simulator, captures only that mock app,
+then shuts down and deletes that simulator. It never reuses existing devices.
+Before launching the fixture it marks the simulator's one-time keyboard tutorials
+as already seen, so the slide-to-type introduction cannot cover the captured UI.
+Once the phone video is ready, a ten-second warning precedes the Mac capture.
+The iPhone video plays in an `AVPlayerLayer` without playback controls, aligned
+with the Mac story. Source fingerprints include the private phone app's resources
+and debug dylib, plus the capture script, to invalidate stale phone footage.
+The central connector starts empty, changes to a left arrow when the new note
+arrives, then to a right arrow for the Mac edit, which remains through the end.
+The cloud sits below the phone in place of its old text label. The pink window
+bottom is aligned to that cloud frame, at canvas y=74; no Mac label is shown.
+
+Timeline: 0–12 seconds Mac has one note while iPhone starts at its note list,
+creates a new note and enters title/first task; at 12 seconds the new note arrives
+on Mac. At 14–20 seconds Mac adds the next task and completes the first. At about
+23 seconds iPhone receives both changes. The final scene holds matching content.
+This is a scripted demonstration, not a measurement of real network latency.
+Export checks the one-note opening, native creation flow, and matching final
+task text and completion on both replicas and in the recorded iPhone screen.
+
+The exporter checks both replicas and names this video's output
+`Tildone-macOS-preview-2-sync-<locale>.mp4`, preserving preview one's filenames.
+
 The capture build runs the real `Note`, `MacNoteWindow`, checkbox, editor,
 title-bar controls, compact presentation and completion lifecycle with three
 synthetic checklists in an explicitly in-memory `TildoneRepository`.
@@ -14,6 +71,13 @@ and Release builds compile out the capture code and retain their original entry.
 ```sh
 python3 Scripts/build-marketing-preview.py --wallpaper /absolute/path/GoldenGate.png
 ```
+
+For localized exports, add `--locale es-ES`, `--locale fr-FR`, or
+`--locale zh-Hans`, and use a separate `--output` directory for each language.
+The private app selects its own language before AppKit launches and explicitly
+supplies the locale to SwiftUI; system and customer app language settings stay
+unchanged. The exporter validates the resolved language and names the video
+using its capture locale.
 
 Launch the printed `TildonePreviewStudio.app` through Finder. It stages the
 wallpaper in its own window without changing the system wallpaper. It records

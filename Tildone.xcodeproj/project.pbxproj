@@ -8,9 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		F22000000000000000000206 /* MarketingCaptureMail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000106 /* MarketingCaptureMail.swift */; };
+		F2200000000000000000020A /* MarketingSyncCapturePhone.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2200000000000000000010A /* MarketingSyncCapturePhone.swift */; };
+		F22000000000000000000209 /* MarketingSyncCaptureNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000109 /* MarketingSyncCaptureNote.swift */; };
 		F22000000000000000000205 /* MarketingCaptureNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000105 /* MarketingCaptureNote.swift */; };
+		F22000000000000000000208 /* MarketingSyncCaptureBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000108 /* MarketingSyncCaptureBackdrop.swift */; };
 		F22000000000000000000204 /* MarketingCaptureBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000104 /* MarketingCaptureBackdrop.swift */; };
 		F22000000000000000000203 /* MarketingCaptureRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000103 /* MarketingCaptureRecorder.swift */; };
+		F22000000000000000000207 /* MarketingSyncCaptureDirector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000107 /* MarketingSyncCaptureDirector.swift */; };
 		F22000000000000000000202 /* MarketingCaptureDirector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000102 /* MarketingCaptureDirector.swift */; };
 		F22000000000000000000201 /* MarketingCaptureMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000101 /* MarketingCaptureMain.swift */; };
 		F21000000000000000000201 /* MacNoteWindowOpeningQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */; };
@@ -30,6 +34,8 @@
 		F51E11000000000000000202 /* TaskSpellingMarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000102 /* TaskSpellingMarksView.swift */; };
 		F51E11000000000000000201 /* TaskSpellingMarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51E11000000000000000101 /* TaskSpellingMarks.swift */; };
 		A91000000000000000000001 /* SingleMemoTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91000000000000000000002 /* SingleMemoTextView.swift */; };
+		F22100000000000000000201 /* MarketingPhoneCaptureApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22100000000000000000101 /* MarketingPhoneCaptureApp.swift */; };
+		F22100000000000000000202 /* MarketingPhoneCaptureFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22100000000000000000102 /* MarketingPhoneCaptureFixture.swift */; };
 		A10000000000000000000001 /* TildoneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* TildoneiOSApp.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
 		A10000000000000000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Preview Assets.xcassets */; };
@@ -308,9 +314,13 @@
 
 /* Begin PBXFileReference section */
 		F22000000000000000000106 /* MarketingCaptureMail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureMail.swift; sourceTree = "<group>"; };
+		F2200000000000000000010A /* MarketingSyncCapturePhone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingSyncCapturePhone.swift; sourceTree = "<group>"; };
+		F22000000000000000000109 /* MarketingSyncCaptureNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingSyncCaptureNote.swift; sourceTree = "<group>"; };
 		F22000000000000000000105 /* MarketingCaptureNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureNote.swift; sourceTree = "<group>"; };
+		F22000000000000000000108 /* MarketingSyncCaptureBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingSyncCaptureBackdrop.swift; sourceTree = "<group>"; };
 		F22000000000000000000104 /* MarketingCaptureBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureBackdrop.swift; sourceTree = "<group>"; };
 		F22000000000000000000103 /* MarketingCaptureRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureRecorder.swift; sourceTree = "<group>"; };
+		F22000000000000000000107 /* MarketingSyncCaptureDirector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingSyncCaptureDirector.swift; sourceTree = "<group>"; };
 		F22000000000000000000102 /* MarketingCaptureDirector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureDirector.swift; sourceTree = "<group>"; };
 		F22000000000000000000101 /* MarketingCaptureMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureMain.swift; sourceTree = "<group>"; };
 		F21000000000000000000101 /* MacNoteWindowOpeningQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacNoteWindowOpeningQueue.swift; sourceTree = "<group>"; };
@@ -329,6 +339,8 @@
 		F51E11000000000000000101 /* TaskSpellingMarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSpellingMarks.swift; sourceTree = "<group>"; };
 		A91000000000000000000002 /* SingleMemoTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleMemoTextView.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F22100000000000000000101 /* MarketingPhoneCaptureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingPhoneCaptureApp.swift; sourceTree = "<group>"; };
+		F22100000000000000000102 /* MarketingPhoneCaptureFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingPhoneCaptureFixture.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* TildoneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -661,6 +673,8 @@
 		C10000000000000000000021 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				F22100000000000000000101 /* MarketingPhoneCaptureApp.swift */,
+				F22100000000000000000102 /* MarketingPhoneCaptureFixture.swift */,
 				A10000000000000000000011 /* TildoneiOSApp.swift */,
 				C10000000000000000000011 /* TildoneiOSAppDelegate.swift */,
 				C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */,
@@ -790,6 +804,7 @@
 			isa = PBXGroup;
 			children = (
 				F22000000000000000000103 /* MarketingCaptureRecorder.swift */,
+				F22000000000000000000107 /* MarketingSyncCaptureDirector.swift */,
 				F22000000000000000000102 /* MarketingCaptureDirector.swift */,
 				F22000000000000000000101 /* MarketingCaptureMain.swift */,
 				D20000000000000000000105 /* TildonePrimaryScene.swift */,
@@ -1047,7 +1062,10 @@
 			isa = PBXGroup;
 			children = (
 				F22000000000000000000106 /* MarketingCaptureMail.swift */,
+				F2200000000000000000010A /* MarketingSyncCapturePhone.swift */,
+				F22000000000000000000109 /* MarketingSyncCaptureNote.swift */,
 				F22000000000000000000105 /* MarketingCaptureNote.swift */,
+				F22000000000000000000108 /* MarketingSyncCaptureBackdrop.swift */,
 				F22000000000000000000104 /* MarketingCaptureBackdrop.swift */,
 				E92500000000000000000104 /* ProPreviewScene.swift */,
 				E92500000000000000000105 /* MacProPreviewNote.swift */,
@@ -1563,6 +1581,8 @@
 				R10000000000000000000002 /* RichTaskTextEditor.swift in Sources */,
 				A91000000000000000000001 /* SingleMemoTextView.swift in Sources */,
 				R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */,
+				F22100000000000000000201 /* MarketingPhoneCaptureApp.swift in Sources */,
+				F22100000000000000000202 /* MarketingPhoneCaptureFixture.swift in Sources */,
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
 				C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */,
 				C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */,
@@ -1632,9 +1652,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				F22000000000000000000206 /* MarketingCaptureMail.swift in Sources */,
+				F2200000000000000000020A /* MarketingSyncCapturePhone.swift in Sources */,
+				F22000000000000000000209 /* MarketingSyncCaptureNote.swift in Sources */,
 				F22000000000000000000205 /* MarketingCaptureNote.swift in Sources */,
+				F22000000000000000000208 /* MarketingSyncCaptureBackdrop.swift in Sources */,
 				F22000000000000000000204 /* MarketingCaptureBackdrop.swift in Sources */,
 				F22000000000000000000203 /* MarketingCaptureRecorder.swift in Sources */,
+				F22000000000000000000207 /* MarketingSyncCaptureDirector.swift in Sources */,
 				F22000000000000000000202 /* MarketingCaptureDirector.swift in Sources */,
 				F22000000000000000000201 /* MarketingCaptureMain.swift in Sources */,
 				S10000000000000000000001 /* SingleMemoTypography.swift in Sources */,

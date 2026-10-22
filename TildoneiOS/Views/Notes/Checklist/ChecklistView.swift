@@ -338,6 +338,21 @@ struct ChecklistView: View {
                 showsInsertionHint = false
             }
         }
+#if MARKETING_CAPTURE
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingSubmitTitle"))) { _ in
+            // Match the title field's onSubmit action. During note creation
+            // its native row stays visible when focus moves to the first task.
+            isEditingTitle = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingFocusNewTask"))) { _ in
+            isAddingTask = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingCommitNewTask"))) { _ in
+            addTask()
+            isAddingTask = false
+            focusTask(nil)
+        }
+#endif
         .onChange(of: isAddingTask) { _, isFocused in
             if isFocused { focusTask(nil) }
         }

@@ -8,6 +8,7 @@ import SwiftUI
 import TildonePersistence
 import TildoneSync
 
+#if !MARKETING_CAPTURE
 @main
 struct TildoneiOSApp: App {
     @UIApplicationDelegateAdaptor(TildoneiOSAppDelegate.self) private var appDelegate
@@ -50,3 +51,4 @@ struct TildoneiOSApp: App {
         }
     }
 }
+#endif

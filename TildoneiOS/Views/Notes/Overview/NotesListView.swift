@@ -163,6 +163,11 @@ struct NotesListView: View {
             .navigationDestination(isPresented: $showsAbout) {
                 TildoneiOSAboutView()
             }
+#if MARKETING_CAPTURE
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingCreateNote"))) { _ in
+                createNote()
+            }
+#endif
         }
         .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {
             WelcomeOnboardingView { showsWelcome = false }

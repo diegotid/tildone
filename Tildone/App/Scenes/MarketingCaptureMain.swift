@@ -11,9 +11,22 @@ enum MarketingCaptureMain {
               Bundle.main.bundleIdentifier == "studio.cuatro.tildone.marketing-preview" else {
             fatalError("Marketing capture requires its private bundle and macOS 15 or later.")
         }
+        let locale = Bundle.main.infoDictionary?["MarketingLocale"] as? String ?? "en-US"
+        guard ["en-US", "es-ES", "fr-FR", "zh-Hans"].contains(locale) else {
+            fatalError("Unsupported marketing capture locale.")
+        }
+        // Only this private capture bundle's preferences are affected. Set the
+        // language before AppKit, Foundation localization, or views are started.
+        UserDefaults.standard.set([locale], forKey: "AppleLanguages")
+        UserDefaults.standard.set(locale.replacingOccurrences(of: "-", with: "_"), forKey: "AppleLocale")
         setenv("TILDONE_UI_TESTING", "1", 1)
         let application = NSApplication.shared
-        let director = MarketingCaptureDirector()
+        let director: NSApplicationDelegate
+        if Bundle.main.infoDictionary?["MarketingStory"] as? String == "sync" {
+            director = MarketingSyncCaptureDirector()
+        } else {
+            director = MarketingCaptureDirector()
+        }
         application.delegate = director
         application.setActivationPolicy(.regular)
         let menu = NSMenu()

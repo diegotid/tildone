@@ -10,9 +10,41 @@ parser.add_argument("--output", type=Path, default=Path("Marketing/Preview/Outpu
 args = parser.parse_args()
 output = args.output.resolve()
 result = json.loads((output / "capture-result.json").read_text())
+locale = result.get("locale", "en-US")
+assert locale in {"en-US", "es-ES", "fr-FR", "zh-Hans"}, locale
+if "preferredLocalizations" in result:
+    assert result["preferredLocalizations"][0] == {"en-US": "en", "es-ES": "es", "fr-FR": "fr", "zh-Hans": "zh-Hans"}[locale], result
 assert result["status"] == "complete"
 assert result["mockDataOnly"] and not result["cloudKitStarted"]
-assert result["notesRemaining"] == 2 and result["capturedTaskPresent"], result
+story = result.get("story", "desktop")
+assert result["capturedTaskPresent"], result
+if story == "sync":
+    expected_notes = 2 if result.get("compositionRevision", 1) >= 2 else 3
+    assert result["notesRemaining"] == expected_notes and result["replicaCount"] == 2, result
+    if result.get("compositionRevision", 1) >= 3:
+        assert result["openingNoteCount"] == result["openingWindowCount"] == 1, result
+        assert result["phoneOpeningNoteCount"] == 1, result
+        assert all(result[key] for key in ["remoteNoteArrived", "macTaskAdded", "macCompletionDeliveredToPhone",
+                                          "macTaskDeliveredToPhone", "nativePhoneUI", "nativePhoneVideo",
+                                          "phoneStartsOnNoteList", "phoneCreatedNote", "phoneMatchesMac",
+                                          "phonePlayerReachedEndScene"]), result
+        if result.get("compositionRevision", 1) >= 4:
+            assert result["softwareKeyboardHidden"] and result["arrowVisibleAtEnd"], result
+            assert abs(result["pinkNoteBottom"] - result["cloudSymbolBottom"]) <= 1, result
+        if result.get("compositionRevision", 1) == 5:
+            assert result["nativeLargeTitleVisible"], result
+        if result.get("compositionRevision", 1) >= 6:
+            assert result["nativeTitleVisible"], result
+        if result.get("compositionRevision", 1) >= 7:
+            assert result["phoneSyncIndicatorConnected"], result
+    else:
+        assert all(result[key] for key in ["remoteNoteArrived", "remoteCompletionArrived",
+                                          "offlineTaskSaved", "offlineTaskWithheld", "offlineTaskDelivered"]), result
+    if result.get("compositionRevision", 1) == 2:
+        assert result["nativePhoneUI"] and result["phoneFrameCount"] == 4 and result["phoneMatchesMac"], result
+        assert result["remoteTaskArrived"] and result["macCompletionDeliveredToPhone"], result
+else:
+    assert result["notesRemaining"] == 2, result
 if "backgroundDocument" in result:
     assert result["backgroundDocumentActivated"] and result["pendingNotesAboveBackground"], result
     completed, home, weekend = result["openingWindowSizes"]
@@ -29,13 +61,14 @@ if "backgroundDocument" in result:
             assert abs(result["backgroundWindowOrigin"]["x"] - (home_origin["x"] + home["width"] / 2 + 195)) <= 1, result
             assert abs(home_origin["y"] - (today_origin["y"] + (215 - 270) * 0.75 - home["height"] * 0.25)) <= 1, result
             assert abs(weekend_origin["y"] - (today_origin["y"] - weekend["height"] * 0.25)) <= 1, result
-            assert result["backgroundWindowTitle"] == "Mail", result
+            assert result["backgroundWindowTitle"] == {"en-US": "Mail", "es-ES": "Correo", "fr-FR": "Mail", "zh-Hans": "邮件"}[locale], result
         else:
             assert abs(result["backgroundWindowSize"]["width"] - 390) <= 1, result
             assert abs(result["backgroundWindowSize"]["height"] - 362 * 0.85) <= 1, result
             assert abs(result["blueNoteOverlapFraction"] - 0.5) < 0.01, result
 raw = output / "Tildone-macOS-preview-raw.mp4"
-final = output / "Tildone-macOS-preview-en-US.mp4"
+story_suffix = "-2-sync" if story == "sync" else ""
+final = output / f"Tildone-macOS-preview{story_suffix}-{locale}.mp4"
 command = [
     "ffmpeg", "-hide_banner", "-y", "-i", str(raw),
     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
@@ -58,7 +91,7 @@ assert (video["width"], video["height"], video["codec_name"], video["pix_fmt"], 
 assert audio["codec_name"] == "aac" and audio["channels"] == 2 and audio["sample_rate"] == "48000"
 assert abs(float(probe["format"]["duration"]) - 30) < 0.05
 (output / "export-verification.json").write_text(json.dumps(probe, indent=2) + "\n")
-for second in [2, 6, 10, 15, 22, 28]:
+for second in [2, 6, 10, 15, 22, 28, 29.7]:
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", str(second),
                     "-i", str(final), "-frames:v", "1", str(output / f"frame-{second:02}.png")], check=True)
 subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(final),
