@@ -190,7 +190,11 @@ extension Note {
             let safeHeight = ceil(bounds.height) + candidate * 0.45
             if safeHeight <= availableSize.height { low = candidate } else { high = candidate }
         }
+        #if MARKETING_CAPTURE
+        return low * marketingSingleMemoFitFraction
+        #else
         return low * 0.6
+        #endif
     }
 
     func taskList(_ note: MacNoteSnapshot) -> some View {

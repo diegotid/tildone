@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F2200000000000000000020B /* MarketingCaptureTextEdit.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2200000000000000000010B /* MarketingCaptureTextEdit.swift */; };
 		F22000000000000000000206 /* MarketingCaptureMail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000106 /* MarketingCaptureMail.swift */; };
 		F2200000000000000000020A /* MarketingSyncCapturePhone.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2200000000000000000010A /* MarketingSyncCapturePhone.swift */; };
 		F22000000000000000000209 /* MarketingSyncCaptureNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22000000000000000000109 /* MarketingSyncCaptureNote.swift */; };
@@ -313,6 +314,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F2200000000000000000010B /* MarketingCaptureTextEdit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureTextEdit.swift; sourceTree = "<group>"; };
 		F22000000000000000000106 /* MarketingCaptureMail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingCaptureMail.swift; sourceTree = "<group>"; };
 		F2200000000000000000010A /* MarketingSyncCapturePhone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingSyncCapturePhone.swift; sourceTree = "<group>"; };
 		F22000000000000000000109 /* MarketingSyncCaptureNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingSyncCaptureNote.swift; sourceTree = "<group>"; };
@@ -1062,6 +1064,7 @@
 			isa = PBXGroup;
 			children = (
 				F22000000000000000000106 /* MarketingCaptureMail.swift */,
+				F2200000000000000000010B /* MarketingCaptureTextEdit.swift */,
 				F2200000000000000000010A /* MarketingSyncCapturePhone.swift */,
 				F22000000000000000000109 /* MarketingSyncCaptureNote.swift */,
 				F22000000000000000000105 /* MarketingCaptureNote.swift */,
@@ -1652,6 +1655,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F22000000000000000000206 /* MarketingCaptureMail.swift in Sources */,
+				F2200000000000000000020B /* MarketingCaptureTextEdit.swift in Sources */,
 				F2200000000000000000020A /* MarketingSyncCapturePhone.swift in Sources */,
 				F22000000000000000000209 /* MarketingSyncCaptureNote.swift in Sources */,
 				F22000000000000000000205 /* MarketingCaptureNote.swift in Sources */,

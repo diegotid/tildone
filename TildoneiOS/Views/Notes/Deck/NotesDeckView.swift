@@ -46,6 +46,22 @@ struct NotesDeckView: View {
                             rename: rename,
                             delete: delete
                         )
+#if MARKETING_CAPTURE
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.onChange(of: geometry.frame(in: .global), initial: true) { _, frame in
+                                    let viewport = proxy.frame(in: .global)
+                                    NotificationCenter.default.post(
+                                        name: Notification.Name("TildoneMarketingDeckGeometry"), object: nil,
+                                        userInfo: ["title": group.notes.first?.title ?? "",
+                                                   "color": group.notes.first?.color.rawValue ?? "",
+                                                   "noteCount": group.notes.count,
+                                                   "frame": frame, "viewport": viewport,
+                                                   "cardHeight": cardHeight])
+                                }
+                            }
+                        }
+#endif
                     }
                 }
                 .padding(.vertical, 24)

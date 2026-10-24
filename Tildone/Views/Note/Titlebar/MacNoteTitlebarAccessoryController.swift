@@ -179,6 +179,23 @@ final class MacNoteTitlebarAccessoryController: NSTitlebarAccessoryViewControlle
             alignedWith: colorPicker.frame
         )
     }
+
+#if MARKETING_CAPTURE
+    /// Press the shipping SwiftUI Menu's AppKit control, without rebuilding
+    /// its items or running a purchase action. Called only in private captures.
+    func marketingOpenPrivacyMenu() -> Bool {
+        loadViewIfNeeded()
+        focusPrivacyControl.layoutSubtreeIfNeeded()
+        func descendants(_ view: NSView) -> [NSView] {
+            [view] + view.subviews.flatMap { descendants($0) }
+        }
+        if let button = descendants(focusPrivacyControl).compactMap({ $0 as? NSButton }).first {
+            button.performClick(nil)
+            return true
+        }
+        return focusPrivacyControl.accessibilityPerformPress()
+    }
+#endif
 }
 
 private struct MacNoteFocusPrivacyMenu: View {

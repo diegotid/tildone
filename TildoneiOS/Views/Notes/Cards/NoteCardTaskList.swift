@@ -46,6 +46,17 @@ struct NoteCardTaskList: View {
                         .padding(.leading, 1 + CGFloat(task.indentLevel) * baseCheckboxSize * contentScale)
                     }
                 }
+#if MARKETING_CAPTURE
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.onChange(of: geometry.frame(in: .global), initial: true) { _, frame in
+                            NotificationCenter.default.post(
+                                name: Notification.Name("TildoneMarketingTaskPreviewGeometry"), object: nil,
+                                userInfo: ["texts": tasks.map(\.text), "frame": frame])
+                        }
+                    }
+                }
+#endif
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

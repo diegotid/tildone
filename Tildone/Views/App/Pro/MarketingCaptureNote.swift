@@ -11,11 +11,18 @@ struct MarketingCaptureNote: View {
     let presentation: MacNotePresentation
     let noteID: NoteID
 
-    private var scale: CGFloat { director.compactNoteID == noteID ? 1 : 0.75 }
+    private var scale: CGFloat { director.compactNoteID == noteID ? 1 : director.expandedNoteScale }
+
+    private var captureNote: Note {
+        var note = Note(store: store, presentation: presentation, noteID: noteID,
+                        initialFocusBlurred: director.isPrivacyBlurredNote(noteID))
+        note.marketingSingleMemoFitFraction = director.singleMemoFitFraction
+        return note
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            Note(store: store, presentation: presentation, noteID: noteID)
+            captureNote
                 .frame(width: geometry.size.width / scale,
                        height: geometry.size.height / scale)
                 .scaleEffect(scale, anchor: .topLeading)

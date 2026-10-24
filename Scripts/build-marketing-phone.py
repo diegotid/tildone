@@ -11,6 +11,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--locale", choices=["en-US", "es-ES", "fr-FR", "zh-Hans"], default="en-US")
+parser.add_argument("--story", choices=["sync", "screenshot-2"], default="sync")
 parser.add_argument("--derived-data", type=Path, default=Path("/tmp/TildoneMarketingPhoneDerivedData"))
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]
@@ -52,6 +53,7 @@ with info_path.open("rb") as file:
 assert info["CFBundleIdentifier"] == "studio.cuatro.tildone.marketing-phone"
 info["CFBundleDisplayName"] = "Tildone Phone Preview"
 info["MarketingLocale"] = args.locale
+info["MarketingStory"] = args.story
 info.pop("UIBackgroundModes", None)
 with info_path.open("wb") as file:
     plistlib.dump(info, file)
