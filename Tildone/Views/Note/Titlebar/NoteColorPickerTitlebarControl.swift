@@ -80,6 +80,13 @@ final class NoteColorPickerTitlebarControl: NSHostingView<NoteColorPickerTitleba
         popover.show(relativeTo: bounds, of: self, preferredEdge: .maxY)
     }
 
+#if MARKETING_CAPTURE
+    /// Inspect the existing native popover, without recreating its content.
+    var marketingPopoverFrame: CGRect? {
+        popover.isShown ? popover.contentViewController?.view.window?.frame : nil
+    }
+#endif
+
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .pointingHand)
     }

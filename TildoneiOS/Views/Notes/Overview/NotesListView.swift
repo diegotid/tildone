@@ -167,6 +167,12 @@ struct NotesListView: View {
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingCreateNote"))) { _ in
                 createNote()
             }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingOpenNote"))) { notification in
+                if let id = notification.object as? NoteID,
+                   let note = appModel.notes.first(where: { $0.id == id }) {
+                    open(note)
+                }
+            }
 #endif
         }
         .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {

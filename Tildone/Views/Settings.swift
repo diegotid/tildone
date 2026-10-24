@@ -179,6 +179,10 @@ struct SettingsForm: View {
     static let positioningPaneHeight: CGFloat = 474
 
     let store: MacSharedStore?
+#if MARKETING_CAPTURE
+    // Mount the real free appearance controls as a capture-only excerpt.
+    var marketingAppearanceOnly = false
+#endif
     @Environment(\.openWindow) private var openWindow
     @ObservedObject private var pro = ProEntitlement.shared
 
@@ -306,6 +310,30 @@ struct SettingsForm: View {
     }
 
     var body: some View {
+#if MARKETING_CAPTURE
+        if marketingAppearanceOnly {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Appearance").font(.system(size: 16, weight: .semibold))
+                Divider().padding(.vertical, 4)
+                noteColorSettings()
+                fontSizeSettings()
+                taskWrappingSettings()
+            }
+            .font(.system(size: 12))
+            .controlSize(.small)
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
+            .environment(\.colorScheme, .light)
+        } else {
+            standardSettingsBody
+        }
+#else
+        standardSettingsBody
+#endif
+    }
+
+    private var standardSettingsBody: some View {
         TabView(selection: $selectedTab) {
             settingsPane(bottomPadding: 28, fittingTab: .general) { generalSettings() }
                 .tabItem { Label("General", systemImage: "gearshape") }
@@ -1477,7 +1505,7 @@ enum ScrollChevronLayout {
     }
 }
 
-private struct ScrollChevronIndicator: View {
+struct ScrollChevronIndicator: View {
     let state: ScrollChevronState
 
     var body: some View {

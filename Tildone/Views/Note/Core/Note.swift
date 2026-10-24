@@ -16,6 +16,11 @@ struct Note: View {
     @ObservedObject var presentation: MacNotePresentation
     let noteID: NoteID
 
+    #if MARKETING_CAPTURE
+    // Private capture typography override; absent from customer builds.
+    var marketingSingleMemoFitFraction: CGFloat = 0.6
+    #endif
+
     @Environment(\.colorScheme) var colorScheme
     @AppStorage(TaskLineTruncation.storageKey) var taskLineTruncation: TaskLineTruncation = .single
     @AppStorage(FontSize.storageKey) var fontSize = Double(FontSize.small.rawValue)
@@ -190,6 +195,12 @@ struct Note: View {
         }
         .onAppear { presentation.onKindChange = { handleNoteKindChange($0) } }
         .onDisappear { presentation.onKindChange = nil }
+#if MARKETING_CAPTURE
+        .onChange(of: isContentBlurred, initial: true) { _, blurred in
+            NotificationCenter.default.post(name: Notification.Name("TildoneMarketingBlurState"),
+                                            object: noteID, userInfo: ["blurred": blurred])
+        }
+#endif
         .overlay(alignment: .bottom) {
             if let proAccessToast, !isMinimized {
                 proAccessHint(for: proAccessToast)

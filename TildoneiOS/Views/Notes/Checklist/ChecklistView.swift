@@ -339,6 +339,12 @@ struct ChecklistView: View {
             }
         }
 #if MARKETING_CAPTURE
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingTypeTitle"))) { notification in
+            if let text = notification.userInfo?["text"] as? String { title = text }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingTypeTask"))) { notification in
+            if let text = notification.userInfo?["text"] as? String { newTaskText = text }
+        }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingSubmitTitle"))) { _ in
             // Commit explicitly instead of depending on a focus-loss callback
             // while the capture supplies an empty keyboard view.

@@ -443,6 +443,11 @@ bootstrapper, CloudKit, StoreKit, or customer app delegate. Ordinary builds
 compile out all capture code. See `Marketing/Preview/README.md` for the supplied
 wallpaper, current-process-only recording and verified video export workflow.
 Keep generated media out of git and preserve the private bundle-ID guard.
+Screenshot 6's final export is the explicitly user-authorized exception to the
+window-only capture path: its GUI-session helper uses macOS `screencapture -R`
+for the visible marketing canvas rectangle, preserving native behind-window
+material. Never silently replace that final region capture with a window
+snapshot. See the README for the ready/acknowledgement and manual-region paths.
 
 Run commands from the repository root (the directory containing `Tildone.xcodeproj`). The verified local toolchain during this analysis was Xcode 26.4.1; the project was originally created with Xcode 15-era settings, so do not silently raise deployment or project format versions.
 

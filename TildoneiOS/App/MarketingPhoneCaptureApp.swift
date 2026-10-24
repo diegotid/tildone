@@ -12,6 +12,10 @@ struct MarketingPhoneCaptureApp: App {
         let locale = Bundle.main.infoDictionary?["MarketingLocale"] as? String ?? "en-US"
         UserDefaults.standard.set([locale], forKey: "AppleLanguages")
         UserDefaults.standard.set(locale.replacingOccurrences(of: "-", with: "_"), forKey: "AppleLocale")
+        // Select the shipping overview layout before its AppStorage is read.
+        if Bundle.main.infoDictionary?["MarketingStory"] as? String == "screenshot-2" {
+            UserDefaults.standard.set(NotesOverviewLayout.deck.rawValue, forKey: "notesOverviewLayout")
+        }
         setenv("TILDONE_UI_TESTING", "1", 1)
         _fixture = StateObject(wrappedValue: MarketingPhoneCaptureFixture())
     }
@@ -20,6 +24,7 @@ struct MarketingPhoneCaptureApp: App {
         WindowGroup {
             NotesListView(appModel: fixture.model)
             .preferredColorScheme(.light)
+            .autocorrectionDisabled(true)
             .environment(\.locale, Locale(identifier: Bundle.main.infoDictionary?["MarketingLocale"] as? String ?? "en-US"))
             .task { await fixture.prepare() }
         }

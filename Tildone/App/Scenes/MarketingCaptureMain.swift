@@ -24,6 +24,10 @@ enum MarketingCaptureMain {
         let director: NSApplicationDelegate
         if Bundle.main.infoDictionary?["MarketingStory"] as? String == "sync" {
             director = MarketingSyncCaptureDirector()
+        } else if Bundle.main.infoDictionary?["MarketingStory"] as? String == "screenshot-5" {
+            director = MarketingGatherCaptureDirector()
+        } else if Bundle.main.infoDictionary?["MarketingStory"] as? String == "screenshot-6" {
+            director = MarketingAppearanceCaptureDirector()
         } else {
             director = MarketingCaptureDirector()
         }

@@ -37,6 +37,17 @@ struct NoteCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .layoutPriority(1)
                         .frame(minHeight: 46)
+#if MARKETING_CAPTURE
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.onChange(of: geometry.frame(in: .global), initial: true) { _, frame in
+                                    NotificationCenter.default.post(
+                                        name: Notification.Name("TildoneMarketingCardTitleGeometry"), object: nil,
+                                        userInfo: ["title": title, "frame": frame])
+                                }
+                            }
+                        }
+#endif
                     Spacer(minLength: 0)
                     HStack(alignment: .center, spacing: 14 * contentScale) {
                         NoteCompletionGauge(summary: summary, labelColor: .black)

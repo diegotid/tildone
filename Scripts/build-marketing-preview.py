@@ -13,7 +13,7 @@ parser.add_argument("--wallpaper", type=Path, required=True)
 parser.add_argument("--output", type=Path, default=Path("Marketing/Preview/Output"))
 parser.add_argument("--derived-data", type=Path, default=Path("/tmp/TildoneMarketingDerivedData"))
 parser.add_argument("--locale", choices=["en-US", "es-ES", "fr-FR", "zh-Hans"], default="en-US")
-parser.add_argument("--story", choices=["desktop", "sync"], default="desktop")
+parser.add_argument("--story", choices=["desktop", "sync", "screenshot-1", "screenshot-2", "screenshot-3", "screenshot-4", "screenshot-5", "screenshot-6"], default="desktop")
 parser.add_argument("--phone-frames", type=Path)
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]
@@ -62,7 +62,7 @@ info["MarketingOutputDirectory"] = str(output)
 info["MarketingLocale"] = args.locale
 info["MarketingStory"] = args.story
 info["MarketingRecordScript"] = str(repo / "Scripts/record-marketing-preview.py")
-if args.story == "sync":
+if args.story in {"sync", "screenshot-2"}:
     info["MarketingPhoneFramesDirectory"] = str((args.phone_frames or output / "phone-frames").resolve())
     info["MarketingPhoneCaptureAppDirectory"] = str(output / "TildonePhonePreview.app")
 with info_path.open("wb") as file:
@@ -71,4 +71,5 @@ shutil.copy2(wallpaper, app / "Contents/Resources/GoldenGate.png")
 (output / "capture-status.txt").write_text("BUILT")
 (output / "capture-result.json").unlink(missing_ok=True)
 print(app)
-print("Launch this private app to render and record the disposable 30-second scene.")
+print("Launch this private app to capture the native screenshot." if args.story.startswith("screenshot-")
+      else "Launch this private app to render and record the disposable 30-second scene.")
