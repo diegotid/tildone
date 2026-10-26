@@ -33,3 +33,12 @@ DerivedData
 # Local files
 /docs/
 /Marketing/Preview/Output/
+
+# Generated App Store copy exports and field projections
+/Marketing/AppStore/Exports/
+/Marketing/AppStore/macOS-2.0/*/*.txt
+/Marketing/AppStore/**/validation.json
+
+# Python bytecode caches
+__pycache__/
+*.py[cod]
