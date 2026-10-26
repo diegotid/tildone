@@ -30,7 +30,12 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
         let workspaceID = UUID(uuidString: "00000000-0000-0000-0000-000000000092")!
         model = TildoneiOSApplicationModel(
             repositoryFactory: { _ in
-                try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceID)))
+                let repository = try TildoneRepository(descriptor: .inMemory(workspace: .account(workspaceID)))
+                let story = Bundle.main.infoDictionary?["MarketingStory"] as? String ?? "sync"
+                if MarketingPhoneCaptureSuite.stories.contains(story) {
+                    try await MarketingPhoneCaptureSuite.seed(repository, story: story)
+                }
+                return repository
             },
             accountResolver: { CloudAccountSnapshot(state: .available, workspaceID: workspaceID) },
             synchronizationEnabled: false
@@ -44,6 +49,8 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
         do {
             NotificationCenter.default.addObserver(self, selector: #selector(textFieldBeganEditing(_:)),
                 name: UITextField.textDidBeginEditingNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(textViewBeganEditing(_:)),
+                name: UITextView.textDidBeginEditingNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(keyboardFrameChanged(_:)),
                 name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
             try? FileManager.default.removeItem(at: directory.appendingPathComponent("advance.txt"))
@@ -51,6 +58,17 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
             // The story demonstrates a connected account. Supply its mock
             // presentation without starting a CloudKit transport in this fixture.
             model.syncPresentation.update(status: SyncStatus(availability: .available, activity: .idle))
+            let story = Bundle.main.infoDictionary?["MarketingStory"] as? String ?? "sync"
+            if MarketingPhoneCaptureSuite.stories.contains(story) {
+                try await MarketingPhoneCaptureSuite(model: model, story: story).run()
+                return
+            }
+            if Bundle.main.infoDictionary?["MarketingStory"] as? String == "ios-screenshot-1" {
+                NotificationCenter.default.addObserver(self, selector: #selector(checklistRowGeometryChanged(_:)),
+                    name: Notification.Name("TildoneMarketingChecklistRowGeometry"), object: nil)
+                try await prepareIOSScreenshotOne()
+                return
+            }
             if Bundle.main.infoDictionary?["MarketingStory"] as? String == "screenshot-2" {
                 NotificationCenter.default.addObserver(self, selector: #selector(deckGeometryChanged(_:)),
                     name: Notification.Name("TildoneMarketingDeckGeometry"), object: nil)
@@ -122,6 +140,79 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
                 .write(to: directory.appendingPathComponent("capture-events.json"), options: .atomic)
             try? String(describing: error).write(to: directory.appendingPathComponent("capture-error.txt"), atomically: true, encoding: .utf8)
         }
+    }
+
+    private func prepareIOSScreenshotOne() async throws {
+        // Retain the approved native creation-title presentation. All four
+        // rows are ordinary free checklist tasks, never Pro content.
+        try await Swift.Task.sleep(for: .seconds(1.5))
+        post("TildoneMarketingCreateNote")
+        try await Swift.Task.sleep(for: .seconds(1))
+        guard let note = model.notes.first else {
+            throw NSError(domain: "MarketingPhoneCapture", code: 20)
+        }
+        sharedNoteID = note.id
+        try await model.setColor(noteID: note.id, color: .pink)
+        try await typeIntoFocusedField(String(localized: "Weekend"), action: "TildoneMarketingTypeTitle")
+        post("TildoneMarketingSubmitTitle")
+        try await Swift.Task.sleep(for: .milliseconds(500))
+        let texts = [String(localized: "Book a table"), String(localized: "Check the train times"),
+                     String(localized: "Choose a walking route"), String(localized: "Pack a charger")]
+        var tasks: [TildoneDomain.Task] = []
+        for text in texts {
+            guard let task = try await model.addTask(noteID: note.id, text: text, after: tasks) else {
+                throw NSError(domain: "MarketingPhoneCapture", code: 21)
+            }
+            tasks.append(task)
+        }
+        if let first = tasks.first { try await model.setCompletion(taskID: first.id, completed: true) }
+        try await Swift.Task.sleep(for: .seconds(2))
+        for window in captureWindows { window.endEditing(true) }
+        try await Swift.Task.sleep(for: .milliseconds(500))
+        try requireNativeTitle(name: "ios-screenshot-1")
+        guard let window = captureWindows.first(where: \.isKeyWindow) else {
+            throw NSError(domain: "MarketingPhoneCapture", code: 22)
+        }
+        let snapshot = model.presentation(for: note.id).snapshot
+        let safeFrame = window.bounds.inset(by: window.safeAreaInsets)
+        let font = UIFont.preferredFont(forTextStyle: .body)
+        let rows: [[String: Any]] = texts.map { text in
+            let frame = taskPreviewFrames[text] ?? .zero
+            let width = ceil((text as NSString).size(withAttributes: [.font: font]).width)
+            return ["text": text, "frame": [frame.minX, frame.minY, frame.width, frame.height],
+                    "visible": frame.height > 0 && safeFrame.contains(frame),
+                    "textFits": width <= frame.width - 38, "requiredTextWidth": width]
+        }
+        let allVisible = rows.allSatisfy { $0["visible"] as? Bool == true && $0["textFits"] as? Bool == true }
+        let verified = snapshot.note?.title == String(localized: "Weekend")
+            && snapshot.tasks.map(\.text) == texts && snapshot.tasks.filter(\.isCompleted).count == 1
+            && snapshot.tasks.allSatisfy { $0.indentLevel == 0 } && allVisible
+            && focusedField == nil && maxSoftwareKeyboardHeight < 100
+        let proof: [String: Any] = [
+            "phase": 5, "asset": "ios-screenshot-1", "screenshotRevision": 1,
+            "nativeView": "ChecklistView", "nativeUI": true, "title": snapshot.note?.title ?? "",
+            "nativeTitleVisible": nativeTitleVisible, "titlePresentation": "native-creation-field",
+            "taskTexts": snapshot.tasks.map(\.text), "completedTexts": snapshot.tasks.filter(\.isCompleted).map(\.text),
+            "taskCount": snapshot.tasks.count, "rows": rows, "allTasksVisible": allVisible,
+            "softwareKeyboardHidden": focusedField == nil && maxSoftwareKeyboardHeight < 100,
+            "mockDataOnly": true, "cloudKitStarted": false, "proContent": false,
+            "screenPointSize": [window.bounds.width, window.bounds.height],
+            "locale": Bundle.main.infoDictionary?["MarketingLocale"] as? String ?? "en-US",
+            "preferredLocalizations": Bundle.main.preferredLocalizations, "verified": verified
+        ]
+        let data = try JSONSerialization.data(withJSONObject: proof, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: directory.appendingPathComponent("phone-screenshot-result.json"), options: .atomic)
+        guard verified else {
+            throw NSError(domain: "MarketingPhoneCapture", code: 23,
+                          userInfo: [NSLocalizedDescriptionKey: "The four native checklist rows must fit without clipping or truncation."])
+        }
+        try data.write(to: directory.appendingPathComponent("capture-phase.json"), options: .atomic)
+    }
+
+    @objc private func checklistRowGeometryChanged(_ notification: Notification) {
+        guard let text = notification.userInfo?["text"] as? String,
+              let frame = notification.userInfo?["frame"] as? CGRect else { return }
+        taskPreviewFrames[text] = frame
     }
 
     @objc private func deckGeometryChanged(_ notification: Notification) {
@@ -367,6 +458,18 @@ final class MarketingPhoneCaptureFixture: NSObject, ObservableObject {
     @objc private func textFieldBeganEditing(_ notification: Notification) {
         guard let field = notification.object as? UITextField else { return }
         suppressKeyboard(for: field)
+    }
+
+    @objc private func textViewBeganEditing(_ notification: Notification) {
+        guard let view = notification.object as? UITextView,
+              keyboardSuppressedFields.insert(ObjectIdentifier(view)).inserted else { return }
+        view.inputView = UIView(frame: .zero)
+        view.inputAccessoryView = UIView(frame: .zero)
+        view.autocorrectionType = .no
+        view.spellCheckingType = .no
+        view.inputAssistantItem.leadingBarButtonGroups = []
+        view.inputAssistantItem.trailingBarButtonGroups = []
+        view.reloadInputViews()
     }
 
     private func suppressKeyboard(for field: UITextField) {

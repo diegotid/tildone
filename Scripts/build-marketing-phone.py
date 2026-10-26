@@ -11,9 +11,13 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--locale", choices=["en-US", "es-ES", "fr-FR", "zh-Hans"], default="en-US")
-parser.add_argument("--story", choices=["sync", "screenshot-2"], default="sync")
+parser.add_argument("--story", choices=["sync", "screenshot-2"] + [f"ios-screenshot-{n}" for n in range(1, 7)] + ["ios-preview-1", "ios-preview-2"], default="sync")
 parser.add_argument("--derived-data", type=Path, default=Path("/tmp/TildoneMarketingPhoneDerivedData"))
+parser.add_argument("--overview-layout", choices=["grid", "deck"], help="Isolated screenshot 3 layout variant.")
+parser.add_argument("--both-layouts", action="store_true", help="Capture screenshot 3's grid and deck from one mock session.")
 args = parser.parse_args()
+assert args.overview_layout is None or args.story == "ios-screenshot-3"
+assert not args.both_layouts or (args.story == "ios-screenshot-3" and args.overview_layout in {None, "grid"})
 repo = Path(__file__).resolve().parents[1]
 output = args.output.resolve()
 derived = args.derived_data.resolve()
@@ -54,6 +58,11 @@ assert info["CFBundleIdentifier"] == "studio.cuatro.tildone.marketing-phone"
 info["CFBundleDisplayName"] = "Tildone Phone Preview"
 info["MarketingLocale"] = args.locale
 info["MarketingStory"] = args.story
+info["MarketingCaptureBothLayouts"] = args.both_layouts
+if args.overview_layout:
+    info["MarketingOverviewLayout"] = args.overview_layout
+else:
+    info.pop("MarketingOverviewLayout", None)
 info.pop("UIBackgroundModes", None)
 with info_path.open("wb") as file:
     plistlib.dump(info, file)

@@ -93,6 +93,17 @@ struct TaskRow: View {
         }
         .frame(maxWidth: .infinity, minHeight: 33, maxHeight: 33)
         .padding(.leading, 24 * CGFloat(task.indentLevel) - 6)
+#if MARKETING_CAPTURE
+        .background {
+            if Bundle.main.infoDictionary?["MarketingStory"] as? String == "ios-screenshot-1" {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { publishMarketingGeometry(proxy.frame(in: .global)) }
+                        .onChange(of: proxy.frame(in: .global)) { _, frame in publishMarketingGeometry(frame) }
+                }
+            }
+        }
+#endif
         .onAppear { draft = task.richText }
         .onChange(of: task.richText) { _, remoteText in
             if focusedTask.wrappedValue != task.id { draft = remoteText }
@@ -109,6 +120,13 @@ struct TaskRow: View {
             Button("Move Down") { Swift.Task { await onMoveDown() } }
         }
     }
+
+#if MARKETING_CAPTURE
+    private func publishMarketingGeometry(_ frame: CGRect) {
+        NotificationCenter.default.post(name: Notification.Name("TildoneMarketingChecklistRowGeometry"),
+                                        object: nil, userInfo: ["text": task.text, "frame": frame])
+    }
+#endif
 
     private func commit(_ finalRichText: RichText) {
         let value = finalRichText.trimmingCharacters(in: .whitespacesAndNewlines)

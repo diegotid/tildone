@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run from a GUI Terminal session; capture only a newly created mock simulator."""
+"""Capture a task-owned mock simulator through simctl; no idle desktop required."""
 import argparse
 import json
 import plistlib
@@ -12,12 +12,22 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--app", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument("--fresh-device", action="store_true", help="Use and remove a new isolated simulator for this capture.")
 args = parser.parse_args()
 app = args.app.resolve(strict=True)
 app_info = plistlib.loads((app / "Info.plist").read_bytes())
 assert app_info["CFBundleIdentifier"] == "studio.cuatro.tildone.marketing-phone"
 locale = app_info.get("MarketingLocale", "en-US")
+story = app_info.get("MarketingStory", "sync")
 is_screenshot = app_info.get("MarketingStory") == "screenshot-2"
+is_ios_screenshot_one = app_info.get("MarketingStory") == "ios-screenshot-1"
+is_suite = story.startswith("ios-") and not is_ios_screenshot_one
+pause_file = Path(__file__).resolve().parents[1] / "Marketing/Preview/Output/iOS/captures/pause-captures.flag"
+pause_deadline = time.monotonic() + 300
+while story.startswith("ios-") and pause_file.exists():
+    if time.monotonic() > pause_deadline:
+        raise TimeoutError("Capture preparation did not release the temporary build pause.")
+    time.sleep(1)
 assert locale in {"en-US", "es-ES", "fr-FR", "zh-Hans"}, locale
 output = args.output.resolve()
 output.mkdir(parents=True, exist_ok=True)
@@ -25,7 +35,7 @@ bundle = "studio.cuatro.tildone.marketing-phone"
 
 def simctl(*arguments, capture=True):
     return subprocess.run(["xcrun", "simctl", *map(str, arguments)], check=True,
-                          text=True, stdout=subprocess.PIPE if capture else None).stdout
+                          text=True, stdout=subprocess.PIPE if capture else None, timeout=180).stdout
 
 runtimes = [r for r in json.loads(simctl("list", "runtimes", "--json"))["runtimes"]
             if r.get("isAvailable") and ".iOS-" in r["identifier"]]
@@ -35,18 +45,51 @@ types = json.loads(simctl("list", "devicetypes", "--json"))["devicetypes"]
 phone_types = [t for t in types if t["name"] in ["iPhone 17 Pro", "iPhone 16 Pro", "iPhone 15 Pro"]]
 assert phone_types, "A supported iPhone Simulator device type is required."
 device_type = next((t for t in phone_types if t["name"] == "iPhone 17 Pro"), phone_types[-1])
-# Never reuse, erase, boot or inspect the user's existing simulator devices.
-device = simctl("create", "Tildone Isolated Marketing Capture", device_type["identifier"], runtime["identifier"]).strip()
+# Never inspect or reuse a user device. Only this run's newly created simulator
+# can be shared between suite jobs; each job reinstalls the private mock app.
+shared_device = story.startswith("ios-") and not args.fresh_device
+registry = Path(__file__).resolve().parents[1] / "Marketing/Preview/Output/iOS/captures/capture-device.json"
+reuse_device = shared_device and registry.is_file()
+if reuse_device:
+    owned = json.loads(registry.read_text())
+    assert owned["owner"] == "Tildone-iPhone-Overnight" and owned["bundle"] == bundle, owned
+    assert owned["runtime"] == runtime["identifier"] and owned["deviceType"] == device_type["identifier"], owned
+    device = owned["device"]
+else:
+    device = simctl("create", "Tildone Isolated Marketing Capture", device_type["identifier"], runtime["identifier"]).strip()
+(output / "owned-capture-device.json").write_text(json.dumps({"owner": "Tildone-iPhone-Overnight",
+    "bundle": bundle, "device": device, "shared": shared_device}) + "\n")
+device_prepared = False
 try:
     print("Preparing an isolated iPhone. You can keep using other apps during this step.", flush=True)
-    simctl("boot", device)
+    if shared_device and not reuse_device:
+        registry.write_text(json.dumps({"owner": "Tildone-iPhone-Overnight", "bundle": bundle, "device": device,
+                                        "runtime": runtime["identifier"], "deviceType": device_type["identifier"]}) + "\n")
+    print("Task-created simulator: " + device, flush=True)
+    if not reuse_device:
+        simctl("boot", device)
     simctl("bootstatus", device, "-b", capture=False)
+    device_prepared = True
+    if reuse_device:
+        # Uninstall only the private fixture bundle to remove prior capture
+        # phases, locale defaults and mock data. The simulator itself stays warm.
+        subprocess.run(["xcrun", "simctl", "terminate", device, bundle], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        subprocess.run(["xcrun", "simctl", "uninstall", device, bundle], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
     # Only this newly created simulator is changed. Skip Apple's one-time
     # keyboard tutorials before the real title/task entry is recorded.
     # This is the same setup used by Chromium's iOS simulator test tooling.
-    for key in ["DidShowContinuousPathIntroduction", "KeyboardDidShowProductivityTutorial",
-                "DidShowGestureKeyboardIntroduction", "UIKeyboardDidShowInternationalInfoIntroduction"]:
-        simctl("spawn", device, "defaults", "write", "com.apple.keyboard.preferences", key, "1")
+    tutorial_keys = [] if story.startswith("ios-") else ["DidShowContinuousPathIntroduction", "KeyboardDidShowProductivityTutorial",
+                "DidShowGestureKeyboardIntroduction", "UIKeyboardDidShowInternationalInfoIntroduction"]
+    for key in tutorial_keys:
+        for attempt in range(3):
+            try:
+                simctl("spawn", device, "defaults", "write", "com.apple.keyboard.preferences", key, "1")
+                break
+            except subprocess.CalledProcessError:
+                if attempt == 2:
+                    print("Keyboard tutorial preference unavailable; native capture fields still suppress the software keyboard.", flush=True)
+                else:
+                    time.sleep(2)
     simctl("ui", device, "appearance", "light")
     simctl("status_bar", device, "override", "--time", "9:41", "--dataNetwork", "wifi",
            "--wifiMode", "active", "--wifiBars", "3", "--batteryState", "charged", "--batteryLevel", "100")
@@ -76,7 +119,118 @@ try:
             time.sleep(0.1)
         raise TimeoutError(f"The native iPhone flow did not reach phase {phase}.")
 
-    if is_screenshot:
+    if is_suite:
+        language = {"en-US": "en", "es-ES": "es", "fr-FR": "fr", "zh-Hans": "zh-Hans"}[locale]
+        if story.startswith("ios-preview-"):
+            opening = wait_for_phase(0)
+            recording = None
+            with (output / "phone-recording.log").open("w") as log:
+                try:
+                    recording = subprocess.Popen(["xcrun", "simctl", "io", device, "recordVideo", "--codec=h264",
+                                                  "--force", str(output / "phone-native.mp4")], stdout=log, stderr=subprocess.STDOUT)
+                    deadline = time.monotonic() + 20
+                    while time.monotonic() < deadline:
+                        if recording.poll() is not None:
+                            raise RuntimeError("The native preview recorder exited.")
+                        if "recording started" in (output / "phone-recording.log").read_text().lower():
+                            break
+                        time.sleep(0.1)
+                    else:
+                        raise TimeoutError("The native preview recorder did not start.")
+                    (container / "advance.txt").write_text("1")
+                    state = wait_for_phase(5)
+                finally:
+                    if recording is not None and recording.poll() is None:
+                        recording.send_signal(signal.SIGINT)
+                        recording.wait(timeout=30)
+            events = json.loads((container / "capture-events.json").read_text())
+            names = [e["name"] for e in events]
+            expected = (["opening", "grid", "deck", "captured", "progress", "finished"] if story == "ios-preview-1"
+                        else ["opening", "subtasks", "collapsed", "styled-checklist", "memo", "finished"])
+            assert names == expected, events
+            assert all(e["mockDataOnly"] and not e["cloudKitStarted"] and not e["storeKitStarted"] for e in events), events
+            if story == "ios-preview-1":
+                assert {e["layout"] for e in events} == {"list", "grid", "deck"}, events
+                color_counts = {}
+                for note in events[0]["notes"]:
+                    color_counts[note["color"]] = color_counts.get(note["color"], 0) + 1
+                assert color_counts == {"green": 3, "blue": 2, "yellow": 1}, color_counts
+                assert all(event["notes"][3]["color"] == "yellow" for event in events[:2]), events[:2]
+                fronts = events[-1]["greenCarouselFronts"]
+                assert [front["index"] for front in fronts] == [0, 1, 2], fronts
+                assert {front["title"] for front in fronts} == {n["title"] for n in events[0]["notes"] if n["color"] == "green"}, fronts
+                before = sum(len(n["tasks"]) for n in events[0]["notes"])
+                after = sum(len(n["tasks"]) for n in events[-1]["notes"])
+                assert after == before + 1, events
+            else:
+                assert events[-1]["nativeView"] == "SingleMemoTextView", events
+                memo = next(n for n in events[-1]["notes"] if n["kind"] == "singleTask")
+                assert memo["singleMemoFont"] == "permanentMarker", memo
+                assert all(len(t["spans"]) == 1 and t["spans"][0]["color"] == "blue"
+                           and 0 < t["spans"][0]["length"] < len(t["text"].encode("utf-16-le")) // 2 for t in memo["tasks"]), memo
+                styled = next(e for e in events if e["name"] == "styled-checklist")
+                note = next(n for n in styled["notes"] if n["title"] == styled["selectedTitle"])
+                spans = [span for task in note["tasks"] for span in task["spans"]]
+                assert {s["color"] for s in spans} == {"blue", "green", "purple"}, note
+                assert {style for span in spans for style in span["styles"]} == {"bold", "italic"}, note
+                assert all(0 < sum(s["length"] for s in task["spans"]) < len(task["text"].encode("utf-16-le")) // 2 for task in note["tasks"]), note
+            shutil.copy2(container / "capture-events.json", output / "capture-events.json")
+        else:
+            state = wait_for_phase(5)
+            simctl("io", device, "screenshot", "--type=png", output / "phone-checklist.png", capture=False)
+            notes = state["notes"]
+            if story == "ios-screenshot-2":
+                assert len(notes) == 1 and len(notes[0]["tasks"]) == 2 and state["nativeView"] == "ChecklistView", state
+            elif story == "ios-screenshot-3":
+                expected_layout = app_info.get("MarketingOverviewLayout", "grid")
+                assert expected_layout in {"grid", "deck"}
+                assert len(notes) == 5 and sorted(n["color"] for n in notes) == ["blue", "green", "green", "green", "yellow"] and state["layout"] == expected_layout, state
+                assert notes[2]["color"] == "yellow", state
+                if app_info.get("MarketingCaptureBothLayouts"):
+                    assert expected_layout == "grid"
+                    (container / "capture-deck.txt").write_text("1")
+                    deck = wait_for_phase(6)
+                    assert deck["layout"] == "deck" and deck["notes"] == notes and deck["verified"], deck
+                    assert deck["nativeUI"] and deck["mockDataOnly"] and not deck["cloudKitStarted"] and not deck["storeKitStarted"], deck
+                    deck_directory = output / "deck"
+                    deck_directory.mkdir(exist_ok=True)
+                    simctl("io", device, "screenshot", "--type=png", deck_directory / "phone-checklist.png", capture=False)
+                    deck.update({"runtime": runtime["identifier"], "deviceType": device_type["identifier"]})
+                    (deck_directory / "phone-capture-verification.json").write_text(json.dumps(deck, ensure_ascii=False, indent=2) + "\n")
+            elif story == "ios-screenshot-4":
+                query = state["searchQuery"].casefold()
+                matches = [n for n in notes if query in n["title"].casefold() or any(query in t["text"].casefold() for t in n["tasks"])]
+                assert query and len(matches) == 2, state
+            elif story == "ios-screenshot-5":
+                assert max(t["depth"] for n in notes for t in n["tasks"]) == 1 and state["nativeView"] == "ChecklistView", state
+            elif story == "ios-screenshot-6":
+                assert state["nativeView"] == "SingleMemoTextView", state
+                assert all(n["singleMemoFont"] == "permanentMarker" for n in notes), state
+                assert all(len(t["spans"]) == 1 and t["spans"][0]["color"] == "blue"
+                           and 0 < t["spans"][0]["length"] < len(t["text"].encode("utf-16-le")) // 2
+                           for n in notes for t in n["tasks"]), state
+        assert state["asset"] == story and state["locale"] == locale and state["verified"], state
+        assert state["preferredLocalizations"][0] == language, state
+        assert state["nativeUI"] and state["mockDataOnly"] and not state["cloudKitStarted"] and not state["storeKitStarted"], state
+        state.update({"runtime": runtime["identifier"], "deviceType": device_type["identifier"]})
+        (output / "phone-capture-verification.json").write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n")
+        print(f"Verified native suite asset: {story} / {locale}", flush=True)
+    elif is_ios_screenshot_one:
+        state = wait_for_phase(5)
+        assert state["asset"] == "ios-screenshot-1" and state["screenshotRevision"] == 1, state
+        assert state["nativeView"] == "ChecklistView" and state["nativeUI"], state
+        assert state["verified"] and state["nativeTitleVisible"] and state["allTasksVisible"], state
+        assert state["softwareKeyboardHidden"] and state["taskCount"] == 4, state
+        assert len(state["taskTexts"]) == 4 and len(state["completedTexts"]) == 1, state
+        assert state["mockDataOnly"] and not state["cloudKitStarted"] and not state["proContent"], state
+        language = {"en-US": "en", "es-ES": "es", "fr-FR": "fr", "zh-Hans": "zh-Hans"}[locale]
+        assert state["locale"] == locale and state["preferredLocalizations"][0] == language, state
+        simctl("io", device, "screenshot", "--type=png", output / "phone-checklist.png", capture=False)
+        shutil.copy2(container / "phone-screenshot-result.json", output / "phone-screenshot-result.json")
+        state.update({"runtime": runtime["identifier"], "deviceType": device_type["identifier"]})
+        (output / "phone-capture-verification.json").write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n")
+        print(f"Verified native four-task checklist captured: {locale}.", flush=True)
+    elif is_screenshot:
         state = wait_for_phase(5)
         assert state["asset"] == "screenshot-2" and state["screenshotRevision"] == 3, state
         assert state["locale"] == locale and state["nativeView"] == "NotesDeckView", state
@@ -155,5 +309,10 @@ try:
         }, ensure_ascii=False, indent=2) + "\n")
         print("Native iPhone note creation and update recorded and verified.", flush=True)
 finally:
-    subprocess.run(["xcrun", "simctl", "shutdown", device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["xcrun", "simctl", "delete", device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if shared_device and device_prepared:
+        subprocess.run(["xcrun", "simctl", "terminate", device, bundle], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+    else:
+        subprocess.run(["xcrun", "simctl", "shutdown", device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+        subprocess.run(["xcrun", "simctl", "delete", device], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+        if shared_device:
+            registry.unlink(missing_ok=True)

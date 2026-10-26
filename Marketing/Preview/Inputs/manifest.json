@@ -1,0 +1,13 @@
+{
+  "externalInputs": [
+    {
+      "fileName": "GoldenGate_6k.png",
+      "description": "Original light abstract macOS Golden Gate wallpaper supplied for the Mac/iPhone marketing artwork",
+      "sourcePage": "https://basicappleguy.com/haberdashery/macosgoldengate",
+      "sha256": "7c34847ac962e2083323daaccd3ed6381c67e1be8e25f9d8cdaff56b91c7667d",
+      "bytes": 16801349,
+      "generatedFromCode": false,
+      "storage": "External original; supply to the Mac capture builder with --wallpaper"
+    }
+  ]
+}

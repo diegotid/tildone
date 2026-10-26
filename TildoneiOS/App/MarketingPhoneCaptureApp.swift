@@ -16,6 +16,11 @@ struct MarketingPhoneCaptureApp: App {
         if Bundle.main.infoDictionary?["MarketingStory"] as? String == "screenshot-2" {
             UserDefaults.standard.set(NotesOverviewLayout.deck.rawValue, forKey: "notesOverviewLayout")
         }
+        if let story = Bundle.main.infoDictionary?["MarketingStory"] as? String, story.hasPrefix("ios-") {
+            let screenshotLayout = Bundle.main.infoDictionary?["MarketingOverviewLayout"] as? String ?? "grid"
+            precondition(["grid", "deck"].contains(screenshotLayout))
+            UserDefaults.standard.set(story == "ios-screenshot-3" ? screenshotLayout : "list", forKey: "notesOverviewLayout")
+        }
         setenv("TILDONE_UI_TESTING", "1", 1)
         _fixture = StateObject(wrappedValue: MarketingPhoneCaptureFixture())
     }

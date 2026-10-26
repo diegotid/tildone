@@ -57,11 +57,33 @@ struct DeckCarousel: View {
                     cancelled: cancelPan
                 )
             }
+#if MARKETING_CAPTURE && targetEnvironment(simulator)
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingDeckPan"))) { _ in
+                guard notes.count == 3, notes.allSatisfy({ $0.color == .green }), !isCompletingSwipe else { return }
+                publishMarketingFront()
+                Swift.Task { @MainActor in
+                    for step in 1...12 {
+                        handlePanChanged(-proxy.size.width * 0.65 * CGFloat(step) / 12, in: proxy.size)
+                        try? await Swift.Task.sleep(for: .milliseconds(25))
+                    }
+                    handlePanEnded(-proxy.size.width * 0.65, velocity: -proxy.size.width * 2, in: proxy.size)
+                }
+            }
+            .onChange(of: currentNoteID) { _, _ in publishMarketingFront() }
+#endif
         }
         .frame(height: cardHeight + 52)
         .onAppear(perform: reconcileCurrentNote)
         .onChange(of: notes.map(\.id)) { _, _ in reconcileCurrentNote() }
     }
+
+#if MARKETING_CAPTURE && targetEnvironment(simulator)
+    private func publishMarketingFront() {
+        guard notes.count == 3, notes.allSatisfy({ $0.color == .green }), notes.indices.contains(currentIndex) else { return }
+        NotificationCenter.default.post(name: Notification.Name("TildoneMarketingDeckFront"), object: nil,
+            userInfo: ["id": notes[currentIndex].id.stringValue, "title": notes[currentIndex].title ?? "", "index": currentIndex])
+    }
+#endif
 
     private func handlePanChanged(_ translation: CGFloat, in size: CGSize) {
         guard !isCompletingSwipe else { return }

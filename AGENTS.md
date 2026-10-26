@@ -449,6 +449,16 @@ for the visible marketing canvas rectangle, preserving native behind-window
 material. Never silently replace that final region capture with a window
 snapshot. See the README for the ready/acknowledgement and manual-region paths.
 
+`Scripts/build-marketing-phone.py` builds the simulator-only companion fixture
+with bundle ID `studio.cuatro.tildone.marketing-phone`. Its capture hooks use
+the real SwiftUI views with in-memory mock data and no live CloudKit/StoreKit.
+`Scripts/run-marketing-ios-suite.py` builds and captures a fresh iteration;
+`--plan` and `--check-inputs` are read-only. See `Marketing/README.md` for the
+original wallpaper and native Mac screenshot prerequisites, preservation of
+previous finals, and audit/delivery commands. iPhone simulator capture does not
+require an idle screen. Tell the user before any Mac GUI prerequisite capture
+requires one; never launch that capture automatically from the iPhone runner.
+
 Run commands from the repository root (the directory containing `Tildone.xcodeproj`). The verified local toolchain during this analysis was Xcode 26.4.1; the project was originally created with Xcode 15-era settings, so do not silently raise deployment or project format versions.
 
 Inspect targets and schemes:

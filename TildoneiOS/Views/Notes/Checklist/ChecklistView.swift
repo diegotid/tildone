@@ -339,6 +339,16 @@ struct ChecklistView: View {
             }
         }
 #if MARKETING_CAPTURE
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingToggleTask"))) { notification in
+            if let id = notification.object as? TaskID, let task = tasks.first(where: { $0.id == id }) {
+                Swift.Task { await toggleCompletion(for: task) }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingCollapseTask"))) { notification in
+            if let id = notification.object as? TaskID, let index = tasks.firstIndex(where: { $0.id == id }) {
+                toggleSubtasks(at: index)
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingTypeTitle"))) { notification in
             if let text = notification.userInfo?["text"] as? String { title = text }
         }
@@ -357,6 +367,11 @@ struct ChecklistView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingCommitNewTask"))) { _ in
             addTask()
+            isAddingTask = false
+            focusTask(nil)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingDismissDraft"))) { _ in
+            newTaskText = ""
             isAddingTask = false
             focusTask(nil)
         }

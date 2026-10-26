@@ -43,6 +43,7 @@
 		A91000000000000000000001 /* SingleMemoTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91000000000000000000002 /* SingleMemoTextView.swift */; };
 		F22100000000000000000201 /* MarketingPhoneCaptureApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22100000000000000000101 /* MarketingPhoneCaptureApp.swift */; };
 		F22100000000000000000202 /* MarketingPhoneCaptureFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22100000000000000000102 /* MarketingPhoneCaptureFixture.swift */; };
+		F22100000000000000000203 /* MarketingPhoneCaptureSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22100000000000000000103 /* MarketingPhoneCaptureSuite.swift */; };
 		A10000000000000000000001 /* TildoneiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* TildoneiOSApp.swift */; };
 		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
 		A10000000000000000000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* Preview Assets.xcassets */; };
@@ -355,6 +356,7 @@
 		A10000000000000000000010 /* Tildone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tildone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F22100000000000000000101 /* MarketingPhoneCaptureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingPhoneCaptureApp.swift; sourceTree = "<group>"; };
 		F22100000000000000000102 /* MarketingPhoneCaptureFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingPhoneCaptureFixture.swift; sourceTree = "<group>"; };
+		F22100000000000000000103 /* MarketingPhoneCaptureSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketingPhoneCaptureSuite.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* TildoneiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildoneiOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -689,6 +691,7 @@
 			children = (
 				F22100000000000000000101 /* MarketingPhoneCaptureApp.swift */,
 				F22100000000000000000102 /* MarketingPhoneCaptureFixture.swift */,
+				F22100000000000000000103 /* MarketingPhoneCaptureSuite.swift */,
 				A10000000000000000000011 /* TildoneiOSApp.swift */,
 				C10000000000000000000011 /* TildoneiOSAppDelegate.swift */,
 				C10000000000000000000012 /* TildoneiOSSyncBootstrapper.swift */,
@@ -1604,6 +1607,7 @@
 				R10000000000000000000003 /* TaskTextFormatMenu.swift in Sources */,
 				F22100000000000000000201 /* MarketingPhoneCaptureApp.swift in Sources */,
 				F22100000000000000000202 /* MarketingPhoneCaptureFixture.swift in Sources */,
+				F22100000000000000000203 /* MarketingPhoneCaptureSuite.swift in Sources */,
 				A10000000000000000000001 /* TildoneiOSApp.swift in Sources */,
 				C10000000000000000000001 /* TildoneiOSAppDelegate.swift in Sources */,
 				C10000000000000000000002 /* TildoneiOSSyncBootstrapper.swift in Sources */,

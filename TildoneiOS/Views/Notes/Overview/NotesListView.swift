@@ -164,6 +164,18 @@ struct NotesListView: View {
                 TildoneiOSAboutView()
             }
 #if MARKETING_CAPTURE
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingLayout"))) { notification in
+                if let value = notification.object as? String, let choice = NotesOverviewLayout(rawValue: value) {
+                    layout = choice
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingSearch"))) { notification in
+                searchText = notification.object as? String ?? ""
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingOverview"))) { _ in
+                presentedNoteID = nil
+                isPresentingNewNote = false
+            }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TildoneMarketingCreateNote"))) { _ in
                 createNote()
             }
