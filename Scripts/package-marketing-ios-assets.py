@@ -120,8 +120,57 @@ for locale in locales:
 for name, expected in baseline.items():
     assert digest(repo / "Marketing/Preview/Output/macOS-App-Store" / name) == expected, name
 assert len(manifest) == 32
-audit = {"generatedAt": datetime.now(ZoneInfo("Europe/Madrid")).isoformat(), "mainAssetCount": 32,
+creative_count = 0
+for locale in locales:
+    for asset, dimensions in [("header", (3840, 1646)), ("search-results", (3840, 2560))]:
+        path = capture / asset / locale / "export-result.json"
+        if not path.exists():
+            continue
+        result = json.loads(path.read_text())
+        source = Path(result["file"])
+        assert result["verified"] and result["approved"] and not result["draft"]
+        assert result["asset"] == asset and result["locale"] == locale and digest(source) == result["sha256"]
+        assert struct.unpack(">IIBB", source.read_bytes()[16:26]) == (*dimensions, 8, 2)
+        if asset == "header" and result.get("revision", 0) >= 7:
+            if result["revision"] == 11:
+                assert result["captionOutsideTemplateSafeAreaApproved"]
+                assert not result["captionInsideHeaderSafeArea"]
+                assert not result["essentialContentInsideHeaderSafeArea"]
+            else:
+                assert result["essentialContentInsideHeaderSafeArea"]
+            assert result["macKeyboardAndTrackpadPerspective"]
+            x, y, width, height = result["macNoteFrame"]
+            assert x * 3 >= 1097 and y * 3 >= 493
+            assert (x + width) * 3 <= 2743 and (y + height) * 3 <= 1154
+        phone_proof = json.loads(Path(result["nativePhoneProof"]).read_text())
+        mac_proof = json.loads(Path(result["nativeMacProof"]).read_text())
+        assert phone_proof["nativeUI"] and mac_proof["nativeUI"]
+        assert phone_proof["mockDataOnly"] and mac_proof["mockDataOnly"]
+        assert not phone_proof["cloudKitStarted"] and not mac_proof["cloudKitStarted"]
+        assert not phone_proof["storeKitStarted"] and not mac_proof["storeKitStarted"]
+        assert phone_proof["locale"] == mac_proof["locale"] == locale
+        note = phone_proof["notes"][0]
+        assert note["title"] == mac_proof["title"] and note["color"] == mac_proof["color"]
+        assert [(task["text"], task["completed"]) for task in note["tasks"]] == [
+            (task["text"], task["completed"]) for task in mac_proof["tasks"]]
+        assert len(note["tasks"]) == 5 and sum(task["completed"] for task in note["tasks"]) == 1
+        target = destination / locale / "Creative" / source.name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        source_directory = destination / "Sources" / locale
+        for label, key, proof_key in [("phone", "phoneSource", "nativePhoneProof"), ("mac", "macSource", "nativeMacProof")]:
+            shutil.copy2(result[key], source_directory / f"{asset}-{label}.png")
+            shutil.copy2(result[proof_key], source_directory / f"{asset}-{label}.json")
+        manifest.append({"asset": asset, "locale": locale, "sha256": result["sha256"],
+                         "file": str(target.relative_to(destination)), "width": dimensions[0], "height": dimensions[1],
+                         "opaque": True, "bitDepth": 8, "colorSpace": "sRGB", "tier": "free"})
+        if asset == "header":
+            manifest[-1].update(captionInsideTemplateSafeArea=result.get("captionInsideHeaderSafeArea"),
+                                captionOutsideTemplateSafeAreaApproved=result.get("captionOutsideTemplateSafeAreaApproved", False))
+        creative_count += 1
+audit = {"generatedAt": datetime.now(ZoneInfo("Europe/Madrid")).isoformat(), "mainAssetCount": len(manifest),
          "screenshots": 24, "previews": 8, "locales": locales,
+         "creativeAssets": creative_count,
          "nativeSwiftUI": True, "mockDataOnly": True, "physicalIPhoneUsed": False,
          "liveCloudKitUsed": False, "macMediaUnchanged": len(baseline), "assets": manifest}
 (destination / "manifest.json").write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n")
@@ -150,6 +199,8 @@ The existing Mac media files listed in the supplied baseline were checked unchan
 
 Apple specifications: https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/ and https://developer.apple.com/help/app-store-connect/reference/app-information/app-preview-specifications/
 """
+if creative_count:
+    readme += f"\n**Creative:** {creative_count} additional approved Header/Search Results images are in the locale Creative folders. These use matching native five-task notes with one completed task. Drafts are excluded.\n"
 (destination / "README.md").write_text(readme)
 if not args.no_archive:
     archive = Path("/tmp/Tildone-iPhone-App-Store-Assets.zip")
@@ -161,4 +212,4 @@ if not args.no_archive:
         assert bundle.testzip() is None
     print(archive)
 subprocess.run([sys.executable, str(repo / "Scripts/publish-marketing-ios-finals.py")], check=True)
-print(f"Verified: 24 screenshots, 8 previews, four languages, {len(baseline)} unchanged Mac media files.")
+print(f"Verified: 24 screenshots, 8 previews, {creative_count} approved creative assets, four languages, {len(baseline)} unchanged Mac media files.")

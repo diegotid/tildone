@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Your to-dos.\nOn iPhone and Mac.": {
+      "comment": "Search Results creative headline establishing task lists and the Mac companion benefit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your to-dos.\nOn iPhone and Mac." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Tus tareas.\nEn iPhone y Mac." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Vos tâches.\nSur iPhone et Mac." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "你的待办事项，\niPhone 与 Mac 随时查看。" } }
+      }
+    },
+    "Free iCloud sync": {
+      "comment": "Short benefit line for the App Store Header creative asset; sync is a free feature.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Free iCloud sync" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sincronización con iCloud gratis" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Synchronisation iCloud gratuite" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "iCloud 免费同步" } }
+      }
+    },
     "Make\nspace.": {
       "comment": "Concise Permanent Marker marketing memo; color only the translated space fragment.",
       "extractionState": "manual",

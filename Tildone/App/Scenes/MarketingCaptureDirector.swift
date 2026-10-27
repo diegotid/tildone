@@ -54,7 +54,7 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
     private var activatedBackgroundDocument = false
     private var run: Swift.Task<Void, Never>?
     private var startTime: Date?
-    var expandedNoteScale: CGFloat { isSecondScreenshot || isPrivacyScreenshot ? 1.1 : (isScreenshot ? 1 : 0.75) }
+    var expandedNoteScale: CGFloat { story == "header" || isSecondScreenshot || isPrivacyScreenshot ? 1.1 : (isScreenshot ? 1 : 0.75) }
     var singleMemoFitFraction: CGFloat { isProScreenshot ? 0.95 : 0.6 }
     private let bottomLeftGatherFactor: CGFloat = 0.75
     private let compactEdgeMargin: CGFloat = 47.5
@@ -66,6 +66,10 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
     func applicationDidFinishLaunching(_ notification: Notification) {
         run = Swift.Task {
             do {
+                if story == "header" {
+                    try await captureHeaderNote()
+                    return
+                }
                 try await prepare()
                 if isScreenshot { try await captureScreenshot() }
                 else { try await record() }
@@ -81,6 +85,91 @@ final class MarketingCaptureDirector: NSObject, NSApplicationDelegate, Observabl
 
     func applicationWillTerminate(_ notification: Notification) {
         if let privacyNoteID { NoteFocusPrivacySettings.setBlurOverride(nil, for: privacyNoteID) }
+    }
+
+    private func captureHeaderNote() async throws {
+        // This path never activates the app, makes a key window, or captures
+        // a display. Only its own background stage and child note are sampled.
+        guard let fixtureURL = Bundle.main.url(forResource: "HeaderNote", withExtension: "json"),
+              let fixture = try JSONSerialization.jsonObject(with: Data(contentsOf: fixtureURL)) as? [String: Any],
+              let titleKey = fixture["titleKey"] as? String, let colorName = fixture["color"] as? String,
+              let color = NoteColor(rawValue: colorName), let items = fixture["tasks"] as? [[String: Any]],
+              items.count == 5, let screen = NSScreen.main,
+              let wallpaperURL = Bundle.main.url(forResource: "GoldenGate", withExtension: "png"),
+              let wallpaper = NSImage(contentsOf: wallpaperURL) else {
+            throw NSError(domain: "MarketingHeader", code: 1)
+        }
+        var preferences = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        preferences[FontSize.storageKey] = 20.0
+        preferences[TaskLineTruncation.storageKey] = TaskLineTruncation.multiple.rawValue
+        preferences[NoteWindowBackground.opacityStorageKey] = 0.72
+        preferences["taskSpellCheckingEnabled"] = false
+        UserDefaults.standard.setVolatileDomain(preferences, forName: UserDefaults.argumentDomain)
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        store = MacSharedStore(repository: repository)
+        store.setUndoEnabled(false)
+        let created = try await store.createNote(color: color)
+        try await store.renameNote(created.id, to: NSLocalizedString(titleKey, comment: "Header mock note"))
+        for item in items {
+            guard let key = item["textKey"] as? String, let completed = item["completed"] as? Bool else {
+                throw NSError(domain: "MarketingHeader", code: 2)
+            }
+            let task = try await store.addTask(to: created.id, text: NSLocalizedString(key, comment: "Header mock task"))
+            if completed { _ = try await store.setTaskCompletion(task.id, completed: true) }
+        }
+        guard let snapshot = store.note(created.id), snapshot.tasks.count == 5,
+              snapshot.tasks.filter(\.isCompleted).count == 1,
+              let presentation = store.presentation(for: created.id) else {
+            throw NSError(domain: "MarketingHeader", code: 3)
+        }
+        let size = NSSize(width: max(304, ceil(fittedChecklistWidth(snapshot) * expandedNoteScale)), height: 300)
+        let frame = NSRect(x: screen.visibleFrame.minX + 32, y: screen.visibleFrame.minY + 32,
+                           width: size.width, height: size.height)
+        stage = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        stage.isReleasedWhenClosed = false
+        stage.title = "Tildone Header Background Capture"
+        stage.appearance = NSAppearance(named: .aqua)
+        stage.collectionBehavior = [.ignoresCycle]
+        stage.contentView = NSHostingView(rootView: Image(nsImage: wallpaper).resizable().scaledToFill()
+            .frame(width: size.width, height: size.height).clipped())
+        let window = MacNoteWindow(contentRect: frame,
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: .aqua)
+        window.setNoteStyle(noteColor: color)
+        window.title = snapshot.legacyWindowKey
+        window.titleVisibility = .hidden
+        window.setNoteHostingContentView(NSHostingView(rootView: MarketingCaptureNote(
+            director: self, store: store, presentation: presentation, noteID: created.id
+        ).environment(\.locale, Locale(identifier: localeIdentifier))))
+        window.addTitlebarAccessoryViewController(MacNoteTitlebarAccessoryController(
+            colorPicker: NoteColorPickerTitlebarControl(store: store, presentation: presentation, noteID: created.id),
+            syncIndicatorState: .hidden, store: store, presentation: presentation, noteID: created.id))
+        window.applyNoteBackgroundColor(color.nsColor, alpha: 0.72)
+        window.setFrame(frame, display: false)
+        window.level = .normal
+        window.collectionBehavior = [.ignoresCycle]
+        stage.addChildWindow(window, ordered: .above)
+        windows.append(window)
+        stage.orderBack(nil)
+        try await Swift.Task.sleep(for: .seconds(2.5))
+        window.contentView?.layoutSubtreeIfNeeded()
+        let destination = outputDirectory.appendingPathComponent("mac-note.png")
+        try await recorder.captureImage(windowID: CGWindowID(stage.windowNumber), destination: destination,
+                                        width: Int(size.width * 2), height: Int(size.height * 2))
+        let proof: [String: Any] = ["asset": "header-note", "locale": localeIdentifier,
+            "nativeUI": true, "mockDataOnly": true, "cloudKitStarted": false, "storeKitStarted": false,
+            "nativeView": "Note", "taskCount": snapshot.tasks.count,
+            "completedTaskCount": snapshot.tasks.filter(\.isCompleted).count,
+            "title": snapshot.title ?? "", "color": snapshot.color.rawValue,
+            "tasks": snapshot.tasks.map { ["text": $0.text, "completed": $0.isCompleted] as [String: Any] },
+            "width": Int(size.width * 2), "height": Int(size.height * 2),
+            "captureMethod": "current-process-only ScreenCaptureKit window", "foregroundActivation": false,
+            "idleScreenRequired": false]
+        try JSONSerialization.data(withJSONObject: proof, options: [.prettyPrinted, .sortedKeys])
+            .write(to: outputDirectory.appendingPathComponent("mac-note.json"))
+        writeStatus("HEADER NOTE FINISHED")
+        NSApp.terminate(nil)
     }
 
     private func prepare() async throws {

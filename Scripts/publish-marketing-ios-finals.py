@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import shutil
+import struct
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
@@ -35,6 +36,20 @@ for locale in locales:
         files.append((source, relative, result["sha256"]))
 
 assert len(files) == 32
+creative_count = 0
+for locale in locales:
+    for asset, dimensions in [("header", (3840, 1646)), ("search-results", (3840, 2560))]:
+        path = captures / asset / locale / "export-result.json"
+        if not path.exists():
+            continue
+        result = json.loads(path.read_text())
+        source = Path(result["file"])
+        assert result["verified"] and result["approved"] and not result.get("draft", True)
+        assert result["asset"] == asset and result["locale"] == locale
+        assert source.parent == media and source.suffix == ".png" and digest(source) == result["sha256"]
+        assert struct.unpack(">IIBB", source.read_bytes()[16:26]) == (*dimensions, 8, 2)
+        files.append((source, Path(locale) / "Creative" / source.name, result["sha256"]))
+        creative_count += 1
 expected = {str(relative) for _, relative, _ in files}
 if destination.exists():
     unexpected = [str(p.relative_to(destination)) for p in destination.rglob("*")
@@ -67,7 +82,8 @@ for source, relative, expected_hash in files:
 assert {str(p.relative_to(destination)) for p in destination.rglob("*")
         if p.is_file() and p.name != ".DS_Store"} == expected
 record = {"destination": str(destination), "history": str(history), "screenshots": 24, "previews": 8,
+          "creativeAssets": creative_count,
           "files": [{"path": str(relative), "sha256": sha} for _, relative, sha in files]}
 (media / "final-delivery.json").write_text(json.dumps(record, indent=2) + "\n")
 print(destination)
-print("Copied and verified 24 screenshots and 8 previews across four languages.")
+print(f"Copied and verified 24 screenshots, 8 previews and {creative_count} approved creative assets.")

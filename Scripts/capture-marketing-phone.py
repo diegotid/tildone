@@ -181,6 +181,11 @@ try:
             notes = state["notes"]
             if story == "ios-screenshot-2":
                 assert len(notes) == 1 and len(notes[0]["tasks"]) == 2 and state["nativeView"] == "ChecklistView", state
+            elif story == "ios-screenshot-header":
+                fixture = json.loads((Path(__file__).resolve().parents[1] / "Marketing/Preview/Inputs/header-note.json").read_text())
+                assert len(notes) == 1 and notes[0]["color"] == fixture["color"] and state["nativeView"] == "ChecklistView", state
+                assert len(notes[0]["tasks"]) == len(fixture["tasks"]) == 5, state
+                assert [task["completed"] for task in notes[0]["tasks"]] == [task["completed"] for task in fixture["tasks"]], state
             elif story == "ios-screenshot-3":
                 expected_layout = app_info.get("MarketingOverviewLayout", "grid")
                 assert expected_layout in {"grid", "deck"}

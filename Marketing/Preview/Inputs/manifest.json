@@ -8,6 +8,26 @@
       "bytes": 16801349,
       "generatedFromCode": false,
       "storage": "External original; supply to the Mac capture builder with --wallpaper"
+    },
+    {
+      "fileName": "creative_assets-product_page_header_template-static.psd",
+      "description": "Apple official dedicated Header template; used to inspect its central artwork safe area",
+      "sourcePage": "https://developer.apple.com/go/?id=photoshop-product-page-header-template",
+      "downloadURL": "https://devimages-cdn.apple.com/design/resources/download/app-store/creative_assets-product_page_header_template-static.psd",
+      "sha256": "4200f416adcf3affb70d5847c1d0554fc39b7405110ec527bdea92bfb82f93b0",
+      "bytes": 41508468,
+      "generatedFromCode": false,
+      "storage": "External reference; downloaded copy remains under ignored Preview/Output",
+      "canvas": [
+        3840,
+        1646
+      ],
+      "artSafeArea": [
+        1097,
+        493,
+        2743,
+        1154
+      ]
     }
   ]
 }

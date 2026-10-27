@@ -8,7 +8,7 @@ import TildonePersistence
 /// starts StoreKit/CloudKit. Existing Pro examples are seeded into memory.
 @MainActor
 final class MarketingPhoneCaptureSuite: NSObject {
-    static let stories = Set((2...6).map { "ios-screenshot-\($0)" } + ["ios-preview-1", "ios-preview-2"])
+    static let stories = Set((2...6).map { "ios-screenshot-\($0)" } + ["ios-preview-1", "ios-preview-2", "ios-screenshot-header"])
     let model: TildoneiOSApplicationModel
     let story: String
     private var selectedNoteID: NoteID?
@@ -102,7 +102,20 @@ final class MarketingPhoneCaptureSuite: NSObject {
                 _ = try await repository.setSingleMemoFont(id: id, font: .permanentMarker)
             }
         }
-        if story == "ios-screenshot-2" {
+        if story == "ios-screenshot-header" {
+            guard let url = Bundle.main.url(forResource: "HeaderNote", withExtension: "json"),
+                  let fixture = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any],
+                  let title = fixture["titleKey"] as? String, let colorName = fixture["color"] as? String,
+                  let color = NoteColor(rawValue: colorName), let tasks = fixture["tasks"] as? [[String: Any]],
+                  tasks.count == 5 else { throw NSError(domain: "MarketingPhoneSuite", code: 6) }
+            let items = try tasks.map { task -> (String, Int, Bool) in
+                guard let key = task["textKey"] as? String, let completed = task["completed"] as? Bool else {
+                    throw NSError(domain: "MarketingPhoneSuite", code: 6)
+                }
+                return (key, 0, completed)
+            }
+            try await add(title, color, items)
+        } else if story == "ios-screenshot-2" {
             try await add("Weekend", .blue, [("Choose a walking route", 0, false), ("Check the train times", 0, false)])
         } else if ["ios-screenshot-5", "ios-screenshot-6", "ios-preview-2"].contains(story) {
             if story != "ios-screenshot-6" {
@@ -156,7 +169,7 @@ final class MarketingPhoneCaptureSuite: NSObject {
         try await pause(2)
         if story.hasPrefix("ios-screenshot-") {
             switch story {
-            case "ios-screenshot-2", "ios-screenshot-5":
+            case "ios-screenshot-2", "ios-screenshot-5", "ios-screenshot-header":
                 if let note = model.notes.first { open(note.id) }
             case "ios-screenshot-6":
                 if let note = model.notes.first(where: { $0.kind == .singleTask }) { open(note.id) }

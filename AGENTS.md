@@ -458,6 +458,12 @@ original wallpaper and native Mac screenshot prerequisites, preservation of
 previous finals, and audit/delivery commands. iPhone simulator capture does not
 require an idle screen. Tell the user before any Mac GUI prerequisite capture
 requires one; never launch that capture automatically from the iPhone runner.
+The private Mac builder's `--story header` mode captures only its own small
+background stage and real note through current-process ScreenCaptureKit,
+without activation or a key window. It requires no idle screen. Its shared
+mock input is `Marketing/Preview/Inputs/header-note.json`; the matching private
+phone story is `ios-screenshot-header`. Existing Mac capture paths and the
+explicit screenshot-6 region-capture requirement remain unchanged.
 
 Run commands from the repository root (the directory containing `Tildone.xcodeproj`). The verified local toolchain during this analysis was Xcode 26.4.1; the project was originally created with Xcode 15-era settings, so do not silently raise deployment or project format versions.
 

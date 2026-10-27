@@ -11,7 +11,7 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--locale", choices=["en-US", "es-ES", "fr-FR", "zh-Hans"], default="en-US")
-parser.add_argument("--story", choices=["sync", "screenshot-2"] + [f"ios-screenshot-{n}" for n in range(1, 7)] + ["ios-preview-1", "ios-preview-2"], default="sync")
+parser.add_argument("--story", choices=["sync", "screenshot-2", "ios-screenshot-header"] + [f"ios-screenshot-{n}" for n in range(1, 7)] + ["ios-preview-1", "ios-preview-2"], default="sync")
 parser.add_argument("--derived-data", type=Path, default=Path("/tmp/TildoneMarketingPhoneDerivedData"))
 parser.add_argument("--overview-layout", choices=["grid", "deck"], help="Isolated screenshot 3 layout variant.")
 parser.add_argument("--both-layouts", action="store_true", help="Capture screenshot 3's grid and deck from one mock session.")
@@ -51,6 +51,8 @@ apps = list((derived / "Build/Products/Debug-iphonesimulator").glob("*.app"))
 assert len(apps) == 1, apps
 app = output / "TildonePhonePreview.app"
 shutil.copytree(apps[0], app, dirs_exist_ok=True)
+if args.story == "ios-screenshot-header":
+    shutil.copy2(repo / "Marketing/Preview/Inputs/header-note.json", app / "HeaderNote.json")
 info_path = app / "Info.plist"
 with info_path.open("rb") as file:
     info = plistlib.load(file)

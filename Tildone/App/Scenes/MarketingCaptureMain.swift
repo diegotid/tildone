@@ -32,7 +32,8 @@ enum MarketingCaptureMain {
             director = MarketingCaptureDirector()
         }
         application.delegate = director
-        application.setActivationPolicy(.regular)
+        let isHeader = Bundle.main.infoDictionary?["MarketingStory"] as? String == "header"
+        application.setActivationPolicy(isHeader ? .accessory : .regular)
         let menu = NSMenu()
         let appMenu = NSMenuItem()
         appMenu.submenu = NSMenu()

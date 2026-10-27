@@ -1,0 +1,11 @@
+{
+  "titleKey": "Weekend",
+  "color": "blue",
+  "tasks": [
+    { "textKey": "Choose a walking route", "completed": false },
+    { "textKey": "Check the train times", "completed": true },
+    { "textKey": "Book a table", "completed": false },
+    { "textKey": "Pack a bag", "completed": false },
+    { "textKey": "Pack a charger", "completed": false }
+  ]
+}

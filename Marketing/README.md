@@ -119,11 +119,24 @@ python3 Scripts/package-marketing-ios-assets.py \
 
 The package includes review/source evidence outside the upload folder.
 `publish-marketing-ios-finals.py` can refresh the upload folder independently;
-it copies only the 32 final PNG/MP4 files and archives replaced versions in
+it copies the 32 final screenshot/preview PNG/MP4 files plus any approved full
+Header/Search Results PNGs into locale `Creative` folders, and archives replaced versions in
 `Preview/Output/iOS/revisions/delivery-history/`. Its default destination is
 `/tmp/Tildone-iPhone-App-Store-Finals`, as requested by the owner. This location
 is temporary: preserve the approved release externally if the temporary
 directory is cleared. Neither command uploads to App Store Connect.
+
+The approved r11 Header is rendered with
+`render-marketing-ios-header-thumbnail.swift --full --large-text-review --native-root <captures>`.
+Use `export-marketing-ios-header.py` with the approved English thumbnail to
+export all four locales from existing native captures. Review the full image
+and template-safe-area detail before publishing. Earlier r4 Headers remain
+preserved alongside r7 and r9; only the r11 files belong in the current upload folder.
+The owner approved the larger caption outside the conservative template safe
+area; the audit records that exception rather than claiming text-safe-area
+compliance. Its full English composition matches the approved r11 thumbnail. The localized
+Header workflow and Search Results approval state are documented in
+`AppStore/iOS-1.0/CREATIVE-ASSETS.md`.
 
 `update-marketing-ios-localizations.py` is the incremental localization helper
 for the five compositions changed in the approved iteration. It requires an
