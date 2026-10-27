@@ -14,7 +14,10 @@
     "nativeSwiftUI": true,
     "mockDataOnly": true,
     "macMediaUnchanged": 32,
-    "approvedEnglishMediaUnchanged": 8
+    "approvedPreviewMediaUnchanged": 8,
+    "approvedCompositionPreserved": true,
+    "nativeRecaptured": false,
+    "mediumDisplayCompatibility": true
   },
   "toolchain": {
     "macOS": "27.0.1",
@@ -25,55 +28,61 @@
       "asset": "screenshot-1",
       "locale": "en-US",
       "file": "en-US/Screenshots/Tildone-iOS-screenshot-01-en-US.png",
-      "sha256": "f968e53f60a6cabfc89071a518c7941654ececa91ca690d527d9430aad9e14bb",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "ff1498b2382527dc2cb5a0b1200b6d007c458a90bd2315e4c5483a2dbda4fa17",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-2",
       "locale": "en-US",
       "file": "en-US/Screenshots/Tildone-iOS-screenshot-02-en-US.png",
-      "sha256": "e63a5ec7a5f8e9e9818ee4fbda907ec0ec80fd0470c611091bca581371ddabf9",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "ca82ef7dbb8bce6d1192de8c4f434d398e7bc667789014630ab249b065edb029",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-3",
       "locale": "en-US",
       "file": "en-US/Screenshots/Tildone-iOS-screenshot-03-en-US.png",
-      "sha256": "ec2fb59e268739e74383e43c34fd9eced61b7fd46aa240365e61ac8bf51a87d0",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "e961e349e267e65e79289da4d5c53bd94909acc1c69bc1e40b479c066b9abf80",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-4",
       "locale": "en-US",
       "file": "en-US/Screenshots/Tildone-iOS-screenshot-04-en-US.png",
-      "sha256": "8173721f93c1dbd3e1ec7c2b02539cf17c7fb14e5f88a63142c928a68ed1be9f",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "6bcc2ecb5030a5c981e7b284254bdfbce30f149c1783af4c38406185ef88c2a8",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-5",
       "locale": "en-US",
       "file": "en-US/Screenshots/Tildone-iOS-screenshot-05-en-US.png",
-      "sha256": "fac532643a2e0c9afd4ba067b36d1b551465b0dfe2cfb8b2558727f6596a0a9f",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "199a14b66e39805ff792ac28cd13dca7c7c4877e38c5fc735acd8e30e64712ae",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-6",
       "locale": "en-US",
       "file": "en-US/Screenshots/Tildone-iOS-screenshot-06-en-US.png",
-      "sha256": "9af88976fb3023ffe80458c9b99edf2aff9702b07ee3d65efccecda3db9838a0",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "e84730c156d552b71984c7031fc9abf9effcb60b138221e79d8faa4d7cf1dfe2",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "preview-1",
@@ -97,55 +106,61 @@
       "asset": "screenshot-1",
       "locale": "es-ES",
       "file": "es-ES/Screenshots/Tildone-iOS-screenshot-01-es-ES.png",
-      "sha256": "3ce8532285a50045fea33147fd40ffa40145654e6c4dc18793fa2aef498a5658",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "353891ea3aef1e7fb49b88f36e73ae0bb8be4694716912702910b88e58e665cc",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-2",
       "locale": "es-ES",
       "file": "es-ES/Screenshots/Tildone-iOS-screenshot-02-es-ES.png",
-      "sha256": "18538f7dcfe17da7ce8863c39b6e6aa2ac1454ccae424c9fc398a88b8904978e",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "70e044349317322c03649d74d0ef8d6e08e680287bb2ff23bd2921b019aed0d4",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-3",
       "locale": "es-ES",
       "file": "es-ES/Screenshots/Tildone-iOS-screenshot-03-es-ES.png",
-      "sha256": "27106251ab8547c910424a17fa77b362646a8b858f8d8e42ef6a8db9b6ae6482",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "4da1497981e19b5ea1e4895fd74e898069c6dc1c8c9f7f56a64c1cdf2eb1df2c",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-4",
       "locale": "es-ES",
       "file": "es-ES/Screenshots/Tildone-iOS-screenshot-04-es-ES.png",
-      "sha256": "4aee3d250f4a8b0055cd61e63b7ff3cb93e7815ea5907c107837f476e163328d",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "760fc172137eb87bfe9045982f308de7bfa0842ae34d9fec3343db0c3b2e78f1",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-5",
       "locale": "es-ES",
       "file": "es-ES/Screenshots/Tildone-iOS-screenshot-05-es-ES.png",
-      "sha256": "60fe8674573f7c2a20369e65d96d4234262bdf3f092b74c379f37869f08f55d1",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "90bc87c1d46077513a1a3e400a94311d44ae4a6cebe26bc11dc496eb2747876f",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-6",
       "locale": "es-ES",
       "file": "es-ES/Screenshots/Tildone-iOS-screenshot-06-es-ES.png",
-      "sha256": "db311e3bcb126c3af51cdc093b72730df3fd50f39c8cb8b33ff4ec28655c915f",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "8584ac1a0f5cc3f290da879c041cd0b558b9dcc1d293b3c9ef0a3156b54fc0db",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "preview-1",
@@ -169,55 +184,61 @@
       "asset": "screenshot-1",
       "locale": "fr-FR",
       "file": "fr-FR/Screenshots/Tildone-iOS-screenshot-01-fr-FR.png",
-      "sha256": "c88edf68583dab54f3aaed62e51037abb40b00c21140992b70a10c73519b4765",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "b719f14099838634b2f2e189bd425d804c5db9410c44c21a40953bcac608fd8f",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-2",
       "locale": "fr-FR",
       "file": "fr-FR/Screenshots/Tildone-iOS-screenshot-02-fr-FR.png",
-      "sha256": "fca1bcab9fc9f5aefac74a9f104baece8c91c6ec78ea7345b961ea2a947e2807",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "868038b1789c53db1a082938c5948ea6c56a2923776be00d4d9506284134ff99",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-3",
       "locale": "fr-FR",
       "file": "fr-FR/Screenshots/Tildone-iOS-screenshot-03-fr-FR.png",
-      "sha256": "6044eea44a2be9f1433d82eeca40a865c20a628b79b85b6132a381cf689fa3a0",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "d9154ea91c93c7039c44b9ce834e6c8419bc36ee112ba9dd3c7b237387b67c1d",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-4",
       "locale": "fr-FR",
       "file": "fr-FR/Screenshots/Tildone-iOS-screenshot-04-fr-FR.png",
-      "sha256": "f4dd710229fea4209ef28109d6d88b6c59d24a64ba1a842f89fbff71e73ad22a",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "3d29d452b65172a8b518d77fc9eee70bbab1da13b7013cd8525205b92a8faeaa",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-5",
       "locale": "fr-FR",
       "file": "fr-FR/Screenshots/Tildone-iOS-screenshot-05-fr-FR.png",
-      "sha256": "319d8019cb3611bd65b920f693ae298ab1558b5cef6be19e4daf3dd3595fb96d",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "51b0c8046f60320f98e5fc76115f1528bc71efde4c13781a5f222a36834b790a",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-6",
       "locale": "fr-FR",
       "file": "fr-FR/Screenshots/Tildone-iOS-screenshot-06-fr-FR.png",
-      "sha256": "8e71e8ff51eeee7254e575703475e93c5dde75129831526967b73be68d53815a",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "ffa7929e7b984f01f4f24a563c8a154d9a1ee6b52d5f0947c91cdada3fc8aa1d",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "preview-1",
@@ -241,55 +262,61 @@
       "asset": "screenshot-1",
       "locale": "zh-Hans",
       "file": "zh-Hans/Screenshots/Tildone-iOS-screenshot-01-zh-Hans.png",
-      "sha256": "c3ae592c2a99669fc9593e8296fc9ef07472a73a7e82e83c26204479b1dd8443",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "f10be0ebaf559c1e3e302668a62fd81570b888106b54ea6bf89efa478e092ed0",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-2",
       "locale": "zh-Hans",
       "file": "zh-Hans/Screenshots/Tildone-iOS-screenshot-02-zh-Hans.png",
-      "sha256": "2d0782b92818a98c4bb30bd79fd43d91a6f448316f8989d7c62acbbc2261cd37",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "f26f7086b12a371bfaa31ccbc8b1eef54607b31efacd68b4267d3214f2d694e3",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-3",
       "locale": "zh-Hans",
       "file": "zh-Hans/Screenshots/Tildone-iOS-screenshot-03-zh-Hans.png",
-      "sha256": "f050f4a61ccd4033f9bce6003e5a1038b8875e4a474235a46d3c16592d0aa19d",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "eb4429e4ac92d85d3633f440893ffa4d42688c7511d542a44acb1d696eaecda5",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-4",
       "locale": "zh-Hans",
       "file": "zh-Hans/Screenshots/Tildone-iOS-screenshot-04-zh-Hans.png",
-      "sha256": "8f9cd357fb58fcb89da6c1e2e2d9ca889a5556e98046000e75ae5f1caf380461",
-      "width": 1320,
-      "height": 2868,
-      "tier": "free"
+      "sha256": "24452f9678eaf841ec4e209d65ea1d771cf4d6b47bd8445f0c7948eb53cae19c",
+      "width": 1206,
+      "height": 2622,
+      "tier": "free",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-5",
       "locale": "zh-Hans",
       "file": "zh-Hans/Screenshots/Tildone-iOS-screenshot-05-zh-Hans.png",
-      "sha256": "78c8cd1995e989114c6ea0fff91383a7e995ebd14b5b29d22867d7a1d27318a7",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "5868976506fcb544ace6fff2385355f8cfaefc014dd837621df34e840f9af645",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "screenshot-6",
       "locale": "zh-Hans",
       "file": "zh-Hans/Screenshots/Tildone-iOS-screenshot-06-zh-Hans.png",
-      "sha256": "2d6de39cb80426388b227d36bfa5618cec536dfd09906e147dd10023d220183f",
-      "width": 1320,
-      "height": 2868,
-      "tier": "optional-one-time-Pro"
+      "sha256": "0cf53e8e7ab3df88b6a04ad733bdf4f899ad5b3e849419b97e067619a2cf7245",
+      "width": 1206,
+      "height": 2622,
+      "tier": "optional-one-time-Pro",
+      "displaySize": "medium"
     },
     {
       "asset": "preview-1",

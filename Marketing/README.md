@@ -45,6 +45,17 @@ the approved composition but need not produce byte-identical PNG/MP4 files.
 Keep the exact approved release media and detailed audit outside Git.
 `AppStore/iOS-1.0/release-manifest.json` is the small, portable record of the
 approved filenames, hashes, formats and toolchain; it contains no local paths.
+The current screenshot delivery uses 1206 × 2622 for the required iPhone
+Dynamic Island medium-display slot. `release-manifest-large.json` preserves
+the previously approved 1320 × 2868 set. The native captures and compositions
+are shared; `render-marketing-ios-thumbnail.swift --medium` renders directly
+at the new output scale. Previews remain 886 × 1920 and work in both slots.
+
+To re-export saved screenshot sources without recapture, use
+`Scripts/reexport-marketing-ios-screenshots.py --output <new-iteration>`, review
+the 24 images, then rerun with `--publish`. Native capture is not needed.
+`export-marketing-ios-asset.py` and `package-marketing-ios-assets.py` now default
+to medium screenshots; use `--display-size large` to recreate/audit a large set.
 
 ## Rebuild the iPhone set
 

@@ -409,3 +409,18 @@ Authoritative audit: `Marketing/Preview/Output/iOS/revisions/r11/final-validatio
 The review/source package is under r11/package, outside the upload folder.
 `Scripts/update-marketing-ios-localizations.py` resumes verified current records,
 including fit repairs, without replacing them with an earlier render.
+
+## Medium display compatibility — r12, 26 October 2026
+
+All 24 screenshots have been re-rendered at 1206 × 2622 for the required
+iPhone with Dynamic Island medium-display slot. The user approved this format
+adaptation. Saved native captures, mock content and the approved composition
+were reused; no app capture or layout redesign was needed. The renderer uses
+uniform scaling with less than 0.4 output pixels cropped from each side.
+
+All four localized contact sheets were reviewed. All 24 PNGs passed 8-bit RGB,
+opaque sRGB and exact-dimension checks, and the complete 32-asset package audit
+passed. The eight previews and all 32 Mac media files retain their hashes.
+The standing delivery folder now contains the medium screenshots. Original
+large outputs remain in r11, r12-medium/previous-final and delivery history;
+the portable original release hashes are in release-manifest-large.json.

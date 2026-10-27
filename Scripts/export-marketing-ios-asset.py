@@ -17,6 +17,8 @@ parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--repair", action="store_true", help=argparse.SUPPRESS)
 parser.add_argument("--draft", action="store_true", help="Render a review without replacing any final media.")
 parser.add_argument("--deck-native", type=Path, help="Matching native deck capture for screenshot 3.")
+parser.add_argument("--display-size", choices=["medium", "large"], default="medium",
+                    help="Screenshot device slot; previews keep their existing 886x1920 format.")
 args = parser.parse_args()
 assert args.deck_native is None or args.asset == "screenshot-3"
 repo = Path(__file__).resolve().parents[1]
@@ -84,10 +86,13 @@ if args.asset.startswith("screenshot-"):
         assert deck["locale"] == args.locale and deck["asset"] == "ios-screenshot-3"
         assert sorted(proof["notes"], key=lambda n: n["title"]) == sorted(deck["notes"], key=lambda n: n["title"])
         render_arguments.append(str(deck_proof_path.parent / "phone-checklist.png"))
+    if args.display_size == "medium":
+        render_arguments.append("--medium")
     subprocess.run(render_command + render_arguments, check=True)
     data = image.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    assert struct.unpack(">IIBB", data[16:26]) == (1320, 2868, 8, 2)
+    dimensions = (1206, 2622) if args.display_size == "medium" else (1320, 2868)
+    assert struct.unpack(">IIBB", data[16:26]) == (*dimensions, 8, 2)
     target = image if args.draft else final / image.name
     if not args.draft:
         shutil.copy2(image, target)
@@ -96,6 +101,7 @@ if args.asset.startswith("screenshot-"):
     result = {"asset": args.asset, "locale": args.locale, "verified": True, "file": str(target),
               "sha256": hashlib.sha256(data).hexdigest(), "nativeProof": str(native / "phone-capture-verification.json"),
               "requiresVisualReview": True}
+    result.update(displaySize=args.display_size, width=dimensions[0], height=dimensions[1])
     if deck_proof_path:
         result["nativeDeckProof"] = str(deck_proof_path)
         result["sameMockContentInBothLayouts"] = True

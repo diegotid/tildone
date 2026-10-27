@@ -18,6 +18,7 @@ media = repo / "Marketing/Preview/Output/iOS-App-Store"
 parser = argparse.ArgumentParser()
 parser.add_argument("--destination", type=Path, default=Path("/tmp/Tildone-iPhone-App-Store-1.0"))
 parser.add_argument("--no-archive", action="store_true")
+parser.add_argument("--display-size", choices=["medium", "large"], default="medium")
 parser.add_argument("--mac-baseline", type=Path, required=True,
                     help="Mac media hashes recorded before this iteration, e.g. run-marketing-ios-suite.py output")
 args = parser.parse_args()
@@ -65,7 +66,8 @@ for locale in locales:
         entry = {"asset": asset, "locale": locale, "sha256": digest(source),
                  "tier": "optional-one-time-Pro" if native_proof["proContent"] else "free"}
         if asset.startswith("screenshot-"):
-            assert struct.unpack(">IIBB", source.read_bytes()[16:26]) == (1320, 2868, 8, 2), source
+            dimensions = (1206, 2622) if args.display_size == "medium" else (1320, 2868)
+            assert struct.unpack(">IIBB", source.read_bytes()[16:26]) == (*dimensions, 8, 2), source
             if asset == "screenshot-1":
                 assert native_proof["taskCount"] == 4 and native_proof["allTasksVisible"], native_proof
             if asset == "screenshot-3":
@@ -81,7 +83,8 @@ for locale in locales:
                 entry["nativeDeckSource"] = str(deck_target.relative_to(destination))
                 entry["nativeDeckSourceSHA256"] = digest(deck_target)
             target = destination / locale / "Screenshots" / source.name
-            entry.update(width=1320, height=2868, opaque=True, bitDepth=8, colorSpace="sRGB")
+            entry.update(width=dimensions[0], height=dimensions[1], displaySize=args.display_size,
+                         opaque=True, bitDepth=8, colorSpace="sRGB")
             native_file = Path(result["nativeProof"]).parent / "phone-checklist.png"
         else:
             probe = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(source)]))
@@ -131,7 +134,7 @@ readme = """# Tildone — iPhone App Store assets 1.0
 
 Each language folder contains:
 
-- **Screenshots:** upload the six numbered PNGs in order. 1320 × 2868, opaque 8-bit sRGB.
+- **Screenshots:** upload the six numbered PNGs in order. Opaque 8-bit sRGB; dimensions and display size are recorded in manifest.json.
 - **Previews:** free experience first, optional Pro second. Each is exactly 30 seconds, portrait 886 × 1920, 30 fps, H.264 High with silent stereo AAC.
 - **Posters:** reference images from 00:02 of each finished preview. Select that time as the poster frame in App Store Connect.
 

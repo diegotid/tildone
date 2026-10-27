@@ -168,22 +168,24 @@ struct MarketingIOSThumbnail: View {
 
 @MainActor
 func render() throws {
-    guard (3...7).contains(CommandLine.arguments.count),
-          let image = NSImage(contentsOfFile: CommandLine.arguments[1]),
-          let data = try? Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])),
+    let mediumDisplay = CommandLine.arguments.contains("--medium")
+    let arguments = CommandLine.arguments.filter { $0 != "--medium" }
+    guard (3...7).contains(arguments.count),
+          let image = NSImage(contentsOfFile: arguments[1]),
+          let data = try? Data(contentsOf: URL(fileURLWithPath: arguments[1])),
           let bytes = NSBitmapImageRep(data: data),
           bytes.pixelsWide == 1206, bytes.pixelsHigh == 2622,
           let strip = bytes.cgImage?.cropping(to: CGRect(x: 8, y: 11, width: 12, height: 162)) else {
         throw NSError(domain: "MarketingThumbnail", code: 1,
-                      userInfo: [NSLocalizedDescriptionKey: "Expected native-frame.png output.png [locale] [scale] [asset]"])
+                      userInfo: [NSLocalizedDescriptionKey: "Expected native-frame.png output.png [locale] [scale] [asset] [deck.png] [--medium]"])
     }
-    let locale = CommandLine.arguments.count >= 4 ? CommandLine.arguments[3] : "en-US"
-    let scale = CommandLine.arguments.count >= 5 ? Double(CommandLine.arguments[4]) ?? 0 : 1
-    let asset = CommandLine.arguments.count >= 6 ? CommandLine.arguments[5] : "screenshot-1"
-    let macBookLayerOnly = CommandLine.arguments.count == 7 && CommandLine.arguments[6] == "--macbook-layer"
-    let deckPath = CommandLine.arguments.count == 7 && !macBookLayerOnly ? CommandLine.arguments[6] : nil
+    let locale = arguments.count >= 4 ? arguments[3] : "en-US"
+    let scale = arguments.count >= 5 ? Double(arguments[4]) ?? 0 : 1
+    let asset = arguments.count >= 6 ? arguments[5] : "screenshot-1"
+    let macBookLayerOnly = arguments.count == 7 && arguments[6] == "--macbook-layer"
+    let deckPath = arguments.count == 7 && !macBookLayerOnly ? arguments[6] : nil
     let languages = ["en-US": "en", "es-ES": "es", "fr-FR": "fr", "zh-Hans": "zh-Hans"]
-    guard let language = languages[locale], [1.0, 3.0].contains(scale) else {
+    guard let language = languages[locale], [1.0, 3.0].contains(scale), !(mediumDisplay && macBookLayerOnly) else {
         throw NSError(domain: "MarketingThumbnail", code: 3)
     }
     let catalogURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -253,12 +255,26 @@ func render() throws {
     // Preserve the real vertical status-bar backdrop rather than painting a
     // flat patch over the island. The source strip contains no text or icons.
     let backdrop = NSImage(cgImage: strip, size: NSSize(width: 12, height: 162))
-    let renderer = ImageRenderer(content: MarketingIOSThumbnail(capture: image, statusBackground: backdrop,
+    let composition = MarketingIOSThumbnail(capture: image, statusBackground: backdrop,
                                                              headline: headline, subtitle: subtitle,
                                                              asset: asset, proLabel: proLabel, macCapture: macCapture,
                                                              macWallpaper: macWallpaper, macBookLayerOnly: macBookLayerOnly,
-                                                             deckCapture: deckCapture, deckStatusBackground: deckBackdrop))
-    renderer.proposedSize = ProposedViewSize(width: 440, height: macBookLayerOnly ? 1156 : 956)
+                                                             deckCapture: deckCapture, deckStatusBackground: deckBackdrop)
+    let canvasWidth: CGFloat = mediumDisplay ? 402 : 440
+    let canvasHeight: CGFloat = mediumDisplay ? 874 : (macBookLayerOnly ? 1156 : 956)
+    let renderer: ImageRenderer<AnyView>
+    if mediumDisplay {
+        // Render the source composition directly at the medium display's scale.
+        // Uniform scaling preserves geometry; less than 0.4px per side is cropped
+        // at 3x because the two display aspect ratios differ by only 0.064%.
+        renderer = ImageRenderer(content: AnyView(composition
+            .scaleEffect(874.0 / 956.0)
+            .frame(width: canvasWidth, height: canvasHeight)
+            .clipped()))
+    } else {
+        renderer = ImageRenderer(content: AnyView(composition))
+    }
+    renderer.proposedSize = ProposedViewSize(width: canvasWidth, height: canvasHeight)
     renderer.scale = scale
     renderer.isOpaque = !macBookLayerOnly
     guard let rendered = renderer.cgImage,
@@ -274,7 +290,7 @@ func render() throws {
           let png = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
         throw NSError(domain: "MarketingThumbnail", code: 2)
     }
-    let output = URL(fileURLWithPath: CommandLine.arguments[2])
+    let output = URL(fileURLWithPath: arguments[2])
     try png.write(to: output)
     let proof: [String: Any] = [
         "asset": "ios-" + asset, "locale": locale, "proDisclosure": proLabel,
@@ -284,15 +300,16 @@ func render() throws {
         "headline": headline, "subtitle": subtitle,
         "pixelWidth": cgImage.width, "pixelHeight": cgImage.height,
         "opaque": renderer.isOpaque, "notePalette": ["yellow", "green", "blue", "orange", "pink", "purple"],
-        "source": CommandLine.arguments[1], "sourceSHA256": SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
+        "source": arguments[1], "sourceSHA256": SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
         "outputSHA256": SHA256.hash(data: png).map { String(format: "%02x", $0) }.joined(),
         "twoNativePhoneViews": deckCapture != nil, "nativeDeckSource": deckPath ?? "none",
         "nativeDeckSourceSHA256": deckSHA256, "phoneEdgeMarginPoints": deckCapture == nil ? 49 : 24,
-        "macBookLayerOnly": macBookLayerOnly, "nativeAppPixels": true, "hardwareIslandHidden": true, "compositionScale": scale
+        "macBookLayerOnly": macBookLayerOnly, "nativeAppPixels": true, "hardwareIslandHidden": true, "compositionScale": scale,
+        "displaySize": mediumDisplay ? "medium" : "large", "compositionGeometryPreserved": true
     ]
     try JSONSerialization.data(withJSONObject: proof, options: [.prettyPrinted, .sortedKeys])
         .write(to: output.deletingPathExtension().appendingPathExtension("json"))
-    print(CommandLine.arguments[2])
+    print(arguments[2])
 }
 
 do {
