@@ -435,3 +435,8 @@ The existing native SwiftUI compositors render the approved mesh master using se
 All 16 replacements passed format/integrity checks and localized visual scene review; the four complete videos decoded without errors. Header retains the previously accepted r11 composition, including its explicitly owner-accepted caption extension outside the conservative template safe area. This refresh does not claim that exception is resolved or that App Store Connect placement cropping is newly qualified.
 
 The updated 40-file current delivery and audit are under the ignored iPhone wallpaper refresh iteration. The portable release manifest records new hashes and the 24 unchanged files. The historical large-display manifest remains unchanged. No customer app, data store, CloudKit operation, signing change, App Store upload or submission is part of this media refresh.
+
+
+## Large-display wallpaper correction — 28 October 2026
+
+The wallpaper refresh also provides screenshot 2 at 1320 × 2868 for en-US, es-ES, fr-FR and zh-Hans. These four additional native-compositor renders retain the approved large layout and current mesh inputs. Format checks and localized visual review passed. The other twenty large screenshots keep their original approved hashes. Only screenshot 2 needs replacing in this size slot; previews are shared with the updated current delivery. The ignored wallpaper refresh iteration includes a separate four-file large-display folder and ZIP, complete reference set, new local manifest and the preserved historical manifest. The tracked release-manifest-large.json remains the original historical record. No new device capture or App Store action occurred.
