@@ -32,6 +32,13 @@ The existing 24 TXT fields and validation report were reproduced exactly.
 
 ## Capture dependencies and release evidence
 
+The 28 October 2026 Mac-only refresh uses the original generated mesh artwork
+`Preview/Inputs/Tildone-Mesh-20261028.png`; its generation prompt and pinned
+provenance sit alongside it. Use `activeMacWallpaper` in the input manifest for
+that Mac refresh. The owner excluded iPhone media from this request; preserve
+its original Golden Gate inputs. See `Preview/README.md` for the resumable
+native Mac capture/export workflow.
+
 The original Golden Gate wallpaper is an external input, not a generated
 image. `Preview/Inputs/manifest.json` pins its source page, size and SHA-256.
 Keep that original available outside Git and pass it to the private Mac

@@ -1,0 +1,369 @@
+{
+  "platform": "macOS",
+  "version": "2.0",
+  "generatedDate": "2026-10-28",
+  "locales": [
+    "en-US",
+    "es-ES",
+    "fr-FR",
+    "zh-Hans"
+  ],
+  "screenshots": 24,
+  "previews": 8,
+  "sourceCaptureCommit": "d88b7ab39626ea8a2eaccb74d4ba045bdbfe4758",
+  "wallpaper": {
+    "file": "Tildone-Mesh-20261028.png",
+    "sha256": "18c84aed84a40fa06a9fad5ecb1332b3766ea68bd5cfcd8154d86eee3b2ac808",
+    "generator": "built-in image_gen",
+    "promptFile": "Tildone-Mesh-20261028.prompt.txt",
+    "scope": "Mac only"
+  },
+  "validation": {
+    "nativeMacUI": true,
+    "mockDataOnly": true,
+    "cloudKitStarted": false,
+    "existingCompositionAndCopyRetained": true,
+    "privateUnsignedCaptureBuildNoWarnings": true,
+    "nativePrivacyMenuReviewed": true,
+    "nativeScreenshot6RectangleCapture": true,
+    "localizedVisualReview": true,
+    "fullVideoDecode": true,
+    "iPhoneArtworkAndInputsUnchanged": true,
+    "oldMacExportsPreserved": true
+  },
+  "toolchain": {
+    "macOS": "27.2",
+    "xcode": "Xcode 27.1\nBuild version 27A9275"
+  },
+  "files": [
+    {
+      "locale": "en-US",
+      "file": "en-US/Previews/Tildone-macOS-preview-2-sync-en-US.mp4",
+      "sha256": "a2552afd73c8e76e1e16cbde32e6c17cc3e19b00f6632e9721add80c1328998e",
+      "bytes": 6070972,
+      "asset": "preview-2",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Previews/Tildone-macOS-preview-en-US.mp4",
+      "sha256": "e17fac261a749467c6b0c17e52d6299583321051ce341c8ab59f08846b52d3ff",
+      "bytes": 15753537,
+      "asset": "preview-1",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Screenshots/Tildone-macOS-screenshot-01-en-US.png",
+      "sha256": "8b9f05ad1b150e12b2e1aced753a98d584ea39851403903bdaf0edf7cbec0ff3",
+      "bytes": 3593234,
+      "asset": "screenshot-1",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Screenshots/Tildone-macOS-screenshot-02-en-US.png",
+      "sha256": "ed28409fce1ec649795289089f752d8612d3e77e3bf9e91ae5b40b2d751de1c1",
+      "bytes": 3072686,
+      "asset": "screenshot-2",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Screenshots/Tildone-macOS-screenshot-03-en-US.png",
+      "sha256": "5cf62101bf8a86317ef2cd9adf6c2b2e9989fde027d2ece36dc658a8180d544c",
+      "bytes": 3260233,
+      "asset": "screenshot-3",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Screenshots/Tildone-macOS-screenshot-04-en-US.png",
+      "sha256": "0205190018922a02d13de6ebd48edf35170a93e28bc28792dda2dd22d7debf22",
+      "bytes": 3147151,
+      "asset": "screenshot-4",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Screenshots/Tildone-macOS-screenshot-05-en-US.png",
+      "sha256": "f016120c2dd66a6cd9e879aab69076e82cb4f9fae7a25d08eb01799be6f11df6",
+      "bytes": 3266913,
+      "asset": "screenshot-5",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "en-US",
+      "file": "en-US/Screenshots/Tildone-macOS-screenshot-06-en-US.png",
+      "sha256": "86c2753ed034ad2ba32e830c9c7d4659da1538eb924c9027b5a5b3218d8487ee",
+      "bytes": 3627382,
+      "asset": "screenshot-6",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Previews/Tildone-macOS-preview-2-sync-es-ES.mp4",
+      "sha256": "628d82b5667101992e29e123fa359e6b3a9a08044b62a7d81460c93033a00a82",
+      "bytes": 5937644,
+      "asset": "preview-2",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Previews/Tildone-macOS-preview-es-ES.mp4",
+      "sha256": "4ef5250f32eba281059523aed2ced1de12e8b66e13b227e3549a1558fb6a6569",
+      "bytes": 16522692,
+      "asset": "preview-1",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Screenshots/Tildone-macOS-screenshot-01-es-ES.png",
+      "sha256": "a3741c4256cdd06672012b404b5ec6caf8d13ccd42232041af615f16e0ca69ed",
+      "bytes": 3544831,
+      "asset": "screenshot-1",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Screenshots/Tildone-macOS-screenshot-02-es-ES.png",
+      "sha256": "8eb492492768997d7dc637929d022165f134e328870a733967bd86bcca65feae",
+      "bytes": 2982002,
+      "asset": "screenshot-2",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Screenshots/Tildone-macOS-screenshot-03-es-ES.png",
+      "sha256": "e21c1a34403b0ed8e228f8f7a7f28aa59a55f8764e0f3db99598b0887a40777d",
+      "bytes": 3275072,
+      "asset": "screenshot-3",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Screenshots/Tildone-macOS-screenshot-04-es-ES.png",
+      "sha256": "279a33cc1bc948efdab2f5f122e109426c3e464761d5c2c618a99a139166ff03",
+      "bytes": 3142533,
+      "asset": "screenshot-4",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Screenshots/Tildone-macOS-screenshot-05-es-ES.png",
+      "sha256": "71f90bf7c5bcb32c113487d7f5b2f74eb7dc91cda36252db0828f087584b6dca",
+      "bytes": 3289403,
+      "asset": "screenshot-5",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "es-ES",
+      "file": "es-ES/Screenshots/Tildone-macOS-screenshot-06-es-ES.png",
+      "sha256": "5e93c7e7fbe9ab2ed84b24171f03d5d6af9d970c61b4c0e44b3ec71fb11f2dfd",
+      "bytes": 3643705,
+      "asset": "screenshot-6",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Previews/Tildone-macOS-preview-2-sync-fr-FR.mp4",
+      "sha256": "99bcc5b48ea9d604be08f2a5d92e976ce5ebb144bf61005e7fdebb3fbdc8858d",
+      "bytes": 6196867,
+      "asset": "preview-2",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Previews/Tildone-macOS-preview-fr-FR.mp4",
+      "sha256": "ab4502cabcab9243b988990d5ac4e607d64a15a17cc132131de27d9acb57237b",
+      "bytes": 16866682,
+      "asset": "preview-1",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Screenshots/Tildone-macOS-screenshot-01-fr-FR.png",
+      "sha256": "c30669d16b5ca4230b603e073efe55e624dd5f7e73cfd41bbc06f46d6486a9c8",
+      "bytes": 3543066,
+      "asset": "screenshot-1",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Screenshots/Tildone-macOS-screenshot-02-fr-FR.png",
+      "sha256": "f5c729944c9e0e7e60b288035643cb54e5c45d4fd9fe67597a1c5bc63ba26e35",
+      "bytes": 2979654,
+      "asset": "screenshot-2",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Screenshots/Tildone-macOS-screenshot-03-fr-FR.png",
+      "sha256": "9525f9f67fc4a9270a82198e7d922961e19ed8d5b75327173bf74aa4f38347a6",
+      "bytes": 3282168,
+      "asset": "screenshot-3",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Screenshots/Tildone-macOS-screenshot-04-fr-FR.png",
+      "sha256": "85b87d927b9e83d330e024857f6b0aa7306c3892280c93e29edf662039b92a18",
+      "bytes": 3152057,
+      "asset": "screenshot-4",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Screenshots/Tildone-macOS-screenshot-05-fr-FR.png",
+      "sha256": "9e7f9d8d0cfb45d6bfcdf838c9c0a69f3a17b9dee2a5533d25c6c6cb37dd7278",
+      "bytes": 3286103,
+      "asset": "screenshot-5",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "fr-FR",
+      "file": "fr-FR/Screenshots/Tildone-macOS-screenshot-06-fr-FR.png",
+      "sha256": "24b040337523d3f2d50507906ab89c494d07c92487aba5e80bd3786fd0c7f9ab",
+      "bytes": 3645467,
+      "asset": "screenshot-6",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Previews/Tildone-macOS-preview-2-sync-zh-Hans.mp4",
+      "sha256": "f12d03f6a7853c269e596e4bb78514c275b84bc9da88e071912894fd67fc6910",
+      "bytes": 5561489,
+      "asset": "preview-2",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Previews/Tildone-macOS-preview-zh-Hans.mp4",
+      "sha256": "a6652fab6363d8b517d9b60cb7d80c06b60eb00d2926729c7962b9981e413101",
+      "bytes": 15620034,
+      "asset": "preview-1",
+      "width": 1920,
+      "height": 1080,
+      "durationSeconds": 30,
+      "frames": 900,
+      "frameRate": 30,
+      "codec": "H.264",
+      "audio": "stereo AAC 48000Hz"
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Screenshots/Tildone-macOS-screenshot-01-zh-Hans.png",
+      "sha256": "ee321dfd54b9bc1e1e9f88685cd1526816f83822deea3363fdd70d44ebebcbdd",
+      "bytes": 3740921,
+      "asset": "screenshot-1",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Screenshots/Tildone-macOS-screenshot-02-zh-Hans.png",
+      "sha256": "5b22176e50e6b02701a4a61b68ed68f5b40aca87633b140cb53ed931e2f5105e",
+      "bytes": 3200545,
+      "asset": "screenshot-2",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Screenshots/Tildone-macOS-screenshot-03-zh-Hans.png",
+      "sha256": "cdb40695384e72a2f1f8f420ba0878f02b8540d8580a5faaa9b79f18662da5a0",
+      "bytes": 3261243,
+      "asset": "screenshot-3",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Screenshots/Tildone-macOS-screenshot-04-zh-Hans.png",
+      "sha256": "3777921b4e2d649eacb17d60cd427c8c926c835c2bda5dc785e30bf7d837060a",
+      "bytes": 3082840,
+      "asset": "screenshot-4",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Screenshots/Tildone-macOS-screenshot-05-zh-Hans.png",
+      "sha256": "d1503dd476013dfbe4b13af7da625404cd193824ed7f581d35ec4bbd57fb532f",
+      "bytes": 3239979,
+      "asset": "screenshot-5",
+      "width": 2880,
+      "height": 1800
+    },
+    {
+      "locale": "zh-Hans",
+      "file": "zh-Hans/Screenshots/Tildone-macOS-screenshot-06-zh-Hans.png",
+      "sha256": "4055016d6c2509eaea4ffbfa20b238795f68c33d73a49dd2fe8672a8cbc08093",
+      "bytes": 3626658,
+      "asset": "screenshot-6",
+      "width": 2880,
+      "height": 1800
+    }
+  ],
+  "appStoreUploaded": false
+}

@@ -1,5 +1,46 @@
 # macOS App Store preview
 
+## Mac-only wallpaper refresh — 28 October 2026
+
+The owner approved an original smoky slate, teal, lavender and peach mesh
+wallpaper, `Inputs/Tildone-Mesh-20261028.png`, to replace Golden Gate in the
+Mac's six screenshots and two previews across all four locales. Its provenance
+and hash are in `Inputs/manifest.json` under `activeMacWallpaper`. The historical
+external Golden Gate record is retained. The private resource remains named
+`GoldenGate.png` for compatibility; its content is the selected input bitmap.
+The owner excluded iPhone artwork from this Mac refresh. The original iPhone
+media and prerequisites remain unchanged.
+
+Use the existing unsigned private Mac builder with `--wallpaper` pointing to
+the new input. Then `Scripts/refresh-marketing-mac-wallpaper.py --phase prepare`
+stages independent story/locale app copies under a new ignored `--output`
+iteration, with `--app-template` pointing to that built app and `--wallpaper`
+to the original mesh bitmap. Its `capture`, `export` and `audit` phases resume
+from that plan. Only `capture` needs an idle GUI desktop; `export` and `audit`
+run in the background. The continuous batch counts down before its first scene,
+captures genuine native note UI, and retains screenshot 6's required visible
+rectangle capture. Announce the foreground interval before starting and tell
+the owner when native capture finishes or stops.
+
+`record-marketing-preview.py --destination` keeps new screenshots out of the
+standing delivery folder until visual review. Existing behavior is unchanged
+when the option is absent. Its opt-in `--retained-phone-inputs` accepts only a
+manifest pinning the original verified phone proof and image/video files for
+the exact story and locale. This reuses the approved native continuity footage
+without claiming a fresh simulator capture or changing the older capture
+helper fingerprint. The batch copies those inputs into its own iteration,
+verifies native/mock-data/cloud-off flags and the existing composition checks,
+and rejects any file-hash mismatch before a GUI launch. Without that explicit
+manifest, the original app/helper cache check and recapture behavior remain.
+
+Use a separate ignored output iteration and pin existing exports with baseline
+manifests before starting. New Mac exports are staged under `ready-for-review/`;
+capture completion is not visual approval or an App Store upload. Inspect all 24 screenshots, the native
+privacy menu and transparency examples, and the eight complete video timelines
+before refreshing the final delivery folder. Preserve replaced files and
+record their new hashes. No customer app, live store, CloudKit, StoreKit,
+distribution signing, App Store upload or submission is involved.
+
 ## Screenshot 1: one thing at a time
 
 Build with `--story screenshot-1 --output Marketing/Preview/Output/screenshots/01/en-US`

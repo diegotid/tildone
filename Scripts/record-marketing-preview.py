@@ -14,14 +14,18 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument("--app", type=Path, required=True)
 parser.add_argument("--batch", action="store_true", help="Let a batch launcher report final completion.")
-parser.add_argument("--prepare-phone-only", action="store_true", help="Prepare screenshot 2's native phone before a batch of Mac captures.")
+parser.add_argument("--prepare-phone-only", action="store_true", help="Prepare a continuity scene's native phone before Mac capture starts.")
 parser.add_argument("--manual-screen-region", action="store_true", help="Select screenshot 6's canvas rectangle with the native screenshot UI.")
+parser.add_argument("--destination", type=Path, help="Export verified screenshots into a separate iteration instead of the standing delivery folder.")
+parser.add_argument("--countdown", type=float, default=10, help="Seconds before the Mac scene starts; a prepared continuous batch can use zero after its first scene.")
+parser.add_argument("--retained-phone-inputs", type=Path, help="Pinned manifest for reusing already verified native phone media without recapture.")
 args = parser.parse_args()
+assert args.countdown >= 0
 app = args.app.resolve(strict=True)
 info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
 assert info["CFBundleIdentifier"] == "studio.cuatro.tildone.marketing-preview"
 if args.prepare_phone_only:
-    assert info.get("MarketingStory") == "screenshot-2"
+    assert info.get("MarketingStory") in {"sync", "screenshot-2"}
 if args.manual_screen_region:
     assert info.get("MarketingStory") == "screenshot-6"
 output = Path(info["MarketingOutputDirectory"])
@@ -40,9 +44,23 @@ if info.get("MarketingStory") in {"sync", "screenshot-2"}:
     frames = Path(info["MarketingPhoneFramesDirectory"])
     verification_path = frames / "phone-capture-verification.json"
     cached = json.loads(verification_path.read_text()) if verification_path.exists() else {}
+    retained = False
+    if args.retained_phone_inputs:
+        manifest = json.loads(args.retained_phone_inputs.read_text())
+        assert manifest["story"] == info["MarketingStory"] and manifest["locale"] == info["MarketingLocale"]
+        assert Path(manifest["framesDirectory"]).resolve() == frames.resolve()
+        for name, expected in manifest["files"].items():
+            file = frames / name
+            assert file.resolve().is_relative_to(frames.resolve()) and file.is_file()
+            assert hashlib.sha256(file.read_bytes()).hexdigest() == expected
+        assert "phone-capture-verification.json" in manifest["files"]
+        required = {"phone-shared.png", "phone-screenshot-result.json"} if info["MarketingStory"] == "screenshot-2" else {"phone-native.mp4"}
+        assert required.issubset(manifest["files"])
+        assert cached["nativeUI"] and cached["mockDataOnly"] and not cached["cloudKitStarted"]
+        retained = True
     if info["MarketingStory"] == "screenshot-2":
         assert phone_info.get("MarketingStory") == "screenshot-2"
-        valid = (cached.get("phoneAppFingerprint") == fingerprint and cached.get("screenshotRevision") == 3
+        valid = ((retained or cached.get("phoneAppFingerprint") == fingerprint) and cached.get("screenshotRevision") == 3
                  and cached.get("nativeView") == "NotesDeckView" and cached.get("bothDeckPreviewsVisible")
                  and cached.get("deckContentAboveCrop") and cached.get("cropAboveSearchY")
                  and cached.get("noteCount") == 4 and cached.get("deckCount") == 2
@@ -50,11 +68,14 @@ if info.get("MarketingStory") in {"sync", "screenshot-2"}:
                  and cached.get("phoneSyncIndicatorConnected") and cached.get("locale") == info["MarketingLocale"]
                  and (frames / "phone-shared.png").exists() and (frames / "phone-screenshot-result.json").exists())
     else:
-        valid = (cached.get("phoneAppFingerprint") == fingerprint and cached.get("storyRevision") == 7
+        valid = ((retained or cached.get("phoneAppFingerprint") == fingerprint) and cached.get("storyRevision") == 7
                  and cached.get("nativeTitleVisible") and cached.get("phoneSyncIndicatorConnected")
-                 and (info["MarketingLocale"] == "en-US" or cached.get("localizedInputVerified"))
-                 and (info["MarketingLocale"] == "en-US" or cached.get("inputMethod") == "swiftui-binding")
+                 and (retained or info["MarketingLocale"] == "en-US" or cached.get("localizedInputVerified"))
+                 and (retained or info["MarketingLocale"] == "en-US" or cached.get("inputMethod") == "swiftui-binding")
                  and (frames / "phone-native.mp4").exists())
+    if retained:
+        assert valid, "Retained native phone inputs do not satisfy this Mac composition."
+        print("Reusing fingerprinted, previously verified native phone media; no simulator capture.", flush=True)
     if not valid:
         subprocess.run([sys.executable, str(Path(__file__).with_name("capture-marketing-phone.py")),
                         "--app", str(phone_app), "--output", str(frames)], check=True)
@@ -66,12 +87,12 @@ if args.prepare_phone_only:
     raise SystemExit(0)
 is_screenshot = info.get("MarketingStory") in {"screenshot-1", "screenshot-2", "screenshot-3", "screenshot-4", "screenshot-5", "screenshot-6"}
 if is_screenshot:
-    print(f"Screenshot #{info['MarketingStory'].rsplit('-', 1)[1]} capture starts in 10 seconds.", flush=True)
+    print(f"Screenshot #{info['MarketingStory'].rsplit('-', 1)[1]} capture starts in {args.countdown:g} seconds.", flush=True)
     print("Please leave the screen idle until the capture closes (about 10 seconds).", flush=True)
 else:
-    print("Phone preparation complete. Mac capture starts in 10 seconds.", flush=True)
+    print(f"Phone preparation complete. Mac capture starts in {args.countdown:g} seconds.", flush=True)
     print("Please leave the screen idle until the preview closes (about 35 seconds).", flush=True)
-time.sleep(10)
+time.sleep(args.countdown)
 (output / "capture-status.txt").write_text("LAUNCHING")
 (output / "capture-result.json").unlink(missing_ok=True)
 subprocess.run(["/usr/bin/open", "-n", str(app)], check=True)
@@ -246,7 +267,8 @@ while time.monotonic() < deadline:
             header = image.read_bytes()[:33]
             assert header[:8] == b"\x89PNG\r\n\x1a\n" and header[12:16] == b"IHDR"
             assert struct.unpack(">II", header[16:24]) == (2880, 1800) and header[25] == 2
-            destination = Path(__file__).resolve().parents[1] / "Marketing/Preview/Output/macOS-App-Store" / image.name
+            destination = (args.destination.resolve() if args.destination else
+                           Path(__file__).resolve().parents[1] / "Marketing/Preview/Output/macOS-App-Store") / image.name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(image, destination)
             if args.batch:

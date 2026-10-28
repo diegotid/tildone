@@ -29,5 +29,18 @@
         1154
       ]
     }
-  ]
+  ],
+  "activeMacWallpaper": {
+    "fileName": "Tildone-Mesh-20261028.png",
+    "description": "Original smoky slate, teal, lavender and peach mesh background; owner-approved visual direction on 28 October 2026. Native app capture overlays genuine UI.",
+    "sha256": "18c84aed84a40fa06a9fad5ecb1332b3766ea68bd5cfcd8154d86eee3b2ac808",
+    "bytes": 1451596,
+    "generatedFromCode": false,
+    "generator": "built-in image_gen",
+    "approvedReferenceSHA256": "e4129c78dcc47b322cb06c6f62aec78f0013441eb7169971b75c81b334fd466b",
+    "scope": "Mac screenshots and previews only; iPhone artwork excluded from this request.",
+    "storage": "Tracked original input in Marketing/Preview/Inputs/",
+    "nativeResourceAlias": "GoldenGate.png retained for private capture/compositor compatibility; file content is the active original mesh wallpaper.",
+    "promptFile": "Tildone-Mesh-20261028.prompt.txt"
+  }
 }
