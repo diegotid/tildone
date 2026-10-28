@@ -16,12 +16,17 @@ parser.add_argument("--native", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--repair", action="store_true", help=argparse.SUPPRESS)
 parser.add_argument("--draft", action="store_true", help="Render a review without replacing any final media.")
+parser.add_argument("--mac-input-root", type=Path, help="Separate per-locale Mac screenshot/wallpaper inputs for an approved refresh.")
 parser.add_argument("--deck-native", type=Path, help="Matching native deck capture for screenshot 3.")
 parser.add_argument("--display-size", choices=["medium", "large"], default="medium",
                     help="Screenshot device slot; previews keep their existing 886x1920 format.")
 args = parser.parse_args()
 assert args.deck_native is None or args.asset == "screenshot-3"
 repo = Path(__file__).resolve().parents[1]
+input_manifest = json.loads((repo / "Marketing/Preview/Inputs/manifest.json").read_text())
+default_mac_inputs = input_manifest.get("activeIPhoneWallpaper", {}).get("macInputsDirectory", "Marketing/Preview/Output/screenshots/02")
+mac_input_root = args.mac_input_root.resolve(strict=True) if args.mac_input_root else repo / default_mac_inputs
+mac_render_arguments = ["--mac-input-root", str(mac_input_root)] if args.mac_input_root else []
 native = args.native.resolve()
 output = args.output.resolve()
 final = repo / "Marketing/Preview/Output/iOS-App-Store"
@@ -66,7 +71,7 @@ if args.asset.startswith("screenshot-"):
             expected.append(catalog[key].get("localizations", {}).get(language, {}).get("stringUnit", {}).get("value", key))
         assert proof["taskTexts"] == expected, (proof["taskTexts"], expected)
     if args.asset == "screenshot-2":
-        mac_proof = json.loads((repo / "Marketing/Preview/Output/screenshots/02" / args.locale /
+        mac_proof = json.loads((mac_input_root / args.locale /
                                 "phone-frames/phone-capture-verification.json").read_text())
         old = next(n for n in mac_proof["notes"] if n["title"] == proof["notes"][0]["title"])
         assert old["taskTexts"] == [t["text"] for t in proof["notes"][0]["tasks"]], (old, proof)
@@ -88,7 +93,7 @@ if args.asset.startswith("screenshot-"):
         render_arguments.append(str(deck_proof_path.parent / "phone-checklist.png"))
     if args.display_size == "medium":
         render_arguments.append("--medium")
-    subprocess.run(render_command + render_arguments, check=True)
+    subprocess.run(render_command + render_arguments + mac_render_arguments, check=True)
     data = image.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
     dimensions = (1206, 2622) if args.display_size == "medium" else (1320, 2868)
@@ -136,7 +141,7 @@ else:
         renderer_source = repo / "Scripts/render-marketing-ios-thumbnail.swift"
         render_command = ([str(renderer)] if renderer.exists() and renderer.stat().st_mtime >= renderer_source.stat().st_mtime else
                           ["swift", "-disable-sandbox", "-module-cache-path", "/tmp/tildone-marketing-module-cache", str(renderer_source)])
-        subprocess.run(render_command + [str(phone_native), str(macbook), args.locale, "3", "screenshot-2", "--macbook-layer"], check=True)
+        subprocess.run(render_command + [str(phone_native), str(macbook), args.locale, "3", "screenshot-2", "--macbook-layer"] + mac_render_arguments, check=True)
         macbook_index = len(scenes) + 1
         command += ["-loop", "1", "-i", str(macbook)]
         phone_intro_index = macbook_index + 1
@@ -212,6 +217,10 @@ else:
               "matchingNativePhoneAndMacIntro": is_pro,
               "freeSyncDisclosureThroughout": not is_pro, "requiresVisualReview": True}
 result["draft"] = args.draft
+if args.mac_input_root or args.asset in ["screenshot-2", "preview-2"]:
+    wallpaper = mac_input_root / args.locale / "TildonePreviewStudio.app/Contents/Resources/GoldenGate.png"
+    result["macInputRoot"] = str(mac_input_root)
+    result["macWallpaperSHA256"] = hashlib.sha256(wallpaper.read_bytes()).hexdigest()
 result["revisionDirectory"] = str(output)
 (output / "export-result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
 if not args.draft and repair_manifest.is_file():

@@ -38,9 +38,19 @@
     "generatedFromCode": false,
     "generator": "built-in image_gen",
     "approvedReferenceSHA256": "e4129c78dcc47b322cb06c6f62aec78f0013441eb7169971b75c81b334fd466b",
-    "scope": "Mac screenshots and previews only; iPhone artwork excluded from this request.",
+    "scope": "Initially Mac-only; owner later approved replacing Golden Gate in all affected iPhone Mac-display artwork on 28 October 2026.",
     "storage": "Tracked original input in Marketing/Preview/Inputs/",
     "nativeResourceAlias": "GoldenGate.png retained for private capture/compositor compatibility; file content is the active original mesh wallpaper.",
     "promptFile": "Tildone-Mesh-20261028.prompt.txt"
+  },
+  "activeIPhoneWallpaper": {
+    "fileName": "Tildone-Mesh-20261028.png",
+    "sha256": "18c84aed84a40fa06a9fad5ecb1332b3766ea68bd5cfcd8154d86eee3b2ac808",
+    "bytes": 1451596,
+    "generator": "built-in image_gen; reused approved original mesh master",
+    "macInputsDirectory": "Marketing/Preview/Output/iOS/active-mac-inputs",
+    "scope": "Mac displays in iPhone screenshot 2, preview 2, Header and Search Results; outer iPhone pastel background and other assets retained.",
+    "previousOriginalMacInputsRetained": "Marketing/Preview/Output/screenshots/02",
+    "approvedDate": "2026-10-28"
   }
 }

@@ -424,3 +424,14 @@ passed. The eight previews and all 32 Mac media files retain their hashes.
 The standing delivery folder now contains the medium screenshots. Original
 large outputs remain in r11, r12-medium/previous-final and delivery history;
 the portable original release hashes are in release-manifest-large.json.
+
+
+## Original mesh wallpaper refresh — 28 October 2026
+
+After reviewing a native side-by-side draft, the owner approved replacing Golden Gate in every affected iPhone asset. Screenshot 2, preview 2, Header and Search Results were refreshed in en-US, es-ES, fr-FR and zh-Hans: 16 replacements. The other 24 files in the current 40-file upload set remain byte-identical. The light outer iPhone background, native phone footage, captions, hardware/layout geometry, animation and Pro disclosure intervals are retained. Preview 2's four poster frames were updated too.
+
+The existing native SwiftUI compositors render the approved mesh master using separately selected native Mac inputs. Four native five-task Mac Header notes were recaptured with the established background-only path; the retained phone captures are unchanged. Original Golden Gate input folders and the previous complete iPhone delivery are preserved. `activeIPhoneWallpaper` in `Marketing/Preview/Inputs/manifest.json` selects `Marketing/Preview/Output/iOS/active-mac-inputs/`. The historical `GoldenGate.png` resource name remains an alias for the selected bitmap.
+
+All 16 replacements passed format/integrity checks and localized visual scene review; the four complete videos decoded without errors. Header retains the previously accepted r11 composition, including its explicitly owner-accepted caption extension outside the conservative template safe area. This refresh does not claim that exception is resolved or that App Store Connect placement cropping is newly qualified.
+
+The updated 40-file current delivery and audit are under the ignored iPhone wallpaper refresh iteration. The portable release manifest records new hashes and the 24 unchanged files. The historical large-display manifest remains unchanged. No customer app, data store, CloudKit operation, signing change, App Store upload or submission is part of this media refresh.

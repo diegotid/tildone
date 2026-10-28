@@ -169,7 +169,13 @@ struct MarketingIOSThumbnail: View {
 @MainActor
 func render() throws {
     let mediumDisplay = CommandLine.arguments.contains("--medium")
-    let arguments = CommandLine.arguments.filter { $0 != "--medium" }
+    var arguments = CommandLine.arguments.filter { $0 != "--medium" }
+    var macInputRoot: URL?
+    if let index = arguments.firstIndex(of: "--mac-input-root") {
+        guard index + 1 < arguments.count else { throw NSError(domain: "MarketingThumbnail", code: 1) }
+        macInputRoot = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
+        arguments.removeSubrange(index...index + 1)
+    }
     guard (3...7).contains(arguments.count),
           let image = NSImage(contentsOfFile: arguments[1]),
           let data = try? Data(contentsOf: URL(fileURLWithPath: arguments[1])),
@@ -220,7 +226,12 @@ func render() throws {
     var macWallpaper: NSImage?
     if asset == "screenshot-2" {
         let root = catalogURL.deletingLastPathComponent().deletingLastPathComponent()
-        let macDirectory = root.appendingPathComponent("Marketing/Preview/Output/screenshots/02/\(locale)")
+        let inputManifest = try JSONSerialization.jsonObject(with: Data(contentsOf:
+            root.appendingPathComponent("Marketing/Preview/Inputs/manifest.json"))) as? [String: Any]
+        let activeInputs = (inputManifest?["activeIPhoneWallpaper"] as? [String: Any])?["macInputsDirectory"] as? String
+        let defaultMacRoot = root.appendingPathComponent(activeInputs ?? "Marketing/Preview/Output/screenshots/02")
+        let macDirectory = (macInputRoot ?? defaultMacRoot)
+            .appendingPathComponent(locale)
         let info = try JSONSerialization.jsonObject(with: Data(contentsOf: macDirectory.appendingPathComponent("screenshot-result.json"))) as? [String: Any]
         let imageURL = macDirectory.appendingPathComponent("Tildone-macOS-screenshot-02-\(locale).png")
         guard let frames = info?["noteWindowFrames"] as? [[String: Double]], frames.count == 4,
@@ -233,7 +244,7 @@ func render() throws {
         let wallpaperURL = macDirectory.appendingPathComponent("TildonePreviewStudio.app/Contents/Resources/GoldenGate.png")
         guard let wallpaper = NSImage(contentsOf: wallpaperURL) else {
             throw NSError(domain: "MarketingThumbnail", code: 7,
-                          userInfo: [NSLocalizedDescriptionKey: "Missing supplied Golden Gate wallpaper."])
+                          userInfo: [NSLocalizedDescriptionKey: "Missing supplied marketing wallpaper."])
         }
         macWallpaper = wallpaper
     }
@@ -296,7 +307,8 @@ func render() throws {
         "asset": "ios-" + asset, "locale": locale, "proDisclosure": proLabel,
         "nativeMacInset": macCapture != nil,
         "macBookProScreenCrop": macCapture != nil, "macNotchVisible": macCapture != nil,
-        "macWallpaper": macWallpaper == nil ? "none" : "supplied macOS Golden Gate",
+        "macWallpaper": macWallpaper == nil ? "none" : "supplied marketing wallpaper",
+        "macInputRoot": macInputRoot?.path ?? "default Mac inputs",
         "headline": headline, "subtitle": subtitle,
         "pixelWidth": cgImage.width, "pixelHeight": cgImage.height,
         "opaque": renderer.isOpaque, "notePalette": ["yellow", "green", "blue", "orange", "pink", "purple"],

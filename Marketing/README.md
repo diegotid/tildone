@@ -35,14 +35,17 @@ The existing 24 TXT fields and validation report were reproduced exactly.
 The 28 October 2026 Mac-only refresh uses the original generated mesh artwork
 `Preview/Inputs/Tildone-Mesh-20261028.png`; its generation prompt and pinned
 provenance sit alongside it. Use `activeMacWallpaper` in the input manifest for
-that Mac refresh. The owner excluded iPhone media from this request; preserve
-its original Golden Gate inputs. See `Preview/README.md` for the resumable
-native Mac capture/export workflow.
+that Mac refresh. The iPhone media was initially excluded by the owner. Later
+that day, the owner approved the same replacement in every affected iPhone
+asset. `activeIPhoneWallpaper` selects the current native Mac inputs; the
+original Golden Gate inputs remain preserved for the earlier exports.
+See `Preview/README.md` for the resumable native Mac capture/export workflow.
 
 The original Golden Gate wallpaper is an external input, not a generated
 image. `Preview/Inputs/manifest.json` pins its source page, size and SHA-256.
-Keep that original available outside Git and pass it to the private Mac
-capture builder with `--wallpaper`. The iPhone's MacBook artwork also consumes
+Keep that historical original available outside Git. For current exports,
+pass the mesh input to the private Mac capture builder with `--wallpaper`.
+The iPhone's MacBook artwork also consumes
 the generated native Mac screenshot 2 and its window-frame metadata; rebuild
 that prerequisite using `Preview/README.md` before a clean iPhone export.
 
@@ -72,15 +75,22 @@ in-memory mocks. The simulator captures do not need an idle desktop or a
 physical iPhone. The current native capture framing expects a 1206 × 2622
 simulator image; the format checks reject a different device/runtime size.
 
-First restore the original wallpaper and the four localized native Mac
-screenshot-2 prerequisites described in `Preview/README.md`. For each locale,
-the iPhone compositor reads these paths beneath
-`Preview/Output/screenshots/02/<locale>/`:
+First restore the selected wallpaper and four localized native Mac screenshot-2
+prerequisites described in `Preview/README.md`. The current native input root is
+`activeIPhoneWallpaper.macInputsDirectory` in `Inputs/manifest.json`, currently
+`Preview/Output/iOS/active-mac-inputs/`. Original Golden Gate captures remain
+under `Preview/Output/screenshots/02/`. For each locale, the compositor reads:
 
 - `Tildone-macOS-screenshot-02-<locale>.png`
 - `screenshot-result.json` with the native note-window rectangles
 - `phone-frames/phone-capture-verification.json` with matching note/task content
 - `TildonePreviewStudio.app/Contents/Resources/GoldenGate.png`
+
+`GoldenGate.png` is a retained resource alias, not a claim about its image
+content. The current file hash must match `activeIPhoneWallpaper.sha256`.
+Both native compositors and `export-marketing-ios-asset.py` accept an explicit
+`--mac-input-root` for staging a refresh before activating its inputs. The
+read-only suite input check follows the selected root and pinned wallpaper.
 
 To regenerate that prerequisite, build the phone with `--story screenshot-2`
 and then the Mac with `--story screenshot-2`, `--locale`, `--wallpaper`, and

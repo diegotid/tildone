@@ -8,8 +8,11 @@ Mac's six screenshots and two previews across all four locales. Its provenance
 and hash are in `Inputs/manifest.json` under `activeMacWallpaper`. The historical
 external Golden Gate record is retained. The private resource remains named
 `GoldenGate.png` for compatibility; its content is the selected input bitmap.
-The owner excluded iPhone artwork from this Mac refresh. The original iPhone
-media and prerequisites remain unchanged.
+The owner initially excluded iPhone artwork from this Mac-only refresh. Later
+on 28 October, the owner approved the mesh wallpaper for every affected iPhone
+asset as a separate request. Its selected native inputs are versioned separately
+under the `activeIPhoneWallpaper` entry; the original Golden Gate prerequisites
+remain unchanged. See `Marketing/AppStore/iOS-1.0/ASSETS.md` for that continuation.
 
 Use the existing unsigned private Mac builder with `--wallpaper` pointing to
 the new input. Then `Scripts/refresh-marketing-mac-wallpaper.py --phase prepare`

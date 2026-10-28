@@ -77,7 +77,9 @@ def main():
     inputs = []
     if {"screenshot-2", "preview-2"}.intersection(assets):
         for locale in locales:
-            mac = OUTPUT / "screenshots/02" / locale
+            wallpaper_manifest = json.loads((REPO / "Marketing/Preview/Inputs/manifest.json").read_text())
+            mac_inputs = wallpaper_manifest.get("activeIPhoneWallpaper", {}).get("macInputsDirectory", "Marketing/Preview/Output/screenshots/02")
+            mac = REPO / mac_inputs / locale
             inputs += [mac / "screenshot-result.json", mac / f"Tildone-macOS-screenshot-02-{locale}.png",
                        mac / "phone-frames/phone-capture-verification.json",
                        mac / "TildonePreviewStudio.app/Contents/Resources/GoldenGate.png"]
@@ -86,7 +88,8 @@ def main():
     missing = [str(path) for path in inputs if not path.is_file()]
     missing_tools = [tool for tool in ["xcodebuild", "xcrun", "swift", "ffmpeg", "ffprobe", "sips"]
                      if shutil.which(tool) is None]
-    wallpaper_hash = json.loads((REPO / "Marketing/Preview/Inputs/manifest.json").read_text())["externalInputs"][0]["sha256"]
+    wallpaper_manifest = json.loads((REPO / "Marketing/Preview/Inputs/manifest.json").read_text())
+    wallpaper_hash = wallpaper_manifest.get("activeIPhoneWallpaper", wallpaper_manifest["externalInputs"][0])["sha256"]
     mismatches = [str(path) for path in inputs if path.name == "GoldenGate.png"
                   and path.is_file() and digest(path) != wallpaper_hash]
     jobs = []

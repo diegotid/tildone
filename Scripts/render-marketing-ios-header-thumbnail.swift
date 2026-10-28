@@ -242,6 +242,7 @@ func renderHeaderThumbnail() throws {
                       userInfo: [NSLocalizedDescriptionKey: "Expected output.png [--native-root directory] [--locale locale] [--asset header|search-results] [--full] [--crop-safe-review]."])
     }
     var nativeRoot: URL?
+    var macInputRoot: URL?
     var locale = "en-US"
     var asset = "header"
     var full = false
@@ -271,6 +272,7 @@ func renderHeaderThumbnail() throws {
         guard index + 1 < arguments.count else { throw NSError(domain: "HeaderThumbnail", code: 1) }
         switch arguments[index] {
         case "--native-root": nativeRoot = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
+        case "--mac-input-root": macInputRoot = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
         case "--locale": locale = arguments[index + 1]
         case "--asset": asset = arguments[index + 1]
         default: throw NSError(domain: "HeaderThumbnail", code: 1)
@@ -315,7 +317,12 @@ func renderHeaderThumbnail() throws {
           let strip = bitmap.cgImage?.cropping(to: CGRect(x: 8, y: 11, width: 12, height: 162)) else {
         throw NSError(domain: "HeaderThumbnail", code: 4)
     }
-    let macDirectory = repo.appendingPathComponent("Marketing/Preview/Output/screenshots/02/\(locale)")
+    let inputManifest = try JSONSerialization.jsonObject(with: Data(contentsOf:
+        repo.appendingPathComponent("Marketing/Preview/Inputs/manifest.json"))) as? [String: Any]
+    let activeInputs = (inputManifest?["activeIPhoneWallpaper"] as? [String: Any])?["macInputsDirectory"] as? String
+    let defaultMacRoot = repo.appendingPathComponent(activeInputs ?? "Marketing/Preview/Output/screenshots/02")
+    let macDirectory = (macInputRoot ?? defaultMacRoot)
+        .appendingPathComponent(locale)
     let macResultURL = nativeRoot?.appendingPathComponent("mac-native/mac-note.json")
         ?? macDirectory.appendingPathComponent("screenshot-result.json")
     guard let macResult = try JSONSerialization.jsonObject(with: Data(contentsOf: macResultURL)) as? [String: Any] else {
@@ -433,6 +440,7 @@ func renderHeaderThumbnail() throws {
         "nativePhoneProof": nativeURL.path, "nativeMacProof": macResultURL.path,
         "phoneSource": phoneURL.path, "phoneSHA256": SHA256.hash(data: phoneData).map { String(format: "%02x", $0) }.joined(),
         "macSource": macURL.path, "macSHA256": SHA256.hash(data: macData).map { String(format: "%02x", $0) }.joined(),
+        "macInputRoot": macInputRoot?.path ?? "default Mac inputs",
         "sixColorPalette": true, "phoneIslandHidden": true, "macNotchVisible": true,
         "revision": largeTextReview ? 11 : (textReview ? 10 : (spacingReview ? 9 : (midScaleReview ? 8 : (cropSafeReview ? 7 : (asset == "search-results" ? 1 : (nativeRoot == nil ? 3 : 4)))))),
         "cropSafeReview": cropSafeReview,
