@@ -152,7 +152,11 @@ final class WhatsNewReleaseTests: XCTestCase {
                                               options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]))
         let code = try XCTUnwrap(detector.features(in: CIImage(cgImage: image)).first as? CIQRCodeFeature)
         XCTAssertEqual(code.messageString, CompanionAppLink.appStore.absoluteString)
-        XCTAssertEqual(CompanionAppLink.appStore.host, "apps.apple.com")
+        XCTAssertEqual(code.messageString, "https://apps.apple.com/app/id6473126292")
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("CompanionLinkTests.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        XCTAssertTrue(CompanionAppLink.copyToPasteboard(pasteboard))
+        XCTAssertEqual(pasteboard.string(forType: .string), code.messageString)
     }
 
     @MainActor

@@ -2,6 +2,8 @@ import SwiftUI
 import CoreImage.CIFilterBuiltins
 
 struct CompanionDownloadQRCode: View {
+    var size: CGFloat = 72
+
     static let image: CGImage? = {
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(CompanionAppLink.appStore.absoluteString.utf8)
@@ -15,10 +17,10 @@ struct CompanionDownloadQRCode: View {
         if let image = Self.image {
             Image(decorative: image, scale: 1)
                 .interpolation(.none).resizable()
-                .frame(width: 72, height: 72)
-                .padding(8)
+                .frame(width: size, height: size)
+                .padding(size / 9)
                 .background(.white, in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityHidden(true) // The adjacent App Store link is the accessible equivalent.
+                .accessibilityHidden(true) // The Copy Link action provides an accessible alternative.
         }
     }
 }

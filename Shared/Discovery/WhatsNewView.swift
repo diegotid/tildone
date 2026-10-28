@@ -13,6 +13,9 @@ struct WhatsNewView: View {
     let close: () -> Void
     let startingStep: WhatsNewRelease.Step
     @State private var stepIndex = 0
+    #if os(macOS)
+    @State private var showingCompanionDownload = false
+    #endif
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openURL) private var openURL
@@ -73,7 +76,13 @@ struct WhatsNewView: View {
             HStack(spacing: 8) {
                 closeControl
                     .fixedSize()
-                Button("Get Tildone for iPhone") { openURL(CompanionAppLink.appStore) }
+                Button("Get Tildone for iPhone") {
+                    #if os(macOS)
+                    showingCompanionDownload = true
+                    #else
+                    openURL(CompanionAppLink.appStore)
+                    #endif
+                }
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
                     .tint(.accentColor)
@@ -113,6 +122,9 @@ struct WhatsNewView: View {
         .frame(width: 760, height: windowHeight)
         #if os(macOS)
         .background(WindowChromeHider())
+        .sheet(isPresented: $showingCompanionDownload) {
+            CompanionDownloadSheet()
+        }
         #endif
     }
 
@@ -304,3 +316,39 @@ struct WhatsNewView: View {
 #Preview("What’s New — feature index") {
     WhatsNewView(startingAt: .welcome, close: {})
 }
+
+#if os(macOS)
+private struct CompanionDownloadSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var copied = false
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Get Tildone for iPhone")
+                .font(.title2.bold())
+                .accessibilityAddTraits(.isHeader)
+            Text("Scan this code with your iPhone to open Tildone in the App Store.")
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            CompanionDownloadQRCode(size: 180)
+            if copied {
+                Text("Link copied")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("companion-link-copied")
+            }
+            HStack {
+                Button("Copy Link") {
+                    copied = CompanionAppLink.copyToPasteboard(.general)
+                }
+                .accessibilityIdentifier("companion-copy-link")
+                Button("Close") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("companion-close")
+            }
+        }
+        .padding(24)
+        .frame(width: 360)
+        .onExitCommand { dismiss() }
+    }
+}
+#endif
