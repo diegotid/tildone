@@ -27,6 +27,7 @@ struct TaskRow: View {
     let isShowingRowControls: Bool
     let hasSubtasks: Bool
     let isSubtasksCollapsed: Bool
+    var collapsedChildEmojis = ""
     let subtaskProgress: TaskSubtaskProgress?
     let checkboxChecked: Bool
     let isTaskCompletionPending: Bool
@@ -132,6 +133,16 @@ struct TaskRow: View {
                 }
             }
             .padding(.vertical, taskControlVerticalPadding)
+
+            if isSubtasksCollapsed && !collapsedChildEmojis.isEmpty {
+                Text(verbatim: collapsedChildEmojis)
+                    .font(.system(size: CGFloat(fontSize)))
+                    .lineLimit(1)
+                    .frame(maxWidth: CGFloat(fontSize) * 5, alignment: .leading)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.trailing, -2)
+                    .padding(.vertical, taskControlVerticalPadding)
+            }
 
             if !isActive && !task.text.isEmpty {
                 ZStack(alignment: .leading) {

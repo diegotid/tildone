@@ -749,6 +749,8 @@ extension Note {
             isShowingRowControls: hoveredTaskID == task.id,
             hasSubtasks: TaskHierarchy.hasSubtasks(at: index, in: tasks),
             isSubtasksCollapsed: collapsedTaskIDs.contains(task.id),
+            collapsedChildEmojis: collapsedTaskIDs.contains(task.id)
+                ? TaskHierarchy.descendantLeadingEmojis(at: index, in: tasks) : "",
             subtaskProgress: subtaskProgress,
             checkboxChecked: optimisticTaskCompletions[task.id] ?? task.isCompleted,
             isTaskCompletionPending: optimisticTaskCompletions[task.id] != nil,

@@ -14,6 +14,7 @@ struct TaskRow: View {
     let noteColor: NoteColor
     let subtaskProgress: TaskSubtaskProgress?
     let subtasksExpanded: Bool?
+    var collapsedChildEmojis = ""
     let canIndent: Bool
     let canOutdent: Bool
     var focusedTask: Binding<TaskID?>
@@ -48,6 +49,13 @@ struct TaskRow: View {
                 }
             }
             .frame(width: 32, height: 33)
+
+            if subtasksExpanded == false && !collapsedChildEmojis.isEmpty {
+                Text(verbatim: collapsedChildEmojis)
+                    .lineLimit(1)
+                    .frame(maxWidth: 90, alignment: .leading)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
 
             if focusedTask.wrappedValue != task.id {
                 if linkedTaskText == nil {

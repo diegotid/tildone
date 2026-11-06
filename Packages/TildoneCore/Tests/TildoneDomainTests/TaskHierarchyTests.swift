@@ -59,13 +59,28 @@ final class TaskHierarchyTests: XCTestCase {
         ]))
     }
 
-    private func task(token: String, level: Int, completed: Bool = false) throws -> Task {
+    func testFoldedEmojiSummaryIncludesOnlyLeadingEmojiInSubtree() throws {
+        let tasks = [
+            try task(token: "a", level: 0, text: "Parent"),
+            try task(token: "b", level: 1, text: "👩🏽‍💻🧑‍🚀 Work"),
+            try task(token: "c", level: 2, text: "  🇪🇸 Trip"),
+            try task(token: "d", level: 1, text: "123 ordinary text 🎉"),
+            try task(token: "e", level: 1, text: "1️⃣ Keycap"),
+            try task(token: "f", level: 0, text: "🎈 Outside")
+        ]
+        XCTAssertEqual(TaskHierarchy.descendantLeadingEmojis(at: 0, in: tasks), "👩🏽‍💻🧑‍🚀 🇪🇸 1️⃣")
+        XCTAssertEqual(TaskHierarchy.descendantLeadingEmojis(at: 1, in: tasks), "🇪🇸")
+        XCTAssertEqual(TaskHierarchy.descendantLeadingEmojis(at: 2, in: tasks), "")
+        XCTAssertEqual(TaskHierarchy.descendantLeadingEmojis(at: 99, in: tasks), "")
+    }
+
+    private func task(token: String, level: Int, completed: Bool = false, text: String? = nil) throws -> Task {
         let stamp = VersionStamp(logicalCounter: 1, replicaID: ReplicaID())
         return Task(
             id: TaskID(),
             noteID: NoteID(),
             createdAt: Date(timeIntervalSinceReferenceDate: 0),
-            text: token,
+            text: text ?? token,
             textVersion: stamp,
             completion: completed ? .completed(at: Date(timeIntervalSinceReferenceDate: 1)) : .incomplete,
             completionVersion: stamp,

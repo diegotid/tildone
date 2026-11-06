@@ -129,6 +129,8 @@ struct ChecklistView: View {
                                 subtasksExpanded: hasSubtasks
                                     ? !collapsedTaskIDs.contains(task.id)
                                     : nil,
+                                collapsedChildEmojis: collapsedTaskIDs.contains(task.id)
+                                    ? TaskHierarchy.descendantLeadingEmojis(at: index, in: tasks) : "",
                                 canIndent: canIndent,
                                 canOutdent: canOutdent,
                                 focusedTask: $focusedTask,

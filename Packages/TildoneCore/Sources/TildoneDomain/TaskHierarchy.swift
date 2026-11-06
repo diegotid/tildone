@@ -23,6 +23,21 @@ public enum TaskHierarchy {
         return tasks[index + 1].indentLevel > tasks[index].indentLevel
     }
 
+    /// Leading emoji from each hidden descendant, in the same order as the tasks.
+    public static func descendantLeadingEmojis(at index: Int, in tasks: [Task]) -> String {
+        guard hasSubtasks(at: index, in: tasks) else { return "" }
+        let range = subtreeRange(startingAt: index, in: tasks)
+        return tasks[(index + 1)..<range.upperBound].compactMap { task in
+            let prefix = task.text.drop(while: { $0.isWhitespace }).prefix { character in
+                let scalars = character.unicodeScalars
+                return scalars.contains(where: { $0.properties.isEmojiPresentation })
+                    || (scalars.contains(where: { $0.value == 0xFE0F || $0.value == 0x20E3 })
+                        && scalars.contains(where: { $0.properties.isEmoji }))
+            }
+            return prefix.isEmpty ? nil : String(prefix)
+        }.joined(separator: " ")
+    }
+
     public static func subtaskProgress(at index: Int, in tasks: [Task]) -> TaskSubtaskProgress? {
         guard hasSubtasks(at: index, in: tasks) else { return nil }
         let parentDepth = tasks[index].indentLevel
