@@ -155,10 +155,6 @@ struct Desktop: View {
         Id.whatsNewWindow
     ]
 
-    private var taskCompletionDates: [Date?] {
-        store.notes.flatMap { note in note.tasks.map(\.completedAt) }
-    }
-
     private var foregroundNoteTitle: String? {
         foregroundNoteID.flatMap { store.note($0)?.title }
     }
@@ -209,12 +205,11 @@ struct Desktop: View {
             .onChange(of: store.notes.map(\.id)) { _, _ in
                 resetCornerConvergence()
                 reconcileNoteWindows()
-                scheduleCompletedTaskRetention()
             }
             .onChange(of: store.notes.map(\.color)) { _, _ in
                 reconcileNoteWindows()
             }
-            .onChange(of: taskCompletionDates) { _, _ in
+            .onChange(of: store.completedTaskRetentionRevision) { _, _ in
                 scheduleCompletedTaskRetention()
             }
             .onChange(of: foregroundNoteTitle) { _, title in
@@ -252,6 +247,12 @@ struct Desktop: View {
 
     private func withUserEvents<V: View>(_ view: V) -> some View {
         view
+            .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in
+                scheduleCompletedTaskRetention()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                scheduleCompletedTaskRetention()
+            }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 recoverWindowsFromDisconnectedScreens()
             }
@@ -351,7 +352,11 @@ private extension Desktop {
             } catch is CancellationError {
                 return
             } catch {
-                return
+                // A transient persistence failure must not stop cleanup until
+                // the next launch or task completion.
+                try? await Swift.Task.sleep(for: .seconds(60))
+                guard !Swift.Task.isCancelled else { return }
+                scheduleCompletedTaskRetention()
             }
         }
     }

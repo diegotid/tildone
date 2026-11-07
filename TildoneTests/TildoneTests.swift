@@ -4,6 +4,7 @@
 //
 
 import CloudKit
+import Combine
 import SwiftUI
 import StoreKitTest
 import XCTest
@@ -6176,6 +6177,73 @@ final class TildoneTests: XCTestCase {
         defaults.set(0, forKey: CompletedTaskRetention.daysStorageKey)
         XCTAssertFalse(CompletedTaskRetention.keepsForever(defaults: defaults))
         XCTAssertEqual(CompletedTaskRetention.days(defaults: defaults), 1)
+    }
+
+    @MainActor
+    func testCompletedTaskRetentionObservesCompletionDeliveredToExistingNote() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 10))
+        let task = try await store.addTask(to: note.id, text: "Completed elsewhere")
+        _ = try await store.addTask(to: note.id, text: "Still pending")
+
+        let initialRevision = store.completedTaskRetentionRevision
+        var changes = 0
+        let observation = store.objectWillChange.sink { changes += 1 }
+        defer { observation.cancel() }
+        _ = try await repository.setTaskCompletion(
+            id: task.id,
+            completion: .completed(at: Date(timeIntervalSince1970: 100))
+        )
+        try await store.reloadAfterRemoteChange()
+
+        XCTAssertGreaterThan(changes, 0, "Desktop must observe completion even when note IDs and order stay unchanged")
+        XCTAssertGreaterThan(store.completedTaskRetentionRevision, initialRevision)
+        XCTAssertEqual(
+            store.completedTaskDeletionCount(now: Date(timeIntervalSince1970: 400_000), retentionDays: 3),
+            1
+        )
+
+        let completedRevision = store.completedTaskRetentionRevision
+        _ = try await repository.setTaskCompletion(id: task.id, completion: .incomplete)
+        try await store.reload(note.id)
+        XCTAssertGreaterThan(store.completedTaskRetentionRevision, completedRevision)
+        XCTAssertEqual(
+            store.completedTaskDeletionCount(now: Date(timeIntervalSince1970: 400_000), retentionDays: 3),
+            0
+        )
+    }
+
+    @MainActor
+    func testCompletedTaskRetentionObservesHierarchyChangesWithoutReschedulingForTyping() async throws {
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 10))
+        let parent = try await store.addTask(to: note.id, text: "Parent")
+        let child = try await store.addTask(to: note.id, text: "Completed child")
+        _ = try await store.addTask(to: note.id, text: "Pending sibling")
+        _ = try await repository.setTaskCompletion(
+            id: child.id,
+            completion: .completed(at: Date(timeIntervalSince1970: 100))
+        )
+        try await store.reload(note.id)
+        let now = Date(timeIntervalSince1970: 400_000)
+        XCTAssertEqual(store.completedTaskDeletionCount(now: now, retentionDays: 3), 1)
+
+        let revision = store.completedTaskRetentionRevision
+        _ = try await repository.setTaskIndentLevel(id: child.id, indentLevel: 1)
+        let pendingSibling = try XCTUnwrap(store.note(note.id)?.tasks.last)
+        _ = try await repository.setTaskIndentLevel(id: pendingSibling.id, indentLevel: 1)
+        try await store.reloadAfterRemoteChange()
+        XCTAssertGreaterThan(store.completedTaskRetentionRevision, revision)
+        XCTAssertEqual(store.completedTaskDeletionCount(now: now, retentionDays: 3), 0)
+
+        let hierarchyRevision = store.completedTaskRetentionRevision
+        try await store.editTask(parent.id, text: "Edited parent")
+        try await store.reload()
+        XCTAssertEqual(store.completedTaskRetentionRevision, hierarchyRevision)
+        _ = try await store.setTaskCompletion(pendingSibling.id, completed: true)
+        XCTAssertGreaterThan(store.completedTaskRetentionRevision, hierarchyRevision)
     }
 
     @MainActor

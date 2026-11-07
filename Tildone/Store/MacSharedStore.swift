@@ -18,6 +18,9 @@ enum MacTaskIndentationUndoDirection: Equatable {
 final class MacSharedStore: ObservableObject {
     @Published private var orderedNoteIDs: [NoteID] = []
     @Published private(set) var undoAction: ConsequentialActionKind?
+    // Note content is observed per window. Desktop still needs an explicit
+    // signal when completion or hierarchy changes affect retention eligibility.
+    @Published private(set) var completedTaskRetentionRevision: UInt64 = 0
 
     var notes: [MacNoteSnapshot] {
         orderedNoteIDs.compactMap { notePresentations[$0]?.snapshot }
@@ -1501,6 +1504,8 @@ private extension MacSharedStore {
 
     func publish(_ snapshots: [MacNoteSnapshot]) {
         let incomingIDs = Set(snapshots.map(\.id))
+        let retentionChanged = incomingIDs != Set(notePresentations.keys)
+            || snapshots.contains { taskRetentionInputsChanged(from: note($0.id), to: $0) }
         for id in notePresentations.keys where !incomingIDs.contains(id) {
             notePresentations[id] = nil
         }
@@ -1515,6 +1520,7 @@ private extension MacSharedStore {
         if orderedNoteIDs != ids {
             orderedNoteIDs = ids
         }
+        if retentionChanged { completedTaskRetentionRevision &+= 1 }
         SyncDiagnostics.boundary(.presented, count: snapshots.reduce(0) { $0 + $1.tasks.count })
 #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--inspect-retained-qualification-fixture") {
@@ -1526,6 +1532,7 @@ private extension MacSharedStore {
     }
 
     func publish(_ snapshot: MacNoteSnapshot) {
+        let retentionChanged = taskRetentionInputsChanged(from: note(snapshot.id), to: snapshot)
         if let presentation = notePresentations[snapshot.id] {
             presentation.update(snapshot)
         } else {
@@ -1546,11 +1553,20 @@ private extension MacSharedStore {
         if orderedNoteIDs != ids {
             orderedNoteIDs = ids
         }
+        if retentionChanged { completedTaskRetentionRevision &+= 1 }
+    }
+
+    func taskRetentionInputsChanged(from previous: MacNoteSnapshot?, to current: MacNoteSnapshot) -> Bool {
+        guard let previous, previous.tasks.count == current.tasks.count else { return true }
+        return zip(previous.tasks, current.tasks).contains { old, new in
+            old.id != new.id || old.completedAt != new.completedAt || old.indentLevel != new.indentLevel
+        }
     }
 
     func removePresentation(for id: NoteID) {
         notePresentations[id] = nil
         orderedNoteIDs.removeAll { $0 == id }
+        completedTaskRetentionRevision &+= 1
     }
 
     func noteID(containing taskID: TaskID) -> NoteID? {

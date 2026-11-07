@@ -204,6 +204,7 @@ Treat model changes as migration-sensitive. Before shipping a changed model, tes
 - Checking the final pending task shows the Done overlay, demotes the window from floating, and starts the delayed fade.
 - Cancel resets fade progress and keeps the completed tasks available for unchecking.
 - Closing via the close button or Command-W is allowed only for empty or complete notes. Pending notes are deliberately persistent.
+- Mac completed-task retention deletes only fully completed top-level task groups, measured from their latest leaf completion. Completed subtasks stay with a group that still has pending leaves. `MacSharedStore.completedTaskRetentionRevision` notifies Desktop of completion, task membership/order and indentation changes through either reload path; text-only edits must not reschedule retention. Recheck expiry on launch, activation, wake and settings changes, and retry transient cleanup failures.
 
 - The on-note type menu offers Command-L for Task list and Command-T for Single memo. Shortcuts address the active expanded note and retain the multiple-task conversion restriction and Pro gate. The on-note formatting menu displays Command-B (bold), Command-I (italic), Command-U (underline), and Shift-Command-X (strikethrough), matching the app menu and shortcuts guide.
 
@@ -313,6 +314,7 @@ Current `UserDefaults`/`@AppStorage` keys are compatibility contracts:
 - `fontSize`: continuous point size; legacy small raw values are converted on note appearance.
 - `taskLineTruncation`: `TaskLineTruncation` raw value (`single = 1`, `multiple = 2`).
 - `taskSpellCheckingEnabled`: Mac-local spelling preference, default true; controls native editing checks and inactive task spelling marks from the Tasks settings tab.
+- `keepCompletedTasksForever` and `completedTaskRetentionDays`: installation-local retention policy, saved with Apply; defaults are forever and three days. Days are elapsed 24-hour periods, clamped to 1–3,650.
 - `selectedArrangementCorner`: `ArrangementCorner` raw value.
 - `selectedArrangementAlignment`: `ArrangementAlignment` raw value.
 - `selectedArrangementCornerMargin`: `ArrangementSpacing` raw value.
