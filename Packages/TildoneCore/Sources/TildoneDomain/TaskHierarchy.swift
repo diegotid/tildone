@@ -3,6 +3,8 @@
 //  TildoneDomain
 //
 
+import Foundation
+
 public struct TaskSubtaskProgress: Equatable, Hashable, Sendable {
     public let completedCount: Int
     public let totalCount: Int
@@ -105,6 +107,37 @@ public enum TaskHierarchy {
         let depth = tasks[index].indentLevel
         let end = tasks[(index + 1)...].firstIndex { $0.indentLevel <= depth } ?? tasks.endIndex
         return index..<end
+    }
+
+    /// An expired branch can be removed whole. In a branch that is still
+    /// active or too recent, check each child branch on its own.
+    public static func completedTaskRetention(
+        in tasks: [Task],
+        now: Date,
+        retentionInterval: TimeInterval
+    ) -> (expiredIDs: Set<TaskID>, nextExpiration: Date?) {
+        var expiredIDs: Set<TaskID> = []
+        var nextExpiration: Date?
+        var index = tasks.startIndex
+        while index < tasks.endIndex {
+            let range = subtreeRange(startingAt: index, in: tasks)
+            let leaves = leafTasks(in: Array(tasks[range]))
+            let completionDates = leaves.compactMap(\.completedAt)
+            guard completionDates.count == leaves.count, let latest = completionDates.max() else {
+                index += 1
+                continue
+            }
+
+            let expiration = latest.addingTimeInterval(retentionInterval)
+            if expiration <= now {
+                expiredIDs.formUnion(tasks[range].map(\.id))
+                index = range.upperBound
+            } else {
+                nextExpiration = min(nextExpiration ?? expiration, expiration)
+                index += 1
+            }
+        }
+        return (expiredIDs, nextExpiration)
     }
 
     public static func insertionIndexAfterSubtree(startingAt index: Int, in tasks: [Task]) -> Int {

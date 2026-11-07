@@ -198,7 +198,7 @@ final class MacSharedStore: ObservableObject {
         scheduleSyncNotification()
     }
 
-    /// Permanently removes expired, fully completed top-level task groups and
+    /// Permanently removes expired, fully completed task branches and
     /// returns the next time a retained group becomes eligible for deletion.
     func deleteExpiredCompletedTaskGroups(
         now: Date = Date(),
@@ -207,38 +207,37 @@ final class MacSharedStore: ObservableObject {
         let interval = CompletedTaskRetention.retentionInterval(days: retentionDays)
         var nextExpiration: Date?
         var didDelete = false
-
-        for note in notes {
-            let tasks = note.tasks
-            var expiredIDs: Set<TaskID> = []
-            for rootIndex in tasks.indices where tasks[rootIndex].indentLevel == 0 {
-                let group = Array(tasks[TaskHierarchy.subtreeRange(startingAt: rootIndex, in: tasks)])
-                let leaves = TaskHierarchy.leafTasks(in: group)
-                guard !leaves.isEmpty,
-                      leaves.allSatisfy(\.isCompleted),
-                      let completedAt = leaves.compactMap(\.completedAt).max() else { continue }
-                let expiration = completedAt.addingTimeInterval(interval)
-                if expiration <= now {
-                    expiredIDs.formUnion(group.map(\.id))
-                } else if nextExpiration == nil || expiration < nextExpiration! {
-                    nextExpiration = expiration
-                }
-            }
-
-            guard !expiredIDs.isEmpty else { continue }
-            for id in expiredIDs {
-                await waitForPendingTaskTextEdit(for: id)
-                CompletedTaskOrderPreference.removeOriginalOrderToken(for: id)
-            }
-            _ = try await repository.deleteTasks(expiredIDs, in: note.id)
-            didDelete = true
+        defer {
+            if didDelete { scheduleSyncNotification() }
         }
 
-        if didDelete {
-            undoController.discard()
-            refreshUndoAction()
-            try await reload()
-            scheduleSyncNotification()
+        for note in notes {
+            var plan = TaskHierarchy.completedTaskRetention(
+                in: note.tasks,
+                now: now,
+                retentionInterval: interval
+            )
+            if !plan.expiredIDs.isEmpty {
+                for id in plan.expiredIDs {
+                    await waitForPendingTaskTextEdit(for: id)
+                }
+                plan = try await repository.deleteExpiredCompletedTaskGroups(
+                    in: note.id,
+                    now: now,
+                    retentionInterval: interval
+                )
+                if !plan.expiredIDs.isEmpty {
+                    didDelete = true
+                    CompletedTaskOrderPreference.removeOriginalOrderTokens(for: plan.expiredIDs)
+                    undoController.discard()
+                    refreshUndoAction()
+                }
+                try await reload(note.id)
+            }
+
+            if let expiration = plan.nextExpiration {
+                nextExpiration = min(nextExpiration ?? expiration, expiration)
+            }
         }
         return nextExpiration
     }
@@ -249,16 +248,11 @@ final class MacSharedStore: ObservableObject {
     ) -> Int {
         let interval = CompletedTaskRetention.retentionInterval(days: retentionDays)
         return notes.reduce(into: 0) { count, note in
-            let tasks = note.tasks
-            for rootIndex in tasks.indices where tasks[rootIndex].indentLevel == 0 {
-                let group = Array(tasks[TaskHierarchy.subtreeRange(startingAt: rootIndex, in: tasks)])
-                let leaves = TaskHierarchy.leafTasks(in: group)
-                guard !leaves.isEmpty,
-                      leaves.allSatisfy(\.isCompleted),
-                      let completedAt = leaves.compactMap(\.completedAt).max(),
-                      completedAt.addingTimeInterval(interval) <= now else { continue }
-                count += group.count
-            }
+            count += TaskHierarchy.completedTaskRetention(
+                in: note.tasks,
+                now: now,
+                retentionInterval: interval
+            ).expiredIDs.count
         }
     }
 

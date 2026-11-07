@@ -930,7 +930,26 @@ public actor TildoneRepository: TildoneRepositoryProtocol {
         }
     }
 
-    /// Tombstones a task subtree in one transaction. The owning note receives
+    /// Recheck expiry and hierarchy against saved tasks on the repository actor
+    /// so an edit between the preview and deletion cannot remove pending work.
+    public func deleteExpiredCompletedTaskGroups(
+        in noteID: NoteID,
+        now: Date,
+        retentionInterval: TimeInterval
+    ) throws -> (expiredIDs: Set<TaskID>, nextExpiration: Date?) {
+        try Swift.Task.checkCancellation()
+        let plan = TaskHierarchy.completedTaskRetention(
+            in: try orderedTasks(in: noteID),
+            now: now,
+            retentionInterval: retentionInterval
+        )
+        if !plan.expiredIDs.isEmpty {
+            try deleteTasks(plan.expiredIDs, in: noteID)
+        }
+        return plan
+    }
+
+    /// Tombstones task subtrees in one transaction. The owning note receives
     /// one meaningful-edit version and every task retains its own outbox entry.
     @discardableResult
     public func deleteTasks(_ ids: Set<TaskID>, in noteID: NoteID) throws -> Note {

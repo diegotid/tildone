@@ -6236,7 +6236,7 @@ final class TildoneTests: XCTestCase {
         _ = try await repository.setTaskIndentLevel(id: pendingSibling.id, indentLevel: 1)
         try await store.reloadAfterRemoteChange()
         XCTAssertGreaterThan(store.completedTaskRetentionRevision, revision)
-        XCTAssertEqual(store.completedTaskDeletionCount(now: now, retentionDays: 3), 0)
+        XCTAssertEqual(store.completedTaskDeletionCount(now: now, retentionDays: 3), 1)
 
         let hierarchyRevision = store.completedTaskRetentionRevision
         try await store.editTask(parent.id, text: "Edited parent")
@@ -6309,32 +6309,56 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
-    func testCompletedTaskRetentionKeepsCompletedChildWhenSiblingIsPending() async throws {
+    func testCompletedTaskRetentionExpiresNestedBranchesIndependently() async throws {
         let repository = try TildoneRepository(descriptor: .inMemory())
         let store = MacSharedStore(repository: repository)
         let note = try await store.createNote(createdAt: Date(timeIntervalSince1970: 10))
         let parent = try await store.addTask(to: note.id, text: "Parent")
-        let completedChild = try await store.addTask(to: note.id, text: "Completed child")
+        let nestedGroup = try await store.addTask(to: note.id, text: "Nested group")
+        let completedChild = try await store.addTask(to: note.id, text: "Old completion")
+        let recentChild = try await store.addTask(to: note.id, text: "Recent completion")
         let pendingChild = try await store.addTask(to: note.id, text: "Pending child")
         try await store.setTaskIndentLevels([
-            (id: completedChild.id, level: 1),
+            (id: nestedGroup.id, level: 1),
+            (id: completedChild.id, level: 2),
+            (id: recentChild.id, level: 2),
             (id: pendingChild.id, level: 1)
         ])
+        let interval = CompletedTaskRetention.retentionInterval(days: 3)
+        let oldCompletion = Date(timeIntervalSince1970: 100)
+        let recentCompletion = Date(timeIntervalSince1970: 300_000)
         _ = try await repository.setTaskCompletion(
             id: completedChild.id,
-            completion: .completed(at: Date(timeIntervalSince1970: 100))
+            completion: .completed(at: oldCompletion)
+        )
+        _ = try await repository.setTaskCompletion(
+            id: recentChild.id,
+            completion: .completed(at: recentCompletion)
         )
         try await store.reload(note.id)
 
-        let now = Date(timeIntervalSince1970: 400_000)
+        let oldExpiration = oldCompletion.addingTimeInterval(interval)
+        let recentExpiration = recentCompletion.addingTimeInterval(interval)
         XCTAssertEqual(
-            store.completedTaskDeletionCount(now: now, retentionDays: 3),
+            store.completedTaskDeletionCount(now: oldExpiration.addingTimeInterval(-1), retentionDays: 3),
             0
         )
-        _ = try await store.deleteExpiredCompletedTaskGroups(now: now, retentionDays: 3)
+        XCTAssertEqual(
+            store.completedTaskDeletionCount(now: oldExpiration, retentionDays: 3),
+            1
+        )
+        let nextExpiration = try await store.deleteExpiredCompletedTaskGroups(
+            now: oldExpiration, retentionDays: 3
+        )
+        XCTAssertEqual(nextExpiration, recentExpiration)
+        let remainingAfterFirstPass = try await repository.orderedTasks(in: note.id)
+        XCTAssertEqual(remainingAfterFirstPass.map(\.id), [parent.id, nestedGroup.id, recentChild.id, pendingChild.id])
 
+        XCTAssertEqual(store.completedTaskDeletionCount(now: recentExpiration, retentionDays: 3), 2)
+        _ = try await store.deleteExpiredCompletedTaskGroups(now: recentExpiration, retentionDays: 3)
         let remaining = try await repository.orderedTasks(in: note.id)
-        XCTAssertEqual(remaining.map(\.id), [parent.id, completedChild.id, pendingChild.id])
+        XCTAssertEqual(remaining.map(\.id), [parent.id, pendingChild.id])
+        XCTAssertEqual(remaining.map(\.indentLevel), [0, 1])
     }
 
     func testMacUndoCompletionRestoresTaskMovedToCompletedSection() async throws {
