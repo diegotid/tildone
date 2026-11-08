@@ -6,6 +6,7 @@
 //
 import SwiftUI
 import LinkPresentation
+import CryptoKit
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
@@ -474,15 +475,28 @@ struct ChecklistView: View {
     private func singleTaskEditor(_ note: Note) -> some View {
         let liveText = singleTaskDraftID == tasks.first?.id ? singleTaskDraft.text : (tasks.first?.text ?? "")
         let metadataURL = SingleMemoLinkMetadata.url(in: liveText)
+        let showingLink = metadataURL != nil && focusedTask != tasks.first?.id
         return VStack(spacing: 12) {
             if let task = tasks.first {
-                if metadataURL == singleMemoMetadataURL, let title = singleMemoMetadataTitle {
-                    Text(verbatim: title)
-                        .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: 26))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(3)
-                        .frame(maxWidth: .infinity)
-                }
+                if showingLink {
+                    VStack(spacing: 10) {
+                        if metadataURL == singleMemoMetadataURL, let title = singleMemoMetadataTitle {
+                            Text(verbatim: title)
+                                .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: 26))
+                                .lineLimit(3)
+                        }
+                        Text(RichTaskTextEditor.displayText(
+                            from: singleTaskDraftID == task.id ? singleTaskDraft : task.richText,
+                            shortenLinks: true,
+                            fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
+                            fontSize: 26
+                        ))
+                        .tint(.primary)
+                    }
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .simultaneousGesture(TapGesture(count: 2).onEnded { focusTask(task.id) })
+                } else {
                 RichTaskTextEditor(
                     initialCaretUTF16Offset: singleMemoTitleCaretOffset,
                     richText: Binding(
@@ -509,12 +523,16 @@ struct ChecklistView: View {
                     }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                Group { Color.clear.frame(width: 0, height: 0) }
                 .onAppear {
                     singleTaskDraftID = task.id
                     singleTaskDraft = task.richText.normalizingLeadingHTTPURLScheme()
-                    DispatchQueue.main.async {
-                        guard singleTaskDraftID == task.id else { return }
-                        focusTask(task.id)
+                    if SingleMemoLinkMetadata.url(in: task.text) == nil {
+                        DispatchQueue.main.async {
+                            guard singleTaskDraftID == task.id else { return }
+                            focusTask(task.id)
+                        }
                     }
                 }
                 .onChange(of: task.richText) { _, value in
@@ -539,6 +557,12 @@ struct ChecklistView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if showingLink, let task = tasks.first {
+                    Button { focusTask(task.id) } label: { Image(systemName: "pencil") }
+                        .accessibilityLabel("Edit memo")
+                } else if metadataURL != nil, focusedTask != nil {
+                    Button("Done") { focusTask(nil) }
+                }
                 noteTypeMenu(note)
                 TaskTextFormatMenu(isEnabled: focusedTask != nil,
                     selectedFont: note.singleMemoFont,
@@ -955,7 +979,16 @@ struct ChecklistView: View {
 
 }
 
+@MainActor
 enum SingleMemoLinkMetadata {
+    private static let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+        .appendingPathComponent("single-memo-link-titles.json")
+    private static var cachedTitles: [String: String] = {
+        guard let cacheURL, let data = try? Data(contentsOf: cacheURL),
+              let titles = try? JSONDecoder().decode([String: String].self, from: data) else { return [:] }
+        return titles
+    }()
+    private static var inFlight: [String: Swift.Task<String?, Never>] = [:]
     static func url(in text: String) -> URL? {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty,
@@ -967,16 +1000,38 @@ enum SingleMemoLinkMetadata {
         return url
     }
 
+    private static func cacheKey(for url: URL) -> String {
+        SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func cachedTitle(for url: URL) -> String? {
+        cachedTitles[cacheKey(for: url)]
+    }
+
     static func title(for url: URL) async -> String? {
-        do {
-            try await Swift.Task.sleep(nanoseconds: 800_000_000)
-            let metadata = try await LPMetadataProvider().startFetchingMetadata(for: url)
-            guard !Swift.Task.isCancelled else { return nil }
-            let title = metadata.title?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return title?.isEmpty == false ? title : nil
-        } catch {
-            return nil
+        let key = cacheKey(for: url)
+        if let title = cachedTitles[key] { return title }
+        if let pending = inFlight[key] { return await pending.value }
+        let pending = Swift.Task<String?, Never> {
+            do {
+                try await Swift.Task.sleep(nanoseconds: 800_000_000)
+                let metadata = try await LPMetadataProvider().startFetchingMetadata(for: url)
+                let title = metadata.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+                return title?.isEmpty == false ? title : nil
+            } catch {
+                return nil
+            }
         }
+        inFlight[key] = pending
+        let title = await pending.value
+        inFlight[key] = nil
+        if let title {
+            cachedTitles[key] = title
+            if let cacheURL, let data = try? JSONEncoder().encode(cachedTitles) {
+                try? data.write(to: cacheURL, options: .atomic)
+            }
+        }
+        return title
     }
 }
 

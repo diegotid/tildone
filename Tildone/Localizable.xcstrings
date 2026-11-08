@@ -1,6 +1,14 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Edit memo" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Edit memo" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Editar nota" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Modifier la note" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "编辑备忘录" } }
+      }
+    },
     "Copy Link" : {
       "localizations" : {
         "en" : {

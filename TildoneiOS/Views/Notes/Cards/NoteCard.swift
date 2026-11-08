@@ -95,14 +95,17 @@ struct NoteCard: View {
 
     private var singleTaskPreview: some View {
         let url = SingleMemoLinkMetadata.url(in: tasks.first?.text ?? "")
+        let title = url.flatMap { url in
+            (url == metadataURL ? metadataTitle : nil) ?? SingleMemoLinkMetadata.cachedTitle(for: url)
+        }
         return GeometryReader { geometry in
             let task = tasks.first
             ViewThatFits(in: .vertical) {
-                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 26 * contentScale, width: geometry.size.width)
-                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 22 * contentScale, width: geometry.size.width)
-                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 19 * contentScale, width: geometry.size.width)
-                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 16 * contentScale, width: geometry.size.width)
-                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 14 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: title, size: 26 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: title, size: 22 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: title, size: 19 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: title, size: 16 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: title, size: 14 * contentScale, width: geometry.size.width)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }

@@ -12,6 +12,19 @@ struct NoteListRow: View {
     let summary: NoteTaskSummary?
     let taskListText: String?
     let taskPreview: NoteTaskPreview?
+    @State private var metadataURL: URL?
+    @State private var metadataTitle: String?
+
+    private var memoURL: URL? {
+        guard note.kind == .singleTask else { return nil }
+        return SingleMemoLinkMetadata.url(in: taskPreview?.text ?? taskListText ?? "")
+    }
+
+    private var memoPageTitle: String? {
+        guard let memoURL else { return nil }
+        return (metadataURL == memoURL ? metadataTitle : nil)
+            ?? SingleMemoLinkMetadata.cachedTitle(for: memoURL)
+    }
 
     private var title: String? {
         guard let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
@@ -29,8 +42,17 @@ struct NoteListRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(note.kind == .singleTask ? (taskListText ?? String(localized: "New task")) : (title ?? taskListText ?? String(localized: "No tasks")))
+        .accessibilityLabel(note.kind == .singleTask ? (memoPageTitle ?? taskListText ?? String(localized: "New task")) : (title ?? taskListText ?? String(localized: "No tasks")))
         .accessibilityValue(accessibilityDescription)
+        .task(id: memoURL) {
+            let url = memoURL
+            metadataURL = url
+            metadataTitle = nil
+            guard let url else { return }
+            let title = await SingleMemoLinkMetadata.title(for: url)
+            guard !Swift.Task.isCancelled else { return }
+            metadataTitle = title
+        }
     }
 
     private var checklistRow: some View {
@@ -69,10 +91,18 @@ struct NoteListRow: View {
                 .fill(note.color.swiftUIColor)
                 .frame(width: 12, height: 40)
 
-            Text(singleTaskPreviewText)
-                .font(.body.weight(.medium))
-                .lineLimit(2)
-                .truncationMode(.tail)
+            VStack(alignment: .leading, spacing: 3) {
+                if let memoPageTitle {
+                    Text(verbatim: memoPageTitle)
+                        .font(.body.weight(.medium))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Text(singleTaskPreviewText)
+                    .font(memoPageTitle == nil ? .body.weight(.medium) : .subheadline)
+                    .lineLimit(memoPageTitle == nil ? 2 : 1)
+                    .truncationMode(.tail)
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.leading, 4)
@@ -86,9 +116,10 @@ struct NoteListRow: View {
 
     private var singleTaskPreviewText: AttributedString {
         guard let taskPreview else {
-            return AttributedString(taskListText?.isEmpty == false ? taskListText! : String(localized: "New task"))
+            let text = taskListText?.isEmpty == false ? taskListText! : String(localized: "New task")
+            return RichTaskTextEditor.displayText(from: RichText(text: text), shortenLinks: true)
         }
-        return RichTaskTextEditor.displayText(from: taskPreview.richText)
+        return RichTaskTextEditor.displayText(from: taskPreview.richText, shortenLinks: true)
     }
 }
 
