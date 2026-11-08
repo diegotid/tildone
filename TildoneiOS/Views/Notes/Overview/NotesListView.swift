@@ -224,7 +224,11 @@ struct NotesListView: View {
                 Swift.Task { try? await appModel.delete(noteID: note.id) }
                 noteToDelete = nil
             }
-        } message: { Text("Its checklist will be removed from your active notes.") }
+        } message: {
+            if noteToDelete?.kind != .singleTask {
+                Text("Its checklist will be removed from your active notes.")
+            }
+        }
     }
 
     private func createNote() {
@@ -259,8 +263,8 @@ struct NotesListView: View {
                 .disabled(note.id == departingNote?.id)
                 .contextMenu { noteActions(for: note) }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if let summary = appModel.taskSummaries[note.id],
-                       summary.isComplete || summary.isEmpty {
+                    if note.kind == .singleTask || appModel.taskSummaries[note.id]?.isComplete == true
+                        || appModel.taskSummaries[note.id]?.isEmpty == true {
                         Button("Delete", role: .destructive) { noteToDelete = note }
                     }
                     Button("Rename") { beginRename(note) }.tint(.orange)

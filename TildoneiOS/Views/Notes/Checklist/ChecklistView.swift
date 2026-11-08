@@ -34,6 +34,9 @@ struct ChecklistView: View {
     @State private var showsInsertionHint = false
     @State private var singleTaskDraft = RichText(text: "")
     @State private var singleTaskDraftID: TaskID?
+    @State private var singleMemoSaveTask: Swift.Task<Void, Error>?
+    @State private var showsDeleteSingleMemo = false
+    @State private var isDeletingSingleMemo = false
     @State private var singleMemoTitleCaretOffset: Int?
     @State private var singleMemoMetadataURL: URL?
     @State private var singleMemoMetadataTitle: String?
@@ -497,8 +500,11 @@ struct ChecklistView: View {
                     textAlignment: .center,
                     lineHeightMultiple: SingleMemoTypography.lineHeightMultiple,
                     onCommit: { value in
-                        Swift.Task {
-                            try? await appModel.edit(taskID: task.id, richText: value)
+                        guard !isDeletingSingleMemo else { return }
+                        let previousSave = singleMemoSaveTask
+                        singleMemoSaveTask = Swift.Task {
+                            _ = try? await previousSave?.value
+                            try await appModel.edit(taskID: task.id, richText: value)
                         }
                     }
                 )
@@ -554,11 +560,43 @@ struct ChecklistView: View {
                     NoteColorPickerSymbol(color: note.color)
                 }
                 .accessibilityLabel("Note color")
+                Button(role: .destructive) {
+                    showsDeleteSingleMemo = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .accessibilityLabel("Delete Note")
+            }
+        }
+        .confirmationDialog("Delete this note?", isPresented: $showsDeleteSingleMemo, titleVisibility: .visible) {
+            Button("Delete Note", role: .destructive) {
+                deleteSingleMemo()
             }
         }
         .onDisappear {
+            guard !isDeletingSingleMemo else { return }
             guard let task = tasks.first, singleTaskDraft != task.richText else { return }
             Swift.Task { try? await appModel.edit(taskID: task.id, richText: singleTaskDraft) }
+        }
+    }
+
+    private func deleteSingleMemo() {
+        guard !isDeletingSingleMemo else { return }
+        isDeletingSingleMemo = true
+        let pendingSave = singleMemoSaveTask
+        focusTask(nil)
+        let task = tasks.first
+        let draft = singleTaskDraft
+        Swift.Task {
+            do {
+                try await pendingSave?.value
+                if let task, draft != task.richText {
+                    try await appModel.edit(taskID: task.id, richText: draft)
+                }
+                try await appModel.delete(noteID: noteID)
+            } catch {
+                isDeletingSingleMemo = false
+            }
         }
     }
 
