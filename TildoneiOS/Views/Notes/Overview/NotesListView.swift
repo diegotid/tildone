@@ -26,6 +26,10 @@ struct NotesListView: View {
     @State private var showsAbout = false
     @State private var showsWelcome = false
     @State private var searchText = ""
+    @State private var searchPresented = false
+    @FocusState private var searchFocused: Bool
+    @State private var navigationID = UUID()
+    @ObservedObject private var quickActions = HomeQuickActionRouter.shared
     @State private var departingNote: Note?
     @State private var isDepartingNoteFading = false
     @State private var departureTask: Swift.Task<Void, Never>?
@@ -113,7 +117,8 @@ struct NotesListView: View {
                 }
             }
             .navigationTitle("Notes")
-            .searchable(text: $searchText, prompt: "Search Notes and Tasks")
+            .searchable(text: $searchText, isPresented: $searchPresented, prompt: "Search Notes and Tasks")
+            .modifier(SearchFocusWhenAvailable(focus: $searchFocused))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     TildoneiOSSyncStatusMenu(
@@ -164,6 +169,10 @@ struct NotesListView: View {
                 TildoneiOSAboutView()
             }
         }
+        .id(navigationID)
+        .onAppear { handleQuickAction() }
+        .onChange(of: quickActions.pending) { _, _ in handleQuickAction() }
+        .onChange(of: appModel.hasWorkspace) { _, _ in handleQuickAction() }
         .sheet(isPresented: $showsWelcome, onDismiss: { WelcomeOnboarding.finish() }) {
             WelcomeOnboardingView { showsWelcome = false }
         }
@@ -227,6 +236,27 @@ struct NotesListView: View {
         } message: {
             if noteToDelete?.kind != .singleTask {
                 Text("Its checklist will be removed from your active notes.")
+            }
+        }
+    }
+
+    private func handleQuickAction() {
+        guard appModel.hasWorkspace, let action = quickActions.pending else { return }
+        quickActions.pending = nil
+        presentedNoteID = nil
+        showsAbout = false
+        showsWelcome = false
+        searchText = ""
+        searchPresented = false
+        navigationID = UUID()
+        Swift.Task { @MainActor in
+            await Swift.Task<Never, Never>.yield()
+            switch action {
+            case .newNote:
+                createNote()
+            case .search:
+                searchPresented = true
+                searchFocused = true
             }
         }
     }
@@ -372,6 +402,20 @@ private struct UnconfirmedEmptyWorkspaceStatus: View {
             WorkspaceStatusView(status: syncPresentation.status) {
                 appModel.syncNow()
             }
+        }
+    }
+}
+
+
+private struct SearchFocusWhenAvailable: ViewModifier {
+    let focus: FocusState<Bool>.Binding
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.searchFocused(focus)
+        } else {
+            content
         }
     }
 }
