@@ -42,6 +42,7 @@ final class MacSharedStore: ObservableObject {
     private var pendingTaskTextEdits: [TaskID: PendingTaskTextEdit] = [:]
     private var taskTextEditWorkers: [TaskID: Swift.Task<Void, Never>] = [:]
     private var stagedTaskInsertions: [TaskID: StagedTaskInsertion] = [:]
+    private var pendingTaskStructureUpdates: [TaskID: TaskStructureUpdate] = [:]
     private var inFlightTaskTextEdits: [TaskID: Swift.Task<Task, Error>] = [:]
     private var stagedTaskInsertionWaiters: [TaskID: [CheckedContinuation<Void, Never>]] = [:]
     private var pendingNoteTitleEdits: [NoteID: PendingNoteTitleEdit] = [:]
@@ -729,6 +730,7 @@ final class MacSharedStore: ObservableObject {
         guard levels.contains(where: { currentLevels[$0.id] != $0.level }) else { return }
         guard ProEntitlement.shared.require(.subtasks, in: noteID) else { throw ProAccessError.requiresPro }
         let updates = levels.map { TaskStructureUpdate(id: $0.id, indentLevel: $0.level) }
+        for update in updates { pendingTaskStructureUpdates[update.id] = update }
         presentTaskStructureUpdates(updates, in: noteID)
         try await commitTaskStructureUpdates(
             updates,
@@ -762,6 +764,7 @@ final class MacSharedStore: ObservableObject {
     ) -> [TaskStructureUpdate] {
         guard ProEntitlement.shared.require(.subtasks, in: noteID) else { return [] }
         let updates = levels.map { TaskStructureUpdate(id: $0.id, indentLevel: $0.level) }
+        for update in updates { pendingTaskStructureUpdates[update.id] = update }
         presentTaskStructureUpdates(updates, in: noteID)
         return updates
     }
@@ -801,6 +804,7 @@ final class MacSharedStore: ObservableObject {
                 indentLevel: task.indentLevel - 1
             )
         }
+        for update in updates { pendingTaskStructureUpdates[update.id] = update }
         presentTaskStructureUpdates(updates, in: noteID)
         return updates
     }
@@ -811,18 +815,18 @@ final class MacSharedStore: ObservableObject {
         moveCompletedGroupsToEnd: Bool,
         undoDirection: MacTaskIndentationUndoDirection? = nil
     ) async throws {
-        let existingTasks = try await repository.orderedTasks(in: noteID)
-        let oldLevels = Dictionary(uniqueKeysWithValues: existingTasks.map { ($0.id, $0.indentLevel) })
-        if updates.contains(where: { $0.indentLevel != nil && $0.indentLevel != oldLevels[$0.id] }) {
-            guard ProEntitlement.shared.require(.subtasks, in: noteID) else {
-                try? await reload(noteID)
-                throw ProAccessError.requiresPro
-            }
-        }
-        let before = undoDirection == nil ? [] : existingTasks
-        let taskIDs = Set(existingTasks.map(\.id))
-        let originalPreferenceTokens = CompletedTaskOrderPreference.snapshot(for: taskIDs)
         do {
+            for update in updates { await waitForStagedTaskInsertion(update.id) }
+            let existingTasks = try await repository.orderedTasks(in: noteID)
+            let oldLevels = Dictionary(uniqueKeysWithValues: existingTasks.map { ($0.id, $0.indentLevel) })
+            if updates.contains(where: { $0.indentLevel != nil && $0.indentLevel != oldLevels[$0.id] }) {
+                guard ProEntitlement.shared.require(.subtasks, in: noteID) else {
+                    throw ProAccessError.requiresPro
+                }
+            }
+            let before = undoDirection == nil ? [] : existingTasks
+            let taskIDs = Set(existingTasks.map(\.id))
+            let originalPreferenceTokens = CompletedTaskOrderPreference.snapshot(for: taskIDs)
             _ = try await repository.applyTaskStructureUpdates(in: noteID, updates: updates)
             CompletedTaskOrderPreference.removeOriginalOrderTokens(for: taskIDs)
             try await reconcileTaskHierarchy(
@@ -838,9 +842,11 @@ final class MacSharedStore: ObservableObject {
                 indentationPreferenceUndo = (taskIDs, originalPreferenceTokens)
                 refreshUndoAction()
             }
+            clearPendingTaskStructureUpdates(updates)
             try await reload(noteID)
             scheduleSyncNotification()
         } catch {
+            clearPendingTaskStructureUpdates(updates)
             try? await reload(noteID)
             throw error
         }
@@ -1482,7 +1488,8 @@ private extension MacSharedStore {
                 for update in insertion.orderUpdates { orderUpdates[update.id] = update }
             }
             visibleTasks = visibleTasks.map { task in
-                orderUpdates[task.id].map { presentationTask(task, applying: $0) } ?? task
+                let ordered = orderUpdates[task.id].map { presentationTask(task, applying: $0) } ?? task
+                return pendingTaskStructureUpdates[task.id].map { presentationTask(ordered, applying: $0) } ?? ordered
             }
             visibleTasks.sort(by: Task.orderedBefore)
             let tasks = visibleTasks.map { task in
@@ -1582,6 +1589,12 @@ private extension MacSharedStore {
             byID[task.id].map { presentationTask(task, applying: $0) } ?? task
         }.sorted(by: Task.orderedBefore)
         publish(MacNoteSnapshot(note: snapshot.note, tasks: tasks))
+    }
+
+    private func clearPendingTaskStructureUpdates(_ updates: [TaskStructureUpdate]) {
+        for update in updates where pendingTaskStructureUpdates[update.id] == update {
+            pendingTaskStructureUpdates[update.id] = nil
+        }
     }
 
     func scheduleSyncNotification() {

@@ -487,6 +487,29 @@ final class TildoneTests: XCTestCase {
     }
 
     @MainActor
+    func testNewTaskIndentationSurvivesInsertionAndRefresh() async throws {
+        let pro = ProEntitlement.shared
+        pro.setTestOverride(true)
+        defer { pro.setTestOverride(nil) }
+        let repository = try TildoneRepository(descriptor: .inMemory())
+        let store = MacSharedStore(repository: repository)
+        let note = try await store.createNote()
+        _ = try await store.addTask(to: note.id, text: "Parent")
+        let staged = try store.stageEmptyTaskInsertion(
+            in: note.id, at: 1, deleting: [], indentLevel: 0, text: ""
+        )
+        let updates = store.stageTaskIndentLevels([(id: staged.id, level: 1)], in: note.id)
+        try await store.reload(note.id)
+        XCTAssertEqual(store.note(note.id)?.tasks.last?.indentLevel, 1)
+        try await store.commitStagedTaskInsertion(staged, deleting: [])
+        XCTAssertEqual(store.note(note.id)?.tasks.last?.indentLevel, 1)
+        try await store.commitTaskStructureUpdates(updates, in: note.id, moveCompletedGroupsToEnd: false)
+        let persisted = try await repository.task(id: staged.id)
+        XCTAssertEqual(persisted.indentLevel, 1)
+        XCTAssertEqual(store.note(note.id)?.tasks.last?.indentLevel, 1)
+    }
+
+    @MainActor
     func testReturnAddsFourthChildWhenNextRootSharesItsOrderToken() async throws {
         let pro = ProEntitlement.shared
         pro.setTestOverride(false)
