@@ -5,6 +5,7 @@
 //  Created by Diego Rivera on 8/1/26.
 //
 import SwiftUI
+import LinkPresentation
 import TildoneDomain
 import TildonePersistence
 import TildoneSync
@@ -22,6 +23,7 @@ struct ChecklistView: View {
     @State private var newTaskText = ""
     @State private var title = ""
     @State private var titleBaseline: String?
+    @State private var titleSaveTask: Swift.Task<Void, Error>?
     @State private var hasInitializedTitleDraft = false
     @State private var isRenamingTitle = false
     @State private var isEnteringNewNoteTitle = false
@@ -33,6 +35,8 @@ struct ChecklistView: View {
     @State private var singleTaskDraft = RichText(text: "")
     @State private var singleTaskDraftID: TaskID?
     @State private var singleMemoTitleCaretOffset: Int?
+    @State private var singleMemoMetadataURL: URL?
+    @State private var singleMemoMetadataTitle: String?
     @State private var isShowingCompletion = false
     @State private var completionExitTask: Swift.Task<Void, Never>?
     @State private var hasLeftDetail = false
@@ -465,8 +469,17 @@ struct ChecklistView: View {
     }
 
     private func singleTaskEditor(_ note: Note) -> some View {
-        VStack(spacing: 12) {
+        let liveText = singleTaskDraftID == tasks.first?.id ? singleTaskDraft.text : (tasks.first?.text ?? "")
+        let metadataURL = SingleMemoLinkMetadata.url(in: liveText)
+        return VStack(spacing: 12) {
             if let task = tasks.first {
+                if metadataURL == singleMemoMetadataURL, let title = singleMemoMetadataTitle {
+                    Text(verbatim: title)
+                        .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: 26))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity)
+                }
                 RichTaskTextEditor(
                     initialCaretUTF16Offset: singleMemoTitleCaretOffset,
                     richText: Binding(
@@ -507,6 +520,14 @@ struct ChecklistView: View {
                 ProgressView()
             }
         }
+        .task(id: metadataURL) {
+            singleMemoMetadataURL = metadataURL
+            singleMemoMetadataTitle = nil
+            guard let metadataURL else { return }
+            let title = await SingleMemoLinkMetadata.title(for: metadataURL)
+            guard !Swift.Task.isCancelled else { return }
+            singleMemoMetadataTitle = title
+        }
         .padding()
         .navigationTitle("Single memo")
         .navigationBarTitleDisplayMode(.inline)
@@ -542,10 +563,20 @@ struct ChecklistView: View {
     }
 
     private func switchToSingleMemo() {
-        singleMemoTitleCaretOffset = Self.normalizedTitle(note?.title)?.utf16.count
+        let memoTitle = Self.normalizedTitle(title)
+        saveTitle()
+        let pendingTitleSave = titleSaveTask
+        singleMemoTitleCaretOffset = memoTitle?.utf16.count
         Swift.Task {
-            do { try await appModel.setKind(noteID: noteID, kind: .singleTask) }
-            catch { singleMemoTitleCaretOffset = nil }
+            do {
+                try await pendingTitleSave?.value
+                try await appModel.setKind(noteID: noteID, kind: .singleTask)
+            }
+            catch {
+                singleMemoTitleCaretOffset = nil
+                titleBaseline = Self.normalizedTitle(note?.title)
+                titleSaveTask = nil
+            }
         }
     }
 
@@ -600,8 +631,10 @@ struct ChecklistView: View {
         let normalized = Self.normalizedTitle(title)
         guard normalized != titleBaseline else { return }
         titleBaseline = normalized
-        Swift.Task {
-            try? await appModel.rename(noteID: noteID, title: normalized)
+        let previousSave = titleSaveTask
+        titleSaveTask = Swift.Task {
+            _ = try? await previousSave?.value
+            try await appModel.rename(noteID: noteID, title: normalized)
         }
     }
 
@@ -882,6 +915,31 @@ struct ChecklistView: View {
         }
     }
 
+}
+
+enum SingleMemoLinkMetadata {
+    static func url(in text: String) -> URL? {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty,
+              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
+        let range = NSRange(location: 0, length: value.utf16.count)
+        guard let match = detector.firstMatch(in: value, range: range), match.range == range,
+              let url = match.url, let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme), url.host?.isEmpty == false else { return nil }
+        return url
+    }
+
+    static func title(for url: URL) async -> String? {
+        do {
+            try await Swift.Task.sleep(nanoseconds: 800_000_000)
+            let metadata = try await LPMetadataProvider().startFetchingMetadata(for: url)
+            guard !Swift.Task.isCancelled else { return nil }
+            let title = metadata.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return title?.isEmpty == false ? title : nil
+        } catch {
+            return nil
+        }
+    }
 }
 
 private struct CompletionCheckmark: View {

@@ -890,10 +890,15 @@ struct MouseSafeTaskTextField: NSViewRepresentable {
         fontSize: CGFloat,
         baseColor: NSColor,
         detectLinks: Bool = true,
-        shortenLinks: Bool = false
+        shortenLinks: Bool = false,
+        fontName: String? = nil,
+        alignment: NSTextAlignment = .left,
+        lineHeightMultiple: CGFloat? = nil
     ) -> AttributedString {
         let result = NSMutableAttributedString(
-            attributedString: attributedString(from: richText, fontSize: fontSize, baseColor: baseColor)
+            attributedString: attributedString(from: richText, fontSize: fontSize, baseColor: baseColor,
+                                               fontName: fontName, alignment: alignment,
+                                               lineHeightMultiple: lineHeightMultiple)
         )
         if detectLinks,
            let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {

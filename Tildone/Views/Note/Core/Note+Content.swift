@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import LinkPresentation
 import SwiftUI
 import TildoneDomain
 
@@ -50,6 +51,8 @@ extension Note {
                     let liveRichText = singleTaskDraftID == task.id
                         ? singleTaskDraft
                         : task.richText
+                    let metadataURL = singleMemoLinkURL(liveRichText.text)
+                    let metadataTitle = metadataURL == singleMemoMetadataURL ? singleMemoMetadataTitle : nil
                     let size = singleTaskFontSize(
                         text: liveRichText.text,
                         fontName: fontName,
@@ -58,6 +61,24 @@ extension Note {
                             height: max(1, geometry.size.height - 8)
                         )
                     )
+                    let displayText = MouseSafeTaskTextField.displayAttributedString(
+                        from: liveRichText,
+                        fontSize: metadataTitle == nil ? size : min(size, 26),
+                        baseColor: NSColor(noteForeground),
+                        shortenLinks: true,
+                        fontName: fontName,
+                        alignment: .center,
+                        lineHeightMultiple: SingleMemoTypography.lineHeightMultiple
+                    )
+                    let showsLinkDisplay = activeFocusedTaskID != task.id && {
+                        let text = NSAttributedString(displayText)
+                        var found = false
+                        text.enumerateAttribute(.link, in: NSRange(location: 0, length: text.length)) { value, _, stop in
+                            if value != nil { found = true; stop.pointee = true }
+                        }
+                        return found
+                    }()
+                    ZStack {
                     MouseSafeTaskTextField(
                         richText: Binding(
                             get: { liveRichText },
@@ -97,6 +118,36 @@ extension Note {
                         }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(showsLinkDisplay ? 0.001 : 1)
+                    if showsLinkDisplay {
+                        VStack(spacing: 10) {
+                            if let metadataTitle {
+                                Text(verbatim: metadataTitle)
+                                    .font(.custom(fontName, size: min(size, 32)))
+                                    .foregroundStyle(noteForeground)
+                                    .lineLimit(3)
+                            }
+                            Text(displayText)
+                        }
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .allowsHitTesting(false)
+                    }
+                    }
+                    .task(id: metadataURL) {
+                        singleMemoMetadataURL = metadataURL
+                        singleMemoMetadataTitle = nil
+                        guard let metadataURL else { return }
+                        do {
+                            try await Swift.Task.sleep(nanoseconds: 800_000_000)
+                            let metadata = try await LPMetadataProvider().startFetchingMetadata(for: metadataURL)
+                            guard !Swift.Task.isCancelled else { return }
+                            let title = metadata.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+                            singleMemoMetadataTitle = title?.isEmpty == false ? title : nil
+                        } catch {
+                            // A link remains usable when metadata is unavailable.
+                        }
+                    }
                     .strikethrough(task.isCompleted, color: .accentColor)
                     .opacity(task.isCompleted ? 0.6 : 1)
                     .onAppear {
@@ -156,6 +207,17 @@ extension Note {
             }
         .disabled(isContentBlurred)
         .onHover { isPointerHovering = $0 }
+    }
+
+    private func singleMemoLinkURL(_ text: String) -> URL? {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty,
+              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
+        let range = NSRange(location: 0, length: value.utf16.count)
+        guard let match = detector.firstMatch(in: value, range: range), match.range == range,
+              let url = match.url, let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme), url.host?.isEmpty == false else { return nil }
+        return url
     }
 
     private func singleTaskFontSize(

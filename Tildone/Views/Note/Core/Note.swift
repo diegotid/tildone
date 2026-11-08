@@ -152,6 +152,8 @@ struct Note: View {
     @State var nativeFocusedTaskID: TaskID?
     @State var singleTaskDraft = RichText(text: "")
     @State var singleTaskDraftID: TaskID?
+    @State var singleMemoMetadataURL: URL?
+    @State var singleMemoMetadataTitle: String?
     @State var stagedSingleMemoTaskID: TaskID?
     @State var singleMemoTitleCaretOffset: Int?
     // Both capture fields are AppKit-backed; there is no SwiftUI .focused
@@ -240,6 +242,11 @@ struct Note: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
             guard let window = notification.object as? NSWindow, window === noteWindow else { return }
             AppReviewController.shared.setPresenter { requestReview() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { notification in
+            guard let window = notification.object as? NSWindow, window === noteWindow,
+                  noteKind == .singleTask, activeFocusedTaskID != nil else { return }
+            window.makeFirstResponder(nil)
         }
         .onReceive(NotificationCenter.default.publisher(for: .noteWindowOpacityChanged)) { notification in
             guard let changedWindow = notification.object as? NSWindow,

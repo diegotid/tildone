@@ -14,6 +14,8 @@ struct NoteCard: View {
     let delete: () -> Void
     @ScaledMetric(relativeTo: .headline) private var baseTitleSize: CGFloat = 17
     @ScaledMetric(relativeTo: .caption) private var baseChevronSize: CGFloat = 12
+    @State private var metadataURL: URL?
+    @State private var metadataTitle: String?
 
     private var title: String? {
         guard let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
@@ -92,21 +94,35 @@ struct NoteCard: View {
     }
 
     private var singleTaskPreview: some View {
-        GeometryReader { geometry in
+        let url = SingleMemoLinkMetadata.url(in: tasks.first?.text ?? "")
+        return GeometryReader { geometry in
             let task = tasks.first
             ViewThatFits(in: .vertical) {
-                singleTaskText(task, size: 26 * contentScale, width: geometry.size.width)
-                singleTaskText(task, size: 22 * contentScale, width: geometry.size.width)
-                singleTaskText(task, size: 19 * contentScale, width: geometry.size.width)
-                singleTaskText(task, size: 16 * contentScale, width: geometry.size.width)
-                singleTaskText(task, size: 14 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 26 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 22 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 19 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 16 * contentScale, width: geometry.size.width)
+                singleTaskText(task, title: url == metadataURL ? metadataTitle : nil, size: 14 * contentScale, width: geometry.size.width)
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
         }
+        .task(id: url) {
+            metadataURL = url
+            metadataTitle = nil
+            guard let url else { return }
+            let title = await SingleMemoLinkMetadata.title(for: url)
+            guard !Swift.Task.isCancelled else { return }
+            metadataTitle = title
+        }
     }
 
-    private func singleTaskText(_ task: NoteTaskPreview?, size: CGFloat, width: CGFloat) -> some View {
-        Text(memoPreviewText(task, size: size))
+    private func singleTaskText(_ task: NoteTaskPreview?, title: String?, size: CGFloat, width: CGFloat) -> some View {
+        VStack(spacing: 8 * contentScale) {
+            if let title {
+                Text(verbatim: title).lineLimit(3)
+            }
+            Text(memoPreviewText(task, size: size))
+        }
             .font(.custom(SingleMemoTypography.fontName(for: note.singleMemoFont), size: size))
             .tint(.black)
             .lineSpacing(SingleMemoTypography.lineSpacing(for: size))
@@ -122,6 +138,7 @@ struct NoteCard: View {
             RichTaskTextEditor.displayText(
                 from: $0.richText,
                 baseColor: .black,
+                shortenLinks: true,
                 fontName: SingleMemoTypography.fontName(for: note.singleMemoFont),
                 fontSize: size
             )
